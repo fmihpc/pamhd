@@ -89,6 +89,7 @@ struct Options
 		solver = object["solver-mhd"].GetString();
 		if (
 			solver != "rusanov"
+			and solver != "rusanov-staggered"
 			and solver != "hll-athena"
 			and solver != "hlld-athena"
 			and solver != "roe-athena"

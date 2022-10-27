@@ -193,7 +193,9 @@ using Cell = gensimcell::Cell<
 	pamhd::Magnetic_Field_Divergence,
 	pamhd::Scalar_Potential_Gradient,
 	pamhd::mhd::HD_Flux_Conservative,
-	pamhd::Magnetic_Field_Flux
+	pamhd::Magnetic_Field_Flux,
+	pamhd::Face_Magnetic_Field,
+	pamhd::Edge_Electric_Field
 >;
 
 

@@ -97,6 +97,33 @@ struct Bg_Magnetic_Field_Pos_Z {
 	static const std::string get_option_help() { return {"background magnetic field at cell face in positive z direction"}; }
 };
 
+/*! Magnetic field component at cell faces
+
+Magnetic field stored on cell's faces on positive side from cell's center.
+Component of magnetic field normal to the face is stored for each face,
+e.g. Bx is located on the yz face, By on xz face and Bz on xy face.
+*/
+struct Face_Magnetic_Field {
+	using data_type = Eigen::Vector3d;
+	static const std::string get_name() { return {"magnetic field on positive faces"}; }
+	static const std::string get_option_name() { return {"face-b"}; }
+	static const std::string get_option_help() { return {"magnetic field normal component at cell faces on positive sides of cell"}; }
+};
+
+/*! Electric field component along cell edges
+
+Electric field stored on cell's edges on positive side from cell's center.
+Component of electric field along one edge is stored for each dimension.
+For example Ex is located along x-directed edge on positive side of cell
+in y and z dimensions.
+*/
+struct Edge_Electric_Field {
+	using data_type = Eigen::Vector3d;
+	static const std::string get_name() { return {"electric field on positive edges"}; }
+	static const std::string get_option_name() { return {"edge-e"}; }
+	static const std::string get_option_help() { return {"electric field tangential component at cell edges on positive side of cell"}; }
+};
+
 struct MPI_Rank {
 	using data_type = int;
 	static const std::string get_name() { return {"MPI rank"}; }
