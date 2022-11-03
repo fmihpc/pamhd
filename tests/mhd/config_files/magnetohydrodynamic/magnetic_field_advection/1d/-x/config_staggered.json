@@ -1,0 +1,27 @@
+{
+	"output-directory": "results/magnetohydrodynamic/magnetic_field_advection/1d/-x/rusanov_staggered",
+	"time-start": 0,
+	"time-length": 1,
+	"minimum-pressure": 0,
+	"resistivity": "4e-8",
+	"solver-mhd": "rusanov-staggered",
+	"load-balancer": "RANDOM",
+	"save-mhd-n": 0.1,
+	"adiabatic-index": 1.6666666667,
+	"vacuum-permeability": 1,
+	"proton-mass": 1,
+	"remove-div-B-n": -1,
+	"mhd-time-step-factor": 0.4,
+	"poisson-norm-stop": 1e-10,
+	"poisson-norm-increase-max": 10,
+	"grid-options": {
+		"periodic": "{true, true, true}",
+		"cells": "{200, 1, 1}",
+		"volume": "{1, 1, 1}",
+		"start": "{0, 0, 0}"
+	},
+	"number-density": {"default": 1},
+	"velocity": {"default": [-1, 0, 0]},
+	"pressure": {"default": 1},
+	"magnetic-field": {"default": "{0, (abs(x - 0.5) < 0.25) ? 0.01 : 0, 0}"}
+}

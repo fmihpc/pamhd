@@ -1,0 +1,96 @@
+{
+	"output-directory": "results/magnetohydrodynamic/shock_tube/1d/+y/rusanov_staggered",
+	"time-start": 0,
+	"time-length": 1,
+	"minimum-pressure": 0,
+	"resistivity": "0",
+	"solver-mhd": "rusanov-staggered",
+	"load-balancer": "RANDOM",
+	"save-mhd-n": 0.1,
+	"adiabatic-index": 1.6666666666666667,
+	"vacuum-permeability": 1.2566370614359173e-06,
+	"proton-mass": 1.6726217770000001e-27,
+	"remove-div-B-n": -1,
+	"mhd-time-step-factor": 0.5,
+	"poisson-norm-stop": 1e-10,
+	"poisson-norm-increase-max": 10,
+	"grid-options": {
+		"periodic": "{true, false, true}",
+		"cells": "{1, 1000 + 2, 1}",
+		"volume": "{1e5, 1e5 + 2 * 1e5 / (cells[1] - 2), 1e5}",
+		"start": "{-volume[0]/2, -1 * 1e5 / (cells[1] - 2), -volume[2]/2}"
+	},
+	"geometries": [
+		{"box": {
+			"comment": "Negative end of shock tube",
+			"start": [-5e4, -1e5, -5e4],
+			"end": [5e4, 0, 5e4]
+		}},
+		{"box": {
+			"start": [-5e4, 1e5, -5e4],
+			"end": [5e4, 2e5, 5e4]
+		}}
+	],
+	"number-density": {
+		"default": "y < 5e4 ? 3e6 : 1e6",
+		"value-boundaries": [
+			{
+				"comment": "Time-dependent state of negative end of the shock tube",
+				"geometry-id": 0,
+				"time-stamps": [0],
+				"values": [3e6]
+			},
+			{
+				"comment": "Time-dependent state of positive end of the shock tube",
+				"geometry-id": 1,
+				"time-stamps": [0],
+				"values": [1e6]
+			}
+		]
+	},
+	"velocity": {
+		"default": [0, 0, 0],
+		"value-boundaries": [
+			{
+				"geometry-id": 0,
+				"time-stamps": [0],
+				"values": [[0, 0, 0]]
+			},
+			{
+				"geometry-id": 1,
+				"time-stamps": [0],
+				"values": [[0, 0, 0]]
+			}
+		]
+	},
+	"pressure": {
+		"default": "y < 5e4 ? 3e-12 : 1e-12",
+		"value-boundaries": [
+			{
+				"geometry-id": 0,
+				"time-stamps": [0],
+				"values": [3e-12]
+			},
+			{
+				"geometry-id": 1,
+				"time-stamps": [0],
+				"values": [1e-12]
+			}
+		]
+	},
+	"magnetic-field": {
+		"default": "{y < 5e4 ? 1e-9 : -1e-9, 1.5e-9, 0}",
+		"value-boundaries": [
+			{
+				"geometry-id": 0,
+				"time-stamps": [0],
+				"values": [[1e-9, 1.5e-9, 0]]
+			},
+			{
+				"geometry-id": 1,
+				"time-stamps": [0],
+				"values": [[-1e-9, 1.5e-9, 0]]
+			}
+		]
+	}
+}

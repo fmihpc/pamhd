@@ -1,0 +1,85 @@
+{
+	"output-directory": "results/hydrodynamic/bow_shock/2d/z1/rusanov_staggered",
+	"time-start": 0,
+	"time-length": 10,
+	"minimum-pressure": 0,
+	"resistivity": "0",
+	"solver-mhd": "rusanov-staggered",
+	"load-balancer": "RANDOM",
+	"save-mhd-n": 1,
+	"adiabatic-index": 1.6666666666666667,
+	"vacuum-permeability": 1,
+	"proton-mass": 1,
+	"remove-div-B-n": -1,
+	"mhd-time-step-factor": 0.5,
+	"poisson-norm-stop": 1e-10,
+	"poisson-norm-increase-max": 10,
+	"grid-options": {
+		"periodic": "{false, false, false}",
+		"cells": "{2*15 + 2, 3*15 + 2, 1}",
+		"volume": "{2 * (1 + 2 / (cells[0] - 2)), 3 * (1 + 2 / (cells[1] - 2)), 2}",
+		"start": "{-volume[0] / 2, -volume[1] / 2, -volume[2] / 2}"
+	},
+	"geometries": [
+		{"box": {
+			"start": [-99, -99, -99],
+			"end": [-1, 99, 99]
+		}},
+		{"box": {
+			"start": [1, -99, -99],
+			"end": [99, 99, 99]
+		}},
+		{"box": {
+			"start": [-99, 1.5, -99],
+			"end": [99, 99, 99]
+		}},
+		{"box": {
+			"start": [-99, -99, -99],
+			"end": [99, -1.5, 99]
+		}}
+	],
+	"number-density": {
+		"default": "radius < 0.0625 ? 100 : 0.01",
+		"value-boundaries": [
+			{"geometry-id": 0, "time-stamps": [0], "values": [0.01]}
+		],
+		"copy-boundaries": [
+			{"geometry-id": 1},
+			{"geometry-id": 2},
+			{"geometry-id": 3}
+		]
+	},
+	"velocity": {
+		"default": "{radius < 0.0625 or (x > 0 and y < 0.0625 and y > -0.0625) ? 0 : 1, 0, 0}",
+		"value-boundaries": [
+			{"geometry-id": 0, "time-stamps": [0], "values": [[1, 0, 0]]}
+		],
+		"copy-boundaries": [
+			{"geometry-id": 1},
+			{"geometry-id": 2},
+			{"geometry-id": 3}
+		]
+	},
+	"pressure": {
+		"default": 0.0015,
+		"value-boundaries": [
+			{"geometry-id": 0, "time-stamps": [0], "values": [0.0015]}
+		],
+		"copy-boundaries": [
+			{"geometry-id": 1},
+			{"geometry-id": 2},
+			{"geometry-id": 3}
+		]
+	},
+	"magnetic-field": {
+		"default": [0, 0, 0],
+		"value-boundaries": [
+			{"geometry-id": 0, "time-stamps": [0], "values": [[0, 0, 0]]}
+		],
+		"copy-boundaries": [
+			{"geometry-id": 1},
+			{"geometry-id": 2},
+			{"geometry-id": 3}
+		]
+	}
+}

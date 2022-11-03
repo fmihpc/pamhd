@@ -4,11 +4,13 @@ TESTS_MHD_EXECUTABLES = \
   tests/mhd/two_reference.exe \
   tests/mhd/mhd2ascii.exe \
   tests/mhd/mhd2gnuplot.exe \
+  tests/mhd/mhd2gnuplot_staggered.exe \
   tests/mhd/mhd2vtk.exe \
   tests/mhd/2mhd2gnuplot.exe \
   tests/mhd/mhd_extract.exe \
   tests/mhd/2mhd_extract.exe \
   tests/mhd/test.exe \
+  tests/mhd/test_staggered.exe \
   tests/mhd/two_test.exe
 
 TESTS_MHD_TESTS = \
@@ -75,6 +77,7 @@ TEST_MHD_PROGRAM_DEPS = \
   source/mhd/options.hpp \
   source/mhd/save.hpp \
   source/mhd/solve.hpp \
+  source/mhd/solve_staggered.hpp \
   source/mhd/N_solve.hpp
 
 TEST_MHD_COMPILE_COMMOM = \
@@ -122,6 +125,16 @@ tests/mhd/mhd2gnuplot.exe: \
 	  $(ZOLTAN_LDFLAGS) \
 	  $(ZOLTAN_LIBS)
 
+tests/mhd/mhd2gnuplot_staggered.exe: \
+  tests/mhd/mhd2gnuplot_staggered.cpp \
+  $(TEST_MHD_COMMON_DEPS)
+	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM) \
+	  $(DCCRG_CPPFLAGS) \
+	  $(PRETTYPRINT_CPPFLAGS) \
+	  $(ZOLTAN_CPPFLAGS) \
+	  $(ZOLTAN_LDFLAGS) \
+	  $(ZOLTAN_LIBS)
+
 tests/mhd/mhd2vtk.exe: \
   tests/mhd/mhd2vtk.cpp \
   $(TEST_MHD_COMMON_DEPS)
@@ -157,6 +170,21 @@ tests/mhd/2mhd_extract.exe: \
 
 tests/mhd/test.exe: \
   tests/mhd/test.cpp \
+  $(TEST_MHD_PROGRAM_DEPS)
+	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM) \
+	  $(DCCRG_CPPFLAGS) \
+	  $(MUPARSERX_CPPFLAGS) \
+	  $(MUPARSERX_LDFLAGS) \
+	  $(MUPARSERX_LIBS) \
+	  $(PHIPROF_CPPFLAGS) \
+	  $(PRETTYPRINT_CPPFLAGS) \
+	  $(RAPIDJSON_CPPFLAGS) \
+	  $(ZOLTAN_CPPFLAGS) \
+	  $(ZOLTAN_LDFLAGS) \
+	  $(ZOLTAN_LIBS)
+
+tests/mhd/test_staggered.exe: \
+  tests/mhd/test_staggered.cpp \
   $(TEST_MHD_PROGRAM_DEPS)
 	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM) \
 	  $(DCCRG_CPPFLAGS) \

@@ -1,0 +1,27 @@
+{
+	"output-directory": "results/magnetohydrodynamic/kelvin-helmholtz/2d/z1/rusanov_staggered",
+	"time-start": 0,
+	"time-length": 1.75,
+	"minimum-pressure": 0,
+	"resistivity": "0",
+	"solver-mhd": "rusanov-staggered",
+	"load-balancer": "RANDOM",
+	"save-mhd-n": 0.25,
+	"adiabatic-index": 1.4,
+	"vacuum-permeability": 1,
+	"proton-mass": 1,
+	"remove-div-B-n": 0.05,
+	"mhd-time-step-factor": 0.5,
+	"poisson-norm-stop": 1e-10,
+	"poisson-norm-increase-max": 10,
+	"grid-options": {
+		"periodic": "{true, true, true}",
+		"cells": "{30, 30, 1}",
+		"volume": "{1, 1, 1}",
+		"start": "{-volume[0]/2, -volume[1]/2, -volume[2]/2}"
+	},
+	"number-density": {"default": "abs(y) < 0.25 ? 2 : 1"},
+	"velocity": {"default": "{0.1 * sin(2*pi*x) + (abs(y) < 0.25 ? -0.5 : 0.5), 0.1 * cos(2*pi*x), 0}"},
+	"pressure": {"default": 3},
+	"magnetic-field": {"default": [0.25, 0, 0]}
+}

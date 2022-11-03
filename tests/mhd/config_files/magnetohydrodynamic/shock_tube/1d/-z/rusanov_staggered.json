@@ -1,0 +1,93 @@
+{
+	"output-directory": "results/magnetohydrodynamic/shock_tube/1d/-z/rusanov_staggered",
+	"time-start": 0,
+	"time-length": 1,
+	"minimum-pressure": 0,
+	"resistivity": "0",
+	"solver-mhd": "rusanov-staggered",
+	"load-balancer": "RANDOM",
+	"save-mhd-n": 0.1,
+	"adiabatic-index": 1.6666666666666667,
+	"vacuum-permeability": 1.2566370614359173e-06,
+	"proton-mass": 1.6726217770000001e-27,
+	"remove-div-B-n": -1,
+	"mhd-time-step-factor": 0.5,
+	"poisson-norm-stop": 1e-10,
+	"poisson-norm-increase-max": 10,
+	"grid-options": {
+		"periodic": "{true, true, false}",
+		"cells": "{1, 1, 1000 + 2}",
+		"volume": "{1e5, 1e5, 1e5 + 2 * 1e5 / (cells[2] - 2)}",
+		"start": "{-volume[0]/2, -volume[1]/2, -1 * 1e5 / (cells[2] - 2)}"
+	},
+	"geometries": [
+		{"box": {
+			"start": [-5e4, -5e4, -1e5],
+			"end": [5e4, 5e4, 0]
+		}},
+		{"box": {
+			"start": [-5e4, -5e4, 1e5],
+			"end": [5e4, 5e4, 2e5]
+		}}
+	],
+	"number-density": {
+		"default": "z < 5e4 ? 1e6 : 3e6",
+		"value-boundaries": [
+			{
+				"geometry-id": 0,
+				"time-stamps": [0],
+				"values": [1e6]
+			},
+			{
+				"geometry-id": 1,
+				"time-stamps": [0],
+				"values": [3e6]
+			}
+		]
+	},
+	"velocity": {
+		"default": [0, 0, 0],
+		"value-boundaries": [
+			{
+				"geometry-id": 0,
+				"time-stamps": [0],
+				"values": [[0, 0, 0]]
+			},
+			{
+				"geometry-id": 1,
+				"time-stamps": [0],
+				"values": [[0, 0, 0]]
+			}
+		]
+	},
+	"pressure": {
+		"default": "z < 5e4 ? 1e-12 : 3e-12",
+		"value-boundaries": [
+			{
+				"geometry-id": 0,
+				"time-stamps": [0],
+				"values": [1e-12]
+			},
+			{
+				"geometry-id": 1,
+				"time-stamps": [0],
+				"values": [3e-12]
+			}
+		]
+	},
+	"magnetic-field": {
+		"default": "{z < 5e4 ? -1e-9 : 1e-9, 0, 1.5e-9}",
+		"value-boundaries": [
+			{
+				"geometry-id": 0,
+				"time-stamps": [0],
+				"values": [[-1e-9, 0, 1.5e-9]]
+			},
+			{
+				"geometry-id": 1,
+				"time-stamps": [0],
+				"values": [[1e-9, 0, 1.5e-9]]
+			}
+		]
+	}
+}
