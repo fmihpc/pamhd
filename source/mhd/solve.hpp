@@ -268,6 +268,8 @@ template <
 					std::tie(flux, max_vel) = SOLVER(pamhd::mhd::athena::get_flux_roe);
 					break;
 				default:
+					std::cerr <<  __FILE__ << "(" << __LINE__ << ") "
+						<< "Invalid solver" << std::endl;
 					abort();
 				}
 				#undef SOLVER
