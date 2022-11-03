@@ -1,5 +1,4 @@
 {
-	"comment": "MHD shock tube test in +x direction, reproduces reference result",
 	"output-directory": "results/magnetohydrodynamic/shock_tube/1d/-x/hll_athena",
 	"time-start": 0,
 	"time-length": 1,
