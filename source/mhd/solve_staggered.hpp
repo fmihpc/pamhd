@@ -593,7 +593,8 @@ template <
 	const Face_Magnetic_Field_Getter FMag,
 	const Solver_Info_Getter Sol_Info,
 	const double adiabatic_index,
-	const double vacuum_permeability
+	const double vacuum_permeability,
+	const bool constant_thermal_pressure
 ) {
 	for (const auto& cell: cells) {
 		if ((Sol_Info(*cell.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
@@ -603,10 +604,16 @@ template <
 			continue;
 		}
 
-		const auto old_pressure = pamhd::mhd::get_pressure(
-			Mas(*cell.data), Mom(*cell.data), Nrj(*cell.data), VMag(*cell.data),
-			adiabatic_index, vacuum_permeability
-		);
+		const auto old_pressure = [&](){
+			if (constant_thermal_pressure) {
+				return pamhd::mhd::get_pressure(
+					Mas(*cell.data), Mom(*cell.data), Nrj(*cell.data), VMag(*cell.data),
+					adiabatic_index, vacuum_permeability
+				);
+			} else {
+				return 0.0;
+			}
+		}();
 
 		// value in case neighbor isn't available
 		VMag(*cell.data) = FMag(*cell.data);
@@ -626,11 +633,13 @@ template <
 			}
 		}
 
-		const auto vel = (Mom(*cell.data)/Mas(*cell.data)).eval();
-		Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
-			Mas(*cell.data), vel, old_pressure, VMag(*cell.data),
-			adiabatic_index, vacuum_permeability
-		);
+		if (constant_thermal_pressure) {
+			const auto vel = (Mom(*cell.data)/Mas(*cell.data)).eval();
+			Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
+				Mas(*cell.data), vel, old_pressure, VMag(*cell.data),
+				adiabatic_index, vacuum_permeability
+			);
+		}
 	}
 }
 
