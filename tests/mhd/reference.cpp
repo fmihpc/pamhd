@@ -340,8 +340,6 @@ template <
 				state_neg, \
 				state_pos, \
 				bg_magnetic_field, \
-				face_area, \
-				dt, \
 				adiabatic_index, \
 				vacuum_permeability \
 			)
@@ -364,6 +362,10 @@ template <
 		#undef SOLVER
 
 		max_dt = std::min(max_dt, cell_size / max_vel);
+		flux[mas] *= face_area*dt;
+		flux[mom] *= face_area*dt;
+		flux[nrj] *= face_area*dt;
+		flux[mag] *= face_area*dt;
 
 		if (cell_i > 0) {
 			// positive flux flows neg->pos, i.e. out of current cell

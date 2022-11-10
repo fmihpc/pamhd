@@ -46,8 +46,6 @@ Returns the flux between states and maximum signal speed from cells' shared face
 \param [state_neg] MHD state in negative x direction from the face
 \param [state_pos] MHD state in positive x direction from the face
 \param [bg_face_magnetic_field] Background magnetic field at face
-\param [area] Area of the face shared by volumes of state_neg and state_pos
-\param [dt] Length of time for which flux is calculated
 \param [adiabatic_index] en.wikipedia.org/wiki/Heat_capacity_ratio
 \param [vacuum_permeability] en.wikipedia.org/wiki/Vacuum_permeability
 */
@@ -63,8 +61,6 @@ template <
 	MHD& state_neg,
 	MHD& state_pos,
 	const Vector& bg_face_magnetic_field,
-	const Scalar& area,
-	const Scalar& dt,
 	const Scalar& adiabatic_index,
 	const Scalar& vacuum_permeability
 ) {
@@ -243,8 +239,6 @@ template <
 	MHD flux
 		= (flux_neg + flux_pos) / 2
 		+ (flux_neg - flux_pos) * (bp + bm) / (bp - bm) / 2.0;
-
-	flux *= area * dt;
 
 	return std::make_tuple(flux, std::max(std::fabs(bp), std::fabs(bm)));
 }

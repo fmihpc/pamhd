@@ -72,7 +72,7 @@ boost::optional<std::array<double, 4>> read_data(
 	dccrg::Mapping& cell_id_mapping,
 	dccrg::Grid_Topology& topology,
 	dccrg::Cartesian_Geometry& geometry,
-	unordered_map<uint64_t, pamhd::mhd::Cell>& simulation_data,
+	unordered_map<uint64_t, pamhd::mhd::Cell_Staggered>& simulation_data,
 	const std::string& file_name,
 	const int mpi_rank
 ) {
@@ -192,14 +192,11 @@ boost::optional<std::array<double, 4>> read_data(
 	);
 
 	// read cell data
-	pamhd::mhd::Cell::set_transfer_all(
+	pamhd::mhd::Cell_Staggered::set_transfer_all(
 		true,
-		pamhd::mhd::HD_State_Conservative(),
-		pamhd::Electric_Current_Density(),
+		pamhd::mhd::MHD_State_Conservative(),
 		pamhd::mhd::Solver_Info(),
 		pamhd::MPI_Rank(),
-		pamhd::Resistivity(),
-		pamhd::Magnetic_Field(),
 		pamhd::Face_Magnetic_Field(),
 		pamhd::Edge_Electric_Field(),
 		pamhd::Bg_Magnetic_Field_Pos_X(),
@@ -269,7 +266,7 @@ Plots 1d data from given list in that order.
 */
 int plot_1d(
 	const dccrg::Cartesian_Geometry& geometry,
-	const unordered_map<uint64_t, pamhd::mhd::Cell>& simulation_data,
+	const unordered_map<uint64_t, pamhd::mhd::Cell_Staggered>& simulation_data,
 	const std::vector<uint64_t>& cells,
 	const std::string& output_file_name_prefix,
 	const double simulation_time,
@@ -280,7 +277,7 @@ int plot_1d(
 	const std::string& velocity_cmd,
 	const std::string& magnetic_field_cmd,
 	const std::string& electric_field_cmd,
-	const std::string& current_density_cmd
+	const std::string& /*current_density_cmd*/
 ) {
 	using std::to_string;
 
@@ -317,24 +314,24 @@ int plot_1d(
 		     "'-' u 1:2 axes x1y2 w l lt 3 lw 2\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& hd_data
-			= simulation_data.at(cell_id)[pamhd::mhd::HD_State_Conservative()];
+		const auto& mhd_data
+			= simulation_data.at(cell_id)[pamhd::mhd::MHD_State_Conservative()];
 		const double x = geometry.get_center(cell_id)[tube_dim];
-		gnuplot_file << x << " " << hd_data[pamhd::mhd::Mass_Density()] << "\n";
+		gnuplot_file << x << " " << mhd_data[pamhd::mhd::Mass_Density()] << "\n";
 	}
 	gnuplot_file << "end\n";
 
 	for (const auto& cell_id: cells) {
-		auto& hd_data = simulation_data.at(cell_id)[pamhd::mhd::HD_State_Conservative()];
+		auto& mhd_data = simulation_data.at(cell_id)[pamhd::mhd::MHD_State_Conservative()];
 		const double
 			x = geometry.get_center(cell_id)[tube_dim],
 			pressure = [&](){
 				try {
 					return pamhd::mhd::get_pressure(
-						hd_data[pamhd::mhd::Mass_Density()],
-						hd_data[pamhd::mhd::Momentum_Density()],
-						hd_data[pamhd::mhd::Total_Energy_Density()],
-						simulation_data.at(cell_id)[pamhd::Magnetic_Field()],
+						mhd_data[pamhd::mhd::Mass_Density()],
+						mhd_data[pamhd::mhd::Momentum_Density()],
+						mhd_data[pamhd::mhd::Total_Energy_Density()],
+						simulation_data.at(cell_id)[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()],
 						adiabatic_index,
 						vacuum_permeability
 					);
@@ -358,10 +355,10 @@ int plot_1d(
 		     "'-' u 1:2 w l lw 2 t 'component 3'\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& hd_data
-			= simulation_data.at(cell_id)[pamhd::mhd::HD_State_Conservative()];
-		const auto& m = hd_data[pamhd::mhd::Momentum_Density()];
-		const auto& rho = hd_data[pamhd::mhd::Mass_Density()];
+		const auto& mhd_data
+			= simulation_data.at(cell_id)[pamhd::mhd::MHD_State_Conservative()];
+		const auto& m = mhd_data[pamhd::mhd::Momentum_Density()];
+		const auto& rho = mhd_data[pamhd::mhd::Mass_Density()];
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		if (rho > 0) {
 			gnuplot_file << x << " " << pamhd::mhd::get_velocity(m, rho)[0] << "\n";
@@ -372,10 +369,10 @@ int plot_1d(
 	gnuplot_file << "end\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& hd_data
-			= simulation_data.at(cell_id)[pamhd::mhd::HD_State_Conservative()];
-		const auto& m = hd_data[pamhd::mhd::Momentum_Density()];
-		const auto& rho = hd_data[pamhd::mhd::Mass_Density()];
+		const auto& mhd_data
+			= simulation_data.at(cell_id)[pamhd::mhd::MHD_State_Conservative()];
+		const auto& m = mhd_data[pamhd::mhd::Momentum_Density()];
+		const auto& rho = mhd_data[pamhd::mhd::Mass_Density()];
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		if (rho > 0) {
 			gnuplot_file << x << " " << pamhd::mhd::get_velocity(m, rho)[1] << "\n";
@@ -386,10 +383,10 @@ int plot_1d(
 	gnuplot_file << "end\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& hd_data
-			= simulation_data.at(cell_id)[pamhd::mhd::HD_State_Conservative()];
-		const auto& m = hd_data[pamhd::mhd::Momentum_Density()];
-		const auto& rho = hd_data[pamhd::mhd::Mass_Density()];
+		const auto& mhd_data
+			= simulation_data.at(cell_id)[pamhd::mhd::MHD_State_Conservative()];
+		const auto& m = mhd_data[pamhd::mhd::Momentum_Density()];
+		const auto& rho = mhd_data[pamhd::mhd::Mass_Density()];
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		if (rho > 0) {
 			gnuplot_file << x << " " << pamhd::mhd::get_velocity(m, rho)[2] << "\n";
@@ -411,21 +408,21 @@ int plot_1d(
 		     "'-' u 1:2 w l lw 2 t 'component 3'\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& B = simulation_data.at(cell_id)[pamhd::Magnetic_Field()];
+		const auto& B = simulation_data.at(cell_id)[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()];
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		gnuplot_file << x << " " << B[0] << "\n";
 	}
 	gnuplot_file << "end\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& B = simulation_data.at(cell_id)[pamhd::Magnetic_Field()];
+		const auto& B = simulation_data.at(cell_id)[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()];
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		gnuplot_file << x << " " << B[1] << "\n";
 	}
 	gnuplot_file << "end\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& B = simulation_data.at(cell_id)[pamhd::Magnetic_Field()];
+		const auto& B = simulation_data.at(cell_id)[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()];
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		gnuplot_file << x << " " << B[2] << "\n";
 	}
@@ -463,7 +460,7 @@ int plot_1d(
 	gnuplot_file << "end\nreset\n";
 
 	// current density
-	gnuplot_file
+	/*gnuplot_file
 		<< common_cmd
 		<< "\nset output '"
 		<< output_file_name_prefix + "_J.png"
@@ -492,10 +489,10 @@ int plot_1d(
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		gnuplot_file << x << " " << J[2] << "\n";
 	}
-	gnuplot_file << "end\nreset\n";
+	gnuplot_file << "end\nreset\n";*/
 
 	// resistivity & mpi rank
-	gnuplot_file
+	/*gnuplot_file
 		<< common_cmd
 		<< "\nset output '"
 		<< output_file_name_prefix + "_R.png"
@@ -526,7 +523,7 @@ int plot_1d(
 		gnuplot_file
 			<< x << " " << simulation_data.at(cell_id)[pamhd::MPI_Rank()] << "\n";
 	}
-	gnuplot_file << "end\nreset\n";
+	gnuplot_file << "end\nreset\n";*/
 
 	// face magnetic field
 	gnuplot_file
@@ -608,7 +605,7 @@ void write_gnuplot_cmd_2d(
 	const std::array<double, 3>& grid_geom_length,
 	const std::array<uint64_t, 3>& grid_size,
 	const std::array<size_t, 2>& dimensions,
-	const unordered_map<uint64_t, pamhd::mhd::Cell>& simulation_data,
+	const unordered_map<uint64_t, pamhd::mhd::Cell_Staggered>& simulation_data,
 	const double simulation_time,
 	const std::vector<uint64_t>& cells,
 	const std::string& common_cmd,
@@ -616,7 +613,7 @@ void write_gnuplot_cmd_2d(
 	const std::string& output_file_name_suffix,
 	const std::string& var_name,
 	const std::string& var_cmd,
-	const std::function<double(const pamhd::mhd::Cell& cell_data)>& value_for_plot
+	const std::function<double(const pamhd::mhd::Cell_Staggered& cell_data)>& value_for_plot
 ) {
 	const auto
 		grid_size1 = grid_size[dimensions[0]],
@@ -667,7 +664,7 @@ Plots data of given cells as a 2d color map.
 */
 int plot_2d(
 	const dccrg::Cartesian_Geometry& geometry,
-	const unordered_map<uint64_t, pamhd::mhd::Cell>& simulation_data,
+	const unordered_map<uint64_t, pamhd::mhd::Cell_Staggered>& simulation_data,
 	const std::vector<uint64_t>& cells,
 	const std::string& output_file_name_prefix,
 	const std::string& output_file_name_suffix,
@@ -680,9 +677,9 @@ int plot_2d(
 	const std::string& velocity_cmd,
 	const std::string& magnetic_field_cmd,
 	const std::string& electric_field_cmd,
-	const std::string& current_density_cmd,
-	const std::string& rank_cmd,
-	const std::string& resistivity_cmd,
+	const std::string& /*current_density_cmd*/,
+	const std::string& /*rank_cmd*/,
+	const std::string& /*resistivity_cmd*/,
 	const std::string& bdy_cmd
 ) {
 	using std::to_string;
@@ -747,8 +744,8 @@ int plot_2d(
 		write_gnuplot_cmd_current(
 			"rho",
 			"\n" + mass_density_cmd + "\n",
-			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Mass_Density()];
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
+				return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Mass_Density()];
 			}
 		);
 	}
@@ -758,13 +755,13 @@ int plot_2d(
 		write_gnuplot_cmd_current(
 			"P",
 			"\n" + pressure_cmd + "\n",
-			[&](const pamhd::mhd::Cell& cell_data){
+			[&](const pamhd::mhd::Cell_Staggered& cell_data){
 				try {
 					return pamhd::mhd::get_pressure(
-						cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Mass_Density()],
-						cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Momentum_Density()],
-						cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Total_Energy_Density()],
-						cell_data[pamhd::Magnetic_Field()],
+						cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Mass_Density()],
+						cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Momentum_Density()],
+						cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Total_Energy_Density()],
+						cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()],
 						adiabatic_index,
 						vacuum_permeability
 					);
@@ -780,10 +777,10 @@ int plot_2d(
 		write_gnuplot_cmd_current(
 			"Vx",
 			"\n" + velocity_cmd + " 1\"\n",
-			[](const pamhd::mhd::Cell& cell_data)->double {
+			[](const pamhd::mhd::Cell_Staggered& cell_data)->double {
 				return pamhd::mhd::get_velocity(
-					cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Momentum_Density()],
-					cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Mass_Density()]
+					cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Momentum_Density()],
+					cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Mass_Density()]
 				)[0];
 			}
 		);
@@ -791,10 +788,10 @@ int plot_2d(
 		write_gnuplot_cmd_current(
 			"Vy",
 			"\n" + velocity_cmd + " 2\"\n",
-			[](const pamhd::mhd::Cell& cell_data)->double {
+			[](const pamhd::mhd::Cell_Staggered& cell_data)->double {
 				return pamhd::mhd::get_velocity(
-					cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Momentum_Density()],
-					cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Mass_Density()]
+					cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Momentum_Density()],
+					cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Mass_Density()]
 				)[1];
 			}
 		);
@@ -802,10 +799,10 @@ int plot_2d(
 		write_gnuplot_cmd_current(
 			"Vz",
 			"\n" + velocity_cmd + " 3\"\n",
-			[](const pamhd::mhd::Cell& cell_data)->double {
+			[](const pamhd::mhd::Cell_Staggered& cell_data)->double {
 				return pamhd::mhd::get_velocity(
-					cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Momentum_Density()],
-					cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Mass_Density()]
+					cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Momentum_Density()],
+					cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Mass_Density()]
 				)[2];
 			}
 		);
@@ -816,24 +813,24 @@ int plot_2d(
 		write_gnuplot_cmd_current(
 			"Bx",
 			"\n" + magnetic_field_cmd + " 1\"\n",
-			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Magnetic_Field()][0];
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
+				return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()][0];
 			}
 		);
 
 		write_gnuplot_cmd_current(
 			"By",
 			"\n" + magnetic_field_cmd + " 2\"\n",
-			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Magnetic_Field()][1];
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
+				return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()][1];
 			}
 		);
 
 		write_gnuplot_cmd_current(
 			"Bz",
 			"\n" + magnetic_field_cmd + " 3\"\n",
-			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Magnetic_Field()][2];
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
+				return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()][2];
 			}
 		);
 	}
@@ -843,24 +840,24 @@ int plot_2d(
 		write_gnuplot_cmd_current(
 			"Bx_tot",
 			"\n" + magnetic_field_cmd + " 1\"\n",
-			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Magnetic_Field()][0] + cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][0];
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
+				return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()][0] + cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][0];
 			}
 		);
 
 		write_gnuplot_cmd_current(
 			"By_tot",
 			"\n" + magnetic_field_cmd + " 2\"\n",
-			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Magnetic_Field()][1] + cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][1];
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
+				return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()][1] + cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][1];
 			}
 		);
 
 		write_gnuplot_cmd_current(
 			"Bz_tot",
 			"\n" + magnetic_field_cmd + " 3\"\n",
-			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Magnetic_Field()][2] + cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][2];
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
+				return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()][2] + cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][2];
 			}
 		);
 	}
@@ -870,7 +867,7 @@ int plot_2d(
 		write_gnuplot_cmd_current(
 			"Bx_bg",
 			"\n" + magnetic_field_cmd + " 1\"\n",
-			[](const pamhd::mhd::Cell& cell_data){
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
 				return cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][0];
 			}
 		);
@@ -878,7 +875,7 @@ int plot_2d(
 		write_gnuplot_cmd_current(
 			"By_bg",
 			"\n" + magnetic_field_cmd + " 2\"\n",
-			[](const pamhd::mhd::Cell& cell_data){
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
 				return cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][1];
 			}
 		);
@@ -886,7 +883,7 @@ int plot_2d(
 		write_gnuplot_cmd_current(
 			"Bz_bg",
 			"\n" + magnetic_field_cmd + " 3\"\n",
-			[](const pamhd::mhd::Cell& cell_data){
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
 				return cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][2];
 			}
 		);
@@ -897,7 +894,7 @@ int plot_2d(
 		write_gnuplot_cmd_current(
 			"Ex",
 			"\n" + electric_field_cmd + " 1\"\n",
-			[](const pamhd::mhd::Cell& cell_data){
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
 				return cell_data[pamhd::Edge_Electric_Field()][0];
 			}
 		);
@@ -905,7 +902,7 @@ int plot_2d(
 		write_gnuplot_cmd_current(
 			"Ey",
 			"\n" + electric_field_cmd + " 2\"\n",
-			[](const pamhd::mhd::Cell& cell_data){
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
 				return cell_data[pamhd::Edge_Electric_Field()][1];
 			}
 		);
@@ -913,18 +910,18 @@ int plot_2d(
 		write_gnuplot_cmd_current(
 			"Ez",
 			"\n" + electric_field_cmd + " 3\"\n",
-			[](const pamhd::mhd::Cell& cell_data){
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
 				return cell_data[pamhd::Edge_Electric_Field()][2];
 			}
 		);
 	}
 
 	// current density
-	if (current_density_cmd != "") {
+	/*if (current_density_cmd != "") {
 		write_gnuplot_cmd_current(
 			"Jx",
 			"\n" + current_density_cmd + " 1\"\n",
-			[](const pamhd::mhd::Cell& cell_data){
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
 				return cell_data[pamhd::Electric_Current_Density()][0];
 			}
 		);
@@ -932,7 +929,7 @@ int plot_2d(
 		write_gnuplot_cmd_current(
 			"Jy",
 			"\n" + current_density_cmd + " 2\"\n",
-			[](const pamhd::mhd::Cell& cell_data){
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
 				return cell_data[pamhd::Electric_Current_Density()][1];
 			}
 		);
@@ -940,40 +937,40 @@ int plot_2d(
 		write_gnuplot_cmd_current(
 			"Jz",
 			"\n" + current_density_cmd + " 3\"\n",
-			[](const pamhd::mhd::Cell& cell_data){
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
 				return cell_data[pamhd::Electric_Current_Density()][2];
 			}
 		);
-	}
+	}*/
 
 	// MPI rank
-	if (rank_cmd != "") {
+	/*if (rank_cmd != "") {
 		write_gnuplot_cmd_current(
 			"rank",
 			"\n" + rank_cmd + "\n",
-			[](const pamhd::mhd::Cell& cell_data){
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
 				return cell_data[pamhd::MPI_Rank()];
 			}
 		);
-	}
+	}*/
 
 	// resistivity
-	if (resistivity_cmd != "") {
+	/*if (resistivity_cmd != "") {
 		write_gnuplot_cmd_current(
 			"res",
 			"\n" + resistivity_cmd + "\n",
-			[](const pamhd::mhd::Cell& cell_data){
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
 				return cell_data[pamhd::Resistivity()];
 			}
 		);
-	}
+	}*/
 
 	// boundary info
 	if (bdy_cmd != "") {
 		write_gnuplot_cmd_current(
 			"bdy",
 			"\n" + bdy_cmd + "\n",
-			[](const pamhd::mhd::Cell& cell_data){
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
 				return cell_data[pamhd::mhd::Solver_Info()];
 			}
 		);
@@ -986,15 +983,15 @@ int plot_2d(
 
 	double max_v = 0, max_B = 0, max_B0 = 0;
 	for (size_t i = 0; i < cells.size(); i++) {
-		const auto& hd_data
-			= simulation_data.at(cells[i])[pamhd::mhd::HD_State_Conservative()];
+		const auto& mhd_data
+			= simulation_data.at(cells[i])[pamhd::mhd::MHD_State_Conservative()];
 
-		const auto rho = hd_data[pamhd::mhd::Mass_Density()];
+		const auto rho = mhd_data[pamhd::mhd::Mass_Density()];
 		if (rho > 0) {
 			const double v
 				= pamhd::mhd::get_velocity(
-					hd_data[pamhd::mhd::Momentum_Density()],
-					hd_data[pamhd::mhd::Mass_Density()]
+					mhd_data[pamhd::mhd::Momentum_Density()],
+					mhd_data[pamhd::mhd::Mass_Density()]
 				).norm();
 
 			if (max_v < v) {
@@ -1002,7 +999,7 @@ int plot_2d(
 			}
 		}
 
-		const double B = simulation_data.at(cells[i])[pamhd::Magnetic_Field()].norm();
+		const double B = simulation_data.at(cells[i])[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()].norm();
 		if (max_B < B) {
 			max_B = B;
 		}
@@ -1050,11 +1047,11 @@ int plot_2d(
 			continue;
 		}
 
-		const auto& hd_data
-			= simulation_data.at(cells[i])[pamhd::mhd::HD_State_Conservative()];
+		const auto& mhd_data
+			= simulation_data.at(cells[i])[pamhd::mhd::MHD_State_Conservative()];
 
-		const auto& m = hd_data[pamhd::mhd::Momentum_Density()];
-		const auto& rho = hd_data[pamhd::mhd::Mass_Density()];
+		const auto& m = mhd_data[pamhd::mhd::Momentum_Density()];
+		const auto& rho = mhd_data[pamhd::mhd::Mass_Density()];
 		const auto cell_center = geometry.get_center(cells[i]);
 		gnuplot_file
 			<< cell_center[dimensions[0]] << " "
@@ -1084,7 +1081,7 @@ int plot_2d(
 			continue;
 		}
 
-		const auto& B = simulation_data.at(cells[i])[pamhd::Magnetic_Field()];
+		const auto& B = simulation_data.at(cells[i])[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()];
 		const auto cell_center = geometry.get_center(cells[i]);
 		gnuplot_file
 			<< cell_center[dimensions[0]] << " "
@@ -1297,7 +1294,7 @@ int main(int argc, char* argv[])
 		dccrg::Mapping cell_id_mapping;
 		dccrg::Grid_Topology topology;
 		dccrg::Cartesian_Geometry geometry(cell_id_mapping.length, cell_id_mapping, topology);
-		unordered_map<uint64_t, pamhd::mhd::Cell> simulation_data;
+		unordered_map<uint64_t, pamhd::mhd::Cell_Staggered> simulation_data;
 
 		boost::optional<std::array<double, 4>> header = read_data(
 			cell_id_mapping,

@@ -1,5 +1,6 @@
 {
-	"output-directory": "results/hydrodynamic/rarefaction/1d/+x/rusanov_staggered",
+	"comment": "arxiv.org/abs/astro-ph/9404074",
+	"output-directory": "results/magnetohydrodynamic/rarefaction/1d/+x/rusanov",
 	"time-start": 0,
 	"time-length": 0.2,
 	"minimum-pressure": 0,
@@ -15,7 +16,7 @@
 	"poisson-norm-stop": 1e-10,
 	"poisson-norm-increase-max": 10,
 	"grid-options": {
-		"periodic": "{false, true, true}",
+		"periodic": "{false, false, false}",
 		"cells": "{100 + 2, 1, 1}",
 		"volume": "{1 + 2 / 100, 1, 1}",
 		"start": "{-1 / 100, 0, 0}"
@@ -37,7 +38,7 @@
 		"copy-boundaries": [{"geometry-id": 0}, {"geometry-id": 1}]
 	},
 	"magnetic-field": {
-		"default": [0, 0, 0],
+		"default": [0, 1, 0],
 		"copy-boundaries": [{"geometry-id": 0}, {"geometry-id": 1}]
 	}
 }

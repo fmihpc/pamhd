@@ -357,8 +357,6 @@ template <
 				state_neg, \
 				state_pos, \
 				bg_magnetic_field, \
-				face_area, \
-				dt, \
 				adiabatic_index, \
 				vacuum_permeability \
 			)
@@ -379,6 +377,9 @@ template <
 			abort();
 		}
 		#undef SOLVER
+		flux[mas] *= face_area*dt;
+		flux[mom] *= face_area*dt;
+		flux[nrj] *= face_area*dt;
 
 		max_dt = std::min(max_dt, cell_size / max_vel);
 

@@ -249,8 +249,6 @@ template <
 						state_neg, \
 						state_pos, \
 						bg_face_b, \
-						shared_area, \
-						dt, \
 						adiabatic_index, \
 						vacuum_permeability \
 					)
@@ -298,6 +296,10 @@ template <
 
 			max_dt = std::min(max_dt, cell_length[neighbor_dim] / max_vel);
 
+			flux[mas_int] *= shared_area*dt;
+			flux[mom_int] *= shared_area*dt;
+			flux[nrj_int] *= shared_area*dt;
+			flux[mag_int] *= shared_area*dt;
 			// rotate flux back
 			flux[mom_int] = get_rotated_vector(flux[mom_int], -abs(neighbor_dir));
 			flux[mag_int] = get_rotated_vector(flux[mag_int], -abs(neighbor_dir));

@@ -4,7 +4,7 @@
 	"time-length": 1,
 	"minimum-pressure": 0,
 	"resistivity": "4e-8",
-	"solver-mhd": "rusanov-staggered",
+	"solver-mhd": "rusanov",
 	"load-balancer": "RANDOM",
 	"save-mhd-n": 0.1,
 	"adiabatic-index": 1.6666666667,
@@ -23,5 +23,5 @@
 	"number-density": {"default": 1},
 	"velocity": {"default": [0, 0, -1]},
 	"pressure": {"default": 1},
-	"magnetic-field": {"default": "{0, (abs(z - 0.5) < 0.25) ? 0.01 : 0, 0}"}
+	"magnetic-field": {"default": "{(abs(z - 0.5) < 0.25) ? 0.01 : 0, 0, 0}"}
 }

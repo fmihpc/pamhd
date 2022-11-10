@@ -4,16 +4,13 @@
 	"time-length": 1,
 	"minimum-pressure": 0,
 	"resistivity": "0",
-	"solver-mhd": "rusanov-staggered",
+	"solver-mhd": "rusanov",
 	"load-balancer": "RANDOM",
 	"save-mhd-n": 0.1,
 	"adiabatic-index": 1.6666666666666667,
 	"vacuum-permeability": 1.2566370614359173e-06,
 	"proton-mass": 1.6726217770000001e-27,
-	"remove-div-B-n": -1,
 	"mhd-time-step-factor": 0.5,
-	"poisson-norm-stop": 1e-10,
-	"poisson-norm-increase-max": 10,
 	"grid-options": {
 		"periodic": "{false, true, true}",
 		"cells": "{1000 + 2, 1, 1}",
@@ -22,7 +19,6 @@
 	},
 	"geometries": [
 		{"box": {
-			"comment": "Negative end of shock tube",
 			"start": [-1e5, -5e4, -5e4],
 			"end": [0, 5e4, 5e4]
 		}},
@@ -35,13 +31,11 @@
 		"default": "x < 5e4 ? 3e6 : 1e6",
 		"value-boundaries": [
 			{
-				"comment": "Time-dependent state of negative end of the shock tube",
 				"geometry-id": 0,
 				"time-stamps": [0],
 				"values": [3e6]
 			},
 			{
-				"comment": "Time-dependent state of positive end of the shock tube",
 				"geometry-id": 1,
 				"time-stamps": [0],
 				"values": [1e6]

@@ -225,6 +225,56 @@ using Cell2 = gensimcell::Cell<
 >;
 
 
+//! Conservative magnetohydrodynamic variables
+using MHD_Conservative = gensimcell::Cell<
+	gensimcell::Always_Transfer,
+	Mass_Density,
+	Momentum_Density,
+	Total_Energy_Density,
+	Magnetic_Field
+>;
+
+//! Current state of simulation cell
+struct MHD_State_Conservative {
+	using data_type = MHD_Conservative;
+};
+
+//! Flux from cell to its neighbor in positive x direction
+struct MHD_Flux_Pos_X {
+	using data_type = MHD_Conservative;
+};
+
+struct MHD_Flux_Pos_Y {
+	using data_type = MHD_Conservative;
+};
+
+struct MHD_Flux_Pos_Z {
+	using data_type = MHD_Conservative;
+};
+
+// cell type for staggered solver MHD test program
+using Cell_Staggered = gensimcell::Cell<
+	gensimcell::Optional_Transfer,
+	pamhd::mhd::MHD_State_Conservative,
+	//pamhd::Electric_Current_Density,
+	pamhd::mhd::Solver_Info,
+	pamhd::MPI_Rank,
+	//pamhd::Resistivity,
+	pamhd::Bg_Magnetic_Field_Pos_X,
+	pamhd::Bg_Magnetic_Field_Pos_Y,
+	pamhd::Bg_Magnetic_Field_Pos_Z,
+	/*pamhd::Magnetic_Field_Resistive,
+	pamhd::Magnetic_Field_Temp,
+	pamhd::Magnetic_Field_Divergence,
+	pamhd::Scalar_Potential_Gradient,*/
+	pamhd::mhd::MHD_Flux_Pos_X,
+	pamhd::mhd::MHD_Flux_Pos_Y,
+	pamhd::mhd::MHD_Flux_Pos_Z,
+	pamhd::Face_Magnetic_Field,
+	pamhd::Edge_Electric_Field
+>;
+
+
 namespace detail {
 
 // internal data type used by MHD solvers

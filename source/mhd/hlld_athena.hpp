@@ -59,8 +59,6 @@ template <
 	MHD& state_neg,
 	MHD& state_pos,
 	const Vector& /*bg_face_magnetic_field*/,
-	const Scalar& area,
-	const Scalar& dt,
 	const Scalar& adiabatic_index,
 	const Scalar& vacuum_permeability
 ) {
@@ -248,9 +246,9 @@ template <
 
 	// return upwind flux if flow is supermagnetosonic
 	if (max_signal_neg >= 0.0) {
-		return std::make_tuple(flux_neg * area * dt, std::fabs(max_signal_pos));
+		return std::make_tuple(flux_neg, std::fabs(max_signal_pos));
 	} else if (max_signal_pos <= 0.0) {
-		return std::make_tuple(flux_pos * area * dt, std::fabs(max_signal_neg));
+		return std::make_tuple(flux_pos, std::fabs(max_signal_neg));
 	}
 
 	const auto
@@ -490,8 +488,6 @@ template <
 
 	}
 	flux[Mag][0] = 0;
-
-	flux *= area * dt;
 
 	return std::make_tuple(
 		flux,

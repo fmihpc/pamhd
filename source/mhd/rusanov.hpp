@@ -64,8 +64,6 @@ template <
 	MHD& state_neg,
 	MHD& state_pos,
 	const Vector& bg_face_magnetic_field,
-	const Scalar& area,
-	const Scalar& dt,
 	const Scalar& adiabatic_index,
 	const Scalar& vacuum_permeability
 ) {
@@ -184,7 +182,6 @@ template <
 		= (flux_neg + flux_pos) / 2
 		- (state_pos - state_neg) * (max_signal / 2);
 
-	flux *= area * dt;
 	if (not isfinite(flux[Mas])) {
 		throw std::domain_error(
 			"Invalid mass density flux: "

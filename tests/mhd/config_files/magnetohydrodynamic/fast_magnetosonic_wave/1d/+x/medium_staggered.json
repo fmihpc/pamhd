@@ -5,7 +5,7 @@
 	"time-length": 199.8,
 	"minimum-pressure": 0,
 	"resistivity": "0",
-	"solver-mhd": "rusanov-staggered",
+	"solver-mhd": "rusanov",
 	"load-balancer": "RANDOM",
 	"save-mhd-n": 19.98,
 	"adiabatic-index": 1.6666666666666667,

@@ -572,8 +572,6 @@ template <
 	MHD& state_neg,
 	MHD& state_pos,
 	const Vector& /*bg_face_magnetic_field*/,
-	const Scalar& area,
-	const Scalar& dt,
 	const Scalar& adiabatic_index,
 	const Scalar& vacuum_permeability
 ) {
@@ -757,8 +755,6 @@ template <
 	flux[Mag][0] = 0;
 	flux[Mag][1] = flux_temp.By * std::sqrt(vacuum_permeability);
 	flux[Mag][2] = flux_temp.Bz * std::sqrt(vacuum_permeability);
-
-	flux *= area * dt;
 
 	// get maximum signal speed
 	const auto
