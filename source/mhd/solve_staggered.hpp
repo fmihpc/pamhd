@@ -383,6 +383,10 @@ template <
 		int e0_items = 2, e1_items = 2, e2_items = 2;
 
 		for (const auto& neighbor: cell.neighbors_of) {
+			if ((Sol_Info(*neighbor.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
+				continue;
+			}
+
 			if (neighbor.x == -1 and neighbor.y == 0 and neighbor.z == 0) {
 				if ((Sol_Info(*cell.data) & Solver_Info::mass_density_bdy) == 0) {
 					Mas(*cell.data) += Mas_fx(*neighbor.data)*dt/dx;
@@ -506,6 +510,10 @@ template <
 		};
 
 		for (const auto& neighbor: cell.neighbors_of) {
+			if ((Sol_Info(*neighbor.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
+				continue;
+			}
+
 			const auto& nedge_e = Edge_E(*neighbor.data);
 			if (neighbor.x == -1 and neighbor.y == 0 and neighbor.z == 0) {
 				face_db[1] += cell_length[2] * nedge_e[2];
