@@ -304,7 +304,7 @@ int main(int argc, char* argv[])
 	/*
 	Initialize simulation grid
 	*/
-	const unsigned int neighborhood_size = 1;
+	const unsigned int neighborhood_size = 0;
 	const auto& number_of_cells = options_grid.get_number_of_cells();
 	const auto& periodic = options_grid.get_periodic();
 
@@ -611,17 +611,39 @@ int main(int argc, char* argv[])
 			Sol_Info
 		);
 
+		// constant thermal pressure when updating vol B after solution
+		Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
+		grid.start_remote_neighbor_copy_updates();
+
+		pamhd::mhd::average_magnetic_field<pamhd::mhd::Solver_Info>(
+			grid.inner_cells(),
+			Mas, Mom, Nrj, Mag, Face_B,
+			Sol_Info,
+			options_sim.adiabatic_index,
+			options_sim.vacuum_permeability,
+			true
+		);
+
+		grid.wait_remote_neighbor_copy_update_receives();
+
+		pamhd::mhd::average_magnetic_field<pamhd::mhd::Solver_Info>(
+			grid.outer_cells(),
+			Mas, Mom, Nrj, Mag, Face_B,
+			Sol_Info,
+			options_sim.adiabatic_index,
+			options_sim.vacuum_permeability,
+			true
+		);
+
+		grid.wait_remote_neighbor_copy_update_sends();
+		Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
+
 		simulation_time += time_step;
 
 
 		/*
 		Update boundaries
 		*/
-
-		// use latest values for copy boundaries
-		Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
-		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
 		// TODO: split into inner and outer cells
 		pamhd::mhd::apply_magnetic_field_boundaries(
