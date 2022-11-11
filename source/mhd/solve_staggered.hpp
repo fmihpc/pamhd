@@ -355,8 +355,6 @@ template <
 	const Magnetic_Field_Flux_Z_Getter Mag_fz,
 	const Solver_Info_Getter Sol_Info
 ) {
-	using std::to_string;
-
 	for (const auto& cell: grid.local_cells()) {
 		if ((Sol_Info(*cell.data) & Solver_Info::dont_solve) > 0) {
 			continue;
@@ -466,10 +464,33 @@ template <
 		Mag_fx(*cell.data) =
 		Mag_fy(*cell.data) =
 		Mag_fz(*cell.data) = {0, 0, 0};
+	}
+}
 
-		/*
-		Equations 13-15 of https://doi.org/10.1006/jcph.1998.6153
-		*/
+
+/* Solves new face magnetic fields from edge electric fields.
+
+Equations 13-15 of https://doi.org/10.1006/jcph.1998.6153
+*/
+template <
+	class Solver_Info,
+	class Cells,
+	class Grid,
+	class Face_Magnetic_Field_Getter,
+	class Edge_Electric_Field_Getter,
+	class Solver_Info_Getter
+> void solve_B(
+	const Cells& cells,
+	Grid& grid,
+	const double dt,
+	const Face_Magnetic_Field_Getter Face_B,
+	const Edge_Electric_Field_Getter Edge_E,
+	const Solver_Info_Getter Sol_Info
+) {
+	for (const auto& cell: cells) {
+		if ((Sol_Info(*cell.data) & Solver_Info::dont_solve) > 0) {
+			continue;
+		}
 
 		const std::array<double, 3>
 			cell_length = grid.geometry.get_length(cell.id),

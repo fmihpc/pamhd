@@ -379,15 +379,16 @@ int main(int argc, char* argv[])
 		Face_B, Mag_fx,
 		Bg_B_Pos_X, Bg_B_Pos_Y, Bg_B_Pos_Z
 	);
-
 	for (const auto& cell: grid.local_cells()) {
 		Mag_fy(*cell.data) =
 		Mag_fz(*cell.data) = {0, 0, 0};
 	}
 
 	// update background field between processes
+	// update face B for calculating vol B
 	Cell::set_transfer_all(
 		true,
+		pamhd::Face_Magnetic_Field(),
 		pamhd::Bg_Magnetic_Field_Pos_X(),
 		pamhd::Bg_Magnetic_Field_Pos_Y(),
 		pamhd::Bg_Magnetic_Field_Pos_Z()
@@ -395,15 +396,11 @@ int main(int argc, char* argv[])
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(
 		false,
+		pamhd::Face_Magnetic_Field(),
 		pamhd::Bg_Magnetic_Field_Pos_X(),
 		pamhd::Bg_Magnetic_Field_Pos_Y(),
 		pamhd::Bg_Magnetic_Field_Pos_Z()
 	);
-
-	// update face B for calculating vol B
-	Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
 	pamhd::mhd::average_magnetic_field<pamhd::mhd::Solver_Info>(
 		grid.local_cells(),
@@ -429,11 +426,8 @@ int main(int argc, char* argv[])
 		options_sim.proton_mass,
 		true,
 		Mas, Mom, Nrj, Mag,
-		Mas_fx,// Mas_fy, Mas_fz,
-		Mom_fx,// Mom_fy, Mom_fz,
-		Nrj_fx//, Nrj_fy, Nrj_fz
+		Mas_fx, Mom_fx, Nrj_fx
 	);
-
 	for (const auto& cell: grid.local_cells()) {
 		Mas_fy(*cell.data) =
 		Mas_fz(*cell.data) =
@@ -582,6 +576,19 @@ int main(int argc, char* argv[])
 		Apply solution
 		*/
 
+		Cell::set_transfer_all(
+			true,
+			pamhd::mhd::MHD_Flux_Pos_X(),
+			pamhd::mhd::MHD_Flux_Pos_Y(),
+			pamhd::mhd::MHD_Flux_Pos_Z()
+		);
+		grid.update_copies_of_remote_neighbors();
+		Cell::set_transfer_all(
+			false,
+			pamhd::mhd::MHD_Flux_Pos_X(),
+			pamhd::mhd::MHD_Flux_Pos_Y(),
+			pamhd::mhd::MHD_Flux_Pos_Z()
+		);
 		// TODO: split into inner and outer cells
 		pamhd::mhd::apply_fluxes_staggered<pamhd::mhd::Solver_Info>(
 			grid, time_step,
@@ -590,6 +597,17 @@ int main(int argc, char* argv[])
 			Mom_fx, Mom_fy, Mom_fz,
 			Nrj_fx, Nrj_fy, Nrj_fz,
 			Mag_fx, Mag_fy, Mag_fz,
+			Sol_Info
+		);
+		Cell::set_transfer_all(true, pamhd::Edge_Electric_Field());
+		grid.update_copies_of_remote_neighbors();
+		Cell::set_transfer_all(false, pamhd::Edge_Electric_Field());
+		pamhd::mhd::solve_B<pamhd::mhd::Solver_Info>(
+			grid.local_cells(),
+			grid,
+			time_step,
+			Face_B,
+			Edge_E,
 			Sol_Info
 		);
 
