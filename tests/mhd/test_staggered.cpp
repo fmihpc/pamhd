@@ -592,7 +592,7 @@ int main(int argc, char* argv[])
 		// TODO: split into inner and outer cells
 		pamhd::mhd::apply_fluxes_staggered<pamhd::mhd::Solver_Info>(
 			grid, time_step,
-			Mas, Mom, Nrj, Mag, Face_B, Edge_E,
+			Mas, Mom, Nrj, Mag, Edge_E,
 			Mas_fx, Mas_fy, Mas_fz,
 			Mom_fx, Mom_fy, Mom_fz,
 			Nrj_fx, Nrj_fy, Nrj_fz,
