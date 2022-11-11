@@ -3,7 +3,6 @@
 	"time-start": 0,
 	"time-length": 1,
 	"minimum-pressure": 0,
-	"resistivity": "0",
 	"solver-mhd": "rusanov",
 	"load-balancer": "RANDOM",
 	"save-mhd-n": 0.1,

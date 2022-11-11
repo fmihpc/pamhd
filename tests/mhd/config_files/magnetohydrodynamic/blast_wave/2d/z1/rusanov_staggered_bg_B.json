@@ -1,5 +1,5 @@
 {
-	"output-directory": "results/magnetohydrodynamic/blast_wave/2d/z1/rusanov_staggered",
+	"output-directory": "results/magnetohydrodynamic/blast_wave/2d/z1/rusanov_staggered_bg_B",
 	"time-start": 0,
 	"time-length": 1.6,
 	"minimum-pressure": 0,
@@ -19,5 +19,6 @@
 	"number-density": {"default": 1},
 	"velocity": {"default": [0, 0, 0]},
 	"pressure": {"default": "radius < 0.1 ? 10 : 0.1"},
-	"magnetic-field": {"default": "{1 / sqrt(2), 1 / sqrt(2), 0}"}
+	"magnetic-field": {"default": "{-1, 0, 0}"},
+	"background-magnetic-field": {"value": [1.7071067811865475, 0.7071067811865475, 0]}
 }
