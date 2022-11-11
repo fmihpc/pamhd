@@ -525,6 +525,44 @@ int plot_1d(
 	}
 	gnuplot_file << "end\nreset\n";*/
 
+	// total magnetic field
+	gnuplot_file
+		<< common_cmd
+		<< "\nset output '"
+		<< output_file_name_prefix + "_Btot.png"
+		<< "'\n" << magnetic_field_cmd
+		<< "\nset key horizontal bottom outside\nplot "
+		     "'-' u 1:2 w l lw 2 t 'component 1', "
+		     "'-' u 1:2 w l lw 2 t 'component 2', "
+		     "'-' u 1:2 w l lw 2 t 'component 3'\n";
+
+	for (const auto& cell_id: cells) {
+		const auto
+			B0 = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field_Pos_X()][0],
+			B1 = simulation_data.at(cell_id)[pamhd::Face_Magnetic_Field()][0];
+		const double x = geometry.get_center(cell_id)[tube_dim];
+		gnuplot_file << x << " " << B0 + B1 << "\n";
+	}
+	gnuplot_file << "end\n";
+
+	for (const auto& cell_id: cells) {
+		const auto
+			B0 = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field_Pos_Y()][1],
+			B1 = simulation_data.at(cell_id)[pamhd::Face_Magnetic_Field()][1];
+		const double x = geometry.get_center(cell_id)[tube_dim];
+		gnuplot_file << x << " " << B0 + B1 << "\n";
+	}
+	gnuplot_file << "end\n";
+
+	for (const auto& cell_id: cells) {
+		const auto
+			B0 = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field_Pos_Z()][2],
+			B1 = simulation_data.at(cell_id)[pamhd::Face_Magnetic_Field()][2];
+		const double x = geometry.get_center(cell_id)[tube_dim];
+		gnuplot_file << x << " " << B0 + B1 << "\n";
+	}
+	gnuplot_file << "end\nreset\n";
+
 	// face magnetic field
 	gnuplot_file
 		<< common_cmd
