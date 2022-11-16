@@ -304,7 +304,7 @@ int main(int argc, char* argv[])
 	/*
 	Initialize simulation grid
 	*/
-	const unsigned int neighborhood_size = 0;
+	const unsigned int neighborhood_size = 1;
 	const auto& number_of_cells = options_grid.get_number_of_cells();
 	const auto& periodic = options_grid.get_periodic();
 
