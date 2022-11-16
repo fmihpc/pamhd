@@ -1,46 +1,41 @@
 {
-	"comment": "ecliptic plane (z=0) simulation of earth's magnetosphere",
-	"comment2": "earth at (0,0,0), -x towards sun, line dipole towards -z",
-	"output-directory": "results/magnetohydrodynamic/magnetosphere/2d/z1/line1",
+	"comment": "as line1.json but with staggered solver",
+	"output-directory": "results/magnetohydrodynamic/magnetosphere/2d/y1/line1_staggered",
 	"time-start": 0,
-	"time-length": 9600,
-	"minimum-pressure": 0,
-	"resistivity": "0",
+	"time-length": 7200,
+	"minimum-pressure": 1e-15,
 	"solver-mhd": "rusanov",
 	"load-balancer": "RCB",
-	"save-mhd-n": 1200,
+	"save-mhd-n": 300,
 	"adiabatic-index": 1.6666666666666667,
 	"vacuum-permeability": 1.2566370614359173e-06,
 	"proton-mass": 1.6726217770000001e-27,
-	"remove-div-B-n": -1,
-	"mhd-time-step-factor": 0.5,
-	"poisson-norm-stop": 1e-10,
-	"poisson-norm-increase-max": 10,
+	"mhd-time-step-factor": 0.4,
 	"grid-options": {
-		"periodic": "{false, false, false}",
-		"cells": "{64 + 2, 48 + 2, 1}",
-		"volume": "{200 * 6.371e6 * (1 + 2/(cells[0] - 2)), 150 * 6.371e6 * (1 + 2/(cells[1] - 2)), 150 * 6.371e6}",
-		"start": "{-(1/2 + 1/4*cells[0]) * volume[0] / cells[0], -volume[1] / 2, -volume[2] / 2}"
+		"periodic": "{false, true, false}",
+		"cells": "{63 + 2, 1, 37 + 2}",
+		"volume": "{250 * 6.371e6 * (1 + 2/(cells[0] - 2)), 150 * 6.371e6, 150 * 6.371e6 * (1 + 2/(cells[2] - 2))}",
+		"start": "{-150 * 6.371e6 - volume[0] / cells[0], -volume[1] / 2, -volume[2] / 2}"
 	},
 	"geometries": [
 		{"box": {
-			"start": [-9e99, -9e99, -9e99],
-			"end": [-3.186e8, 9e99, 9e99]
+			"start": [6.371e8, -9e99, -9e99],
+			"end": [9e99, 9e99, 9e99]
 		}},
 		{"sphere": {
 			"center": [0, 0, 0],
-			"radius": 1.3e7
-		}},
-		{"box": {
-			"start": [9.557e8, -9e99, -9e99],
-			"end": [9e99, 9e99, 9e99]
+			"radius": 2.5e7
 		}},
 		{"box": {
 			"start": [-9e99, -9e99, -9e99],
-			"end": [9e99, -4.779e8, 9e99]
+			"end": [-9.557e8, 9e99, 9e99]
 		}},
 		{"box": {
-			"start": [-9e99, 4.779e8, -9e99],
+			"start": [-9e99, -9e99, -9e99],
+			"end": [9e99, 9e99, -4.779e8]
+		}},
+		{"box": {
+			"start": [-9e99, -9e99, 4.779e8],
 			"end": [9e99, 9e99, 9e99]
 		}}
 	],
@@ -59,7 +54,7 @@
 	"velocity": {
 		"default": [0, 0, 0],
 		"value-boundaries": [
-			{"geometry-id": 0, "time-stamps": [0], "values": [[6e5, 0, 0]]},
+			{"geometry-id": 0, "time-stamps": [0], "values": [[-6e5, 0, 0]]},
 			{"geometry-id": 1, "time-stamps": [0], "values": [[0, 0, 0]]}
 		],
 		"copy-boundaries": [
@@ -71,10 +66,10 @@
 	"pressure": {
 		"default": 1e-11,
 		"value-boundaries": [
-			{"geometry-id": 0, "time-stamps": [0], "values": [1e-11]},
-			{"geometry-id": 1, "time-stamps": [0], "values": [1e-10]}
+			{"geometry-id": 0, "time-stamps": [0], "values": [1e-11]}
 		],
 		"copy-boundaries": [
+			{"geometry-id": 1},
 			{"geometry-id": 2},
 			{"geometry-id": 3},
 			{"geometry-id": 4}
@@ -96,7 +91,7 @@
 		"value": [0, 0, 0],
 		"min-distance": 1e6,
 		"line-dipoles": [
-			{"line-dimension": 3, "field-direction-through-line": -3, "magnitude": 7.94e15, "position": [0, 0, 0]}
+			{"line-dimension": 2, "field-direction-through-line": -3, "magnitude": 7.94e15, "position": [0, 0, 0]}
 		]
 	}
 }
