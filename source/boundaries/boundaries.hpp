@@ -147,6 +147,9 @@ public:
 						"No data for cell " + to_string(cell_id)
 					);
 				}
+				if (Cell_Type(*cell_data) != normal_cell) {
+					continue;
+				}
 				Cell_Type(*cell_data) = copy_bdy_cell;
 			}
 		}
