@@ -130,7 +130,7 @@ void extract(
 		};
 
 	vector<uint64_t> out_cells;
-	using cell_data_t = array<uint8_t, sizeof(double) * 21 + sizeof(int) * 2>;
+	using cell_data_t = array<uint8_t, sizeof(double) * 24 + sizeof(int) * 2>;
 	vector<cell_data_t> out_data;
 	for (size_t i = 0; i < cell_ids_offsets.size(); i += 2) {
 		auto cell_id = cell_ids_offsets[i];

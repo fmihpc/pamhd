@@ -201,7 +201,8 @@ boost::optional<std::array<double, 4>> read_data(
 		pamhd::Edge_Electric_Field(),
 		pamhd::Bg_Magnetic_Field_Pos_X(),
 		pamhd::Bg_Magnetic_Field_Pos_Y(),
-		pamhd::Bg_Magnetic_Field_Pos_Z()
+		pamhd::Bg_Magnetic_Field_Pos_Z(),
+		pamhd::Magnetic_Field_Divergence()
 	);
 	for (const auto& item: cells_offsets) {
 		const uint64_t
@@ -718,6 +719,7 @@ int plot_2d(
 	const std::string& /*current_density_cmd*/,
 	const std::string& /*rank_cmd*/,
 	const std::string& /*resistivity_cmd*/,
+	const std::string& divergence_cmd,
 	const std::string& bdy_cmd
 ) {
 	using std::to_string;
@@ -1003,6 +1005,17 @@ int plot_2d(
 		);
 	}*/
 
+	// divergence
+	if (divergence_cmd != "") {
+		write_gnuplot_cmd_current(
+			"div",
+			"\n" + divergence_cmd + "\n",
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
+				return cell_data[pamhd::Magnetic_Field_Divergence()];
+			}
+		);
+	}
+
 	// boundary info
 	if (bdy_cmd != "") {
 		write_gnuplot_cmd_current(
@@ -1206,6 +1219,7 @@ int main(int argc, char* argv[])
 		current_density_plot_2d("set title \"Current density"),
 		rank_plot_2d("set title \"MPI rank\""),
 		resistivity_plot_2d("set title \"Resistivity\""),
+		divergence_plot_2d("set title \"Divergence\""),
 		bdy_plot_2d("set title \"Type\"");
 
 	boost::program_options::options_description
@@ -1272,6 +1286,10 @@ int main(int argc, char* argv[])
 			boost::program_options::value<std::string>(&resistivity_plot_2d)
 				->default_value(resistivity_plot_2d),
 			"Gnuplot command(s) for plotting electric resistivity in 2d")
+		("divergence-2d",
+			boost::program_options::value<std::string>(&divergence_plot_2d)
+				->default_value(divergence_plot_2d),
+			"Gnuplot command(s) for plotting magnetic field divergence in 2d")
 		("bdy-2d",
 			boost::program_options::value<std::string>(&bdy_plot_2d)
 				->default_value(bdy_plot_2d),
@@ -1413,6 +1431,7 @@ int main(int argc, char* argv[])
 				current_density_plot_2d,
 				rank_plot_2d,
 				resistivity_plot_2d,
+				divergence_plot_2d,
 				bdy_plot_2d
 			);
 			break;

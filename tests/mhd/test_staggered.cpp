@@ -44,8 +44,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "boundaries/geometries.hpp"
 #include "boundaries/multivariable_boundaries.hpp"
 #include "boundaries/multivariable_initial_conditions.hpp"
-#include "divergence/remove.hpp"
 #include "grid_options.hpp"
+#include "math/staggered.hpp"
 #include "mhd/boundaries.hpp"
 #include "mhd/common.hpp"
 #include "mhd/hll_athena.hpp"
@@ -95,6 +95,10 @@ const auto Mag = [](Cell& cell_data)->auto& {
 	};
 const auto Face_B = [](Cell& cell_data)->auto& {
 		return cell_data[pamhd::Face_Magnetic_Field()];
+	};
+// divergence of magnetic field
+const auto Mag_div = [](Cell& cell_data)->auto&{
+		return cell_data[pamhd::Magnetic_Field_Divergence()];
 	};
 const auto Edge_E = [](Cell& cell_data)->auto& {
 		return cell_data[pamhd::Edge_Electric_Field()];
@@ -522,7 +526,7 @@ int main(int argc, char* argv[])
 
 		if (rank == 0) {
 			cout << "Solving MHD at time " << simulation_time
-				<< " s with time step " << time_step << " s" << endl;
+				<< " s with time step " << time_step << " s";
 		}
 
 		/*
@@ -681,6 +685,19 @@ int main(int argc, char* argv[])
 		grid.wait_remote_neighbor_copy_update_sends();
 		Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
+		const auto total_div = pamhd::math::get_divergence_staggered(
+			grid.local_cells(),
+			grid,
+			Face_B,
+			Mag_div,
+			Sol_Info
+		);
+		if (rank == 0) {
+			cout << " total divergence " << total_div << endl;
+		}
+		Cell::set_transfer_all(true, pamhd::Magnetic_Field_Divergence());
+		grid.update_copies_of_remote_neighbors();
+		Cell::set_transfer_all(false, pamhd::Magnetic_Field_Divergence());
 
 		Cell::set_transfer_all(true, pamhd::mhd::MHD_State_Conservative());
 		grid.update_copies_of_remote_neighbors();
@@ -697,7 +714,6 @@ int main(int argc, char* argv[])
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability
 		);
-
 
 		/*
 		Save simulation to disk
@@ -740,7 +756,8 @@ int main(int argc, char* argv[])
 					pamhd::Edge_Electric_Field(),
 					pamhd::Bg_Magnetic_Field_Pos_X(),
 					pamhd::Bg_Magnetic_Field_Pos_Y(),
-					pamhd::Bg_Magnetic_Field_Pos_Z()
+					pamhd::Bg_Magnetic_Field_Pos_Z(),
+					pamhd::Magnetic_Field_Divergence()
 				)
 			) {
 				std::cerr <<  __FILE__ << "(" << __LINE__ << "): "

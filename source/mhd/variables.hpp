@@ -264,9 +264,9 @@ using Cell_Staggered = gensimcell::Cell<
 	pamhd::Bg_Magnetic_Field_Pos_Y,
 	pamhd::Bg_Magnetic_Field_Pos_Z,
 	/*pamhd::Magnetic_Field_Resistive,
-	pamhd::Magnetic_Field_Temp,
+	pamhd::Magnetic_Field_Temp,*/
 	pamhd::Magnetic_Field_Divergence,
-	pamhd::Scalar_Potential_Gradient,*/
+	//pamhd::Scalar_Potential_Gradient,
 	pamhd::mhd::MHD_Flux_Pos_X,
 	pamhd::mhd::MHD_Flux_Pos_Y,
 	pamhd::mhd::MHD_Flux_Pos_Z,
