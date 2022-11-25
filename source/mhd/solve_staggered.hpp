@@ -216,7 +216,6 @@ template <
 			default:
 				abort();
 			}
-			bg_face_b = get_rotated_vector(Bg_B_Pos_X(*cell.data), neighbor_dir);
 
 			detail::MHD flux;
 			double max_vel;
