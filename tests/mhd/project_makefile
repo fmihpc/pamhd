@@ -6,6 +6,7 @@ TESTS_MHD_EXECUTABLES = \
   tests/mhd/mhd2gnuplot.exe \
   tests/mhd/mhd2gnuplot_staggered.exe \
   tests/mhd/mhd2vtk.exe \
+  tests/mhd/mhd2vtk_staggered.exe \
   tests/mhd/2mhd2gnuplot.exe \
   tests/mhd/mhd_extract.exe \
   tests/mhd/2mhd_extract.exe \
@@ -137,6 +138,15 @@ tests/mhd/mhd2gnuplot_staggered.exe: \
 
 tests/mhd/mhd2vtk.exe: \
   tests/mhd/mhd2vtk.cpp \
+  $(TEST_MHD_COMMON_DEPS)
+	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM) \
+	  $(DCCRG_CPPFLAGS) \
+	  $(ZOLTAN_CPPFLAGS) \
+	  $(ZOLTAN_LDFLAGS) \
+	  $(ZOLTAN_LIBS)
+
+tests/mhd/mhd2vtk_staggered.exe: \
+  tests/mhd/mhd2vtk_staggered.cpp \
   $(TEST_MHD_COMMON_DEPS)
 	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM) \
 	  $(DCCRG_CPPFLAGS) \
