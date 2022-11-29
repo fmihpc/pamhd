@@ -313,15 +313,15 @@ void convert(
 
 	constexpr pamhd::mhd::MHD_State_Conservative MHD{};
 	constexpr pamhd::mhd::Mass_Density Mas{};
-   	constexpr pamhd::mhd::Momentum_Density Mom{};
-        constexpr pamhd::mhd::Total_Energy_Density Tot{};
-   	constexpr pamhd::Magnetic_Field MagCell{};
-        constexpr pamhd::Face_Magnetic_Field MagFace{};
-   	constexpr pamhd::Bg_Magnetic_Field_Pos_X BgBPX{};
-   	constexpr pamhd::Bg_Magnetic_Field_Pos_Y BgBPY{};
-   	constexpr pamhd::Bg_Magnetic_Field_Pos_Z BgBPZ{};
-   
-        vtk_file << "SCALARS mass_density double 1\nlookup_table default\n";
+	constexpr pamhd::mhd::Momentum_Density Mom{};
+	constexpr pamhd::mhd::Total_Energy_Density Tot{};
+	constexpr pamhd::Magnetic_Field MagCell{};
+	constexpr pamhd::Face_Magnetic_Field MagFace{};
+	constexpr pamhd::Bg_Magnetic_Field_Pos_X BgBPX{};
+	constexpr pamhd::Bg_Magnetic_Field_Pos_Y BgBPY{};
+	constexpr pamhd::Bg_Magnetic_Field_Pos_Z BgBPZ{};
+
+	vtk_file << "SCALARS mass_density double 1\nlookup_table default\n";
 	for (const auto& cell: cells) {
 		const auto density = simulation_data.at(cell)[MHD][Mas];
 		vtk_file << density << "\n";
@@ -329,8 +329,8 @@ void convert(
 
 	vtk_file << "SCALARS pressure double 1\nlookup_table default\n";
 	for (const auto& cell: cells) {
-	        auto& mhd_data = simulation_data.at(cell)[MHD];
-	        const auto pressure
+		auto& mhd_data = simulation_data.at(cell)[MHD];
+		const auto pressure
 			= pamhd::mhd::get_pressure(
 				mhd_data[Mas],
 				mhd_data[Mom],
@@ -364,8 +364,8 @@ void convert(
 			<< magnetic_field[1] << " "
 			<< magnetic_field[2] << "\n";
 	}
-   
-   	vtk_file << "VECTORS magnetic_field_face double\n";
+
+	vtk_file << "VECTORS magnetic_field_face double\n";
 	for (const auto& cell: cells) {
 		const auto& magnetic_field_face = simulation_data.at(cell)[MagFace];
 		vtk_file
