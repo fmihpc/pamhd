@@ -2,6 +2,7 @@
 Program for converting MHD output of PAMHD to vtk format.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2022 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
