@@ -299,13 +299,13 @@ void esys_roe_adb_mhd(const double d, const double v1, const double v2, const do
  *  IMPORTANT!! The order of the elements in Cons1DS CANNOT be changed.
  */
 struct Cons1DS {
-  double d;
-  double Mx;
-  double My;
-  double Mz;
-  double E;
-  double By;
-  double Bz;
+  double d = 0;
+  double Mx = 0;
+  double My = 0;
+  double Mz = 0;
+  double E = 0;
+  double By = 0;
+  double Bz = 0;
 };
 
 /*!
@@ -313,13 +313,13 @@ struct Cons1DS {
  *  IMPORTANT!! The order of the elements in Prim1DS CANNOT be changed.
  */
 struct Prim1DS{
-  double d;
-  double Vx;
-  double Vy;
-  double Vz;			/*!< velocity in Z-direction */
-  double P;			/*!< pressure */
-  double By;			/*!< cell centered magnetic fields in Y-dir */
-  double Bz;			/*!< cell centered magnetic fields in Z-dir */
+  double d = 0;
+  double Vx = 0;
+  double Vy = 0;
+  double Vz = 0; /*!< velocity in Z-direction */
+  double P = 0;  /*!< pressure */
+  double By = 0; /*!< cell centered magnetic fields in Y-dir */
+  double Bz = 0; /*!< cell centered magnetic fields in Z-dir */
 };
 
 
