@@ -45,6 +45,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "gensimcell.hpp"
 #include "prettyprint.hpp"
 
+#include "mhd/rusanov.hpp"
+#include "mhd/hll_athena.hpp"
+#include "mhd/hlld_athena.hpp"
+#include "mhd/roe_athena.hpp"
 #include "mhd/variables.hpp"
 #include "variables.hpp"
 
@@ -358,9 +362,17 @@ template <
 		}
 
 		const auto [dx, dy, dz] = grid.geometry.get_length(cell.id);
+		const auto [rx, ry, rz] = grid.geometry.get_center(cell.id);
 
 		if ((Sol_Info(*cell.data) & Solver_Info::mass_density_bdy) == 0) {
 			Mas(*cell.data) -= dt*(Mas_fx(*cell.data)/dx + Mas_fy(*cell.data)/dy + Mas_fz(*cell.data)/dz);
+			if (Mas(*cell.data) < 0) {
+				std::cerr <<  __FILE__ << "(" << __LINE__ << ") "
+					<< "Negative mass density in cell " << cell.id
+					<< " at (" << rx << ", " << ry << ", " << rz
+					<< ") after applying fluxes" << std::endl;
+				abort();
+			}
 		}
 
 		if ((Sol_Info(*cell.data) & Solver_Info::velocity_bdy) == 0) {
@@ -369,6 +381,13 @@ template <
 
 		if ((Sol_Info(*cell.data) & Solver_Info::pressure_bdy) == 0) {
 			Nrj(*cell.data) -= dt*(Nrj_fx(*cell.data)/dx + Nrj_fy(*cell.data)/dy + Nrj_fz(*cell.data)/dz);
+			if (Nrj(*cell.data) < 0) {
+				std::cerr <<  __FILE__ << "(" << __LINE__ << ") "
+					<< "Negative total energy density in cell " << cell.id
+					<< " at (" << rx << ", " << ry << ", " << rz
+					<< ") after applying fluxes" << std::endl;
+				abort();
+			}
 		}
 
 		if ((Sol_Info(*cell.data) & Solver_Info::magnetic_field_bdy) == 0) {
