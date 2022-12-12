@@ -2,6 +2,7 @@
 Saves the MHD solution of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2022 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -36,9 +37,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "iomanip"
 
-#include "dccrg.hpp"
-#include "gensimcell.hpp"
-
 
 namespace pamhd {
 namespace mhd {
@@ -63,6 +61,7 @@ template <
 	const std::string& path_name_prefix,
 	Grid& grid,
 	const uint64_t file_version,
+	const uint64_t simulation_step,
 	const double simulation_time,
 	const double adiabatic_index,
 	const double proton_mass,
@@ -76,18 +75,20 @@ template <
 		vacuum_permeability
 	}};
 
-	const std::array<int, 2> counts{{1, 4}};
-	const std::array<MPI_Aint, 2> displacements{{
+	const std::array<int, 3> counts{{1, 1, 4}};
+	const std::array<MPI_Aint, 3> displacements{{
 		0,
+		reinterpret_cast<char*>(const_cast<uint64_t*>(&simulation_step))
+			- reinterpret_cast<char*>(const_cast<uint64_t*>(&file_version)),
 		reinterpret_cast<char*>(const_cast<double*>(simulation_parameters.data()))
 			- reinterpret_cast<char*>(const_cast<uint64_t*>(&file_version))
 	}};
-	std::array<MPI_Datatype, 2> datatypes{{MPI_UINT64_T, MPI_DOUBLE}};
+	std::array<MPI_Datatype, 3> datatypes{{MPI_UINT64_T, MPI_UINT64_T, MPI_DOUBLE}};
 
 	MPI_Datatype header_datatype;
 	if (
 		MPI_Type_create_struct(
-			2,
+			counts.size(),
 			counts.data(),
 			displacements.data(),
 			datatypes.data(),
@@ -106,16 +107,13 @@ template <
 		header_datatype
 	};
 
-	std::ostringstream time_string;
-	time_string
-		<< std::scientific
-		<< std::setprecision(3)
-		<< simulation_time;
+	std::ostringstream step_string;
+	step_string << std::setw(9) << std::setfill('0') << simulation_step;
 
 	Grid::cell_data_type::set_transfer_all(true, variables...);
 	const bool ret_val = grid.save_grid_data(
-		path_name_prefix + time_string.str() + "_s.dc",
-		0,
+		path_name_prefix + step_string.str() + ".dc",
+		0, // start offset of grid data
 		header
 	);
 	Grid::cell_data_type::set_transfer_all(false, variables...);

@@ -36,11 +36,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "cstdlib"
 #include "functional"
 #include "fstream"
+#include "optional"
 #include "string"
 #include "unordered_map"
 #include "vector"
 
-#include "boost/optional.hpp"
 #include "boost/program_options.hpp"
 #include "dccrg_cartesian_geometry.hpp"
 #include "dccrg_mapping.hpp"
@@ -68,11 +68,12 @@ On success returns simulation time, adiabatic index,
 proton mass, vacuum permeability.
 Returns uninitialized value on error.
 */
-boost::optional<std::array<double, 4>> read_data(
+std::optional<std::array<double, 4>> read_data(
 	dccrg::Mapping& cell_id_mapping,
 	dccrg::Grid_Topology& topology,
 	dccrg::Cartesian_Geometry& geometry,
 	unordered_map<uint64_t, pamhd::mhd::Cell_Staggered>& simulation_data,
+	uint64_t& simulation_step,
 	const std::string& file_name,
 	const int mpi_rank
 ) {
@@ -89,7 +90,7 @@ boost::optional<std::array<double, 4>> read_data(
 		cerr << "Process " << mpi_rank
 			<< " couldn't open file " << file_name
 			<< endl;
-		return boost::optional<std::array<double, 4>>();
+		return std::nullopt;
 	}
 
 	MPI_Offset offset = 0;
@@ -109,8 +110,26 @@ boost::optional<std::array<double, 4>> read_data(
 		cerr << "Process " << mpi_rank
 			<< " Unsupported file version: " << file_version
 			<< endl;
-		return boost::optional<std::array<double, 4>>();
+		return std::nullopt;
 	}
+
+	uint64_t read_simulation_step = ~0ull;
+	MPI_File_read_at(
+		file,
+		offset,
+		&read_simulation_step,
+		1,
+		MPI_UINT64_T,
+		MPI_STATUS_IGNORE
+	);
+	offset += sizeof(uint64_t);
+	if (read_simulation_step > 999999999) {
+		cerr << "Process " << mpi_rank
+			<< " Suspicious simulation step: " << read_simulation_step
+			<< endl;
+		return std::nullopt;
+	}
+	simulation_step = read_simulation_step;
 
 	// read simulation parameters
 	std::array<double, 4> simulation_parameters;
@@ -140,14 +159,14 @@ boost::optional<std::array<double, 4>> read_data(
 			<< " Unsupported endianness: " << endianness
 			<< ", should be " << 0x1234567890abcdef
 			<< endl;
-		return boost::optional<std::array<double, 4>>();
+		return std::nullopt;
 	}
 
 	if (not cell_id_mapping.read(file, offset)) {
 		cerr << "Process " << mpi_rank
 			<< " couldn't set cell id mapping from file " << file_name
 			<< endl;
-		return boost::optional<std::array<double, 4>>();
+		return std::nullopt;
 	}
 
 	offset
@@ -159,7 +178,7 @@ boost::optional<std::array<double, 4>> read_data(
 		cerr << "Process " << mpi_rank
 			<< " couldn't read geometry from file " << file_name
 			<< endl;
-		return boost::optional<std::array<double, 4>>();
+		return std::nullopt;
 	}
 	offset += geometry.data_size();
 
@@ -177,7 +196,7 @@ boost::optional<std::array<double, 4>> read_data(
 
 	if (total_cells == 0) {
 		MPI_File_close(&file);
-		return boost::optional<std::array<double, 4>>(simulation_parameters);
+		return std::optional<std::array<double, 4>>(simulation_parameters);
 	}
 
 	// read cell ids and data offsets
@@ -258,7 +277,7 @@ boost::optional<std::array<double, 4>> read_data(
 
 	MPI_File_close(&file);
 
-	return boost::optional<std::array<double, 4>>(simulation_parameters);
+	return std::optional<std::array<double, 4>>(simulation_parameters);
 }
 
 
@@ -1011,7 +1030,7 @@ int plot_2d(
 			"div",
 			"\n" + divergence_cmd + "\n",
 			[](const pamhd::mhd::Cell_Staggered& cell_data){
-				return cell_data[pamhd::Magnetic_Field_Divergence()];
+				return abs(cell_data[pamhd::Magnetic_Field_Divergence()]);
 			}
 		);
 	}
@@ -1351,12 +1370,14 @@ int main(int argc, char* argv[])
 		dccrg::Grid_Topology topology;
 		dccrg::Cartesian_Geometry geometry(cell_id_mapping.length, cell_id_mapping, topology);
 		unordered_map<uint64_t, pamhd::mhd::Cell_Staggered> simulation_data;
+		uint64_t simulation_step;
 
-		boost::optional<std::array<double, 4>> header = read_data(
+		std::optional<std::array<double, 4>> header = read_data(
 			cell_id_mapping,
 			topology,
 			geometry,
 			simulation_data,
+			simulation_step,
 			input_files[i],
 			rank
 		);

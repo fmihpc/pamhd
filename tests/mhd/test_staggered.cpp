@@ -493,9 +493,9 @@ int main(int argc, char* argv[])
 	);
 	Cell::set_transfer_all(false, pamhd::mhd::Solver_Info());
 
-	size_t simulated_steps = 0;
+	size_t simulation_step = 0;
 	while (simulation_time < time_end) {
-		simulated_steps++;
+		simulation_step++;
 
 		/*
 		Get maximum allowed time step
@@ -738,13 +738,15 @@ int main(int argc, char* argv[])
 				cout << "Saving MHD at time " << simulation_time << endl;
 			}
 
+			constexpr uint64_t file_version = 2;
 			if (
 				not pamhd::mhd::save(
 					boost::filesystem::canonical(
 						boost::filesystem::path(options_sim.output_directory)
 					).append("mhd_staggered_").generic_string(),
 					grid,
-					2,
+					file_version,
+					simulation_step,
 					simulation_time,
 					options_sim.adiabatic_index,
 					options_sim.proton_mass,
