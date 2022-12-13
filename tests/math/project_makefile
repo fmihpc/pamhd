@@ -1,0 +1,76 @@
+TESTS_MATH_EXECUTABLES = \
+  tests/math/get1d_div_staggered.exe \
+  tests/math/get1d_div_amr_staggered.exe \
+  tests/math/get2d_div_staggered.exe \
+  tests/math/get3d_div_staggered.exe \
+  tests/math/get3d_div_amr_staggered.exe
+
+TESTS_MATH_TESTS = \
+  tests/math/get1d_div_staggered.tst \
+  tests/math/get1d_div_amr_staggered.tst \
+  tests/math/get2d_div_staggered.tst \
+  tests/math/get3d_div_staggered.tst \
+  tests/math/get3d_div_amr_staggered.tst \
+  tests/math/get1d_div_staggered.mtst \
+  tests/math/get1d_div_amr_staggered.mtst \
+  tests/math/get2d_div_staggered.mtst \
+  tests/math/get3d_div_staggered.mtst \
+  tests/math/get3d_div_amr_staggered.mtst
+
+tests/math_executables: $(TESTS_MATH_EXECUTABLES)
+
+tests/math_tests: $(TESTS_MATH_TESTS)
+
+tests/math_clean:
+	@printf "CLEAN tests/math\n" && rm -f \
+	  $(TESTS_MATH_EXECUTABLES) \
+	  $(TESTS_MATH_TESTS)
+
+EXECUTABLES += tests/math_executables
+TESTS += tests/math_tests
+CLEAN += tests/math_clean
+
+
+TEST_MATH_COMMON_DEPS = \
+  source/math/staggered.hpp \
+  tests/math/project_makefile \
+  $(ENVIRONMENT_MAKEFILE) \
+  Makefile
+
+MPICXX_TESTS_MATH_MPICXX = \
+  $(MPICXX) $< -o $@ \
+  $(CPPFLAGS) \
+  $(CXXFLAGS) \
+  $(LDFLAGS) \
+  $(BOOST_CPPFLAGS) \
+  $(DCCRG_CPPFLAGS) \
+  $(GENSIMCELL_CPPFLAGS) \
+  $(PRETTYPRINT_CPPFLAGS) \
+  $(ZOLTAN_CPPFLAGS) \
+  $(ZOLTAN_LDFLAGS) \
+  $(ZOLTAN_LIBS)
+
+tests/math/get1d_div_staggered.exe: \
+  tests/math/get1d_div_staggered.cpp \
+  $(TEST_MATH_COMMON_DEPS)
+	@printf "MPICXX $<\n" && $(MPICXX_TESTS_MATH_MPICXX)
+
+tests/math/get1d_div_amr_staggered.exe: \
+  tests/math/get1d_div_amr_staggered.cpp \
+  $(TEST_MATH_COMMON_DEPS)
+	@printf "MPICXX $<\n" && $(MPICXX_TESTS_MATH_MPICXX)
+
+tests/math/get2d_div_staggered.exe: \
+  tests/math/get2d_div_staggered.cpp \
+  $(TEST_MATH_COMMON_DEPS)
+	@printf "MPICXX $<\n" && $(MPICXX_TESTS_MATH_MPICXX)
+
+tests/math/get3d_div_staggered.exe: \
+  tests/math/get3d_div_staggered.cpp \
+  $(TEST_MATH_COMMON_DEPS)
+	@printf "MPICXX $<\n" && $(MPICXX_TESTS_MATH_MPICXX)
+
+tests/math/get3d_div_amr_staggered.exe: \
+  tests/math/get3d_div_amr_staggered.cpp \
+  $(TEST_MATH_COMMON_DEPS)
+	@printf "MPICXX $<\n" && $(MPICXX_TESTS_MATH_MPICXX)

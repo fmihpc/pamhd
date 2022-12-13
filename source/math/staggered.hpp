@@ -35,6 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define PAMHD_MATH_STAGGERED_HPP
 
 
+#include "string"
+
 #include "mpi.h"
 
 
@@ -43,54 +45,9 @@ namespace math {
 
 
 /*!
-Calculates divergence of vector variable.
+Same as get_divergence() but for staggered vector variable...
 
-Divergence is calculated in all @cells for
-which @Cell_Type returns 0 or 1.
-
-Returns the total divergence i.e. sum of absolute
-divergence in given cells of all processes divided
-by number of cells on all processes in which divergence
-was calculated.
-
-Variable returned by @Vector must have a defined value
-in face neighbors of cells where divergence is calculated.
-Dimension(s) where at least one neighbor is missing
-doesn't contribute to divergence.
-
-@Cell_Type must be an object that, when given a reference
-to data of one grid cell, returns 0 or 1 if divergence
-should be calculated for that cell and -1 otherwise.
-@Vector must be an object that, when given a reference
-to the data of one grid cell, returns a *reference* to
-the data from which divergence should be calculated.
-Similarly @Divergence should return a *reference* to
-data in which calculated divergence should be stored.
-
-Example:
-
-struct Cell_Data {
-	std::array<double, 3> vector_data;
-	double scalar_data;
-	int calculate_div;
-	std::tuple<...> get_mpi_datatype() {...}
-};
-
-dccrg::Dccrg<Cell_Data, ...> grid;
-
-pamhd::math::get_divergence_staggered(
-	grid.local_cells(),
-	grid,
-	[](Cell_Data& cell_data)->auto& {
-		return cell_data.vector_data;
-	},
-	[](Cell_Data& cell_data)->auto& {
-		return cell_data.scalar_data;
-	},
-	[](Cell_Data& cell_data)->auto& {
-		return cell_data.calculate_div;
-	}
-);
+TODO
 */
 template <
 	class Cell_Iterator,
@@ -113,7 +70,8 @@ template <
 		}
 		local_calculated_cells++;
 
-		const auto cell_length = grid.geometry.get_length(cell.id);
+		const int cell_length_i = grid.mapping.get_cell_length_in_indices(cell.id);
+		const auto cell_length_g = grid.geometry.get_length(cell.id);
 		auto& div = Divergence(*cell.data);
 		div = 0.0;
 
@@ -121,14 +79,59 @@ template <
 			if (Cell_Type(*neighbor.data) < 0) {
 				continue;
 			}
-			if (neighbor.x == -1 and neighbor.y == 0 and neighbor.z == 0) {
-				div += (Vector(*cell.data)[0] - Vector(*neighbor.data)[0]) / cell_length[0];
+
+			const int neigh_length_i = grid.mapping.get_cell_length_in_indices(neighbor.id);
+			if (neigh_length_i > 2*cell_length_i or cell_length_i > 2*neigh_length_i) {
+				throw std::runtime_error(
+					__FILE__"(" + std::to_string(__LINE__)
+					+ ") Logical size difference too large between cells "
+					+ std::to_string(cell.id) + " and " + std::to_string(neighbor.id)
+					+ ": " + std::to_string(cell_length_i) + " vs "
+					+ std::to_string(neigh_length_i)
+				);
 			}
-			if (neighbor.x == 0 and neighbor.y == -1 and neighbor.z == 0) {
-				div += (Vector(*cell.data)[1] - Vector(*neighbor.data)[1]) / cell_length[1];
+
+			if (
+				neighbor.x == -neigh_length_i
+				and (neighbor.y < cell_length_i)
+				and neighbor.y > -neigh_length_i
+				and (neighbor.z < cell_length_i)
+				and neighbor.z > -neigh_length_i
+			) {
+				const auto diff = (Vector(*cell.data)[0] - Vector(*neighbor.data)[0]) / cell_length_g[0];
+				if (neigh_length_i < cell_length_i) {
+					div += diff / 4;
+				} else {
+					div += diff;
+				}
 			}
-			if (neighbor.x == 0 and neighbor.y == 0 and neighbor.z == -1) {
-				div += (Vector(*cell.data)[2] - Vector(*neighbor.data)[2]) / cell_length[2];
+			if (
+				neighbor.y == -neigh_length_i
+				and (neighbor.x < cell_length_i)
+				and neighbor.x > -neigh_length_i
+				and (neighbor.z < cell_length_i)
+				and neighbor.z > -neigh_length_i
+			) {
+				const auto diff = (Vector(*cell.data)[1] - Vector(*neighbor.data)[1]) / cell_length_g[1];
+				if (neigh_length_i < cell_length_i) {
+					div += diff / 4;
+				} else {
+					div += diff;
+				}
+			}
+			if (
+				neighbor.z == -neigh_length_i
+				and (neighbor.x < cell_length_i)
+				and neighbor.x > -neigh_length_i
+				and (neighbor.y < cell_length_i)
+				and neighbor.y > -neigh_length_i
+			) {
+				const auto diff = (Vector(*cell.data)[2] - Vector(*neighbor.data)[2]) / cell_length_g[2];
+				if (neigh_length_i < cell_length_i) {
+					div += diff / 4;
+				} else {
+					div += diff;
+				}
 			}
 		}
 		local_divergence += std::fabs(div);

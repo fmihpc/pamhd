@@ -24,6 +24,7 @@ include \
   tests/mhd/project_makefile \
   tests/boundaries/project_makefile \
   tests/divergence/project_makefile \
+  tests/math/project_makefile \
   tests/particle/project_makefile \
   tests/pamhd/project_makefile \
   tests/poisson/project_makefile \
