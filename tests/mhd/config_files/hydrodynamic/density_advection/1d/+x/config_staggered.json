@@ -10,8 +10,6 @@
 	"vacuum-permeability": 1,
 	"proton-mass": 1,
 	"mhd-time-step-factor": 0.4,
-	"poisson-norm-stop": 1e-10,
-	"poisson-norm-increase-max": 10,
 	"grid-options": {
 		"periodic": "{true, true, true}",
 		"cells": "{200, 1, 1}",
