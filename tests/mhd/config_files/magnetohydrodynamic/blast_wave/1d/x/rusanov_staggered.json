@@ -3,7 +3,6 @@
 	"time-start": 0,
 	"time-length": 0.009,
 	"minimum-pressure": 0,
-	"resistivity": "0",
 	"solver-mhd": "rusanov",
 	"load-balancer": "RCB",
 	"save-mhd-n": 0.001,
@@ -11,8 +10,6 @@
 	"vacuum-permeability": 1,
 	"proton-mass": 1,
 	"mhd-time-step-factor": 0.5,
-	"poisson-norm-stop": 1e-10,
-	"poisson-norm-increase-max": 10,
 	"grid-options": {
 		"periodic": "{true, true, true}",
 		"cells": "{100, 1, 1}",
