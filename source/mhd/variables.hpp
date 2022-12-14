@@ -271,6 +271,7 @@ using Cell_Staggered = gensimcell::Cell<
 	pamhd::mhd::MHD_Flux_Pos_Y,
 	pamhd::mhd::MHD_Flux_Pos_Z,
 	pamhd::Face_Magnetic_Field,
+	pamhd::Face_Magnetic_Field_Neg,
 	pamhd::Edge_Electric_Field
 >;
 

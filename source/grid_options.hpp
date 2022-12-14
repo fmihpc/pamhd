@@ -70,7 +70,6 @@ struct Periodic {
 	static const std::string get_option_name() { return {"periodic"}; }
 };
 
-
 class Options
 {
 public:
@@ -266,6 +265,26 @@ public:
 		this->start[0] = evaluated.At(0).GetFloat();
 		this->start[1] = evaluated.At(1).GetFloat();
 		this->start[2] = evaluated.At(2).GetFloat();
+
+
+		// maximum refinement level
+		if (not object.HasMember("max-ref-lvl")) {
+			return;
+		}
+		const auto& max_ref_lvl_json = object["max-ref-lvl"];
+		if (not max_ref_lvl_json.IsInt()) {
+			throw std::invalid_argument(
+				std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
+				+ "JSON item max-ref-lvl must be integer."
+			);
+		}
+		max_ref_lvl = object["max-ref-lvl"].GetInt();
+		if (max_ref_lvl < 0) {
+			throw std::invalid_argument(
+				std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
+				+ "JSON item max-ref-lvl cannot be negative."
+			);
+		}
 	}
 
 
@@ -289,6 +308,10 @@ public:
 		return this->start;
 	}
 
+	const int& get_max_ref_lvl() const
+	{
+		return this->max_ref_lvl;
+	}
 
 
 private:
@@ -297,6 +320,7 @@ private:
 	typename Number_Of_Cells::data_type cells;
 	typename Volume::data_type volume;
 	typename Start::data_type start;
+	int max_ref_lvl = 0;
 
 	mup::ParserX parser = mup::ParserX(mup::pckCOMMON | mup::pckNON_COMPLEX | mup::pckMATRIX | mup::pckUNIT);
 };

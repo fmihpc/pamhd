@@ -45,6 +45,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "boundaries/multivariable_boundaries.hpp"
 #include "boundaries/multivariable_initial_conditions.hpp"
 #include "grid_options.hpp"
+#include "grid/variables.hpp"
 #include "math/staggered.hpp"
 #include "mhd/boundaries.hpp"
 #include "mhd/common.hpp"
@@ -65,7 +66,14 @@ using namespace std;
 
 // data stored in every cell of simulation grid
 using Cell = pamhd::mhd::Cell_Staggered;
-using Grid = dccrg::Dccrg<Cell, dccrg::Cartesian_Geometry>;
+using Grid = dccrg::Dccrg<
+	Cell,
+	dccrg::Cartesian_Geometry,
+	std::tuple<>,
+	std::tuple<
+		pamhd::grid::Is_Face_Neighbor,
+		pamhd::grid::Is_Smaller>
+>;
 
 // returns reference to background magnetic field at +X face of given cell
 const auto Bg_B_Pos_X = [](Cell& cell_data)->auto& {

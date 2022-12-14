@@ -144,35 +144,15 @@ template <
 			}};
 
 		for (const auto& neighbor: cell.neighbors_of) {
+			if (neighbor.face_neighbor <= 0) {
+				continue;
+			}
+
 			if ((Sol_Info(*neighbor.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
 				continue;
 			}
 
-			// only solve flux between face neighbors
-			int neighbor_dir = 0;
-			if (neighbor.x == 1 and neighbor.y == 0 and neighbor.z == 0) {
-				neighbor_dir = 1;
-			}
-			if (neighbor.x == -1 and neighbor.y == 0 and neighbor.z == 0) {
-				neighbor_dir = -1;
-			}
-			if (neighbor.x == 0 and neighbor.y == 1 and neighbor.z == 0) {
-				neighbor_dir = 2;
-			}
-			if (neighbor.x == 0 and neighbor.y == -1 and neighbor.z == 0) {
-				neighbor_dir = -2;
-			}
-			if (neighbor.x == 0 and neighbor.y == 0 and neighbor.z == 1) {
-				neighbor_dir = 3;
-			}
-			if (neighbor.x == 0 and neighbor.y == 0 and neighbor.z == -1) {
-				neighbor_dir = -3;
-			}
-			if (neighbor_dir <= 0) {
-				continue;
-			}
-
-			const size_t neighbor_dim = size_t(abs(neighbor_dir) - 1);
+			const size_t neighbor_dim = size_t(std::abs(neighbor.face_neighbor) - 1);
 
 			const std::array<double, 3>
 				neighbor_length = grid.geometry.get_length(neighbor.id),
@@ -198,16 +178,16 @@ template <
 			Magnetic_Field::data_type bg_face_b;
 			// take into account direction of neighbor from cell
 			state_neg[mas_int] = Mas(*cell.data);
-			state_neg[mom_int] = get_rotated_vector(Mom(*cell.data), abs(neighbor_dir));
+			state_neg[mom_int] = get_rotated_vector(Mom(*cell.data), abs(neighbor.face_neighbor));
 			state_neg[nrj_int] = Nrj(*cell.data);
-			state_neg[mag_int] = get_rotated_vector(Mag(*cell.data), abs(neighbor_dir));
+			state_neg[mag_int] = get_rotated_vector(Mag(*cell.data), abs(neighbor.face_neighbor));
 
 			state_pos[mas_int] = Mas(*neighbor.data);
-			state_pos[mom_int] = get_rotated_vector(Mom(*neighbor.data), abs(neighbor_dir));
+			state_pos[mom_int] = get_rotated_vector(Mom(*neighbor.data), abs(neighbor.face_neighbor));
 			state_pos[nrj_int] = Nrj(*neighbor.data);
-			state_pos[mag_int] = get_rotated_vector(Mag(*neighbor.data), abs(neighbor_dir));
+			state_pos[mag_int] = get_rotated_vector(Mag(*neighbor.data), abs(neighbor.face_neighbor));
 
-			switch (neighbor_dir) {
+			switch (neighbor.face_neighbor) {
 			case 1:
 				bg_face_b = get_rotated_vector(Bg_B_Pos_X(*cell.data), 1);
 				break;
@@ -264,7 +244,7 @@ template <
 					<< " and " << Sol_Info(*neighbor.data)
 					<< " at " << grid.geometry.get_center(cell.id)
 					<< " and " << grid.geometry.get_center(neighbor.id)
-					<< " in direction " << neighbor_dir
+					<< " in direction " << neighbor.face_neighbor
 					<< " with states (mass, momentum, total energy, magnetic field): "
 					<< Mas(*cell.data) << ", "
 					<< Mom(*cell.data) << ", "
@@ -282,22 +262,22 @@ template <
 			max_dt = std::min(max_dt, cell_length[neighbor_dim] / max_vel);
 
 			// rotate flux back
-			flux[mom_int] = get_rotated_vector(flux[mom_int], -abs(neighbor_dir));
-			flux[mag_int] = get_rotated_vector(flux[mag_int], -abs(neighbor_dir));
+			flux[mom_int] = get_rotated_vector(flux[mom_int], -abs(neighbor.face_neighbor));
+			flux[mag_int] = get_rotated_vector(flux[mag_int], -abs(neighbor.face_neighbor));
 
-			if (neighbor_dir == 1) {
+			if (neighbor.face_neighbor == 1) {
 				Mas_fx(*cell.data) = flux[mas_int];
 				Mom_fx(*cell.data) = flux[mom_int];
 				Nrj_fx(*cell.data) = flux[nrj_int];
 				Mag_fx(*cell.data) = flux[mag_int];
 			}
-			if (neighbor_dir == 2) {
+			if (neighbor.face_neighbor == 2) {
 				Mas_fy(*cell.data) = flux[mas_int];
 				Mom_fy(*cell.data) = flux[mom_int];
 				Nrj_fy(*cell.data) = flux[nrj_int];
 				Mag_fy(*cell.data) = flux[mag_int];
 			}
-			if (neighbor_dir == 3) {
+			if (neighbor.face_neighbor == 3) {
 				Mas_fz(*cell.data) = flux[mas_int];
 				Mom_fz(*cell.data) = flux[mom_int];
 				Nrj_fz(*cell.data) = flux[nrj_int];
@@ -401,11 +381,15 @@ template <
 		int e0_items = 2, e1_items = 2, e2_items = 2;
 
 		for (const auto& neighbor: cell.neighbors_of) {
+			if (neighbor.face_neighbor == 0) {
+				continue;
+			}
+
 			if ((Sol_Info(*neighbor.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
 				continue;
 			}
 
-			if (neighbor.x == -1 and neighbor.y == 0 and neighbor.z == 0) {
+			if (neighbor.face_neighbor == -1) {
 				if ((Sol_Info(*cell.data) & Solver_Info::mass_density_bdy) == 0) {
 					Mas(*cell.data) += Mas_fx(*neighbor.data)*dt/dx;
 				}
@@ -419,7 +403,7 @@ template <
 					Mag(*cell.data) += Mag_fx(*neighbor.data)*dt/dx;
 				}
 			}
-			if (neighbor.x == 0 and neighbor.y == -1 and neighbor.z == 0) {
+			if (neighbor.face_neighbor == -2) {
 				if ((Sol_Info(*cell.data) & Solver_Info::mass_density_bdy) == 0) {
 					Mas(*cell.data) += Mas_fy(*neighbor.data)*dt/dy;
 				}
@@ -433,7 +417,7 @@ template <
 					Mag(*cell.data) += Mag_fy(*neighbor.data)*dt/dy;
 				}
 			}
-			if (neighbor.x == 0 and neighbor.y == 0 and neighbor.z == -1) {
+			if (neighbor.face_neighbor == -3) {
 				if ((Sol_Info(*cell.data) & Solver_Info::mass_density_bdy) == 0) {
 					Mas(*cell.data) += Mas_fz(*neighbor.data)*dt/dz;
 				}
@@ -447,19 +431,19 @@ template <
 					Mag(*cell.data) += Mag_fz(*neighbor.data)*dt/dz;
 				}
 			}
-			if (neighbor.x == 1 and neighbor.y == 0 and neighbor.z == 0) {
+			if (neighbor.face_neighbor == 1) {
 				edge_e[1] -= Mag_fz(*neighbor.data)[0];
 				e1_items++;
 				edge_e[2] += Mag_fy(*neighbor.data)[0];
 				e2_items++;
 			}
-			if (neighbor.x == 0 and neighbor.y == 1 and neighbor.z == 0) {
+			if (neighbor.face_neighbor == 2) {
 				edge_e[0] += Mag_fz(*neighbor.data)[1];
 				e0_items++;
 				edge_e[2] -= Mag_fx(*neighbor.data)[1];
 				e2_items++;
 			}
-			if (neighbor.x == 0 and neighbor.y == 0 and neighbor.z == 1) {
+			if (neighbor.face_neighbor == 3) {
 				edge_e[0] -= Mag_fy(*neighbor.data)[2];
 				e0_items++;
 				edge_e[1] += Mag_fx(*neighbor.data)[2];
@@ -528,23 +512,20 @@ template <
 		};
 
 		for (const auto& neighbor: cell.neighbors_of) {
+			if (neighbor.face_neighbor >= 0) {
+				continue;
+			}
+
 			if ((Sol_Info(*neighbor.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
 				continue;
 			}
 
 			const auto& nedge_e = Edge_E(*neighbor.data);
-			if (neighbor.x == -1 and neighbor.y == 0 and neighbor.z == 0) {
-				face_db[1] += cell_length[2] * nedge_e[2];
-				face_db[2] -= cell_length[1] * nedge_e[1];
-			}
-			if (neighbor.x == 0 and neighbor.y == -1 and neighbor.z == 0) {
-				face_db[0] -= cell_length[2] * nedge_e[2];
-				face_db[2] += cell_length[0] * nedge_e[0];
-			}
-			if (neighbor.x == 0 and neighbor.y == 0 and neighbor.z == -1) {
-				face_db[0] += cell_length[1] * nedge_e[1];
-				face_db[1] -= cell_length[0] * nedge_e[0];
-			}
+			const auto
+				dim1 = (std::abs(neighbor.face_neighbor) + 0) % 3,
+				dim2 = (std::abs(neighbor.face_neighbor) + 1) % 3;
+			face_db[dim1] += cell_length[dim2] * nedge_e[dim2];
+			face_db[dim2] -= cell_length[dim1] * nedge_e[dim1];
 		}
 		Face_B(*cell.data)[0] -= dt*face_db[0]/cell_area[0];
 		Face_B(*cell.data)[1] -= dt*face_db[1]/cell_area[1];
@@ -577,7 +558,7 @@ template <
 	const double vacuum_permeability,
 	const bool constant_thermal_pressure
 ) {
-for (const auto& cell: cells) {
+	for (const auto& cell: cells) {
 		if ((Sol_Info(*cell.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
 			continue;
 		}
@@ -600,17 +581,20 @@ for (const auto& cell: cells) {
 		VMag(*cell.data) = FMag(*cell.data);
 
 		for (const auto& neighbor: cell.neighbors_of) {
+			if (neighbor.face_neighbor >= 0) {
+				continue;
+			}
+
 			if ((Sol_Info(*neighbor.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
 				continue;
 			}
-			if (neighbor.x == -1 and neighbor.y == 0 and neighbor.z == 0) {
-				VMag(*cell.data)[0] = 0.5 * (FMag(*cell.data)[0] + FMag(*neighbor.data)[0]);
-			}
-			if (neighbor.x == 0 and neighbor.y == -1 and neighbor.z == 0) {
-				VMag(*cell.data)[1] = 0.5 * (FMag(*cell.data)[1] + FMag(*neighbor.data)[1]);
-			}
-			if (neighbor.x == 0 and neighbor.y == 0 and neighbor.z == -1) {
-				VMag(*cell.data)[2] = 0.5 * (FMag(*cell.data)[2] + FMag(*neighbor.data)[2]);
+
+			const auto dim = std::abs(neighbor.face_neighbor) - 1;
+			const auto avg = (FMag(*cell.data)[dim] + FMag(*neighbor.data)[dim]) / 2;
+			if (neighbor.is_smaller) {
+				VMag(*cell.data)[dim] = avg / 4;
+			} else {
+				VMag(*cell.data)[dim] = avg;
 			}
 		}
 

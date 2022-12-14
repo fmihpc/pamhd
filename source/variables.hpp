@@ -110,6 +110,13 @@ struct Face_Magnetic_Field {
 	static const std::string get_option_help() { return {"magnetic field normal component at cell faces on positive sides of cell"}; }
 };
 
+struct Face_Magnetic_Field_Neg {
+	using data_type = Eigen::Vector3d;
+	static const std::string get_name() { return {"magnetic field on negative faces"}; }
+	static const std::string get_option_name() { return {"face-b-neg"}; }
+	static const std::string get_option_help() { return {"magnetic field normal component at cell faces on negative sides of cell"}; }
+};
+
 /*! Electric field component along cell edges
 
 Electric field stored on cell's edges on positive side from cell's center.

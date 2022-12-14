@@ -61,6 +61,7 @@ TEST_MHD_COMMON_DEPS = \
 TEST_MHD_PROGRAM_DEPS = \
   $(TEST_MHD_COMMON_DEPS) \
   source/grid_options.hpp \
+  source/variables.hpp \
   source/boundaries/boundaries.hpp \
   source/boundaries/box.hpp \
   source/boundaries/common.hpp \

@@ -60,7 +60,11 @@ struct Options
 	double
 		save_n = -1,
 		min_pressure = 0,
-		time_step_factor = 0.5;
+		time_step_factor = 0.5,
+		min_density_amr = 0,
+		min_energy_amr = 0,
+		min_B_amr = 0,
+		min_v_fraction_amr = 0;
 
 	void set(const rapidjson::Value& object) {
 		using std::isnormal;
@@ -130,6 +134,50 @@ struct Options
 			);
 		}
 		time_step_factor = object["mhd-time-step-factor"].GetDouble();
+
+		if (object.HasMember("minimum-density-amr")) {
+			const auto& min_density_amr_json = object["minimum-density-amr"];
+			if (not min_density_amr_json.IsNumber()) {
+				throw std::invalid_argument(
+					std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
+					+ "JSON item minimum-density-amr is not a number."
+				);
+			}
+			min_density_amr = min_density_amr_json.GetDouble();
+		}
+
+		if (object.HasMember("minimum-energy-amr")) {
+			const auto& min_energy_amr_json = object["minimum-energy-amr"];
+			if (not min_energy_amr_json.IsNumber()) {
+				throw std::invalid_argument(
+					std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
+					+ "JSON item minimum-energy-amr is not a number."
+				);
+			}
+			min_energy_amr = min_energy_amr_json.GetDouble();
+		}
+
+		if (object.HasMember("minimum-B-amr")) {
+			const auto& min_B_amr_json = object["minimum-B-amr"];
+			if (not min_B_amr_json.IsNumber()) {
+				throw std::invalid_argument(
+					std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
+					+ "JSON item minimum-B-amr is not a number."
+				);
+			}
+			min_B_amr = min_B_amr_json.GetDouble();
+		}
+
+		if (object.HasMember("minimum-v-fraction-amr")) {
+			const auto& min_v_fraction_amr_json = object["minimum-v-fraction-amr"];
+			if (not min_v_fraction_amr_json.IsNumber()) {
+				throw std::invalid_argument(
+					std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
+					+ "JSON item minimum-v-fraction-amr is not a number."
+				);
+			}
+			min_v_fraction_amr = min_v_fraction_amr_json.GetDouble();
+		}
 	}
 };
 
