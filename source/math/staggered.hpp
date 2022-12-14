@@ -95,13 +95,7 @@ template <
 				);
 			}
 
-			if (
-				neighbor.x == -neigh_length_i
-				and (neighbor.y < cell_length_i)
-				and neighbor.y > -neigh_length_i
-				and (neighbor.z < cell_length_i)
-				and neighbor.z > -neigh_length_i
-			) {
+			if (neighbor.x == -neigh_length_i) {
 				const auto diff = (Vector(*cell.data)[0] - Vector(*neighbor.data)[0]) / cell_length_g[0];
 				if (neigh_length_i < cell_length_i) {
 					div += diff / 4;
@@ -109,13 +103,7 @@ template <
 					div += diff;
 				}
 			}
-			if (
-				neighbor.y == -neigh_length_i
-				and (neighbor.x < cell_length_i)
-				and neighbor.x > -neigh_length_i
-				and (neighbor.z < cell_length_i)
-				and neighbor.z > -neigh_length_i
-			) {
+			if (neighbor.y == -neigh_length_i) {
 				const auto diff = (Vector(*cell.data)[1] - Vector(*neighbor.data)[1]) / cell_length_g[1];
 				if (neigh_length_i < cell_length_i) {
 					div += diff / 4;
@@ -123,13 +111,7 @@ template <
 					div += diff;
 				}
 			}
-			if (
-				neighbor.z == -neigh_length_i
-				and (neighbor.x < cell_length_i)
-				and neighbor.x > -neigh_length_i
-				and (neighbor.y < cell_length_i)
-				and neighbor.y > -neigh_length_i
-			) {
+			if (neighbor.z == -neigh_length_i) {
 				const auto diff = (Vector(*cell.data)[2] - Vector(*neighbor.data)[2]) / cell_length_g[2];
 				if (neigh_length_i < cell_length_i) {
 					div += diff / 4;
