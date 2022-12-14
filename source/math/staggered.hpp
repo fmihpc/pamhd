@@ -76,6 +76,10 @@ template <
 		div = 0.0;
 
 		for (const auto& neighbor: cell.neighbors_of) {
+			if (not neighbor.is_face_neighbor) {
+				continue;
+			}
+
 			if (Cell_Type(*neighbor.data) < 0) {
 				continue;
 			}

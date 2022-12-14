@@ -42,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "dccrg_cartesian_geometry.hpp"
 #include "gensimcell.hpp"
 
+#include "grid/variables.hpp"
 #include "math/staggered.hpp"
 
 
@@ -219,7 +220,12 @@ int main(int argc, char* argv[])
 	size_t old_nr_of_cells = 0;
 	for (size_t nr_of_cells = 8; nr_of_cells <= 4096; nr_of_cells *= 2) {
 
-		dccrg::Dccrg<Cell, dccrg::Cartesian_Geometry> grid_x, grid_y, grid_z;
+		dccrg::Dccrg<
+			Cell,
+			dccrg::Cartesian_Geometry,
+			std::tuple<>,
+			std::tuple<pamhd::Is_Face_Neighbor>
+		> grid_x, grid_y, grid_z;
 		initialize<Vector, Type>(grid_x, comm, nr_of_cells, 0);
 		initialize<Vector, Type>(grid_y, comm, nr_of_cells, 1);
 		initialize<Vector, Type>(grid_z, comm, nr_of_cells, 2);
