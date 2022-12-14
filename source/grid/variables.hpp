@@ -1,5 +1,5 @@
 /*
-TODO
+Grid-related stuff common to all PAMHD models.
 
 Copyright 2022 Finnish Meteorological Institute
 All rights reserved.
@@ -35,10 +35,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 namespace pamhd {
+namespace grid {
 
-//! Calculate whether cell and neighbor share a face whenever grid changes
+/*! Calculate whether cell and neighbor share a face whenever grid changes.
+
+Non-face neighbors have face_neighbor == 0,
+One or more face neighbors on negative side of cell in y dimension
+have face_neighbor == -2, positive side of cell in x == +1, etc.
+*/
 struct Is_Face_Neighbor {
-	bool is_face_neighbor = false;
+	int face_neighbor = 0;
 	template<
 		class Grid, class Cell_Item, class Neighbor_Item
 	> void update(
@@ -59,33 +65,67 @@ struct Is_Face_Neighbor {
 		}
 		const int cell_length_i = temp_cli, neigh_length_i = temp_nli;
 		if (
-			(neighbor.x == -neigh_length_i
-			and (neighbor.y < cell_length_i)
+			(neighbor.y < cell_length_i)
 			and neighbor.y > -neigh_length_i
 			and (neighbor.z < cell_length_i)
-			and neighbor.z > -neigh_length_i)
-
-			or
-
-			(neighbor.y == -neigh_length_i
-			and (neighbor.x < cell_length_i)
+			and neighbor.z > -neigh_length_i
+		) {
+			if (neighbor.x == -neigh_length_i) {
+				face_neighbor = -1;
+			} else {
+				face_neighbor = 1;
+			}
+		} else if (
+			(neighbor.x < cell_length_i)
 			and neighbor.x > -neigh_length_i
 			and (neighbor.z < cell_length_i)
-			and neighbor.z > -neigh_length_i)
-
-			or
-
-			(neighbor.z == -neigh_length_i
-			and (neighbor.x < cell_length_i)
+			and neighbor.z > -neigh_length_i
+		) {
+			if (neighbor.y == -neigh_length_i) {
+				face_neighbor = -2;
+			} else {
+				face_neighbor = 2;
+			}
+		} else if (
+			(neighbor.x < cell_length_i)
 			and neighbor.x > -neigh_length_i
 			and (neighbor.y < cell_length_i)
-			and neighbor.y > -neigh_length_i)
+			and neighbor.y > -neigh_length_i
 		) {
-			is_face_neighbor = true;
+			if (neighbor.z == -neigh_length_i) {
+				face_neighbor = -3;
+			} else {
+				face_neighbor = 3;
+			}
+		} else {
+			face_neighbor = 0;
 		}
 	}
 };
 
-} // namespace
+//! Whether logical size of neighbor is smaller than cell.
+struct Is_Smaller {
+	bool is_smaller = false;
+	template<
+		class Grid, class Cell_Item, class Neighbor_Item
+	> void update(
+		const Grid& grid,
+		const Cell_Item& cell,
+		const Neighbor_Item& neighbor,
+		const int&,
+		const Is_Smaller&
+	) {
+		const auto
+			cell_len = grid.mapping.get_cell_length_in_indices(cell.id),
+			neigh_len = grid.mapping.get_cell_length_in_indices(neighbor.id);
+		if (neigh_len < cell_len) {
+			is_smaller = true;
+		} else {
+			is_smaller = false;
+		}
+	}
+};
+
+}} // namespaces
 
 #endif // ifndef PAMHD_GRID_VARIABLES_HPP

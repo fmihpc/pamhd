@@ -224,7 +224,9 @@ int main(int argc, char* argv[])
 			Cell,
 			dccrg::Cartesian_Geometry,
 			std::tuple<>,
-			std::tuple<pamhd::Is_Face_Neighbor>
+			std::tuple<
+				pamhd::grid::Is_Face_Neighbor,
+				pamhd::grid::Is_Smaller>
 		> grid_x, grid_y, grid_z;
 		initialize<Vector, Type>(grid_x, comm, nr_of_cells, 0);
 		initialize<Vector, Type>(grid_y, comm, nr_of_cells, 1);

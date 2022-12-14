@@ -147,7 +147,9 @@ int main(int argc, char* argv[])
 			Cell,
 			dccrg::Cartesian_Geometry,
 			std::tuple<>,
-			std::tuple<pamhd::Is_Face_Neighbor>
+			std::tuple<
+				pamhd::grid::Is_Face_Neighbor,
+				pamhd::grid::Is_Smaller>
 		>, 3> grids;
 
 		const std::array<std::array<uint64_t, 3>, 3>

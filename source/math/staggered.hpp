@@ -70,13 +70,12 @@ template <
 		}
 		local_calculated_cells++;
 
-		const int cell_length_i = grid.mapping.get_cell_length_in_indices(cell.id);
-		const auto cell_length_g = grid.geometry.get_length(cell.id);
+		const auto cell_length = grid.geometry.get_length(cell.id);
 		auto& div = Divergence(*cell.data);
 		div = 0.0;
 
 		for (const auto& neighbor: cell.neighbors_of) {
-			if (not neighbor.is_face_neighbor) {
+			if (neighbor.face_neighbor >= 0) {
 				continue;
 			}
 
@@ -84,40 +83,12 @@ template <
 				continue;
 			}
 
-			const int neigh_length_i = grid.mapping.get_cell_length_in_indices(neighbor.id);
-			if (neigh_length_i > 2*cell_length_i or cell_length_i > 2*neigh_length_i) {
-				throw std::runtime_error(
-					__FILE__"(" + std::to_string(__LINE__)
-					+ ") Logical size difference too large between cells "
-					+ std::to_string(cell.id) + " and " + std::to_string(neighbor.id)
-					+ ": " + std::to_string(cell_length_i) + " vs "
-					+ std::to_string(neigh_length_i)
-				);
-			}
-
-			if (neighbor.x == -neigh_length_i) {
-				const auto diff = (Vector(*cell.data)[0] - Vector(*neighbor.data)[0]) / cell_length_g[0];
-				if (neigh_length_i < cell_length_i) {
-					div += diff / 4;
-				} else {
-					div += diff;
-				}
-			}
-			if (neighbor.y == -neigh_length_i) {
-				const auto diff = (Vector(*cell.data)[1] - Vector(*neighbor.data)[1]) / cell_length_g[1];
-				if (neigh_length_i < cell_length_i) {
-					div += diff / 4;
-				} else {
-					div += diff;
-				}
-			}
-			if (neighbor.z == -neigh_length_i) {
-				const auto diff = (Vector(*cell.data)[2] - Vector(*neighbor.data)[2]) / cell_length_g[2];
-				if (neigh_length_i < cell_length_i) {
-					div += diff / 4;
-				} else {
-					div += diff;
-				}
+			const auto dim = std::abs(neighbor.face_neighbor) - 1;
+			const auto grad = (Vector(*cell.data)[dim] - Vector(*neighbor.data)[dim]) / cell_length[dim];
+			if (neighbor.is_smaller) {
+				div += grad / 4;
+			} else {
+				div += grad;
 			}
 		}
 		local_divergence += std::fabs(div);

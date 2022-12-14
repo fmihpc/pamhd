@@ -168,7 +168,9 @@ int main(int argc, char* argv[])
 			Cell,
 			dccrg::Cartesian_Geometry,
 			std::tuple<>,
-			std::tuple<pamhd::Is_Face_Neighbor>
+			std::tuple<
+				pamhd::grid::Is_Face_Neighbor,
+				pamhd::grid::Is_Smaller>
 		> grid;
 
 		const std::array<uint64_t, 3> grid_size{{nr_of_cells + 2, nr_of_cells + 2, nr_of_cells + 2}};
