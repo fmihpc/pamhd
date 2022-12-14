@@ -91,7 +91,7 @@ template <
 				div += grad;
 			}
 		}
-		local_divergence += std::fabs(div);
+		local_divergence += std::abs(div);
 	}
 
 	MPI_Comm comm = grid.get_communicator();
