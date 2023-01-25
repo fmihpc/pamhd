@@ -2,7 +2,7 @@
 Staggered version of get1d_div_amr.cpp.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2022 Finnish Meteorological Institute
+Copyright 2018, 2022, 2023 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -45,6 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "grid/variables.hpp"
 #include "math/staggered.hpp"
+#include "tests/math/common.hpp"
 
 
 double function(const double x)
@@ -56,27 +57,6 @@ double div_of_function(const double x)
 {
 	return std::sin(x / 2) * std::cos(x / 2);
 }
-
-
-//! each component is normal to and at corresponding + dir face
-struct Vector {
-	using data_type = std::array<double, 3>;
-};
-
-struct Divergence {
-	using data_type = double;
-};
-
-struct Type {
-	using data_type = int;
-};
-
-using Cell = gensimcell::Cell<
-	gensimcell::Always_Transfer,
-	Vector,
-	Divergence,
-	Type
->;
 
 
 /*!
@@ -149,7 +129,7 @@ int main(int argc, char* argv[])
 			std::tuple<>,
 			std::tuple<
 				pamhd::grid::Is_Face_Neighbor,
-				pamhd::grid::Is_Smaller>
+				pamhd::grid::Relative_Size>
 		>, 3> grids;
 
 		const std::array<std::array<uint64_t, 3>, 3>
@@ -218,13 +198,21 @@ int main(int argc, char* argv[])
 
 		for (size_t dim = 0; dim < 3; dim++) {
 			for (const auto& cell: grids[dim].local_cells()) {
-				auto& vec = (*cell.data)[Vector()];
-				vec[0] = vec[1] = vec[2] = 0;
+				auto
+					&vec_pos = (*cell.data)[Vector_Pos()],
+					&vec_neg = (*cell.data)[Vector_Neg()];
+				vec_pos[0] =
+				vec_pos[1] =
+				vec_pos[2] =
+				vec_neg[0] =
+				vec_neg[1] =
+				vec_neg[2] = 0;
 
 				const auto
 					center = grids[dim].geometry.get_center(cell.id)[dim],
 					length = grids[dim].geometry.get_length(cell.id)[dim];
-				vec[dim] = function(center + length/2);
+				vec_pos[dim] = function(center + length/2);
+				vec_neg[dim] = function(center - length/2);
 			}
 			grids[dim].update_copies_of_remote_neighbors();
 		}
@@ -241,13 +229,16 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		auto Vector_Getter = [](Cell& cell_data) -> Vector::data_type& {
-			return cell_data[Vector()];
+		auto Vector_Pos_Getter = [](Cell& cell_data)->auto& {
+			return cell_data[Vector_Pos()];
 		};
-		auto Divergence_Getter = [](Cell& cell_data) -> Divergence::data_type& {
+		auto Vector_Neg_Getter = [](Cell& cell_data)->auto& {
+			return cell_data[Vector_Neg()];
+		};
+		auto Divergence_Getter = [](Cell& cell_data)->auto& {
 			return cell_data[Divergence()];
 		};
-		auto Type_Getter = [](Cell& cell_data) -> Type::data_type& {
+		auto Type_Getter = [](Cell& cell_data)->auto& {
 			return cell_data[Type()];
 		};
 
@@ -255,7 +246,8 @@ int main(int argc, char* argv[])
 			pamhd::math::get_divergence_staggered(
 				grids[dim].local_cells(),
 				grids[dim],
-				Vector_Getter,
+				Vector_Pos_Getter,
+				Vector_Neg_Getter,
 				Divergence_Getter,
 				Type_Getter
 			);

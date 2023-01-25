@@ -33,12 +33,13 @@ CLEAN += tests/math_clean
 
 TEST_MATH_COMMON_DEPS = \
   source/math/staggered.hpp \
+  tests/math/common.hpp \
   tests/math/project_makefile \
   $(ENVIRONMENT_MAKEFILE) \
   Makefile
 
 MPICXX_TESTS_MATH_MPICXX = \
-  $(MPICXX) $< -o $@ \
+  $(MPICXX) $< -o $@ -I . \
   $(CPPFLAGS) \
   $(CXXFLAGS) \
   $(LDFLAGS) \

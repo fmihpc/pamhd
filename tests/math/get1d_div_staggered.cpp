@@ -2,7 +2,7 @@
 Staggered version of get1d_div.cpp.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2022 Finnish Meteorological Institute
+Copyright 2018, 2022, 2023 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "cstdlib"
 #include "iostream"
 #include "limits"
+#include "utility"
 #include "vector"
 
 #include "dccrg.hpp"
@@ -44,6 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "grid/variables.hpp"
 #include "math/staggered.hpp"
+#include "tests/math/common.hpp"
 
 
 double function(const double x)
@@ -55,27 +57,6 @@ double div_of_function(const double x)
 {
 	return std::sin(x / 2) * std::cos(x / 2);
 }
-
-//! each component is normal to and at corresponding + dir face
-struct Vector {
-	using data_type = std::array<double, 3>;
-};
-
-struct Divergence {
-	using data_type = double;
-};
-
-struct Type {
-	using data_type = int;
-};
-
-using Cell = gensimcell::Cell<
-	gensimcell::Always_Transfer,
-	Vector,
-	Divergence,
-	Type
->;
-
 
 /*!
 Returns maximum norm if p == 0
@@ -122,7 +103,7 @@ template<class Grid> double get_diff_lp_norm(
 }
 
 
-template<class Vector, class Type, class Grid> void initialize(
+template<class Vectors, class Type, class Grid> void initialize(
 	Grid& grid,
 	MPI_Comm& comm,
 	const uint64_t nr_of_cells,
@@ -167,11 +148,17 @@ template<class Vector, class Type, class Grid> void initialize(
 			center = grid.geometry.get_center(cell.id),
 			length = grid.geometry.get_length(cell.id);
 
-		auto& vec = (*cell.data)[Vector()];
-		vec[0] =
-		vec[1] =
-		vec[2] = 0;
-		vec[dimension] = function(center[dimension] + length[dimension]/2);
+		auto
+			&vec_pos = (*cell.data)[Vectors().first],
+			&vec_neg = (*cell.data)[Vectors().second];
+		vec_pos[0] =
+		vec_pos[1] =
+		vec_pos[2] =
+		vec_neg[0] =
+		vec_neg[1] =
+		vec_neg[2] = 0;
+		vec_pos[dimension] = function(center[dimension] + length[dimension]/2);
+		vec_neg[dimension] = function(center[dimension] - length[dimension]/2);
 
 		// exclude one layer of boundary cells
 		const auto index = grid.mapping.get_indices(cell.id);
@@ -226,29 +213,47 @@ int main(int argc, char* argv[])
 			std::tuple<>,
 			std::tuple<
 				pamhd::grid::Is_Face_Neighbor,
-				pamhd::grid::Is_Smaller>
+				pamhd::grid::Relative_Size>
 		> grid_x, grid_y, grid_z;
-		initialize<Vector, Type>(grid_x, comm, nr_of_cells, 0);
-		initialize<Vector, Type>(grid_y, comm, nr_of_cells, 1);
-		initialize<Vector, Type>(grid_z, comm, nr_of_cells, 2);
+		initialize<std::pair<Vector_Pos, Vector_Neg>, Type>(grid_x, comm, nr_of_cells, 0);
+		initialize<std::pair<Vector_Pos, Vector_Neg>, Type>(grid_y, comm, nr_of_cells, 1);
+		initialize<std::pair<Vector_Pos, Vector_Neg>, Type>(grid_z, comm, nr_of_cells, 2);
 
-		auto Vector_Getter = [](Cell& cell_data) -> Vector::data_type& {
-			return cell_data[Vector()];
+		auto Vector_Pos_Getter = [](Cell& cell_data)->auto& {
+			return cell_data[Vector_Pos()];
 		};
-		auto Divergence_Getter = [](Cell& cell_data) -> Divergence::data_type& {
+		auto Vector_Neg_Getter = [](Cell& cell_data)->auto& {
+			return cell_data[Vector_Neg()];
+		};
+		auto Divergence_Getter = [](Cell& cell_data)->auto& {
 			return cell_data[Divergence()];
 		};
-		auto Type_Getter = [](Cell& cell_data) -> Type::data_type& {
+		auto Type_Getter = [](Cell& cell_data)->auto& {
 			return cell_data[Type()];
 		};
 		pamhd::math::get_divergence_staggered(
-			grid_x.local_cells(), grid_x, Vector_Getter, Divergence_Getter, Type_Getter
+			grid_x.local_cells(),
+			grid_x,
+			Vector_Pos_Getter,
+			Vector_Neg_Getter,
+			Divergence_Getter,
+			Type_Getter
 		);
 		pamhd::math::get_divergence_staggered(
-			grid_y.local_cells(), grid_y, Vector_Getter, Divergence_Getter, Type_Getter
+			grid_y.local_cells(),
+			grid_y,
+			Vector_Pos_Getter,
+			Vector_Neg_Getter,
+			Divergence_Getter,
+			Type_Getter
 		);
 		pamhd::math::get_divergence_staggered(
-			grid_z.local_cells(), grid_z, Vector_Getter, Divergence_Getter, Type_Getter
+			grid_z.local_cells(),
+			grid_z,
+			Vector_Pos_Getter,
+			Vector_Neg_Getter,
+			Divergence_Getter,
+			Type_Getter
 		);
 
 		const auto cell_length = grid_x.geometry.get_level_0_cell_length();

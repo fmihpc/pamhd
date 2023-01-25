@@ -2,7 +2,7 @@
 Tests vector field divergence calculation of PAMHD in 3d.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2022 Finnish Meteorological Institute
+Copyright 2018, 2022, 2023 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -44,6 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "grid/variables.hpp"
 #include "math/staggered.hpp"
+#include "tests/math/common.hpp"
 
 
 std::array<double, 3> function(const std::array<double, 3>& r)
@@ -63,27 +64,6 @@ double div_of_function(const std::array<double, 3>& r)
 
 	return 9*z*z - 4*z + 2 * std::pow(std::cos(y), 2) + 2 * std::exp(2*x) + 9;
 }
-
-
-//! each component is normal to and at corresponding + dir face
-struct Vector {
-	using data_type = std::array<double, 3>;
-};
-
-struct Divergence {
-	using data_type = double;
-};
-
-struct Type {
-	using data_type = int;
-};
-
-using Cell = gensimcell::Cell<
-	gensimcell::Always_Transfer,
-	Vector,
-	Divergence,
-	Type
->;
 
 
 /*!
@@ -153,7 +133,7 @@ int main(int argc, char* argv[])
 			std::tuple<>,
 			std::tuple<
 				pamhd::grid::Is_Face_Neighbor,
-				pamhd::grid::Is_Smaller>
+				pamhd::grid::Relative_Size>
 		> grid;
 
 		const std::array<uint64_t, 3> grid_size{{nr_of_cells + 2, nr_of_cells + 2, nr_of_cells + 2}};
@@ -204,10 +184,15 @@ int main(int argc, char* argv[])
 			const auto
 				center = grid.geometry.get_center(cell.id),
 				length = grid.geometry.get_length(cell.id);
-			(*cell.data)[Vector()] = function({
+			(*cell.data)[Vector_Pos()] = function({
 				center[0] + length[0]/2,
 				center[1] + length[1]/2,
 				center[2] + length[2]/2
+			});
+			(*cell.data)[Vector_Neg()] = function({
+				center[0] - length[0]/2,
+				center[1] - length[1]/2,
+				center[2] - length[2]/2
 			});
 		}
 		grid.update_copies_of_remote_neighbors();
@@ -243,13 +228,16 @@ int main(int argc, char* argv[])
 		pamhd::math::get_divergence_staggered(
 			grid.local_cells(),
 			grid,
-			[](Cell& cell_data) -> Vector::data_type& {
-				return cell_data[Vector()];
+			[](Cell& cell_data)->auto& {
+				return cell_data[Vector_Pos()];
 			},
-			[](Cell& cell_data) -> Divergence::data_type& {
+			[](Cell& cell_data)->auto& {
+				return cell_data[Vector_Neg()];
+			},
+			[](Cell& cell_data)->auto& {
 				return cell_data[Divergence()];
 			},
-			[](Cell& cell_data) -> Type::data_type& {
+			[](Cell& cell_data)->auto& {
 				return cell_data[Type()];
 			}
 		);

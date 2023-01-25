@@ -2,7 +2,7 @@
 Functions for working with divergence of vector field.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2019, 2022 Finnish Meteorological Institute
+Copyright 2018, 2019, 2022, 2023 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -45,22 +45,26 @@ namespace math {
 
 
 /*!
-Same as get_divergence() but for staggered vector variable...
+Same as get_divergence() but for vector variable that's stored on cell faces.
 
-TODO
+Vector_Pos returns vector whose components are at cell faces on positive
+side from cell center and are normal to said faces, Vector_Neg returns
+components on negative side faces pointing in positive direction.
 */
 template <
 	class Cell_Iterator,
 	class Grid,
-	class Vector_Getter,
+	class Vector_Pos_Getter,
+	class Vector_Neg_Getter,
 	class Divergence_Getter,
 	class Cell_Type_Getter
 > double get_divergence_staggered(
 	const Cell_Iterator& cells,
 	Grid& grid,
-	Vector_Getter Vector,
-	Divergence_Getter Divergence,
-	Cell_Type_Getter Cell_Type
+	const Vector_Pos_Getter Vector_Pos,
+	const Vector_Neg_Getter Vector_Neg,
+	const Divergence_Getter Divergence,
+	const Cell_Type_Getter Cell_Type
 ) {
 	double local_divergence = 0, global_divergence = 0;
 	uint64_t local_calculated_cells = 0, global_calculated_cells = 0;
@@ -84,8 +88,17 @@ template <
 			}
 
 			const auto dim = std::abs(neighbor.face_neighbor) - 1;
-			const auto grad = (Vector(*cell.data)[dim] - Vector(*neighbor.data)[dim]) / cell_length[dim];
-			if (neighbor.is_smaller) {
+			auto grad = Vector_Pos(*cell.data)[dim];
+			if (neighbor.relative_size < 0) {
+				// neighbor is larger
+				grad -= Vector_Neg(*cell.data)[dim];
+			} else {
+				// neighbor is same size or smaller
+				grad -= Vector_Pos(*neighbor.data)[dim];
+			}
+			grad /= cell_length[dim];
+			if (neighbor.relative_size > 0) {
+				// neighbor is smaller
 				div += grad / 4;
 			} else {
 				div += grad;
