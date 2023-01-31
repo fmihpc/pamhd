@@ -32,6 +32,8 @@ CLEAN += tests/math_clean
 
 
 TEST_MATH_COMMON_DEPS = \
+  source/amr/common.hpp \
+  source/grid/variables.hpp \
   source/math/staggered.hpp \
   tests/math/common.hpp \
   tests/math/project_makefile \

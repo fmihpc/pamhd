@@ -1,7 +1,7 @@
 /*
 Grid-related stuff common to all PAMHD models.
 
-Copyright 2022 Finnish Meteorological Institute
+Copyright 2022, 2023 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -72,7 +72,7 @@ struct Is_Face_Neighbor {
 		) {
 			if (neighbor.x == -neigh_length_i) {
 				face_neighbor = -1;
-			} else {
+			} else if (neighbor.x == cell_length_i) {
 				face_neighbor = 1;
 			}
 		} else if (
@@ -83,7 +83,7 @@ struct Is_Face_Neighbor {
 		) {
 			if (neighbor.y == -neigh_length_i) {
 				face_neighbor = -2;
-			} else {
+			} else if (neighbor.y == cell_length_i) {
 				face_neighbor = 2;
 			}
 		} else if (
@@ -94,7 +94,7 @@ struct Is_Face_Neighbor {
 		) {
 			if (neighbor.z == -neigh_length_i) {
 				face_neighbor = -3;
-			} else {
+			} else if (neighbor.z == cell_length_i) {
 				face_neighbor = 3;
 			}
 		} else {
@@ -103,9 +103,16 @@ struct Is_Face_Neighbor {
 	}
 };
 
-//! Whether logical size of neighbor is smaller than cell.
-struct Is_Smaller {
-	bool is_smaller = false;
+/*! Logical size of neighbor compared to cell.
+
+relative_size == 0 if neighbor's refinement level i.e. size is same,
+... == +1 if neighbor's ref lvl is larger by one i.e.
+neighbor is 1/2x of cell in each dimension,
+... == -1 if neighbor's ref lvl is smaller by one i.e.
+neighbor is 2x larger than cell in each dimension, etc.
+*/
+struct Relative_Size {
+	int relative_size = 0;
 	template<
 		class Grid, class Cell_Item, class Neighbor_Item
 	> void update(
@@ -113,16 +120,11 @@ struct Is_Smaller {
 		const Cell_Item& cell,
 		const Neighbor_Item& neighbor,
 		const int&,
-		const Is_Smaller&
+		const Relative_Size&
 	) {
-		const auto
-			cell_len = grid.mapping.get_cell_length_in_indices(cell.id),
-			neigh_len = grid.mapping.get_cell_length_in_indices(neighbor.id);
-		if (neigh_len < cell_len) {
-			is_smaller = true;
-		} else {
-			is_smaller = false;
-		}
+		this->relative_size
+			= grid.mapping.get_refinement_level(neighbor.id)
+			- grid.mapping.get_refinement_level(cell.id);
 	}
 };
 

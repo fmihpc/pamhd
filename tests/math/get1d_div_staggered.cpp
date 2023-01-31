@@ -43,6 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "dccrg_cartesian_geometry.hpp"
 #include "gensimcell.hpp"
 
+#include "amr/common.hpp"
 #include "grid/variables.hpp"
 #include "math/staggered.hpp"
 #include "tests/math/common.hpp"
@@ -103,11 +104,17 @@ template<class Grid> double get_diff_lp_norm(
 }
 
 
-template<class Vectors, class Type, class Grid> void initialize(
+template<
+	class Vectors,
+	class Type,
+	class Grid,
+	class PFace_Getter
+> void initialize(
 	Grid& grid,
 	MPI_Comm& comm,
 	const uint64_t nr_of_cells,
-	const unsigned int dimension
+	const unsigned int dimension,
+	const PFace_Getter PFace
 ) {
 	std::array<uint64_t, 3> grid_size;
 	std::array<double, 3> cell_length, grid_start;
@@ -142,6 +149,8 @@ template<class Vectors, class Type, class Grid> void initialize(
 	geom_params.start = grid_start;
 	geom_params.level_0_cell_length = cell_length;
 	grid.set_geometry(geom_params);
+
+	pamhd::amr::update_primary_faces(grid.local_cells(), PFace);
 
 	for (const auto& cell: grid.local_cells()) {
 		const auto
@@ -215,9 +224,13 @@ int main(int argc, char* argv[])
 				pamhd::grid::Is_Face_Neighbor,
 				pamhd::grid::Relative_Size>
 		> grid_x, grid_y, grid_z;
-		initialize<std::pair<Vector_Pos, Vector_Neg>, Type>(grid_x, comm, nr_of_cells, 0);
-		initialize<std::pair<Vector_Pos, Vector_Neg>, Type>(grid_y, comm, nr_of_cells, 1);
-		initialize<std::pair<Vector_Pos, Vector_Neg>, Type>(grid_z, comm, nr_of_cells, 2);
+
+		auto Is_Primary_Face_Getter = [](Cell& cell_data)->auto& {
+			return cell_data[Is_Primary_Face()];
+		};
+		initialize<std::pair<Vector_Pos, Vector_Neg>, Type>(grid_x, comm, nr_of_cells, 0, Is_Primary_Face_Getter);
+		initialize<std::pair<Vector_Pos, Vector_Neg>, Type>(grid_y, comm, nr_of_cells, 1, Is_Primary_Face_Getter);
+		initialize<std::pair<Vector_Pos, Vector_Neg>, Type>(grid_z, comm, nr_of_cells, 2, Is_Primary_Face_Getter);
 
 		auto Vector_Pos_Getter = [](Cell& cell_data)->auto& {
 			return cell_data[Vector_Pos()];
@@ -237,6 +250,7 @@ int main(int argc, char* argv[])
 			Vector_Pos_Getter,
 			Vector_Neg_Getter,
 			Divergence_Getter,
+			Is_Primary_Face_Getter,
 			Type_Getter
 		);
 		pamhd::math::get_divergence_staggered(
@@ -245,6 +259,7 @@ int main(int argc, char* argv[])
 			Vector_Pos_Getter,
 			Vector_Neg_Getter,
 			Divergence_Getter,
+			Is_Primary_Face_Getter,
 			Type_Getter
 		);
 		pamhd::math::get_divergence_staggered(
@@ -253,6 +268,7 @@ int main(int argc, char* argv[])
 			Vector_Pos_Getter,
 			Vector_Neg_Getter,
 			Divergence_Getter,
+			Is_Primary_Face_Getter,
 			Type_Getter
 		);
 

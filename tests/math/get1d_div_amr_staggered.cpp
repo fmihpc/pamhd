@@ -43,6 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "dccrg_cartesian_geometry.hpp"
 #include "gensimcell.hpp"
 
+#include "amr/common.hpp"
 #include "grid/variables.hpp"
 #include "math/staggered.hpp"
 #include "tests/math/common.hpp"
@@ -171,11 +172,10 @@ int main(int argc, char* argv[])
 		for (int i = 0; i < max_ref_lvl; i++) {
 			for (size_t dim = 0; dim < 3; dim++) {
 				for (const auto& cell: grids[dim].local_cells()) {
+					const auto c = grids[dim].geometry.get_center(cell.id)[dim];
 					if (
-						(grids[dim].geometry.get_center(cell.id)[dim] > 2 * M_PI / 8
-						and grids[dim].geometry.get_center(cell.id)[dim] < 6 * M_PI / 8)
-						or (grids[dim].geometry.get_center(cell.id)[dim] > 10 * M_PI / 8
-						and grids[dim].geometry.get_center(cell.id)[dim] < 14 * M_PI / 8)
+						(c > 2 * M_PI / 8 and c < 6 * M_PI / 8)
+						or (c > 10 * M_PI / 8 and c < 14 * M_PI / 8)
 					) {
 						grids[dim].refine_completely(cell.id);
 					}
@@ -196,7 +196,12 @@ int main(int argc, char* argv[])
 		MPI_Allreduce(&local_real_nr_cells, &real_nr_cells, 1, MPI_UINT64_T, MPI_SUM, comm);
 		MPI_Comm_free(&comm);
 
+		auto PFace = [](Cell& cell_data)->auto& {
+			return cell_data[Is_Primary_Face()];
+		};
+
 		for (size_t dim = 0; dim < 3; dim++) {
+			pamhd::amr::update_primary_faces(grids[dim].local_cells(), PFace);
 			for (const auto& cell: grids[dim].local_cells()) {
 				auto
 					&vec_pos = (*cell.data)[Vector_Pos()],
@@ -249,6 +254,7 @@ int main(int argc, char* argv[])
 				Vector_Pos_Getter,
 				Vector_Neg_Getter,
 				Divergence_Getter,
+				PFace,
 				Type_Getter
 			);
 		}

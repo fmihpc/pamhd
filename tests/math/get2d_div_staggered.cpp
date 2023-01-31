@@ -42,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "dccrg_cartesian_geometry.hpp"
 #include "gensimcell.hpp"
 
+#include "amr/common.hpp"
 #include "grid/variables.hpp"
 #include "math/staggered.hpp"
 #include "tests/math/common.hpp"
@@ -174,6 +175,11 @@ int main(int argc, char* argv[])
 		geom_params.level_0_cell_length = cell_length;
 		grid.set_geometry(geom_params);
 
+		auto PFace = [](Cell& cell_data)->auto& {
+			return cell_data[Is_Primary_Face()];
+		};
+		pamhd::amr::update_primary_faces(grid.local_cells(), PFace);
+
 		for (const auto& cell: grid.local_cells()) {
 			const auto
 				center = grid.geometry.get_center(cell.id),
@@ -217,6 +223,7 @@ int main(int argc, char* argv[])
 			[](Cell& cell_data)->auto& {
 				return cell_data[Divergence()];
 			},
+			PFace,
 			[](Cell& cell_data)->auto& {
 				return cell_data[Type()];
 			}
