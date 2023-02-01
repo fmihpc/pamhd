@@ -43,7 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "dccrg_cartesian_geometry.hpp"
 #include "gensimcell.hpp"
 
-#include "amr/common.hpp"
+#include "grid/amr.hpp"
 #include "grid/variables.hpp"
 #include "math/staggered.hpp"
 #include "tests/math/common.hpp"
@@ -150,7 +150,7 @@ template<
 	geom_params.level_0_cell_length = cell_length;
 	grid.set_geometry(geom_params);
 
-	pamhd::amr::update_primary_faces(grid.local_cells(), PFace);
+	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
 
 	for (const auto& cell: grid.local_cells()) {
 		const auto

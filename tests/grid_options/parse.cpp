@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "prettyprint.hpp"
 #include "rapidjson/document.h"
 
-#include "grid_options.hpp"
+#include "grid/options.hpp"
 
 
 int main()

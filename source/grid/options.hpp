@@ -1,5 +1,5 @@
 /*
-Class for handling grid options.
+Class for handling grid options of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
 Copyright 2022, 2023 Finnish Meteorological Institute

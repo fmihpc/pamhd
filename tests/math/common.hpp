@@ -1,7 +1,7 @@
 /*
-Compile test for grid option parsing of PAMHD.
+Common definitions for tests in this directory.
 
-Copyright 2016, 2017 Ilja Honkonen
+Copyright 2023 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -30,16 +30,45 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifndef TESTS_MATH_COMMON_HPP
+#define TESTS_MATH_COMMON_HPP
 
-#include "rapidjson/document.h"
+#include "array"
 
-#include "grid/options.hpp"
+#include "gensimcell.hpp"
 
+//! each component is normal to and at corresponding + dir face
+struct Vector_Pos {
+	using data_type = std::array<double, 3>;
+};
 
-int main()
-{
-	rapidjson::Document document;
-	pamhd::grid::Options options;
-	options.set(document);
-	return EXIT_SUCCESS;
-}
+//! component at - dir face
+struct Vector_Neg {
+	using data_type = std::array<double, 3>;
+};
+
+struct Divergence {
+	using data_type = double;
+};
+
+struct Is_Primary_Face {
+	using data_type = std::array<bool, 6>;
+	std::tuple<void*, int, MPI_Datatype> get_mpi_datatype() const {
+		return std::make_tuple(nullptr, 0, MPI_BYTE);
+	}
+};
+
+struct Type {
+	using data_type = int;
+};
+
+using Cell = gensimcell::Cell<
+	gensimcell::Always_Transfer,
+	Vector_Pos,
+	Vector_Neg,
+	Divergence,
+	Is_Primary_Face,
+	Type
+>;
+
+#endif
