@@ -20,7 +20,7 @@ CLEAN += tests/grid_options_clean
 
 
 TESTS_GRID_OPTIONS_COMMON_DEPS = \
-  source/grid_options.hpp \
+  source/grid/options.hpp \
   tests/grid_options/project_makefile \
   $(ENVIRONMENT_MAKEFILE) \
   Makefile
