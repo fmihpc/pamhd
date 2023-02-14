@@ -2,6 +2,7 @@
 MHD variables and cell class of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2023 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -37,6 +38,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "gensimcell.hpp"
 
 #include "../variables.hpp"
+#include "grid/amr.hpp"
+#include "grid/variables.hpp"
 
 
 namespace pamhd {
@@ -185,9 +188,7 @@ using Cell = gensimcell::Cell<
 	pamhd::Resistivity,
 	pamhd::Magnetic_Field,
 	// TODO: move background fields to inner cell?
-	pamhd::Bg_Magnetic_Field_Pos_X,
-	pamhd::Bg_Magnetic_Field_Pos_Y,
-	pamhd::Bg_Magnetic_Field_Pos_Z,
+	pamhd::Bg_Magnetic_Field,
 	pamhd::Magnetic_Field_Resistive,
 	pamhd::Magnetic_Field_Temp,
 	pamhd::Magnetic_Field_Divergence,
@@ -195,6 +196,7 @@ using Cell = gensimcell::Cell<
 	pamhd::mhd::HD_Flux_Conservative,
 	pamhd::Magnetic_Field_Flux,
 	pamhd::Face_Magnetic_Field,
+	pamhd::Face_Magnetic_Field_Neg,
 	pamhd::Edge_Electric_Field
 >;
 
@@ -212,9 +214,7 @@ using Cell2 = gensimcell::Cell<
 	pamhd::MPI_Rank,
 	pamhd::Resistivity,
 	pamhd::Magnetic_Field,
-	pamhd::Bg_Magnetic_Field_Pos_X,
-	pamhd::Bg_Magnetic_Field_Pos_Y,
-	pamhd::Bg_Magnetic_Field_Pos_Z,
+	pamhd::Bg_Magnetic_Field,
 	pamhd::Magnetic_Field_Resistive,
 	pamhd::Magnetic_Field_Temp,
 	pamhd::Magnetic_Field_Divergence,
@@ -239,8 +239,87 @@ struct MHD_State_Conservative {
 	using data_type = MHD_Conservative;
 };
 
-//! Flux from cell to its neighbor in positive x direction
-struct MHD_Flux_Pos_X {
+//! Flux to/from cell from/to its neighbors
+struct MHD_Flux {
+	struct MHD_Flux_type {
+		static constexpr size_t nr_sides = 6;
+		std::array<MHD_Conservative, nr_sides> fluxes;
+
+		/*
+		dim_i = dimension of face, 0 = x, 1 = y, 2 = z
+		side_i = side of face w.r.t. cell center, 0 = negative side
+		*/
+		const MHD_Conservative& operator()(
+			const size_t dim_i,
+			const size_t side_i
+		) const {
+			if (dim_i > 2) {
+				throw std::domain_error("Dimension > 2");
+			}
+			if (side_i > 1) {
+				throw std::domain_error("Side > 1");
+			}
+			return this->fluxes[dim_i*2 + side_i];
+		}
+
+		// https://stackoverflow.com/a/123995
+		MHD_Conservative& operator()(
+			const size_t dim_i,
+			const size_t side_i
+		) {
+			return const_cast<MHD_Conservative&>(static_cast<const MHD_Flux_type&>(*this).operator()(dim_i, side_i));
+		}
+
+		#ifdef MPI_VERSION
+		std::tuple<void*, int, MPI_Datatype> get_mpi_datatype() const {
+			std::array<void*, nr_sides> addresses;
+			std::array<int, nr_sides> counts;
+			std::array<MPI_Datatype, nr_sides> datatypes;
+			std::array<MPI_Aint, nr_sides> displacements;
+
+			MPI_Datatype final_datatype = MPI_DATATYPE_NULL;
+			for (size_t i = 0; i < nr_sides; i++) {
+				std::tie(
+					addresses[i],
+					counts[i],
+					datatypes[i]
+				) = this->fluxes[i].get_mpi_datatype();
+				displacements[i]
+					= static_cast<char*>(addresses[i])
+					- static_cast<char*>(addresses[0]);
+			}
+			auto result = MPI_Type_create_struct(
+				int(counts.size()),
+				counts.data(),
+				displacements.data(),
+				datatypes.data(),
+				&final_datatype
+			);
+			if (result != MPI_SUCCESS) {
+				throw std::runtime_error("Couldn't create MPI datatype for MHD flux");
+			}
+
+			// free user-defined component datatypes
+			for (size_t i = 0; i < nr_sides; i++) {
+				if (datatypes[i] == MPI_DATATYPE_NULL) {
+					continue;
+				}
+				int combiner = -1, tmp1 = -1, tmp2 = -1, tmp3 = -1;
+				MPI_Type_get_envelope(datatypes[i], &tmp1, &tmp2, &tmp3, &combiner);
+				if (combiner != MPI_COMBINER_NAMED) {
+					MPI_Type_free(&datatypes[i]);
+				}
+			}
+
+			return std::make_tuple(addresses[0], 1, final_datatype);
+		}
+		#endif // ifdef MPI_VERSION
+	};
+	using data_type = MHD_Flux_type;
+};
+
+//! Flux from neighbor in negative x direction into cell
+struct MHD_Flux_Neg_X {
 	using data_type = MHD_Conservative;
 };
 
@@ -248,7 +327,15 @@ struct MHD_Flux_Pos_Y {
 	using data_type = MHD_Conservative;
 };
 
+struct MHD_Flux_Neg_Y {
+	using data_type = MHD_Conservative;
+};
+
 struct MHD_Flux_Pos_Z {
+	using data_type = MHD_Conservative;
+};
+
+struct MHD_Flux_Neg_Z {
 	using data_type = MHD_Conservative;
 };
 
@@ -260,19 +347,17 @@ using Cell_Staggered = gensimcell::Cell<
 	pamhd::mhd::Solver_Info,
 	pamhd::MPI_Rank,
 	//pamhd::Resistivity,
-	pamhd::Bg_Magnetic_Field_Pos_X,
-	pamhd::Bg_Magnetic_Field_Pos_Y,
-	pamhd::Bg_Magnetic_Field_Pos_Z,
+	pamhd::Bg_Magnetic_Field,
 	/*pamhd::Magnetic_Field_Resistive,
 	pamhd::Magnetic_Field_Temp,*/
 	pamhd::Magnetic_Field_Divergence,
 	//pamhd::Scalar_Potential_Gradient,
-	pamhd::mhd::MHD_Flux_Pos_X,
-	pamhd::mhd::MHD_Flux_Pos_Y,
-	pamhd::mhd::MHD_Flux_Pos_Z,
+	pamhd::mhd::MHD_Flux,
 	pamhd::Face_Magnetic_Field,
 	pamhd::Face_Magnetic_Field_Neg,
-	pamhd::Edge_Electric_Field
+	pamhd::Edge_Electric_Field,
+	pamhd::grid::Is_Primary_Face,
+	pamhd::grid::Target_Refinement_Level
 >;
 
 

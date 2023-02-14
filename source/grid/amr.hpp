@@ -39,7 +39,7 @@ namespace grid {
 
 /*! Variable indicating refinement level towards which grid cells should be refined.
 */
-struct Targer_Refinement_Level {
+struct Target_Refinement_Level {
 	using data_type = int;
 	static const std::string get_name() { return {"target refinement level"}; }
 	static const std::string get_option_name() { return {"target-ref-lvl"}; }

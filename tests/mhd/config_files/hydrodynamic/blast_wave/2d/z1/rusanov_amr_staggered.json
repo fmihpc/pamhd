@@ -1,0 +1,42 @@
+{
+	"output-directory": "results/hydrodynamic/blast_wave/2d/z1/rusanov_amr_staggered",
+	"time-start": 0,
+	"time-length": 0.2,
+	"minimum-pressure": 0,
+	"solver-mhd": "rusanov",
+	"load-balancer": "RANDOM",
+	"save-mhd-n": 0.02,
+	"adiabatic-index": 1.666666667,
+	"vacuum-permeability": 1,
+	"proton-mass": 1,
+	"mhd-time-step-factor": 0.5,
+	"grid-options": {
+		"periodic": "{true, true, false}",
+		"cells": "{2*15, 3*15, 1}",
+		"volume": "{1, 1.5, 1}",
+		"start": "{-volume[0]/2, -volume[1]/2, -volume[2]/2}",
+		"max-ref-lvl": 2,
+		"amr-n": 0.01
+	},
+	"geometries": [
+		{"sphere": {
+			"center": [0, 0, 0],
+			"radius": 0.1001
+		}}
+	],
+	"number-density": {
+		"default": 1
+	},
+	"velocity": {
+		"default": [0, 0, 0]
+	},
+	"pressure": {
+		"default": 0.1,
+		"initial-conditions": [
+			{"geometry-id": 0, "value": 10}
+		]
+	},
+	"magnetic-field": {
+		"default": [0, 0, 0]
+	}
+}

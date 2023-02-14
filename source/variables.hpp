@@ -2,6 +2,7 @@
 Variables of PAMHD common to several test programs.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2023 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -32,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef PAMHD_VARIABLES_HPP
 #define PAMHD_VARIABLES_HPP
+
 
 #include "Eigen/Core"
 
@@ -73,28 +75,50 @@ struct Magnetic_Field_Resistive {
 	static const std::string get_option_help() { return {"Change in magnetic field due to resistivity"}; }
 };
 
-//! Background magnetic field at cell face in positive x direction
-struct Bg_Magnetic_Field_Pos_X {
-	using data_type = Eigen::Vector3d;
-	static const std::string get_name() { return {"background magnetic field positive x"}; }
-	static const std::string get_option_name() { return {"bg-b-pos-x"}; }
-	static const std::string get_option_help() { return {"background magnetic field at cell face in positive x direction"}; }
-};
+//! Background magnetic field vector at cell faces
+struct Bg_Magnetic_Field {
+	struct Bg_B_type {
+		std::array<Eigen::Vector3d, 6> bg_b;
 
-//! Background magnetic field at cell face in positive y direction
-struct Bg_Magnetic_Field_Pos_Y {
-	using data_type = Eigen::Vector3d;
-	static const std::string get_name() { return {"background magnetic field positive y"}; }
-	static const std::string get_option_name() { return {"bg-b-pos-y"}; }
-	static const std::string get_option_help() { return {"background magnetic field at cell face in positive y direction"}; }
-};
+		/*
+		dim_i = dimension of face, 0 = x, 1 = y, 2 = z
+		side_i = side of face w.r.t. cell center, 0 = negative side
+		*/
+		const Eigen::Vector3d& operator()(
+			const size_t dim_i,
+			const size_t side_i
+		) const {
+			if (dim_i > 2) {
+				throw std::domain_error("Dimension > 2");
+			}
+			if (side_i > 1) {
+				throw std::domain_error("Side > 1");
+			}
+			return this->bg_b[dim_i*2 + side_i];
+		}
 
-//! Background magnetic field at cell face in positive z direction
-struct Bg_Magnetic_Field_Pos_Z {
-	using data_type = Eigen::Vector3d;
-	static const std::string get_name() { return {"background magnetic field positive z"}; }
-	static const std::string get_option_name() { return {"bg-b-pos-z"}; }
-	static const std::string get_option_help() { return {"background magnetic field at cell face in positive z direction"}; }
+		// https://stackoverflow.com/a/123995
+		Eigen::Vector3d& operator()(
+			const size_t dim_i,
+			const size_t side_i
+		) {
+			return const_cast<Eigen::Vector3d&>(static_cast<const Bg_B_type&>(*this).operator()(dim_i, side_i));
+		}
+
+		#ifdef MPI_VERSION
+		std::tuple<void*, int, MPI_Datatype> get_mpi_datatype() const {
+			return std::make_tuple(
+				(void*) this->bg_b.data(),
+				this->bg_b.size(),
+				MPI_DOUBLE
+			);
+		}
+		#endif
+	};
+	using data_type = Bg_B_type;
+	static const std::string get_name() { return {"face background magnetic fields"}; }
+	static const std::string get_option_name() { return {"bg-b"}; }
+	static const std::string get_option_help() { return {"background magnetic field vector on cell faces"}; }
 };
 
 /*! Magnetic field component at cell faces
@@ -110,6 +134,7 @@ struct Face_Magnetic_Field {
 	static const std::string get_option_help() { return {"magnetic field normal component at cell faces on positive sides of cell"}; }
 };
 
+//! Magnetic field on negative cell faces
 struct Face_Magnetic_Field_Neg {
 	using data_type = Eigen::Vector3d;
 	static const std::string get_name() { return {"magnetic field on negative faces"}; }
@@ -117,18 +142,67 @@ struct Face_Magnetic_Field_Neg {
 	static const std::string get_option_help() { return {"magnetic field normal component at cell faces on negative sides of cell"}; }
 };
 
-/*! Electric field component along cell edges
-
-Electric field stored on cell's edges on positive side from cell's center.
-Component of electric field along one edge is stored for each dimension.
-For example Ex is located along x-directed edge on positive side of cell
-in y and z dimensions.
-*/
+//! Electric field along each cell edge
 struct Edge_Electric_Field {
-	using data_type = Eigen::Vector3d;
-	static const std::string get_name() { return {"electric field on positive edges"}; }
+	struct Edge_E_type {
+		std::array<double, 12> edge_e;
+
+		/*
+		par_dim_i = dimension to which electric field is parallel to,
+		0 = x, 1 = y, 2 = z.
+		first_perp_dim_i = negative or positive side of cell in
+		lexically earlier dimension perpendicular to electric field,
+		e.g. if par_dim_i = 0, first_perp_dim_i = 1 means positive side of
+		cell in y dimension.
+		second_perp_dim = neg or pos side in lexically later dimension,
+		if par_dim_i = 2, second_perp_dim_i = 0 means negative side of
+		cell in y dimension.
+		par_dim_i | first_perp_dim_i | second..._i | E on edge of cell
+		    0     |         0        |      0      | x directed: -y, -z
+		    0     |         1        |      1      | x dir:      +y, +z
+		...
+		    2     |         1        |      1      | z dir:      +x, +y
+		*/
+		const double& operator()(
+			const size_t par_dim_i,
+			const size_t first_perp_dim_i,
+			const size_t second_perp_dim_i
+		) const {
+			if (par_dim_i > 2) {
+				throw std::domain_error("Parallel dimension > 2");
+			}
+			if (first_perp_dim_i > 1) {
+				throw std::domain_error("First perpendicular dimension > 1");
+			}
+			if (second_perp_dim_i > 1) {
+				throw std::domain_error("Second perpendicular dimension > 1");
+			}
+			return this->edge_e[par_dim_i*2*2 + first_perp_dim_i*2 + second_perp_dim_i];
+		}
+
+		// https://stackoverflow.com/a/123995
+		double& operator()(
+			const size_t par_dim_i,
+			const size_t first_perp_dim_i,
+			const size_t second_perp_dim_i
+		) {
+			return const_cast<double&>(static_cast<const Edge_E_type&>(*this).operator()(par_dim_i, first_perp_dim_i, second_perp_dim_i));
+		}
+
+		#ifdef MPI_VERSION
+		std::tuple<void*, int, MPI_Datatype> get_mpi_datatype() const {
+			return std::make_tuple(
+				(void*) this->edge_e.data(),
+				this->edge_e.size(),
+				MPI_DOUBLE
+			);
+		}
+		#endif
+	};
+	using data_type = Edge_E_type;
+	static const std::string get_name() { return {"electric field on edges"}; }
 	static const std::string get_option_name() { return {"edge-e"}; }
-	static const std::string get_option_help() { return {"electric field tangential component at cell edges on positive side of cell"}; }
+	static const std::string get_option_help() { return {"electric field on cell edges parallel to cell edges"}; }
 };
 
 struct MPI_Rank {

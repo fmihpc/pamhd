@@ -46,6 +46,8 @@ CLEAN += tests/mhd_clean
 
 TEST_MHD_COMMON_DEPS = \
   source/simulation_options.hpp \
+  source/math/staggered.hpp \
+  source/mhd/amr.hpp \
   source/mhd/common.hpp \
   source/mhd/variables.hpp \
   source/mhd/hll_athena.hpp \
@@ -60,7 +62,7 @@ TEST_MHD_COMMON_DEPS = \
 
 TEST_MHD_PROGRAM_DEPS = \
   $(TEST_MHD_COMMON_DEPS) \
-  source/grid_options.hpp \
+  source/grid/options.hpp \
   source/variables.hpp \
   source/boundaries/boundaries.hpp \
   source/boundaries/box.hpp \

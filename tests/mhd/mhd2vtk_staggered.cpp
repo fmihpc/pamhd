@@ -2,7 +2,7 @@
 Program for converting MHD output of PAMHD to vtk format.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2022 Finnish Meteorological Institute
+Copyright 2022, 2023 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -36,13 +36,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "cstdlib"
 #include "functional"
 #include "fstream"
+#include "optional"
 #include "string"
 #include "tuple"
 #include "unordered_map"
 #include "vector"
 
 #include "boost/filesystem.hpp"
-#include "boost/optional.hpp"
 #include "boost/program_options.hpp"
 #include "dccrg_cartesian_geometry.hpp"
 #include "dccrg_mapping.hpp"
@@ -67,11 +67,12 @@ Fills out grid info and simulation data.
 On success returns physical constants used by
 simulation, on failure returns an uninitialized value.
 */
-boost::optional<std::array<double, 4>> read_data(
+std::optional<std::array<double, 4>> read_data(
 	dccrg::Mapping& cell_id_mapping,
 	dccrg::Grid_Topology& topology,
 	dccrg::Cartesian_Geometry& geometry,
 	unordered_map<uint64_t, pamhd::mhd::Cell_Staggered>& simulation_data,
+	uint64_t& simulation_step,
 	const std::string& file_name,
 	const int mpi_rank
 ) {
@@ -88,7 +89,7 @@ boost::optional<std::array<double, 4>> read_data(
 		cerr << "Process " << mpi_rank
 			<< " couldn't open file " << file_name
 			<< endl;
-		return boost::optional<std::array<double, 4>>();
+		return std::optional<std::array<double, 4>>();
 	}
 
 	MPI_Offset offset = 0;
@@ -108,8 +109,26 @@ boost::optional<std::array<double, 4>> read_data(
 		cerr << "Process " << mpi_rank
 			<< " Unsupported file version: " << file_version
 			<< endl;
-		return boost::optional<std::array<double, 4>>();
+		return std::optional<std::array<double, 4>>();
 	}
+
+	uint64_t read_simulation_step = ~0ull;
+	MPI_File_read_at(
+		file,
+		offset,
+		&read_simulation_step,
+		1,
+		MPI_UINT64_T,
+		MPI_STATUS_IGNORE
+	);
+	offset += sizeof(uint64_t);
+	if (read_simulation_step > 999999999) {
+		cerr << "Process " << mpi_rank
+			<< " Suspicious simulation step: " << read_simulation_step
+			<< endl;
+		return std::nullopt;
+	}
+	simulation_step = read_simulation_step;
 
 	// read simulation parameters
 	std::array<double, 4> simulation_parameters;
@@ -139,14 +158,14 @@ boost::optional<std::array<double, 4>> read_data(
 			<< " Unsupported endianness: " << endianness
 			<< ", should be " << 0x1234567890abcdef
 			<< endl;
-		return boost::optional<std::array<double, 4>>();
+		return std::optional<std::array<double, 4>>();
 	}
 
 	if (not cell_id_mapping.read(file, offset)) {
 		cerr << "Process " << mpi_rank
 			<< " couldn't set cell id mapping from file " << file_name
 			<< endl;
-		return boost::optional<std::array<double, 4>>();
+		return std::optional<std::array<double, 4>>();
 	}
 
 	offset
@@ -158,7 +177,7 @@ boost::optional<std::array<double, 4>> read_data(
 		cerr << "Process " << mpi_rank
 			<< " couldn't read geometry from file " << file_name
 			<< endl;
-		return boost::optional<std::array<double, 4>>();
+		return std::optional<std::array<double, 4>>();
 	}
 	offset += geometry.data_size();
 
@@ -176,7 +195,7 @@ boost::optional<std::array<double, 4>> read_data(
 
 	if (total_cells == 0) {
 		MPI_File_close(&file);
-		return boost::optional<std::array<double, 4>>(simulation_parameters);
+		return std::optional<std::array<double, 4>>(simulation_parameters);
 	}
 
 	// read cell ids and data offsets
@@ -197,11 +216,11 @@ boost::optional<std::array<double, 4>> read_data(
 		pamhd::mhd::Solver_Info(),
 		pamhd::MPI_Rank(),
 		pamhd::Face_Magnetic_Field(),
+		pamhd::Face_Magnetic_Field_Neg(),
 		pamhd::Edge_Electric_Field(),
-		pamhd::Bg_Magnetic_Field_Pos_X(),
-		pamhd::Bg_Magnetic_Field_Pos_Y(),
-		pamhd::Bg_Magnetic_Field_Pos_Z(),
-		pamhd::Magnetic_Field_Divergence()
+		pamhd::Bg_Magnetic_Field(),
+		pamhd::Magnetic_Field_Divergence(),
+		pamhd::grid::Target_Refinement_Level()
 	);
 	for (const auto& item: cells_offsets) {
 		const uint64_t
@@ -257,7 +276,7 @@ boost::optional<std::array<double, 4>> read_data(
 
 	MPI_File_close(&file);
 
-	return boost::optional<std::array<double, 4>>(simulation_parameters);
+	return std::optional<std::array<double, 4>>(simulation_parameters);
 }
 
 
@@ -271,14 +290,18 @@ void convert(
 	const double adiabatic_index,
 	const double vacuum_permeability
 ) {
+	bool refined = false;
+
 	std::vector<uint64_t> cells;
 	for (const auto& i: simulation_data) {
 		const auto cell_id = i.first;
-		if (geometry.mapping.get_refinement_level(cell_id) > 0) {
-			std::cerr << "Refined mesh not supported." << std::endl;
-			abort();
-		}
 		cells.push_back(cell_id);
+		if (refined) {
+			continue;
+		}
+		if (geometry.mapping.get_refinement_level(cell_id) > 0) {
+			refined = true;
+		}
 	}
 	std::sort(cells.begin(), cells.end());
 
@@ -286,29 +309,68 @@ void convert(
 	vtk_file <<
 		"# vtk DataFile Version 2.0\n"
 		"MHD data from PAMHD\n"
-		"ASCII\n"
-		"DATASET STRUCTURED_POINTS\n";
+		"ASCII\n";
+	if (refined) {
+		vtk_file << "DATASET UNSTRUCTURED_GRID\n";
+	} else {
+		vtk_file << "DATASET STRUCTURED_POINTS\n";
+	}
 
-	const auto& grid_size = geometry.length.get();
-	vtk_file
-		<< "DIMENSIONS "
-		<< grid_size[0] + 1 << " "
-		<< grid_size[1] + 1 << " "
-		<< grid_size[2] + 1 << "\n";
+	if (refined) {
+		// separate corner points for every cell
+		vtk_file << "POINTS " << cells.size() * 8 << " float" << std::endl;
+		for (size_t i = 0; i < cells.size(); i++) {
+			const std::array<double, 3>
+				cell_min = geometry.get_min(cells[i]),
+				cell_max = geometry.get_max(cells[i]);
 
-	const auto grid_start = geometry.get_start();
-	vtk_file
-		<< "ORIGIN "
-		<< grid_start[0] << " "
-		<< grid_start[1] << " "
-		<< grid_start[2] << "\n";
+			vtk_file
+				<< cell_min[0] << " " << cell_min[1] << " " << cell_min[2] << "\n"
+				<< cell_max[0] << " " << cell_min[1] << " " << cell_min[2] << "\n"
+				<< cell_min[0] << " " << cell_max[1] << " " << cell_min[2] << "\n"
+				<< cell_max[0] << " " << cell_max[1] << " " << cell_min[2] << "\n"
+				<< cell_min[0] << " " << cell_min[1] << " " << cell_max[2] << "\n"
+				<< cell_max[0] << " " << cell_min[1] << " " << cell_max[2] << "\n"
+				<< cell_min[0] << " " << cell_max[1] << " " << cell_max[2] << "\n"
+				<< cell_max[0] << " " << cell_max[1] << " " << cell_max[2] << "\n";
+		}
 
-	const auto cell_length = geometry.get_level_0_cell_length();
-	vtk_file
-		<< "SPACING "
-		<< cell_length[0] << " "
-		<< cell_length[1] << " "
-		<< cell_length[2] << "\n";
+		// map cells to written points
+		vtk_file << "CELLS " << cells.size() << " " << cells.size() * 9 << "\n";
+		for (size_t j = 0; j < cells.size(); j++) {
+			vtk_file << "8 ";
+			for (size_t i = 0; i < 8; i++) {
+				 vtk_file << j * 8 + i << " ";
+			}
+			vtk_file << "\n";
+		}
+
+		vtk_file << "CELL_TYPES " << cells.size() << "\n";
+		for (size_t i = 0; i < cells.size(); i++) {
+			vtk_file << 11 << "\n";
+		}
+	} else {
+		const auto& grid_size = geometry.length.get();
+		vtk_file
+			<< "DIMENSIONS "
+			<< grid_size[0] + 1 << " "
+			<< grid_size[1] + 1 << " "
+			<< grid_size[2] + 1 << "\n";
+
+		const auto grid_start = geometry.get_start();
+		vtk_file
+			<< "ORIGIN "
+			<< grid_start[0] << " "
+			<< grid_start[1] << " "
+			<< grid_start[2] << "\n";
+
+		const auto cell_length = geometry.get_level_0_cell_length();
+		vtk_file
+			<< "SPACING "
+			<< cell_length[0] << " "
+			<< cell_length[1] << " "
+			<< cell_length[2] << "\n";
+	}
 
 	vtk_file << "CELL_DATA " << cells.size() << "\n";
 
@@ -318,9 +380,6 @@ void convert(
 	constexpr pamhd::mhd::Total_Energy_Density Tot{};
 	constexpr pamhd::Magnetic_Field MagCell{};
 	constexpr pamhd::Face_Magnetic_Field MagFace{};
-	constexpr pamhd::Bg_Magnetic_Field_Pos_X BgBPX{};
-	constexpr pamhd::Bg_Magnetic_Field_Pos_Y BgBPY{};
-	constexpr pamhd::Bg_Magnetic_Field_Pos_Z BgBPZ{};
 
 	vtk_file << "SCALARS mass_density double 1\nlookup_table default\n";
 	for (const auto& cell: cells) {
@@ -397,7 +456,7 @@ void convert(
 
 	vtk_file << "VECTORS background_B_pos_x double\n";
 	for (const auto& cell: cells) {
-		const auto magnetic_field = simulation_data.at(cell)[BgBPX];
+		const auto magnetic_field = simulation_data.at(cell)[pamhd::Bg_Magnetic_Field()](0, 1);
 		vtk_file
 			<< magnetic_field[0] << " "
 			<< magnetic_field[1] << " "
@@ -406,7 +465,7 @@ void convert(
 
 	vtk_file << "VECTORS background_B_pos_y double\n";
 	for (const auto& cell: cells) {
-		const auto magnetic_field = simulation_data.at(cell)[BgBPY];
+		const auto magnetic_field = simulation_data.at(cell)[pamhd::Bg_Magnetic_Field()](1, 1);
 		vtk_file
 			<< magnetic_field[0] << " "
 			<< magnetic_field[1] << " "
@@ -415,11 +474,16 @@ void convert(
 
 	vtk_file << "VECTORS background_B_pos_z double\n";
 	for (const auto& cell: cells) {
-		const auto magnetic_field = simulation_data.at(cell)[BgBPZ];
+		const auto magnetic_field = simulation_data.at(cell)[pamhd::Bg_Magnetic_Field()](2, 1);
 		vtk_file
 			<< magnetic_field[0] << " "
 			<< magnetic_field[1] << " "
 			<< magnetic_field[2] << "\n";
+	}
+
+	vtk_file << "SCALARS target_ref_lvl int 1\nlookup_table default\n";
+	for (const auto& cell: cells) {
+		vtk_file << simulation_data.at(cell)[pamhd::grid::Target_Refinement_Level()] << "\n";
 	}
 }
 
@@ -535,13 +599,15 @@ int main(int argc, char* argv[])
 		dccrg::Grid_Topology topology;
 		dccrg::Cartesian_Geometry geometry(cell_id_mapping.length, cell_id_mapping, topology);
 		unordered_map<uint64_t, pamhd::mhd::Cell_Staggered> simulation_data;
+		uint64_t simulation_step;
 
-		boost::optional<std::array<double, 4>> header
+		std::optional<std::array<double, 4>> header
 			= read_data(
 				cell_id_mapping,
 				topology,
 				geometry,
 				simulation_data,
+				simulation_step,
 				input_files[i],
 				rank
 			);

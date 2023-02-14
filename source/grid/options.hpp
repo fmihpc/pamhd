@@ -269,22 +269,32 @@ public:
 
 
 		// maximum refinement level
-		if (not object.HasMember("max-ref-lvl")) {
-			return;
+		if (grid_options.HasMember("max-ref-lvl")) {
+			const auto& max_ref_lvl_json = grid_options["max-ref-lvl"];
+			if (not max_ref_lvl_json.IsInt()) {
+				throw std::invalid_argument(
+					std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
+					+ "JSON item max-ref-lvl must be integer."
+				);
+			}
+			this->max_ref_lvl = max_ref_lvl_json.GetInt();
+			if (this->max_ref_lvl < 0) {
+				throw std::invalid_argument(
+					std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
+					+ "JSON item max-ref-lvl cannot be negative."
+				);
+			}
 		}
-		const auto& max_ref_lvl_json = object["max-ref-lvl"];
-		if (not max_ref_lvl_json.IsInt()) {
-			throw std::invalid_argument(
-				std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
-				+ "JSON item max-ref-lvl must be integer."
-			);
-		}
-		max_ref_lvl = object["max-ref-lvl"].GetInt();
-		if (max_ref_lvl < 0) {
-			throw std::invalid_argument(
-				std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
-				+ "JSON item max-ref-lvl cannot be negative."
-			);
+
+		if (grid_options.HasMember("amr-n")) {
+			const auto& amr_n_json = grid_options["amr-n"];
+			if (not amr_n_json.IsNumber()) {
+				throw std::invalid_argument(
+					std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
+					+ "JSON item amr-n is not a number."
+				);
+			}
+			this->amr_n = amr_n_json.GetDouble();
 		}
 	}
 
@@ -315,13 +325,15 @@ public:
 	}
 
 
+	int max_ref_lvl = 0;
+	double amr_n = -1.0;
+
 private:
 
 	typename Periodic::data_type periodic;
 	typename Number_Of_Cells::data_type cells;
 	typename Volume::data_type volume;
 	typename Start::data_type start;
-	int max_ref_lvl = 0;
 
 	mup::ParserX parser = mup::ParserX(mup::pckCOMMON | mup::pckNON_COMPLEX | mup::pckMATRIX | mup::pckUNIT);
 };

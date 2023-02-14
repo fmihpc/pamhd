@@ -58,9 +58,7 @@ template <
 	class Grid,
 	class Magnetic_Field_Getter,
 	class Magnetic_Field_Flux_Getter,
-	class Background_Magnetic_Field_Pos_X_Getter,
-	class Background_Magnetic_Field_Pos_Y_Getter,
-	class Background_Magnetic_Field_Pos_Z_Getter
+	class Background_Magnetic_Field_Getter
 > void initialize_magnetic_field(
 	const Geometries& geometries,
 	Init_Cond& initial_conditions,
@@ -70,15 +68,13 @@ template <
 	const double vacuum_permeability,
 	const Magnetic_Field_Getter Mag,
 	const Magnetic_Field_Flux_Getter Mag_f,
-	const Background_Magnetic_Field_Pos_X_Getter Bg_B_Pos_X,
-	const Background_Magnetic_Field_Pos_Y_Getter Bg_B_Pos_Y,
-	const Background_Magnetic_Field_Pos_Z_Getter Bg_B_Pos_Z
+	const Background_Magnetic_Field_Getter Bg_B
 ) {
 	// set default magnetic field
 	for (const auto& cell: grid.local_cells()) {
-		Mag_f(*cell.data)[0]      =
-		Mag_f(*cell.data)[1]      =
-		Mag_f(*cell.data)[2]      = 0;
+		Mag_f(*cell.data)[0] =
+		Mag_f(*cell.data)[1] =
+		Mag_f(*cell.data)[2] = 0;
 
 		const auto c = grid.geometry.get_center(cell.id);
 		const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
@@ -97,15 +93,15 @@ template <
 		Mag(*cell.data) = magnetic_field;
 
 		const auto cell_end = grid.geometry.get_max(cell.id);
-		Bg_B_Pos_X(*cell.data) = bg_B.get_background_field(
+		Bg_B(*cell.data)(0, 1) = bg_B.get_background_field(
 			{cell_end[0], c[1], c[2]},
 			vacuum_permeability
 		);
-		Bg_B_Pos_Y(*cell.data) = bg_B.get_background_field(
+		Bg_B(*cell.data)(1, 1) = bg_B.get_background_field(
 			{c[0], cell_end[1], c[2]},
 			vacuum_permeability
 		);
-		Bg_B_Pos_Z(*cell.data) = bg_B.get_background_field(
+		Bg_B(*cell.data)(2, 1) = bg_B.get_background_field(
 			{c[0], c[1], cell_end[2]},
 			vacuum_permeability
 		);
@@ -329,12 +325,9 @@ template <
 		i < initial_conditions.get_number_of_regions(Pressure());
 		i++
 	) {
-		std::cout << std::endl;
 		const auto& init_cond = initial_conditions.get_initial_condition(Pressure(), i);
 		const auto& geometry_id = init_cond.get_geometry_id();
-		std::cout << geometry_id << std::endl;
 		const auto& cells = geometries.get_cells(geometry_id);
-		std::cout << cells.size() << std::endl;
 		for (const auto& cell: cells) {
 			const auto c = grid.geometry.get_center(cell);
 			const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);

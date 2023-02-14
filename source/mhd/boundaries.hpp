@@ -280,13 +280,16 @@ template<
 	class Grid,
 	class Boundaries,
 	class Boundary_Geometries,
-	class Magnetic_Field_Getter
+	class Magnetic_Field_Pos_Getter,
+	class Magnetic_Field_Neg_Getter
 > void apply_magnetic_field_boundaries(
 	Grid& grid,
 	Boundaries& boundaries,
 	const Boundary_Geometries& bdy_geoms,
 	const double simulation_time,
-	const Magnetic_Field_Getter& Mag
+	const Magnetic_Field_Pos_Getter& Magp,
+	const Magnetic_Field_Neg_Getter& /*Magn*/,
+	const bool staggered
 ) {
 	// magnetic field
 	constexpr pamhd::Magnetic_Field B{};
@@ -299,7 +302,16 @@ template<
 		const auto& geometry_id = value_bdy.get_geometry_id();
 		const auto& cells = bdy_geoms.get_cells(geometry_id);
 		for (const auto& cell: cells) {
-			const auto c = grid.geometry.get_center(cell);
+			const auto c = [&](){
+				auto c_ = grid.geometry.get_center(cell);
+				if (staggered) {
+					const auto len = grid.geometry.get_length(cell);
+					c_[0] += len[0]/2;
+					c_[1] += len[1]/2;
+					c_[2] += len[2]/2;
+				}
+				return c_;
+			}();
 			const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
 			const auto
 				lat = asin(c[2] / r),
@@ -317,7 +329,7 @@ template<
 				abort();
 			}
 
-			Mag(*cell_data) = magnetic_field;
+			Magp(*cell_data) = magnetic_field;
 		}
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(B)) {
@@ -334,7 +346,7 @@ template<
 				abort();
 			}
 
-			source_value += Mag(*source_data);
+			source_value += Magp(*source_data);
 		}
 		source_value /= item.size() - 1;
 
@@ -344,7 +356,7 @@ template<
 			abort();
 		}
 
-		Mag(*target_data) = source_value;
+		Magp(*target_data) = source_value;
 	}
 }
 

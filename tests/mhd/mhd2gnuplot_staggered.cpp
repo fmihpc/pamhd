@@ -218,9 +218,7 @@ std::optional<std::array<double, 4>> read_data(
 		pamhd::MPI_Rank(),
 		pamhd::Face_Magnetic_Field(),
 		pamhd::Edge_Electric_Field(),
-		pamhd::Bg_Magnetic_Field_Pos_X(),
-		pamhd::Bg_Magnetic_Field_Pos_Y(),
-		pamhd::Bg_Magnetic_Field_Pos_Z(),
+		pamhd::Bg_Magnetic_Field(),
 		pamhd::Magnetic_Field_Divergence()
 	);
 	for (const auto& item: cells_offsets) {
@@ -459,21 +457,21 @@ int plot_1d(
 		     "'-' u 1:2 w l lw 2 t 'component 3'\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field_Pos_X()];
+		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](0, 1);
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		gnuplot_file << x << " " << B[0] << "\n";
 	}
 	gnuplot_file << "end\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field_Pos_X()];
+		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](0, 1);
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		gnuplot_file << x << " " << B[1] << "\n";
 	}
 	gnuplot_file << "end\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field_Pos_X()];
+		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](0, 1);
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		gnuplot_file << x << " " << B[2] << "\n";
 	}
@@ -558,7 +556,7 @@ int plot_1d(
 
 	for (const auto& cell_id: cells) {
 		const auto
-			B0 = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field_Pos_X()][0],
+			B0 = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](0, 1)[0],
 			B1 = simulation_data.at(cell_id)[pamhd::Face_Magnetic_Field()][0];
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		gnuplot_file << x << " " << B0 + B1 << "\n";
@@ -567,7 +565,7 @@ int plot_1d(
 
 	for (const auto& cell_id: cells) {
 		const auto
-			B0 = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field_Pos_Y()][1],
+			B0 = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](1, 1)[1],
 			B1 = simulation_data.at(cell_id)[pamhd::Face_Magnetic_Field()][1];
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		gnuplot_file << x << " " << B0 + B1 << "\n";
@@ -576,7 +574,7 @@ int plot_1d(
 
 	for (const auto& cell_id: cells) {
 		const auto
-			B0 = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field_Pos_Z()][2],
+			B0 = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](2, 1)[2],
 			B1 = simulation_data.at(cell_id)[pamhd::Face_Magnetic_Field()][2];
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		gnuplot_file << x << " " << B0 + B1 << "\n";
@@ -627,23 +625,23 @@ int plot_1d(
 		     "'-' u 1:2 w l lw 2 t 'component 3'\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& B = simulation_data.at(cell_id)[pamhd::Edge_Electric_Field()];
+		const auto& E = simulation_data.at(cell_id)[pamhd::Edge_Electric_Field()];
 		const double x = geometry.get_center(cell_id)[tube_dim];
-		gnuplot_file << x << " " << B[0] << "\n";
+		gnuplot_file << x << " " << E(0,1,1) << "\n";
 	}
 	gnuplot_file << "end\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& B = simulation_data.at(cell_id)[pamhd::Edge_Electric_Field()];
+		const auto& E = simulation_data.at(cell_id)[pamhd::Edge_Electric_Field()];
 		const double x = geometry.get_center(cell_id)[tube_dim];
-		gnuplot_file << x << " " << B[1] << "\n";
+		gnuplot_file << x << " " << E(1,1,1) << "\n";
 	}
 	gnuplot_file << "end\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& B = simulation_data.at(cell_id)[pamhd::Edge_Electric_Field()];
+		const auto& E = simulation_data.at(cell_id)[pamhd::Edge_Electric_Field()];
 		const double x = geometry.get_center(cell_id)[tube_dim];
-		gnuplot_file << x << " " << B[2] << "\n";
+		gnuplot_file << x << " " << E(2,1,1) << "\n";
 	}
 	gnuplot_file << "end\nreset\n";
 
@@ -900,7 +898,7 @@ int plot_2d(
 			"Bx_tot",
 			"\n" + magnetic_field_cmd + " 1\"\n",
 			[](const pamhd::mhd::Cell_Staggered& cell_data){
-				return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()][0] + cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][0];
+				return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()][0] + cell_data[pamhd::Bg_Magnetic_Field()](0, 1)[0];
 			}
 		);
 
@@ -908,7 +906,7 @@ int plot_2d(
 			"By_tot",
 			"\n" + magnetic_field_cmd + " 2\"\n",
 			[](const pamhd::mhd::Cell_Staggered& cell_data){
-				return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()][1] + cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][1];
+				return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()][1] + cell_data[pamhd::Bg_Magnetic_Field()](0, 1)[1];
 			}
 		);
 
@@ -916,7 +914,7 @@ int plot_2d(
 			"Bz_tot",
 			"\n" + magnetic_field_cmd + " 3\"\n",
 			[](const pamhd::mhd::Cell_Staggered& cell_data){
-				return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()][2] + cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][2];
+				return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()][2] + cell_data[pamhd::Bg_Magnetic_Field()](0, 1)[2];
 			}
 		);
 	}
@@ -927,7 +925,7 @@ int plot_2d(
 			"Bx_bg",
 			"\n" + magnetic_field_cmd + " 1\"\n",
 			[](const pamhd::mhd::Cell_Staggered& cell_data){
-				return cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][0];
+				return cell_data[pamhd::Bg_Magnetic_Field()](0, 1)[0];
 			}
 		);
 
@@ -935,7 +933,7 @@ int plot_2d(
 			"By_bg",
 			"\n" + magnetic_field_cmd + " 2\"\n",
 			[](const pamhd::mhd::Cell_Staggered& cell_data){
-				return cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][1];
+				return cell_data[pamhd::Bg_Magnetic_Field()](0, 1)[1];
 			}
 		);
 
@@ -943,7 +941,7 @@ int plot_2d(
 			"Bz_bg",
 			"\n" + magnetic_field_cmd + " 3\"\n",
 			[](const pamhd::mhd::Cell_Staggered& cell_data){
-				return cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][2];
+				return cell_data[pamhd::Bg_Magnetic_Field()](0, 1)[2];
 			}
 		);
 	}
@@ -954,7 +952,7 @@ int plot_2d(
 			"Ex",
 			"\n" + electric_field_cmd + " 1\"\n",
 			[](const pamhd::mhd::Cell_Staggered& cell_data){
-				return cell_data[pamhd::Edge_Electric_Field()][0];
+				return cell_data[pamhd::Edge_Electric_Field()](0,1,1);
 			}
 		);
 
@@ -962,7 +960,7 @@ int plot_2d(
 			"Ey",
 			"\n" + electric_field_cmd + " 2\"\n",
 			[](const pamhd::mhd::Cell_Staggered& cell_data){
-				return cell_data[pamhd::Edge_Electric_Field()][1];
+				return cell_data[pamhd::Edge_Electric_Field()](1,1,1);
 			}
 		);
 
@@ -970,7 +968,7 @@ int plot_2d(
 			"Ez",
 			"\n" + electric_field_cmd + " 3\"\n",
 			[](const pamhd::mhd::Cell_Staggered& cell_data){
-				return cell_data[pamhd::Edge_Electric_Field()][2];
+				return cell_data[pamhd::Edge_Electric_Field()](2,1,1);
 			}
 		);
 	}
@@ -1074,7 +1072,7 @@ int plot_2d(
 			max_B = B;
 		}
 
-		const double B0 = simulation_data.at(cells[i])[pamhd::Bg_Magnetic_Field_Pos_X()].norm();
+		const double B0 = simulation_data.at(cells[i])[pamhd::Bg_Magnetic_Field()](0, 1).norm();
 		if (max_B0 < B0) {
 			max_B0 = B0;
 		}
@@ -1176,7 +1174,7 @@ int plot_2d(
 			continue;
 		}
 
-		const auto& B0 = simulation_data.at(cells[i])[pamhd::Bg_Magnetic_Field_Pos_X()];
+		const auto& B0 = simulation_data.at(cells[i])[pamhd::Bg_Magnetic_Field()](0, 1);
 		const auto cell_center = geometry.get_center(cells[i]);
 		gnuplot_file
 			<< cell_center[dimensions[0]] << " "

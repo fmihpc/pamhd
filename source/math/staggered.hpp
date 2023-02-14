@@ -136,6 +136,9 @@ template <
 	);
 	MPI_Comm_free(&comm);
 
+	if (global_calculated_cells == 0) {
+		return 0.0;
+	}
 	return global_divergence / global_calculated_cells;
 }
 
