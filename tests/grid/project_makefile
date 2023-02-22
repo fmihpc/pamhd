@@ -1,9 +1,11 @@
 TESTS_GRID_EXECUTABLES = \
   tests/grid/options_compile.exe \
-  tests/grid/options_parse.exe
+  tests/grid/options_parse.exe \
+  tests/grid/pface1.exe
 
 TESTS_GRID_TESTS = \
-  tests/grid/options_parse.tst
+  tests/grid/options_parse.tst \
+  tests/grid/pface1.tst
 
 tests/grid_executables: $(TESTS_GRID_EXECUTABLES)
 
@@ -20,24 +22,29 @@ CLEAN += tests/grid_clean
 
 
 TESTS_GRID_COMMON_DEPS = \
+  source/grid/amr.hpp \
   source/grid/options.hpp \
+  source/grid/variables.hpp \
+  tests/grid/common.hpp \
   tests/grid/project_makefile \
   $(ENVIRONMENT_MAKEFILE) \
   Makefile
 
 TESTS_GRID_COMPILE_COMMAND = \
-  @printf "CXX $<\n" && $(CXX) $< -o $@ \
+  @printf "MPICXX $<\n" && $(MPICXX) $< -o $@ \
   $(CPPFLAGS) \
   $(CXXFLAGS) \
   $(LDFLAGS) \
-  $(BOOST_CPPFLAGS) \
-  $(BOOST_LDFLAGS) \
-  $(BOOST_LIBS) \
+  $(DCCRG_CPPFLAGS) \
+  $(GENSIMCELL_CPPFLAGS) \
   $(MUPARSERX_CPPFLAGS) \
   $(MUPARSERX_LDFLAGS) \
   $(MUPARSERX_LIBS) \
   $(PRETTYPRINT_CPPFLAGS) \
-  $(RAPIDJSON_CPPFLAGS)
+  $(RAPIDJSON_CPPFLAGS) \
+  $(ZOLTAN_CPPFLAGS) \
+  $(ZOLTAN_LDFLAGS) \
+  $(ZOLTAN_LIBS)
 
 tests/grid/options_compile.exe: \
   tests/grid/options_compile.cpp \
@@ -46,5 +53,10 @@ tests/grid/options_compile.exe: \
 
 tests/grid/options_parse.exe: \
   tests/grid/options_parse.cpp \
+  $(TESTS_GRID_COMMON_DEPS)
+	$(TESTS_GRID_COMPILE_COMMAND)
+
+tests/grid/pface1.exe: \
+  tests/grid/pface1.cpp \
   $(TESTS_GRID_COMMON_DEPS)
 	$(TESTS_GRID_COMPILE_COMMAND)
