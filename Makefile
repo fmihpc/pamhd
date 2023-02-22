@@ -19,7 +19,7 @@ default: all
 
 include \
   tests/prettyprint/project_makefile \
-  tests/grid_options/project_makefile \
+  tests/grid/project_makefile \
   tests/muparserx/project_makefile \
   tests/mhd/project_makefile \
   tests/boundaries/project_makefile \
