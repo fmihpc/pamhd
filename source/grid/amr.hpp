@@ -82,25 +82,28 @@ template <
 	const Faces_Getter& Faces
 ) {
 	for (const auto& cell: cells) {
-		Faces(*cell.data) = {false, true, false, true, false, true};
+		Faces(*cell.data) = {true, true, true, true, true, true};
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto n = neighbor.face_neighbor;
 			if (n == 0) {
 				continue;
 			}
-			if (neighbor.relative_size > 0) {
-				if (n == +1) Faces(*cell.data)[1] = false;
-				if (n == +2) Faces(*cell.data)[3] = false;
-				if (n == +3) Faces(*cell.data)[5] = false;
-				// default values for n < 0
-			}
 			if (neighbor.relative_size < 0) {
-				if (n == -1) Faces(*cell.data)[0] = true;
-				if (n == -2) Faces(*cell.data)[2] = true;
-				if (n == -3) Faces(*cell.data)[4] = true;
-				// default values for n > 0
+				continue; // larger neighbor never has priority
 			}
-			// default values for relative_size == 0
+			if (neighbor.relative_size > 0) {
+				// smaller neighbor always has priority
+				if (n == -1) Faces(*cell.data)[0] = false;
+				if (n == +1) Faces(*cell.data)[1] = false;
+				if (n == -2) Faces(*cell.data)[2] = false;
+				if (n == +2) Faces(*cell.data)[3] = false;
+				if (n == -3) Faces(*cell.data)[4] = false;
+				if (n == +3) Faces(*cell.data)[5] = false;
+				continue;
+			}
+			if (n == -1) Faces(*cell.data)[0] = false;
+			if (n == -2) Faces(*cell.data)[2] = false;
+			if (n == -3) Faces(*cell.data)[4] = false;
 		}
 	}
 }
