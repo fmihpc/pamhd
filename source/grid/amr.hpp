@@ -34,6 +34,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define PAMHD_GRID_AMR_HPP
 
 
+#include "initializer_list"
+#include "stdexcept"
 #include "string"
 #include "type_traits"
 
@@ -158,15 +160,36 @@ template<class Data_Type> struct Edge_Type {
 		return const_cast<Data_Type&>(static_cast<const Edge_Type<Data_Type>&>(*this).operator()(par_dim_i, first_perp_dim_i, second_perp_dim_i));
 	}
 
-	Edge_Type<Data_Type>& operator=(const decltype(edge)& given) {
-		this->edge = given;
+	Edge_Type<Data_Type>& operator=(const Edge_Type<Data_Type>& other) {
+		if (this == &other) {
+			return *this;
+		}
+		this->edge = other.edge;
 		return *this;
+	}
+
+	decltype(edge)& operator=(const decltype(edge)& other) {
+		this->edge = other;
+		return this->edge;
+	}
+
+	decltype(edge)& operator=(const std::initializer_list<Data_Type>& other) {
+		if (other.size() != this->edge.size()) {
+			throw std::runtime_error(__FILE__"(" + std::to_string(__LINE__) + ")");
+		}
+		size_t i = 0;
+		for (const auto& o: other) {
+			this->edge[i++] = o;
+		}
+		return this->edge;
 	}
 
 	#ifdef MPI_VERSION
 	std::tuple<void*, int, MPI_Datatype> get_mpi_datatype() const {
 		if constexpr (std::is_same_v<Data_Type, double>) {
 			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_DOUBLE);
+		} else if constexpr (std::is_same_v<Data_Type, bool>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_CXX_BOOL);
 		} else {
 			return std::make_tuple(nullptr, 0, MPI_BYTE);
 		}
@@ -215,10 +238,10 @@ std::array<int, 3> edge_neighbor(
 
 	std::array<int, 3> ret_val{-1, -1, -1};
 	// get dimension of return value
-	if (neigh_offset_x < cell_len or neigh_offset_x > -neigh_len) {
+	if (neigh_offset_x < cell_len and neigh_offset_x > -neigh_len) {
 		ret_val[0] = 0;
 	}
-	if (neigh_offset_y < cell_len or neigh_offset_y > -neigh_len) {
+	if (neigh_offset_y < cell_len and neigh_offset_y > -neigh_len) {
 		if (ret_val[0] > -1) {
 			// face neighbor
 			ret_val[0] = -1;
@@ -227,7 +250,7 @@ std::array<int, 3> edge_neighbor(
 			ret_val[0] = 1;
 		}
 	}
-	if (neigh_offset_z < cell_len or neigh_offset_z > -neigh_len) {
+	if (neigh_offset_z < cell_len and neigh_offset_z > -neigh_len) {
 		if (ret_val[0] > -1) {
 			// face neighbor
 			ret_val[0] = -1;
@@ -282,6 +305,11 @@ template <
 	const Grid& grid,
 	const Edges_Getter& Edges
 ) {
+	if (grid.get_neighborhood_length() == 0) {
+		throw std::domain_error(
+			__FILE__ "(" + std::to_string(__LINE__)
+			+ "): Neighborhood length must be at least 1");
+	}
 	for (const auto& cell: cells) {
 		const auto clen = grid.mapping.get_cell_length_in_indices(cell.id);
 
@@ -297,24 +325,56 @@ template <
 				neighbor.x,
 				neighbor.y,
 				neighbor.z);
+
 			if (neighbor.face_neighbor != 0 and en[0] >= 0) {
 				throw std::runtime_error(__FILE__"(" + std::to_string(__LINE__) + ")");
 			}
-			if (en[0] < 0) {
-				continue;
-			}
+
 			if (neighbor.relative_size < 0) {
 				continue; // larger neighbor never has priority
 			}
-			if (neighbor.relative_size > 0) {
-				// smaller neighbor always has priority
-				Edges(*cell.data)(en[0], en[1], en[2]) = false;
+
+			if (neighbor.face_neighbor == 0 and en[0] < 0) {
 				continue;
 			}
-			if (en[1] != 1 and en[2] != 1) {
-				// identical neighbor usually has priority
-				Edges(*cell.data)(en[0], en[1], en[2]) = false;
-				continue;
+
+			if (neighbor.face_neighbor == -1) {
+				// this or another neighbor has priority
+				Edges(*cell.data)(1, 0, 0) =
+				Edges(*cell.data)(1, 0, 1) =
+				Edges(*cell.data)(2, 0, 0) =
+				Edges(*cell.data)(2, 0, 1) = false;
+			}
+			if (neighbor.face_neighbor == +1 and neighbor.relative_size > 0) {
+				// only smaller neighbors have priority
+				Edges(*cell.data)(1, 1, 0) =
+				Edges(*cell.data)(1, 1, 1) =
+				Edges(*cell.data)(2, 1, 0) =
+				Edges(*cell.data)(2, 1, 1) = false;
+			}
+			if (neighbor.face_neighbor == -2) {
+				Edges(*cell.data)(0, 0, 0) =
+				Edges(*cell.data)(0, 0, 1) =
+				Edges(*cell.data)(2, 0, 0) =
+				Edges(*cell.data)(2, 1, 0) = false;
+			}
+			if (neighbor.face_neighbor == +2 and neighbor.relative_size > 0) {
+				Edges(*cell.data)(0, 1, 0) =
+				Edges(*cell.data)(0, 1, 1) =
+				Edges(*cell.data)(2, 0, 1) =
+				Edges(*cell.data)(2, 1, 1) = false;
+			}
+			if (neighbor.face_neighbor == -3) {
+				Edges(*cell.data)(0, 0, 0) =
+				Edges(*cell.data)(0, 1, 0) =
+				Edges(*cell.data)(1, 0, 0) =
+				Edges(*cell.data)(1, 1, 0) = false;
+			}
+			if (neighbor.face_neighbor == +3 and neighbor.relative_size > 0) {
+				Edges(*cell.data)(0, 0, 1) =
+				Edges(*cell.data)(0, 1, 1) =
+				Edges(*cell.data)(1, 0, 1) =
+				Edges(*cell.data)(1, 1, 1) = false;
 			}
 		}
 	}

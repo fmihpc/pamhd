@@ -42,7 +42,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using Cell = gensimcell::Cell<
 	gensimcell::Always_Transfer,
-	pamhd::grid::Is_Primary_Face
+	pamhd::grid::Is_Primary_Face,
+	pamhd::grid::Is_Primary_Edge
 >;
 
 using Grid = dccrg::Dccrg<

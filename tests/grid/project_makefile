@@ -3,13 +3,15 @@ TESTS_GRID_EXECUTABLES = \
   tests/grid/options_parse.exe \
   tests/grid/pface1.exe \
   tests/grid/pface2.exe \
-  tests/grid/pface3.exe
+  tests/grid/pface3.exe \
+  tests/grid/pedge1.exe
 
 TESTS_GRID_TESTS = \
   tests/grid/options_parse.tst \
   tests/grid/pface1.tst \
   tests/grid/pface2.tst \
-  tests/grid/pface3.tst
+  tests/grid/pface3.tst \
+  tests/grid/pedge1.tst
 
 tests/grid_executables: $(TESTS_GRID_EXECUTABLES)
 
@@ -72,5 +74,10 @@ tests/grid/pface2.exe: \
 
 tests/grid/pface3.exe: \
   tests/grid/pface3.cpp \
+  $(TESTS_GRID_COMMON_DEPS)
+	$(TESTS_GRID_COMPILE_COMMAND)
+
+tests/grid/pedge1.exe: \
+  tests/grid/pedge1.cpp \
   $(TESTS_GRID_COMMON_DEPS)
 	$(TESTS_GRID_COMPILE_COMMAND)

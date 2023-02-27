@@ -109,7 +109,7 @@ struct Bg_Magnetic_Field {
 		std::tuple<void*, int, MPI_Datatype> get_mpi_datatype() const {
 			return std::make_tuple(
 				(void*) this->bg_b.data(),
-				this->bg_b.size(),
+				3*this->bg_b.size(),
 				MPI_DOUBLE
 			);
 		}
@@ -144,62 +144,7 @@ struct Face_Magnetic_Field_Neg {
 
 //! Electric field along each cell edge
 struct Edge_Electric_Field {
-	struct Edge_E_type {
-		std::array<double, 12> edge_e;
-
-		/*
-		par_dim_i = dimension to which electric field is parallel to,
-		0 = x, 1 = y, 2 = z.
-		first_perp_dim_i = negative or positive side of cell in
-		lexically earlier dimension perpendicular to electric field,
-		e.g. if par_dim_i = 0, first_perp_dim_i = 1 means positive side of
-		cell in y dimension.
-		second_perp_dim = neg or pos side in lexically later dimension,
-		if par_dim_i = 2, second_perp_dim_i = 0 means negative side of
-		cell in y dimension.
-		par_dim_i | first_perp_dim_i | second..._i | E on edge of cell
-		    0     |         0        |      0      | x directed: -y, -z
-		    0     |         1        |      1      | x dir:      +y, +z
-		...
-		    2     |         1        |      1      | z dir:      +x, +y
-		*/
-		const double& operator()(
-			const size_t par_dim_i,
-			const size_t first_perp_dim_i,
-			const size_t second_perp_dim_i
-		) const {
-			if (par_dim_i > 2) {
-				throw std::domain_error("Parallel dimension > 2");
-			}
-			if (first_perp_dim_i > 1) {
-				throw std::domain_error("First perpendicular dimension > 1");
-			}
-			if (second_perp_dim_i > 1) {
-				throw std::domain_error("Second perpendicular dimension > 1");
-			}
-			return this->edge_e[par_dim_i*2*2 + first_perp_dim_i*2 + second_perp_dim_i];
-		}
-
-		// https://stackoverflow.com/a/123995
-		double& operator()(
-			const size_t par_dim_i,
-			const size_t first_perp_dim_i,
-			const size_t second_perp_dim_i
-		) {
-			return const_cast<double&>(static_cast<const Edge_E_type&>(*this).operator()(par_dim_i, first_perp_dim_i, second_perp_dim_i));
-		}
-
-		#ifdef MPI_VERSION
-		std::tuple<void*, int, MPI_Datatype> get_mpi_datatype() const {
-			return std::make_tuple(
-				(void*) this->edge_e.data(),
-				this->edge_e.size(),
-				MPI_DOUBLE
-			);
-		}
-		#endif
-	};
-	using data_type = Edge_E_type;
+	using data_type = pamhd::grid::Edge_Type<double>;
 	static const std::string get_name() { return {"electric field on edges"}; }
 	static const std::string get_option_name() { return {"edge-e"}; }
 	static const std::string get_option_help() { return {"electric field on cell edges parallel to cell edges"}; }
