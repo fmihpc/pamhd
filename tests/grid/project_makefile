@@ -11,11 +11,17 @@ TESTS_GRID_EXECUTABLES = \
 TESTS_GRID_TESTS = \
   tests/grid/options_parse.tst \
   tests/grid/pface1.tst \
+  tests/grid/pface1.mtst \
   tests/grid/pface2.tst \
+  tests/grid/pface2.mtst \
   tests/grid/pface3.tst \
+  tests/grid/pface3.mtst \
   tests/grid/pedge1.tst \
+  tests/grid/pedge1.mtst \
   tests/grid/pedge2.tst \
-  tests/grid/pedge3.tst
+  tests/grid/pedge2.mtst \
+  tests/grid/pedge3.tst \
+  tests/grid/pedge3.mtst
 
 tests/grid_executables: $(TESTS_GRID_EXECUTABLES)
 
