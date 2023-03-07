@@ -379,7 +379,7 @@ template<class Variable> void fill_variable_value_from_json(
 	const rapidjson::Value& object,
 	int& value_type,
 	typename Variable::data_type& number_value,
-	math::Math_Expression<Variable>& math_expression,
+	math::Expression<Variable>& math_expression,
 	std::array<std::vector<double>, 3>& coordinates,
 	int& coordinate_type,
 	std::vector<typename Variable::data_type>& data
@@ -423,7 +423,7 @@ template<class Variable> void fill_variable_value_from_json(
 	const rapidjson::Value& object,
 	int& value_type,
 	std::vector<typename Variable::data_type>& number_values,
-	std::vector<math::Math_Expression<Variable>>& math_expressions,
+	std::vector<math::Expression<Variable>>& math_expressions,
 	std::array<std::vector<double>, 3>& coordinates,
 	int& coordinate_type,
 	std::vector<typename Variable::data_type>& data

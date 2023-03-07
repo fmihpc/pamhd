@@ -205,7 +205,7 @@ private:
 	corresponding names in initial_condition.hpp for more info
 	*/
 	typename Variable::data_type default_number_value;
-	math::Math_Expression<Variable> default_math_expression;
+	math::Expression<Variable> default_math_expression;
 	std::array<std::vector<double>, 3> default_coordinates;
 	int default_coordinate_type = -1;
 	std::vector<typename Variable::data_type> default_data;

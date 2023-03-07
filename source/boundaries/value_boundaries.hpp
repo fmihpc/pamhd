@@ -46,7 +46,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "boundaries/geometries.hpp"
 #include "boundaries/value_boundary.hpp"
-#include "math/expression.hpp"
 
 
 namespace pamhd {

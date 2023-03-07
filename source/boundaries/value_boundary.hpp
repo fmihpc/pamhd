@@ -321,7 +321,7 @@ private:
 	std::vector<typename Variable::data_type> number_values;
 
 	// value boundary if array of strings was given in json file
-	std::vector<math::Math_Expression<Variable>> math_expressions;
+	std::vector<math::Expression<Variable>> math_expressions;
 
 	// value boundary if object was given in json file
 	std::array<std::vector<double>, 3> coordinates; // e.g. x,y,z coordinates of points
