@@ -45,7 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mpParser.h"
 
 #include "boundaries/common.hpp"
-#include "boundaries/math_expression.hpp"
+#include "math/expression.hpp"
 
 
 namespace pamhd {
@@ -321,7 +321,7 @@ private:
 	std::vector<typename Variable::data_type> number_values;
 
 	// value boundary if array of strings was given in json file
-	std::vector<Math_Expression<Variable>> math_expressions;
+	std::vector<math::Math_Expression<Variable>> math_expressions;
 
 	// value boundary if object was given in json file
 	std::array<std::vector<double>, 3> coordinates; // e.g. x,y,z coordinates of points

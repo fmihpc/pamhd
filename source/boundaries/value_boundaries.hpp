@@ -45,8 +45,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mpParser.h"
 
 #include "boundaries/geometries.hpp"
-#include "boundaries/math_expression.hpp"
 #include "boundaries/value_boundary.hpp"
+#include "math/expression.hpp"
 
 
 namespace pamhd {

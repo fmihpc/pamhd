@@ -40,7 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rapidjson/document.h"
 
-#include "boundaries/math_expression.hpp"
+#include "math/expression.hpp"
 
 
 namespace pamhd {
@@ -379,7 +379,7 @@ template<class Variable> void fill_variable_value_from_json(
 	const rapidjson::Value& object,
 	int& value_type,
 	typename Variable::data_type& number_value,
-	Math_Expression<Variable>& math_expression,
+	math::Math_Expression<Variable>& math_expression,
 	std::array<std::vector<double>, 3>& coordinates,
 	int& coordinate_type,
 	std::vector<typename Variable::data_type>& data
@@ -423,7 +423,7 @@ template<class Variable> void fill_variable_value_from_json(
 	const rapidjson::Value& object,
 	int& value_type,
 	std::vector<typename Variable::data_type>& number_values,
-	std::vector<Math_Expression<Variable>>& math_expressions,
+	std::vector<math::Math_Expression<Variable>>& math_expressions,
 	std::array<std::vector<double>, 3>& coordinates,
 	int& coordinate_type,
 	std::vector<typename Variable::data_type>& data

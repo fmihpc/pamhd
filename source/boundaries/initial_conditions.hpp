@@ -45,7 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mpParser.h"
 
 #include "boundaries/initial_condition.hpp"
-#include "boundaries/math_expression.hpp"
+#include "math/expression.hpp"
 
 
 namespace pamhd {
@@ -205,7 +205,7 @@ private:
 	corresponding names in initial_condition.hpp for more info
 	*/
 	typename Variable::data_type default_number_value;
-	Math_Expression<Variable> default_math_expression;
+	math::Math_Expression<Variable> default_math_expression;
 	std::array<std::vector<double>, 3> default_coordinates;
 	int default_coordinate_type = -1;
 	std::vector<typename Variable::data_type> default_data;

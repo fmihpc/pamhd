@@ -127,20 +127,20 @@ tests/boundaries/geometries.exe: \
 
 tests/boundaries/initial_condition_scalar.exe: \
   tests/boundaries/initial_condition_scalar.cpp \
-  source/boundaries/math_expression.hpp \
+  source/math/expression.hpp \
   source/boundaries/initial_condition.hpp \
   $(TESTS_BOUNDARIES_COMMON_DEPS)
 	$(TESTS_BOUNDARIES_COMPILE) $(MUPARSERX_CPPFLAGS) $(MUPARSERX_LDFLAGS) $(MUPARSERX_LIBS) $(RAPIDJSON_CPPFLAGS)
 
 tests/boundaries/initial_condition_vector.exe: \
   tests/boundaries/initial_condition_vector.cpp \
-  source/boundaries/math_expression.hpp \
+  source/math/expression.hpp \
   source/boundaries/initial_condition.hpp \
   $(TESTS_BOUNDARIES_COMMON_DEPS)
 	$(TESTS_BOUNDARIES_COMPILE) $(MUPARSERX_CPPFLAGS) $(MUPARSERX_LDFLAGS) $(MUPARSERX_LIBS) $(RAPIDJSON_CPPFLAGS)
 tests/boundaries/initial_condition_vector_eigen.exe: \
   tests/boundaries/initial_condition_vector.cpp \
-  source/boundaries/math_expression.hpp \
+  source/math/expression.hpp \
   source/boundaries/initial_condition.hpp \
   $(TESTS_BOUNDARIES_COMMON_DEPS)
 	$(TESTS_BOUNDARIES_COMPILE) $(EIGEN_CPPFLAGS) -DUSE_EIGEN $(MUPARSERX_CPPFLAGS) $(MUPARSERX_LDFLAGS) $(MUPARSERX_LIBS) $(RAPIDJSON_CPPFLAGS)
@@ -148,7 +148,7 @@ tests/boundaries/initial_condition_vector_eigen.exe: \
 
 tests/boundaries/initial_conditions_scalar.exe: \
   tests/boundaries/initial_conditions_scalar.cpp \
-  source/boundaries/math_expression.hpp \
+  source/math/expression.hpp \
   source/boundaries/initial_condition.hpp \
   source/boundaries/initial_conditions.hpp \
   $(TESTS_BOUNDARIES_COMMON_DEPS)
@@ -156,7 +156,7 @@ tests/boundaries/initial_conditions_scalar.exe: \
 
 tests/boundaries/initial_conditions_vector.exe: \
   tests/boundaries/initial_conditions_vector.cpp \
-  source/boundaries/math_expression.hpp \
+  source/math/expression.hpp \
   source/boundaries/initial_condition.hpp \
   source/boundaries/initial_conditions.hpp \
   $(TESTS_BOUNDARIES_COMMON_DEPS)
@@ -165,7 +165,7 @@ tests/boundaries/initial_conditions_vector.exe: \
 
 tests/boundaries/multivar_init_cond.exe: \
   tests/boundaries/multivar_init_cond.cpp \
-  source/boundaries/math_expression.hpp \
+  source/math/expression.hpp \
   source/boundaries/initial_condition.hpp \
   source/boundaries/initial_conditions.hpp \
   source/boundaries/multivariable_initial_conditions.hpp \
@@ -175,14 +175,14 @@ tests/boundaries/multivar_init_cond.exe: \
 
 tests/boundaries/value_boundary_scalar.exe: \
   tests/boundaries/value_boundary_scalar.cpp \
-  source/boundaries/math_expression.hpp \
+  source/math/expression.hpp \
   source/boundaries/value_boundary.hpp \
   $(TESTS_BOUNDARIES_COMMON_DEPS)
 	$(TESTS_BOUNDARIES_COMPILE) $(MUPARSERX_CPPFLAGS) $(MUPARSERX_LDFLAGS) $(MUPARSERX_LIBS) $(RAPIDJSON_CPPFLAGS)
 
 tests/boundaries/value_boundary_vector.exe: \
   tests/boundaries/value_boundary_vector.cpp \
-  source/boundaries/math_expression.hpp \
+  source/math/expression.hpp \
   source/boundaries/value_boundary.hpp \
   $(TESTS_BOUNDARIES_COMMON_DEPS)
 	$(TESTS_BOUNDARIES_COMPILE) $(MUPARSERX_CPPFLAGS) $(MUPARSERX_LDFLAGS) $(MUPARSERX_LIBS) $(RAPIDJSON_CPPFLAGS)
@@ -190,7 +190,7 @@ tests/boundaries/value_boundary_vector.exe: \
 
 tests/boundaries/value_boundaries_scalar.exe: \
   tests/boundaries/value_boundaries_scalar.cpp \
-  source/boundaries/math_expression.hpp \
+  source/math/expression.hpp \
   source/boundaries/value_boundary.hpp \
   source/boundaries/value_boundaries.hpp \
   $(TESTS_BOUNDARIES_COMMON_DEPS)
@@ -198,7 +198,7 @@ tests/boundaries/value_boundaries_scalar.exe: \
 
 tests/boundaries/value_boundaries_vector.exe: \
   tests/boundaries/value_boundaries_vector.cpp \
-  source/boundaries/math_expression.hpp \
+  source/math/expression.hpp \
   source/boundaries/value_boundary.hpp \
   source/boundaries/value_boundaries.hpp \
   $(TESTS_BOUNDARIES_COMMON_DEPS)
@@ -207,7 +207,7 @@ tests/boundaries/value_boundaries_vector.exe: \
 
 tests/boundaries/multivar_val_bdy.exe: \
   tests/boundaries/multivar_val_bdy.cpp \
-  source/boundaries/math_expression.hpp \
+  source/math/expression.hpp \
   source/boundaries/value_boundary.hpp \
   source/boundaries/value_boundaries.hpp \
   source/boundaries/multivariable_value_boundaries.hpp \
@@ -238,7 +238,7 @@ tests/boundaries/game_of_life/init_3d_grid.exe: \
 
 tests/boundaries/game_of_life/init_expression.exe: \
   tests/boundaries/game_of_life/init_expression.cpp \
-  source/boundaries/math_expression.hpp \
+  source/math/expression.hpp \
   source/boundaries/initial_condition.hpp \
   source/boundaries/initial_conditions.hpp \
   $(TESTS_BOUNDARIES_COMMON_DEPS)
@@ -269,7 +269,7 @@ tests/boundaries/game_of_life/multivar_cpy_bdy.exe: \
 
 tests/boundaries/boundaries.exe: \
   tests/boundaries/boundaries.cpp \
-  source/boundaries/math_expression.hpp \
+  source/math/expression.hpp \
   source/boundaries/geometries.hpp \
   source/boundaries/value_boundary.hpp \
   source/boundaries/value_boundaries.hpp \
@@ -280,7 +280,7 @@ tests/boundaries/boundaries.exe: \
 
 tests/boundaries/multivariable_boundaries.exe: \
   tests/boundaries/multivariable_boundaries.cpp \
-  source/boundaries/math_expression.hpp \
+  source/math/expression.hpp \
   source/boundaries/geometries.hpp \
   source/boundaries/value_boundary.hpp \
   source/boundaries/value_boundaries.hpp \
