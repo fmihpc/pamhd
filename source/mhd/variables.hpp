@@ -357,6 +357,7 @@ using Cell_Staggered = gensimcell::Cell<
 	pamhd::Face_Magnetic_Field_Neg,
 	pamhd::Edge_Electric_Field,
 	pamhd::grid::Is_Primary_Face,
+	pamhd::grid::Is_Primary_Edge,
 	pamhd::grid::Target_Refinement_Level
 >;
 
