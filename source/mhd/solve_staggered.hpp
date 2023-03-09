@@ -78,7 +78,7 @@ template <
 	class Momentum_Density_Flux_Getters,
 	class Total_Energy_Density_Flux_Getters,
 	class Magnetic_Field_Flux_Getters,
-	class Is_Primary_Face_Getter,
+	class Primary_Face_Getter,
 	class Solver_Info_Getter
 > double solve_staggered(
 	const Solver solver,
@@ -95,7 +95,7 @@ template <
 	const Momentum_Density_Flux_Getters Mom_f,
 	const Total_Energy_Density_Flux_Getters Nrj_f,
 	const Magnetic_Field_Flux_Getters Mag_f,
-	const Is_Primary_Face_Getter PFace,
+	const Primary_Face_Getter PFace,
 	const Solver_Info_Getter Sol_Info
 ) {
 	using std::abs;
@@ -143,6 +143,8 @@ template <
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto n = neighbor.face_neighbor;
 			if (n == 0) continue;
+			// in these cases flux stored in neighbor
+			// and calculated by its owner
 			if (n == -1 and not primary[0]) continue;
 			if (n == +1 and not primary[1]) continue;
 			if (n == -2 and not primary[2]) continue;
@@ -324,7 +326,8 @@ template <
 	class Momentum_Density_Flux_Getters,
 	class Total_Energy_Density_Flux_Getters,
 	class Magnetic_Field_Flux_Getters,
-	class Is_Primary_Face_Getter,
+	class Primary_Face_Getter,
+	class Primary_Edge_Getter,
 	class Solver_Info_Getter
 > void apply_fluxes_staggered(
 	Grid& grid,
@@ -338,7 +341,8 @@ template <
 	const Momentum_Density_Flux_Getters Mom_f,
 	const Total_Energy_Density_Flux_Getters Nrj_f,
 	const Magnetic_Field_Flux_Getters Mag_f,
-	const Is_Primary_Face_Getter PFace,
+	const Primary_Face_Getter PFace,
+	const Primary_Edge_Getter PEdge,
 	const Solver_Info_Getter Sol_Info
 ) {
 	using std::get;
@@ -372,32 +376,74 @@ template <
 			update_nrj = ((Sol_Info(*cell.data) & Solver_Info::pressure_bdy) == 0),
 			update_mag = ((Sol_Info(*cell.data) & Solver_Info::magnetic_field_bdy) == 0);
 
-		const auto primary = PFace(*cell.data);
+		const auto pface = PFace(*cell.data);
+		const auto pedge = PEdge(*cell.data);
 		auto& edge_e = Edge_E(*cell.data);
-		edge_e = {0.0, 0.0, 0.0};
-		int e0_items = 0, e1_items = 0, e2_items = 0;
-		if (primary[1]) {
-			edge_e(1,1,1) += Mag_fpx(*cell.data)[2];
-			e1_items++;
-			edge_e(2,1,1) -= Mag_fpx(*cell.data)[1];
-			e2_items++;
-		}
-		if (primary[3]) {
-			edge_e(0,1,1) -= Mag_fpy(*cell.data)[2];
-			e0_items++;
-			edge_e(2,1,1) += Mag_fpy(*cell.data)[0];
-			e2_items++;
-		}
-		if (primary[5]) {
-			edge_e(0,1,1) += Mag_fpz(*cell.data)[1];
-			e0_items++;
-			edge_e(1,1,1) -= Mag_fpz(*cell.data)[0];
-			e1_items++;
+		std::array<std::array<std::array<double, 2>, 2>, 3> e_items;
+		for (size_t d: {0, 1, 2}) // parallel dim of edge
+		for (size_t a: {0, 1}) // side in 1st perpendicular dim of edge
+		for (size_t b: {0, 1}) { // side of cell in 2nd perp dim
+			edge_e(d,a,b) = 0.0;
+			e_items[d][a][b] = 0;
+			if (not pedge(d,a,b)) {
+				if (a == 1 and b == 1) throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+				continue;
+			}
+			if (a != 1 or b != 1) throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+			if (d == 0) {
+				if (a == 1) {
+					if (b == 1) {
+						if (pface[3]) {
+							edge_e(d,a,b) -= get<3>(Mag_f)(*cell.data)[2]; e_items[d][a][b]++;
+						} else {
+							throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+						}
+						if (pface[5]) {
+							edge_e(d,a,b) += get<5>(Mag_f)(*cell.data)[1]; e_items[d][a][b]++;
+						} else {
+							throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+						}
+					}
+				}
+			}
+			if (d == 1) {
+				if (a == 1) {
+					if (b == 1) {
+						if (pface[1]) {
+							edge_e(d,a,b) += get<1>(Mag_f)(*cell.data)[2]; e_items[d][a][b]++;
+						} else {
+							throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+						}
+						if (pface[5]) {
+							edge_e(d,a,b) -= get<5>(Mag_f)(*cell.data)[0]; e_items[d][a][b]++;
+						} else {
+							throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+						}
+					}
+				}
+			}
+			if (d == 2) {
+				if (a == 1) {
+					if (b == 1) {
+						if (pface[1]) {
+							edge_e(d,a,b) -= get<1>(Mag_f)(*cell.data)[1]; e_items[d][a][b]++;
+						} else {
+							throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+						}
+						if (pface[3]) {
+							edge_e(d,a,b) += get<3>(Mag_f)(*cell.data)[0]; e_items[d][a][b]++;
+						} else {
+							throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+						}
+					}
+				}
+			}
 		}
 
 		for (const auto& neighbor: cell.neighbors_of) {
-			const auto n = neighbor.face_neighbor;
-			if (n == 0) {
+			const auto& fn = neighbor.face_neighbor;
+			const auto& en = neighbor.edge_neighbor;
+			if (fn == 0 and en[0] < 0) {
 				continue;
 			}
 
@@ -413,8 +459,8 @@ template <
 				}
 			}();
 
-			if (n == -1) {
-				if (primary[0]) {
+			if (fn == -1) {
+				if (pface[0]) {
 					if (update_mas) Mas(*cell.data) += Mas_fnx(*cell.data)*dtdx;
 					if (update_mom) Mom(*cell.data) += Mom_fnx(*cell.data)*dtdx;
 					if (update_nrj) Nrj(*cell.data) += Nrj_fnx(*cell.data)*dtdx;
@@ -427,8 +473,8 @@ template <
 				}
 			}
 
-			if (n == 1) {
-				if (primary[1]) {
+			if (fn == 1) {
+				if (pface[1]) {
 					if (update_mas) Mas(*cell.data) -= Mas_fpx(*cell.data)*dtdx;
 					if (update_mom) Mom(*cell.data) -= Mom_fpx(*cell.data)*dtdx;
 					if (update_nrj) Nrj(*cell.data) -= Nrj_fpx(*cell.data)*dtdx;
@@ -441,8 +487,8 @@ template <
 				}
 			}
 
-			if (n == -2) {
-				if (primary[2]) {
+			if (fn == -2) {
+				if (pface[2]) {
 					if (update_mas) Mas(*cell.data) += Mas_fny(*cell.data)*dtdy;
 					if (update_mom) Mom(*cell.data) += Mom_fny(*cell.data)*dtdy;
 					if (update_nrj) Nrj(*cell.data) += Nrj_fny(*cell.data)*dtdy;
@@ -455,8 +501,8 @@ template <
 				}
 			}
 
-			if (n == 2) {
-				if (primary[3]) {
+			if (fn == 2) {
+				if (pface[3]) {
 					if (update_mas) Mas(*cell.data) -= Mas_fpy(*cell.data)*dtdy;
 					if (update_mom) Mom(*cell.data) -= Mom_fpy(*cell.data)*dtdy;
 					if (update_nrj) Nrj(*cell.data) -= Nrj_fpy(*cell.data)*dtdy;
@@ -469,8 +515,8 @@ template <
 				}
 			}
 
-			if (n == -3) {
-				if (primary[4]) {
+			if (fn == -3) {
+				if (pface[4]) {
 					if (update_mas) Mas(*cell.data) += Mas_fnz(*cell.data)*dtdz;
 					if (update_mom) Mom(*cell.data) += Mom_fnz(*cell.data)*dtdz;
 					if (update_nrj) Nrj(*cell.data) += Nrj_fnz(*cell.data)*dtdz;
@@ -483,8 +529,8 @@ template <
 				}
 			}
 
-			if (n == 3) {
-				if (primary[5]) {
+			if (fn == 3) {
+				if (pface[5]) {
 					if (update_mas) Mas(*cell.data) -= Mas_fpz(*cell.data)*dtdz;
 					if (update_mom) Mom(*cell.data) -= Mom_fpz(*cell.data)*dtdz;
 					if (update_nrj) Nrj(*cell.data) -= Nrj_fpz(*cell.data)*dtdz;
@@ -497,28 +543,32 @@ template <
 				}
 			}
 
-			if (n == 1) {
-				edge_e(1,1,1) -= Mag_fpz(*neighbor.data)[0];
-				e1_items++;
-				edge_e(2,1,1) += Mag_fpy(*neighbor.data)[0];
-				e2_items++;
+			const auto npface = PFace(*neighbor.data);
+			//const auto npedge = PEdge(*neighbor.data);
+
+			if (fn == 1) {
+				if (npface[5]) {
+					edge_e(1,1,1) -= get<5>(Mag_f)(*neighbor.data)[0]; e_items[1][1][1]++;}
+				if (npface[3]) {
+					edge_e(2,1,1) += get<3>(Mag_f)(*neighbor.data)[0]; e_items[2][1][1]++;}
 			}
-			if (n == 2) {
-				edge_e(0,1,1) += Mag_fpz(*neighbor.data)[1];
-				e0_items++;
-				edge_e(2,1,1) -= Mag_fpx(*neighbor.data)[1];
-				e2_items++;
+			if (fn == 2) {
+				if (npface[5]) {
+					edge_e(0,1,1) += get<5>(Mag_f)(*neighbor.data)[1]; e_items[0][1][1]++;}
+				if (npface[1]) {
+					edge_e(2,1,1) -= get<1>(Mag_f)(*neighbor.data)[1]; e_items[2][1][1]++;}
 			}
-			if (n == 3) {
-				edge_e(0,1,1) -= Mag_fpy(*neighbor.data)[2];
-				e0_items++;
-				edge_e(1,1,1) += Mag_fpx(*neighbor.data)[2];
-				e1_items++;
+			if (fn == 3) {
+				if (npface[3]) {
+					edge_e(0,1,1) -= get<3>(Mag_f)(*neighbor.data)[2]; e_items[0][1][1]++;}
+				if (npface[1]) {
+					edge_e(1,1,1) += get<1>(Mag_f)(*neighbor.data)[2]; e_items[1][1][1]++;}
 			}
 		}
-		edge_e(0,1,1) /= e0_items;
-		edge_e(1,1,1) /= e1_items;
-		edge_e(2,1,1) /= e2_items;
+		for (size_t d: {0, 1, 2})
+		for (size_t a: {0, 1})
+		for (size_t b: {0, 1})
+			if (e_items[d][a][b] != 0) edge_e(d,a,b) /= e_items[d][a][b];
 
 		if (Mas(*cell.data) < 0) {
 			std::cerr <<  __FILE__ << "(" << __LINE__ << ") "
@@ -533,13 +583,8 @@ template <
 				<< " at " << rx << ", " << ry << ", " << rz << std::endl;
 			abort();
 		}
-
-
-		/*std::cout << "mas: " << Mas(*cell.data) << "\n";
-		std::cout << "mom: " << Mom(*cell.data) << "\n";
-		std::cout << "nrj: " << Nrj(*cell.data) << "\n";
-		std::cout << "mag: " << Mag(*cell.data) << "\n";*/
 	}
+
 	for (const auto& cell: grid.local_cells()) {
 		Mas_fnx(*cell.data) =
 		Mas_fny(*cell.data) =
@@ -581,6 +626,8 @@ template <
 	class Face_Magnetic_Field_Pos_Getter,
 	class Face_Magnetic_Field_Neg_Getter,
 	class Edge_Electric_Field_Getter,
+	class Primary_Face_Getter,
+	class Primary_Edge_Getter,
 	class Solver_Info_Getter
 > void solve_B(
 	const Cells& cells,
@@ -589,6 +636,8 @@ template <
 	const Face_Magnetic_Field_Pos_Getter Face_B_pos,
 	const Face_Magnetic_Field_Neg_Getter /*Face_B_neg*/,
 	const Edge_Electric_Field_Getter Edge_E,
+	const Primary_Face_Getter PFace,
+	const Primary_Edge_Getter PEdge,
 	const Solver_Info_Getter Sol_Info
 ) {
 	for (const auto& cell: cells) {
@@ -596,23 +645,32 @@ template <
 			continue;
 		}
 
-		const std::array<double, 3>
-			cell_length = grid.geometry.get_length(cell.id),
-			cell_area{
-				cell_length[1] * cell_length[2],
-				cell_length[0] * cell_length[2],
-				cell_length[0] * cell_length[1]
-			};
+		const std::array<double, 3> cell_length = grid.geometry.get_length(cell.id);
 
+		typename std::remove_reference<decltype(Face_B_pos(*cell.data))>::type face_db_p{0, 0, 0}, face_db_n{0, 0, 0};
+
+		const auto& cpface = PFace(*cell.data);
+		const auto& cpedge = PEdge(*cell.data);
 		const auto& cedge_e = Edge_E(*cell.data);
-		typename std::remove_reference<decltype(Face_B_pos(*cell.data))>::type face_db{
-			cell_length[2]*cedge_e(2,1,1) - cell_length[1]*cedge_e(1,1,1),
-			cell_length[0]*cedge_e(0,1,1) - cell_length[2]*cedge_e(2,1,1),
-			cell_length[1]*cedge_e(1,1,1) - cell_length[0]*cedge_e(0,1,1)
-		};
+
+		if (cpface[1]) {
+			if (cpedge(2,1,1)) face_db_p[0] += cell_length[2]*cedge_e(2,1,1);
+			if (cpedge(1,1,1)) face_db_p[0] -= cell_length[1]*cedge_e(1,1,1);
+		}
+		if (cpface[3]) {
+			if (cpedge(0,1,1)) face_db_p[1] += cell_length[0]*cedge_e(0,1,1);
+			if (cpedge(2,1,1)) face_db_p[1] -= cell_length[2]*cedge_e(2,1,1);
+		}
+		if (cpface[5]) {
+			if (cpedge(1,1,1)) face_db_p[2] += cell_length[1]*cedge_e(1,1,1);
+			if (cpedge(0,1,1)) face_db_p[2] -= cell_length[0]*cedge_e(0,1,1);
+		}
 
 		for (const auto& neighbor: cell.neighbors_of) {
-			if (neighbor.face_neighbor >= 0) {
+			const auto& fn = neighbor.face_neighbor;
+			//const auto& en = neighbor.edge_neighbor;
+
+			if (fn >= 0) {
 				continue;
 			}
 
@@ -620,17 +678,26 @@ template <
 				continue;
 			}
 
-			//const double factor?...
+			//const auto& npface = PFace(*neighbor.data);
+			const auto& npedge = PEdge(*neighbor.data);
 			const auto& nedge_e = Edge_E(*neighbor.data);
-			const auto
-				dim1 = (std::abs(neighbor.face_neighbor) + 0) % 3,
-				dim2 = (std::abs(neighbor.face_neighbor) + 1) % 3;
-			face_db[dim1] += cell_length[dim2] * nedge_e(dim2,1,1);
-			face_db[dim2] -= cell_length[dim1] * nedge_e(dim1,1,1);
+
+			if (cpface[1]) {
+				if (fn == -2 and npedge(2,1,1)) face_db_p[0] -= cell_length[2]*nedge_e(2,1,1);
+				if (fn == -3 and npedge(1,1,1)) face_db_p[0] += cell_length[1]*nedge_e(1,1,1);
+			}
+			if (cpface[3]) {
+				if (fn == -1 and npedge(2,1,1)) face_db_p[1] += cell_length[2]*nedge_e(2,1,1);
+				if (fn == -3 and npedge(0,1,1)) face_db_p[1] -= cell_length[0]*nedge_e(0,1,1);
+			}
+			if (cpface[5]) {
+				if (fn == -1 and npedge(1,1,1)) face_db_p[2] -= cell_length[1]*nedge_e(1,1,1);
+				if (fn == -2 and npedge(0,1,1)) face_db_p[2] += cell_length[0]*nedge_e(0,1,1);
+			}
 		}
-		Face_B_pos(*cell.data)[0] -= dt*face_db[0]/cell_area[0];
-		Face_B_pos(*cell.data)[1] -= dt*face_db[1]/cell_area[1];
-		Face_B_pos(*cell.data)[2] -= dt*face_db[2]/cell_area[2];
+		if (cpface[1]) Face_B_pos(*cell.data)[0] -= dt*face_db_p[0]/(cell_length[1]*cell_length[2]);
+		if (cpface[3]) Face_B_pos(*cell.data)[1] -= dt*face_db_p[1]/(cell_length[0]*cell_length[2]);
+		if (cpface[5]) Face_B_pos(*cell.data)[2] -= dt*face_db_p[2]/(cell_length[0]*cell_length[1]);
 	}
 }
 
@@ -639,15 +706,18 @@ template <
 Makes B consistent in given cells of type 1.
 
 Face B can have two values at any location since
-cells store it at every face. FMagp is assumed primary
-by default so FMagn in neighbor on positive side should
-be equal. With adaptive mesh refinement, in inreasing order
-of importance:
+cells store it at every face. FMagP is used by default
+so FMagN in neighbor on positive side should be equal.
+With adaptive mesh refinement, in inreasing order of
+importance:
 
-1) VMag = FMagn = Fmagp if neighbors missing or type < 0
+1) VMag = FMagN = FmagP if neighbors missing or type < 0
 2) Face B of smaller neighbors overrides any face B
-3) FMagn overrides FMagp of larger neighbor on negative side
-4) VMag = 0.5*(Fmagn+FMagp)
+3) FMagN overrides FMagP of larger neighbor on negative side
+4) VMag = 0.5*(FmagN+FMagP)
+
+After above decisions remaining face B values which were
+overriden are copied/averaged from other cell(s).
 
 If constant_thermal_pressure == true total energy is
 adjusted after averaging volume B.
@@ -661,7 +731,7 @@ template <
 	class Volume_Magnetic_Field_Getter,
 	class Face_Magnetic_Field_Pos_Getter,
 	class Face_Magnetic_Field_Neg_Getter,
-	class Is_Primary_Face_Getter,
+	class Primary_Face_Getter,
 	class Cell_Type_Getter
 > void update_B_consistency(
 	const Cell_Iter& cells,
@@ -671,7 +741,7 @@ template <
 	const Volume_Magnetic_Field_Getter VMag,
 	const Face_Magnetic_Field_Pos_Getter FMagP,
 	const Face_Magnetic_Field_Neg_Getter FMagN,
-	const Is_Primary_Face_Getter PFace,
+	const Primary_Face_Getter PFace,
 	const Cell_Type_Getter Cell_Type,
 	const double adiabatic_index,
 	const double vacuum_permeability,
@@ -680,7 +750,7 @@ template <
 	using std::to_string;
 
 	for (const auto& cell: cells) {
-		if (Cell_Type(*cell.data) <= 0) {
+		if (Cell_Type(*cell.data) < 0) {
 			continue;
 		}
 		if (constant_thermal_pressure and Mas(*cell.data) <= 0) {
@@ -697,13 +767,38 @@ template <
 			}
 		}();
 
+		/* TODO: add support for non-periodic grid and simulation boundaries
+		bool // neighbor(s) with Cell_Type < 0 don't count
+			have_nx_neigh = false, have_px_neigh = false,
+			have_ny_neigh = false, have_py_neigh = false,
+			have_nz_neigh = false, have_pz_neigh = false;
+
+		for (const auto& neighbor: cell.neighbors_of) {
+			const auto n = neighbor.face_neighbor;
+			if (n == 0 or Cell_Type(*neighbor.data) < 0) {
+				continue;
+			}
+			if (n == -1) have_nx_neigh = true;
+			if (n == +1) have_px_neigh = true;
+			if (n == -2) have_ny_neigh = true;
+			if (n == +2) have_py_neigh = true;
+			if (n == -3) have_nz_neigh = true;
+			if (n == +3) have_pz_neigh = true;
+		}*/
+
 		const auto primary = PFace(*cell.data);
+		if (not primary[0]) FMagN(*cell.data)[0] = 0.0;
+		if (not primary[1]) FMagP(*cell.data)[0] = 0.0;
+		if (not primary[2]) FMagN(*cell.data)[1] = 0.0;
+		if (not primary[3]) FMagP(*cell.data)[1] = 0.0;
+		if (not primary[4]) FMagN(*cell.data)[2] = 0.0;
+		if (not primary[5]) FMagP(*cell.data)[2] = 0.0;
+
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto n = neighbor.face_neighbor;
 			if (n == 0) {
 				continue;
 			}
-
 			if (Cell_Type(*neighbor.data) < 0) {
 				continue;
 			}
@@ -717,22 +812,22 @@ template <
 			}();
 
 			if (n == -1 and not primary[0]) {
-				FMagN(*cell.data)[0] = FMagP(*neighbor.data)[0] * factor;
+				FMagN(*cell.data)[0] += FMagP(*neighbor.data)[0] * factor;
 			}
 			if (n == +1 and not primary[1]) {
-				FMagP(*cell.data)[0] = FMagN(*neighbor.data)[0] * factor;
+				FMagP(*cell.data)[0] += FMagN(*neighbor.data)[0] * factor;
 			}
 			if (n == -2 and not primary[2]) {
-				FMagN(*cell.data)[1] = FMagP(*neighbor.data)[1] * factor;
+				FMagN(*cell.data)[1] += FMagP(*neighbor.data)[1] * factor;
 			}
 			if (n == +2 and not primary[3]) {
-				FMagP(*cell.data)[1] = FMagN(*neighbor.data)[1] * factor;
+				FMagP(*cell.data)[1] += FMagN(*neighbor.data)[1] * factor;
 			}
 			if (n == -3 and not primary[4]) {
-				FMagN(*cell.data)[2] = FMagP(*neighbor.data)[2] * factor;
+				FMagN(*cell.data)[2] += FMagP(*neighbor.data)[2] * factor;
 			}
 			if (n == +3 and not primary[5]) {
-				FMagP(*cell.data)[2] = FMagN(*neighbor.data)[2] * factor;
+				FMagP(*cell.data)[2] += FMagN(*neighbor.data)[2] * factor;
 			}
 		}
 

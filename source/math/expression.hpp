@@ -30,8 +30,8 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef PAMHD_BOUNDARIES_MATH_EXPRESSION_HPP
-#define PAMHD_BOUNDARIES_MATH_EXPRESSION_HPP
+#ifndef PAMHD_MATH_EXPRESSION_HPP
+#define PAMHD_MATH_EXPRESSION_HPP
 
 
 #include "stdexcept"
@@ -43,7 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 namespace pamhd {
-namespace boundaries {
+namespace math {
 
 
 /*!
@@ -52,11 +52,11 @@ Variables available in expression, all are of floating point type:
 	- x, y, z: center of simulation cell in cartesian coordinates
 	- radius, lat, lon: center in spherical coordinates
 */
-template<class Variable> class Math_Expression
+template<class Variable> class Expression
 {
 public:
 
-	Math_Expression() :
+	Expression() :
 		t_var(&t_val),
 		x_var(&x_val), y_var(&y_val), z_var(&z_val),
 		radius_var(&radius_val), lat_var(&lat_val), lon_var(&lon_val)
@@ -70,7 +70,7 @@ public:
 		this->parser.DefineVar("lon", this->lon_var);
 	}
 
-	Math_Expression(const Math_Expression& other) :
+	Expression(const Expression& other) :
 		t_val(other.t_val),
 		x_val(other.x_val), y_val(other.y_val), z_val(other.z_val),
 		radius_val(other.radius_val), lat_val(other.lat_val), lon_val(other.lon_val),
@@ -87,7 +87,7 @@ public:
 		this->parser.DefineVar("lon", this->lon_var);
 	}
 
-	Math_Expression(Math_Expression&& other) = delete;
+	Expression(Expression&& other) = delete;
 
 
 	void add_expression_variable(
@@ -349,4 +349,4 @@ private:
 
 }} // namespaces
 
-#endif // ifndef PAMHD_BOUNDARIES_MATH_EXPRESSION_HPP
+#endif // ifndef PAMHD_MATH_EXPRESSION_HPP

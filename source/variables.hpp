@@ -37,6 +37,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Eigen/Core"
 
+#include "grid/amr.hpp"
+
 
 namespace pamhd {
 
@@ -185,6 +187,20 @@ struct Resistivity {
 	static const std::string get_name() { return {"electrical resistivity"}; }
 	static const std::string get_option_name() { return {"resistivity"}; }
 	static const std::string get_option_help() { return {"Electrical resistivity"}; }
+};
+
+
+
+struct Min_Ref_Lvl {
+	using data_type = int;
+	static const std::string get_name() { return {"minimum refinement level"}; }
+	static const std::string get_option_name() { return {"ref-lvl-at-least"}; }
+};
+
+struct Max_Ref_Lvl {
+	using data_type = int;
+	static const std::string get_name() { return {"maximum refinement level"}; }
+	static const std::string get_option_name() { return {"ref-lvl-at-most"}; }
 };
 
 } // namespace

@@ -129,7 +129,7 @@ int main(int argc, char* argv[])
 			dccrg::Cartesian_Geometry,
 			std::tuple<>,
 			std::tuple<
-				pamhd::grid::Is_Face_Neighbor,
+				pamhd::grid::Face_Neighbor,
 				pamhd::grid::Relative_Size>
 		>, 3> grids;
 

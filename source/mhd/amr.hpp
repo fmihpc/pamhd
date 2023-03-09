@@ -288,11 +288,6 @@ template <
 		}
 
 		Sol_Info(*cell_data) = Sol_Info(*parent_data);
-
-		if ((Sol_Info(*cell_data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
-			continue;
-		}
-
 		Mas(*cell_data) = Mas(*parent_data);
 		Mom(*cell_data) = Mom(*parent_data);
 		Nrj(*cell_data) = Nrj(*parent_data);
@@ -303,10 +298,10 @@ template <
 			pindex = grid.mapping.get_indices(parent_id);
 		for (size_t dim = 0; dim < 3; dim++) {
 			const auto avg_b = 0.5*(Face_Bn(*parent_data)[dim] + Face_Bp(*parent_data)[dim]);
-			if (cindex[dim] == pindex[dim]) {
+			if (cindex[dim] == pindex[dim]) { // neg faces coincide
 				Face_Bn(*cell_data)[dim] = Face_Bn(*parent_data)[dim];
 				Face_Bp(*cell_data)[dim] = avg_b;
-			} else {
+			} else { // pos faces coincide
 				Face_Bp(*cell_data)[dim] = Face_Bp(*parent_data)[dim];
 				Face_Bn(*cell_data)[dim] = avg_b;
 			}

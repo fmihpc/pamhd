@@ -44,6 +44,7 @@ TESTS_GRID_COMMON_DEPS = \
   source/grid/amr.hpp \
   source/grid/options.hpp \
   source/grid/variables.hpp \
+  source/math/expression.hpp \
   tests/grid/common.hpp \
   tests/grid/project_makefile \
   $(ENVIRONMENT_MAKEFILE) \

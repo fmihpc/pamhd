@@ -73,7 +73,8 @@ using Grid = dccrg::Dccrg<
 	dccrg::Cartesian_Geometry,
 	std::tuple<>,
 	std::tuple<
-		pamhd::grid::Is_Face_Neighbor,
+		pamhd::grid::Face_Neighbor,
+		pamhd::grid::Edge_Neighbor,
 		pamhd::grid::Relative_Size>
 >;
 
@@ -212,6 +213,9 @@ const auto Mag_fs = std::make_tuple(
 const auto PFace = [](Cell& cell_data)->auto& {
 		return cell_data[pamhd::grid::Is_Primary_Face()];
 	};
+const auto PEdge = [](Cell& cell_data)->auto& {
+		return cell_data[pamhd::grid::Is_Primary_Edge()];
+	};
 const auto Ref = [](Cell& cell_data)->auto& {
 		return cell_data[pamhd::grid::Target_Refinement_Level()];
 	};
@@ -340,7 +344,9 @@ int main(int argc, char* argv[])
 		pamhd::mhd::Number_Density,
 		pamhd::mhd::Velocity,
 		pamhd::mhd::Pressure,
-		pamhd::Magnetic_Field
+		pamhd::Magnetic_Field,
+		pamhd::Min_Ref_Lvl,
+		pamhd::Max_Ref_Lvl
 	> boundaries;
 	boundaries.set(document);
 
@@ -420,13 +426,14 @@ int main(int argc, char* argv[])
 	}
 
 	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
+	pamhd::grid::update_primary_edges(grid.local_cells(), grid, PEdge);
 
 	// assign cells into boundary geometries
 	for (const auto& cell: grid.local_cells()) {
-		const auto
-			start = grid.geometry.get_min(cell.id),
-			end = grid.geometry.get_max(cell.id);
-		geometries.overlaps(start, end, cell.id);
+		geometries.overlaps(
+			grid.geometry.get_min(cell.id),
+			grid.geometry.get_max(cell.id),
+			cell.id);
 	}
 
 	/*
@@ -666,7 +673,7 @@ int main(int argc, char* argv[])
 			grid, time_step,
 			Mas, Mom, Nrj, Mag, Edge_E,
 			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-			PFace, Sol_Info
+			PFace, PEdge, Sol_Info
 		);
 		Cell::set_transfer_all(true, pamhd::Edge_Electric_Field());
 		grid.update_copies_of_remote_neighbors();
@@ -675,8 +682,8 @@ int main(int argc, char* argv[])
 			grid.local_cells(),
 			grid,
 			time_step,
-			Face_B, Face_B_neg,
-			Edge_E,
+			Face_B, Face_B_neg, Edge_E,
+			PFace, PEdge,
 			Sol_Info
 		);
 
@@ -741,6 +748,7 @@ int main(int argc, char* argv[])
 				PFace, Ref, Sol_Info
 			);
 			pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
+			pamhd::grid::update_primary_edges(grid.local_cells(), grid, PEdge);
 		}
 
 		/*
