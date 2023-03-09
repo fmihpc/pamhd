@@ -206,94 +206,6 @@ struct Is_Primary_Edge {
 };
 
 
-/*! Returns info on potentially shared edge with given neighbor.
-
-Returns (d, a, b) where d is dimension (0..2) parallel to edge,
-a and b are 1st and 2nd perpendicular dimension and are 0 if
-neighbor is on negative side of cell or 1 if on positive. If d < 0
-neighbor doesn't share or shares more than one edge with cell.
-*/
-std::array<int, 3> edge_neighbor(
-	const size_t cell_length,
-	const size_t neigh_length,
-	const int neigh_offset_x,
-	const int neigh_offset_y,
-	const int neigh_offset_z
-) {
-	using std::numeric_limits;
-	using std::runtime_error;
-	using std::to_string;
-
-	if (neigh_offset_x == 0 and neigh_offset_y == 0 and neigh_offset_z == 0) {
-		throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-	}
-
-	if (cell_length > numeric_limits<int>::max()) {
-		throw runtime_error(__FILE__"(" + to_string(__LINE__) + ") Cell length in indices too large for int");
-	}
-	if (neigh_length > numeric_limits<int>::max()) {
-		throw runtime_error(__FILE__"(" + to_string(__LINE__) + ") Neighbor length in indices too large for int");
-	}
-	const int cell_len = cell_length, neigh_len = neigh_length;
-
-	std::array<int, 3> ret_val{-1, -1, -1};
-	// get dimension of return value
-	if (neigh_offset_x < cell_len and neigh_offset_x > -neigh_len) {
-		ret_val[0] = 0;
-	}
-	if (neigh_offset_y < cell_len and neigh_offset_y > -neigh_len) {
-		if (ret_val[0] > -1) {
-			// face neighbor
-			ret_val[0] = -1;
-			return ret_val;
-		} else {
-			ret_val[0] = 1;
-		}
-	}
-	if (neigh_offset_z < cell_len and neigh_offset_z > -neigh_len) {
-		if (ret_val[0] > -1) {
-			// face neighbor
-			ret_val[0] = -1;
-			return ret_val;
-		} else {
-			ret_val[0] = 2;
-		}
-	}
-	if (ret_val[0] < 0) {
-		// not edge neighbor
-		return ret_val;
-	}
-
-	if (neigh_offset_x == -neigh_len) {
-		// 1st perp dim in any case
-		ret_val[1] = 0;
-	}
-	if (neigh_offset_x == cell_len) {
-		ret_val[1] = 1;
-	}
-
-	if (neigh_offset_y == -neigh_len) {
-		if      (ret_val[0] == 0) ret_val[1] = 0;
-		else if (ret_val[0] == 2) ret_val[2] = 0;
-		else throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-	}
-	if (neigh_offset_y == cell_len) {
-		if      (ret_val[0] == 0) ret_val[1] = 1;
-		else if (ret_val[0] == 2) ret_val[2] = 1;
-		else throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-	}
-
-	if (neigh_offset_z == -neigh_len) {
-		// 2nd perp dim in any case
-		ret_val[2] = 0;
-	}
-	if (neigh_offset_z == cell_len) {
-		ret_val[2] = 1;
-	}
-
-	return ret_val;
-}
-
 /*! Updates Is_Primary_Edge variable of given cells.
 */
 template <
@@ -311,22 +223,16 @@ template <
 			+ "): Neighborhood length must be at least 1");
 	}
 	for (const auto& cell: cells) {
-		const auto clen = grid.mapping.get_cell_length_in_indices(cell.id);
-
 		Edges(*cell.data) = {
 			true, true, true, true, // x-directed edges: -y,-z;-y,+z,...
 			true, true, true, true, // y-directed edges: -x,-z;-x,+z,...
 			true, true, true, true};// ...
 
 		for (const auto& neighbor: cell.neighbors_of) {
-			const auto en = edge_neighbor(
-				clen,
-				grid.mapping.get_cell_length_in_indices(neighbor.id),
-				neighbor.x,
-				neighbor.y,
-				neighbor.z);
+			const auto& fn = neighbor.face_neighbor;
+			const auto& en = neighbor.edge_neighbor;
 
-			if (neighbor.face_neighbor != 0 and en[0] >= 0) {
+			if (fn != 0 and en[0] >= 0) {
 				throw std::runtime_error(__FILE__"(" + std::to_string(__LINE__) + ")");
 			}
 
@@ -334,47 +240,57 @@ template <
 				continue; // larger neighbor never has priority
 			}
 
-			if (neighbor.face_neighbor == 0 and en[0] < 0) {
-				continue;
-			}
-
-			if (neighbor.face_neighbor == -1) {
+			if (fn == -1) {
 				// this or another neighbor has priority
 				Edges(*cell.data)(1, 0, 0) =
 				Edges(*cell.data)(1, 0, 1) =
 				Edges(*cell.data)(2, 0, 0) =
 				Edges(*cell.data)(2, 0, 1) = false;
+				continue;
 			}
-			if (neighbor.face_neighbor == +1 and neighbor.relative_size > 0) {
+			if (fn == +1 and neighbor.relative_size > 0) {
 				// only smaller neighbors have priority
 				Edges(*cell.data)(1, 1, 0) =
 				Edges(*cell.data)(1, 1, 1) =
 				Edges(*cell.data)(2, 1, 0) =
 				Edges(*cell.data)(2, 1, 1) = false;
+				continue;
 			}
-			if (neighbor.face_neighbor == -2) {
+			if (fn == -2) {
 				Edges(*cell.data)(0, 0, 0) =
 				Edges(*cell.data)(0, 0, 1) =
 				Edges(*cell.data)(2, 0, 0) =
 				Edges(*cell.data)(2, 1, 0) = false;
+				continue;
 			}
-			if (neighbor.face_neighbor == +2 and neighbor.relative_size > 0) {
+			if (fn == +2 and neighbor.relative_size > 0) {
 				Edges(*cell.data)(0, 1, 0) =
 				Edges(*cell.data)(0, 1, 1) =
 				Edges(*cell.data)(2, 0, 1) =
 				Edges(*cell.data)(2, 1, 1) = false;
+				continue;
 			}
-			if (neighbor.face_neighbor == -3) {
+			if (fn == -3) {
 				Edges(*cell.data)(0, 0, 0) =
 				Edges(*cell.data)(0, 1, 0) =
 				Edges(*cell.data)(1, 0, 0) =
 				Edges(*cell.data)(1, 1, 0) = false;
+				continue;
 			}
-			if (neighbor.face_neighbor == +3 and neighbor.relative_size > 0) {
+			if (fn == +3 and neighbor.relative_size > 0) {
 				Edges(*cell.data)(0, 0, 1) =
 				Edges(*cell.data)(0, 1, 1) =
 				Edges(*cell.data)(1, 0, 1) =
 				Edges(*cell.data)(1, 1, 1) = false;
+				continue;
+			}
+
+			if (en[0] < 0) {
+				continue;
+			}
+
+			if (neighbor.relative_size > 0 or en[1] == 0) {
+				Edges(*cell.data)(en[0], en[1], en[2]) = false;
 			}
 		}
 	}
