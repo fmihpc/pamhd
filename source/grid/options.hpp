@@ -295,13 +295,21 @@ public:
 					+ "JSON item max-ref-lvl must be integer."
 				);
 			}
-			this->max_ref_lvl_i = max_ref_lvl_json.GetInt();
-			if (this->max_ref_lvl_i < 0) {
+			this->max_ref_lvl = max_ref_lvl_json.GetInt();
+			if (this->max_ref_lvl < 0) {
 				throw std::invalid_argument(
 					std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
 					+ "JSON item max-ref-lvl cannot be negative."
 				);
 			}
+		} else if (
+			grid_options.HasMember("ref-lvl-at-least")
+			or grid_options.HasMember("ref-lvl-at-most")
+		) {
+			throw invalid_argument(
+				__FILE__ "(" + to_string(__LINE__) + "): "
+				+ "JSON item max-ref-lvl must exist if either ref-lvl-at-least or ref-lvl-at-most exists."
+			);
 		}
 
 		if (grid_options.HasMember("amr-n")) {
@@ -326,6 +334,12 @@ public:
 						+ "JSON item ref-lvl-at-least must be positive."
 					);
 				}
+				if (this->min_ref_lvl_i > this->max_ref_lvl) {
+					throw invalid_argument(
+						__FILE__ "(" + to_string(__LINE__) + "): "
+						+ "JSON item ref-lvl-at-least cannot be larger than max-ref-lvl."
+					);
+				}
 			} else if (min_ref_lvl_json.IsString()) {
 				this->min_ref_lvl_i = -2;
 				this->min_ref_lvl_e.set_expression(min_ref_lvl_json.GetString());
@@ -348,6 +362,12 @@ public:
 					throw invalid_argument(
 						__FILE__ "(" + to_string(__LINE__) + "): "
 						+ "JSON item ref-lvl-at-most must be positive."
+					);
+				}
+				if (this->max_ref_lvl_i > this->max_ref_lvl) {
+					throw invalid_argument(
+						__FILE__ "(" + to_string(__LINE__) + "): "
+						+ "JSON item ref-lvl-at-most cannot be larger than max-ref-lvl."
 					);
 				}
 				if (this->min_ref_lvl_i >=0 and this->max_ref_lvl_i < this->min_ref_lvl_i) {

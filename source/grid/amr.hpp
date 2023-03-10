@@ -330,6 +330,31 @@ std::array<int, 2> get_target_refinement_level(
 	return ret_val;
 }
 
+template <
+	class Grid
+> void adapt_grid(
+	Grid& grid,
+	Options& options,
+	const double& sim_time
+) {
+	for (int i = 0; i < grid.get_maximum_refinement_level(); i++) {
+		for (const auto& cell: grid.local_cells()) {
+			const auto c = grid.geometry.get_center(cell.id);
+			const auto ref_lvl = grid.get_refinement_level(cell.id);
+			const auto tgt_ref_lvl = get_target_refinement_level(options, sim_time, c);
+			if (ref_lvl < tgt_ref_lvl[0]) {
+				grid.refine_completely(cell.id);
+			}
+			if (ref_lvl > tgt_ref_lvl[1]) {
+				grid.unrefine_completely(cell.id);
+			}
+		}
+		const auto new_cells = grid.stop_refining();
+		const auto removed_cells = grid.get_removed_cells();
+		if (new_cells.size() == 0 and removed_cells.size() == 0) break;
+	}
+}
+
 }} // namespaces
 
 #endif // ifndef PAMHD_GRID_AMR_HPP

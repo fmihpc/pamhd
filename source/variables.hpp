@@ -190,19 +190,6 @@ struct Resistivity {
 };
 
 
-
-struct Min_Ref_Lvl {
-	using data_type = int;
-	static const std::string get_name() { return {"minimum refinement level"}; }
-	static const std::string get_option_name() { return {"ref-lvl-at-least"}; }
-};
-
-struct Max_Ref_Lvl {
-	using data_type = int;
-	static const std::string get_name() { return {"maximum refinement level"}; }
-	static const std::string get_option_name() { return {"ref-lvl-at-most"}; }
-};
-
 } // namespace
 
 #endif // ifndef PAMHD_VARIABLES_HPP
