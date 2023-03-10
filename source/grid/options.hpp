@@ -43,6 +43,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mpParser.h"
 #include "rapidjson/document.h"
 
+#include "math/expression.hpp"
+
 
 namespace pamhd {
 namespace grid {
@@ -71,6 +73,18 @@ struct Periodic {
 	static const std::string get_option_name() { return {"periodic"}; }
 };
 
+struct Min_Ref_Lvl {
+	using data_type = int;
+	static const std::string get_name() { return {"minimum refinement level"}; }
+	static const std::string get_option_name() { return {"ref-lvl-at-least"}; }
+};
+
+struct Max_Ref_Lvl {
+	using data_type = int;
+	static const std::string get_name() { return {"maximum refinement level"}; }
+	static const std::string get_option_name() { return {"ref-lvl-at-most"}; }
+};
+
 class Options
 {
 public:
@@ -86,6 +100,10 @@ public:
 
 	void set(const rapidjson::Value& object)
 	{
+		using std::invalid_argument;
+		using std::string;
+		using std::to_string;
+
 		if (not object.HasMember("grid-options")) {
 			throw std::invalid_argument(
 				std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
@@ -277,8 +295,8 @@ public:
 					+ "JSON item max-ref-lvl must be integer."
 				);
 			}
-			this->max_ref_lvl = max_ref_lvl_json.GetInt();
-			if (this->max_ref_lvl < 0) {
+			this->max_ref_lvl_i = max_ref_lvl_json.GetInt();
+			if (this->max_ref_lvl_i < 0) {
 				throw std::invalid_argument(
 					std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
 					+ "JSON item max-ref-lvl cannot be negative."
@@ -295,6 +313,60 @@ public:
 				);
 			}
 			this->amr_n = amr_n_json.GetDouble();
+		}
+
+		// expression for minimum refinement level
+		if (grid_options.HasMember("ref-lvl-at-least")) {
+			const auto& min_ref_lvl_json = grid_options["ref-lvl-at-least"];
+			if (min_ref_lvl_json.IsInt()) {
+				this->min_ref_lvl_i = min_ref_lvl_json.GetInt();
+				if (this->min_ref_lvl_i < 0) {
+					throw invalid_argument(
+						__FILE__ "(" + to_string(__LINE__) + "): "
+						+ "JSON item ref-lvl-at-least must be positive."
+					);
+				}
+			} else if (min_ref_lvl_json.IsString()) {
+				this->min_ref_lvl_i = -2;
+				this->min_ref_lvl_e.set_expression(min_ref_lvl_json.GetString());
+			} else {
+				throw invalid_argument(
+					__FILE__ "(" + to_string(__LINE__) + "): "
+					+ "JSON item ref-lvl-at-least must either positive integer or string."
+				);
+			}
+		} else {
+			this->min_ref_lvl_i = 0;
+		}
+
+		// expression for maximum refinement level
+		if (grid_options.HasMember("ref-lvl-at-most")) {
+			const auto& max_ref_lvl_json = grid_options["ref-lvl-at-most"];
+			if (max_ref_lvl_json.IsInt()) {
+				this->max_ref_lvl_i = max_ref_lvl_json.GetInt();
+				if (this->max_ref_lvl_i < 0) {
+					throw invalid_argument(
+						__FILE__ "(" + to_string(__LINE__) + "): "
+						+ "JSON item ref-lvl-at-most must be positive."
+					);
+				}
+				if (this->min_ref_lvl_i >=0 and this->max_ref_lvl_i < this->min_ref_lvl_i) {
+					throw invalid_argument(
+						__FILE__ "(" + to_string(__LINE__) + "): "
+						+ "JSON item ref-lvl-at-most must be >= ref-lvl-at-least."
+					);
+				}
+			} else if (max_ref_lvl_json.IsString()) {
+				this->max_ref_lvl_i = -1;
+				this->max_ref_lvl_e.set_expression(max_ref_lvl_json.GetString());
+			} else {
+				throw invalid_argument(
+					__FILE__ "(" + to_string(__LINE__) + "): "
+					+ "JSON item ref-lvl-at-most must either positive integer or string."
+				);
+			}
+		} else {
+			this->max_ref_lvl_i = 0;
 		}
 	}
 
@@ -324,6 +396,41 @@ public:
 		return this->max_ref_lvl;
 	}
 
+	int get_ref_lvl_at_least(
+		const double& t,
+		const double& x,
+		const double& y,
+		const double& z,
+		const double& radius,
+		const double& latitude,
+		const double& longitude
+	) {
+		if (this->min_ref_lvl_i >= 0) {
+			return this->min_ref_lvl_i;
+		} else {
+			return this->min_ref_lvl_e.evaluate(
+				t, x, y, z, radius, latitude, longitude
+			);
+		}
+	}
+
+	int get_ref_lvl_at_most(
+		const double& t,
+		const double& x,
+		const double& y,
+		const double& z,
+		const double& radius,
+		const double& latitude,
+		const double& longitude
+	) {
+		if (this->max_ref_lvl_i >= 0) {
+			return this->max_ref_lvl_i;
+		} else {
+			return this->max_ref_lvl_e.evaluate(
+				t, x, y, z, radius, latitude, longitude
+			);
+		}
+	}
 
 	int max_ref_lvl = 0;
 	double amr_n = -1.0;
@@ -334,6 +441,10 @@ private:
 	typename Number_Of_Cells::data_type cells;
 	typename Volume::data_type volume;
 	typename Start::data_type start;
+
+	int min_ref_lvl_i = -2, max_ref_lvl_i = -1;
+	math::Expression<Min_Ref_Lvl> min_ref_lvl_e;
+	math::Expression<Max_Ref_Lvl> max_ref_lvl_e;
 
 	mup::ParserX parser = mup::ParserX(mup::pckCOMMON | mup::pckNON_COMPLEX | mup::pckMATRIX | mup::pckUNIT);
 };

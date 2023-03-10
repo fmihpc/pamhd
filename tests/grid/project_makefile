@@ -1,6 +1,7 @@
 TESTS_GRID_EXECUTABLES = \
   tests/grid/options_compile.exe \
   tests/grid/options_parse.exe \
+  tests/grid/options_amr.exe \
   tests/grid/pface1.exe \
   tests/grid/pface2.exe \
   tests/grid/pface3.exe \
@@ -11,6 +12,7 @@ TESTS_GRID_EXECUTABLES = \
 
 TESTS_GRID_TESTS = \
   tests/grid/options_parse.tst \
+  tests/grid/options_amr.tst \
   tests/grid/pface1.tst \
   tests/grid/pface1.mtst \
   tests/grid/pface2.tst \
@@ -73,6 +75,11 @@ tests/grid/options_compile.exe: \
 
 tests/grid/options_parse.exe: \
   tests/grid/options_parse.cpp \
+  $(TESTS_GRID_COMMON_DEPS)
+	$(TESTS_GRID_COMPILE_COMMAND)
+
+tests/grid/options_amr.exe: \
+  tests/grid/options_amr.cpp \
   $(TESTS_GRID_COMMON_DEPS)
 	$(TESTS_GRID_COMPILE_COMMAND)
 

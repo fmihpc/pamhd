@@ -39,6 +39,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "string"
 #include "type_traits"
 
+#include "grid/options.hpp"
+
 
 namespace pamhd {
 namespace grid {
@@ -296,6 +298,37 @@ template <
 	}
 }
 
+
+//! Returns smallest [0] and largest [1] refinement level for given cell.
+std::array<int, 2> get_target_refinement_level(
+	Options& options,
+	const double& t,
+	const std::array<double, 3>& cell_center
+) {
+	const auto& c = cell_center;
+	const auto
+		r = std::sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]),
+		lat = std::asin(c[2] / r),
+		lon = std::atan2(c[1], c[0]);
+
+	const auto min_ref_lvl = options.get_ref_lvl_at_least(
+		t, c[0], c[1], c[2], r, lat, lon);
+	if (min_ref_lvl < 0) {
+		throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): options returned min_ref_lvl < 0");
+	}
+
+	const auto max_ref_lvl = options.get_ref_lvl_at_most(
+		t, c[0], c[1], c[2], r, lat, lon);
+	if (max_ref_lvl < 0) {
+		throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): options returned min_ref_lvl < 0");
+	}
+	if (max_ref_lvl < min_ref_lvl) {
+		throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): options returned max_ref_lvl < min_ref_lvl");
+	}
+
+	std::array<int, 2> ret_val{min_ref_lvl, max_ref_lvl};
+	return ret_val;
+}
 
 }} // namespaces
 
