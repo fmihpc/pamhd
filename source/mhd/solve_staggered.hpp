@@ -386,10 +386,8 @@ template <
 			edge_e(d,a,b) = 0.0;
 			e_items[d][a][b] = 0;
 			if (not pedge(d,a,b)) {
-				if (a == 1 and b == 1) throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 				continue;
 			}
-			if (a != 1 or b != 1) throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 			if (d == 0) {
 				if (a == 1) {
 					if (b == 1) {
@@ -453,7 +451,7 @@ template <
 
 			const auto [dtdx, dtdy, dtdz] = [&]{
 				if (neighbor.relative_size > 0) {
-					return std::make_tuple(dt/dx/2, dt/dy/2, dt/dz/2);
+					return std::make_tuple(dt/dx/4, dt/dy/4, dt/dz/4);
 				} else {
 					return std::make_tuple(dt/dx, dt/dy, dt/dz);
 				}

@@ -344,9 +344,7 @@ int main(int argc, char* argv[])
 		pamhd::mhd::Number_Density,
 		pamhd::mhd::Velocity,
 		pamhd::mhd::Pressure,
-		pamhd::Magnetic_Field,
-		pamhd::Min_Ref_Lvl,
-		pamhd::Max_Ref_Lvl
+		pamhd::Magnetic_Field
 	> boundaries;
 	boundaries.set(document);
 
@@ -387,15 +385,13 @@ int main(int argc, char* argv[])
 	const auto& number_of_cells = options_grid.get_number_of_cells();
 	const auto& periodic = options_grid.get_periodic();
 
-	Grid grid;
-	grid
+	Grid grid; grid
 		.set_initial_length(number_of_cells)
 		.set_neighborhood_length(neighborhood_size)
 		.set_periodic(periodic[0], periodic[1], periodic[2])
 		.set_load_balancing_method(options_sim.lb_name)
-		.set_maximum_refinement_level(options_grid.max_ref_lvl)
-		.initialize(comm)
-		.balance_load();
+		.set_maximum_refinement_level(options_grid.get_max_ref_lvl())
+		.initialize(comm);
 
 	// set grid geometry
 	const std::array<double, 3>
@@ -419,6 +415,9 @@ int main(int argc, char* argv[])
 			<< std::endl;
 		abort();
 	}
+
+	pamhd::grid::adapt_grid(grid, options_grid, options_sim.time_start);
+	grid.balance_load();
 
 	// update owner process of cells for saving into file
 	for (const auto& cell: grid.local_cells()) {
