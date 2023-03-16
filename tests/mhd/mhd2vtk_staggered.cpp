@@ -288,7 +288,9 @@ void convert(
 	const unordered_map<uint64_t, pamhd::mhd::Cell_Staggered>& simulation_data,
 	const std::string& output_file_name_prefix,
 	const double adiabatic_index,
-	const double vacuum_permeability
+	const double vacuum_permeability,
+	const int cycle,
+	const double time
 ) {
 	bool refined = false;
 
@@ -315,6 +317,11 @@ void convert(
 	} else {
 		vtk_file << "DATASET STRUCTURED_POINTS\n";
 	}
+
+	vtk_file
+		<< "FIELD FieldData 2\n"
+		<< "CYCLE 1 1 int\n" << cycle << "\n"
+		<< "TIME 1 1 double\n" << time << "\n";
 
 	if (refined) {
 		// separate corner points for every cell
@@ -623,7 +630,9 @@ int main(int argc, char* argv[])
 			std::cref(simulation_data),
 			input_files[i].substr(0, input_files[i].size() - 3),
 			(*header)[1],
-			(*header)[3]
+			(*header)[3],
+			simulation_step,
+			(*header)[0]
 		);
 	}
 

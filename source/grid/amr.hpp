@@ -364,8 +364,9 @@ template <
 			const auto tgt_ref_lvl = get_target_refinement_level(options, sim_time, c);
 			if (ref_lvl < tgt_ref_lvl[0]) {
 				grid.refine_completely(cell.id);
-			}
-			if (ref_lvl > tgt_ref_lvl[1]) {
+			} else if (ref_lvl == tgt_ref_lvl[0]) {
+				grid.dont_unrefine(cell.id);
+			} else if (ref_lvl > tgt_ref_lvl[1]) {
 				grid.unrefine_completely(cell.id);
 			}
 		}

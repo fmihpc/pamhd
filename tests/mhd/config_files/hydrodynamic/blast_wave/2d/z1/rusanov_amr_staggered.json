@@ -11,12 +11,14 @@
 	"proton-mass": 1,
 	"mhd-time-step-factor": 0.5,
 	"grid-options": {
-		"periodic": "{true, true, false}",
+		"periodic": "{true, true, true}",
 		"cells": "{2*15, 3*15, 1}",
 		"volume": "{1, 1.5, 1}",
 		"start": "{-volume[0]/2, -volume[1]/2, -volume[2]/2}",
 		"max-ref-lvl": 2,
-		"amr-n": 0.01
+		"amr-n": 0.02,
+		"ref-lvl-at-least": "(x^2+y^2 < (1.4*max(t-0.04,0))^2) ? 1 : (x^2+y^2 > (0.2+1.4*t)^2) ? 0 : 2",
+		"ref-lvl-at-most": "(x^2+y^2 < (1.4*max(t-0.04,0))^2) ? 1 : (x^2+y^2 > (0.2+1.4*t)^2) ? 0 : 2"
 	},
 	"geometries": [
 		{"sphere": {
