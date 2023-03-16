@@ -20,12 +20,6 @@
 		"ref-lvl-at-least": "(x^2+y^2 < (1.4*max(t-0.04,0))^2) ? 1 : (x^2+y^2 > (0.2+1.4*t)^2) ? 0 : 2",
 		"ref-lvl-at-most": "(x^2+y^2 < (1.4*max(t-0.04,0))^2) ? 1 : (x^2+y^2 > (0.2+1.4*t)^2) ? 0 : 2"
 	},
-	"geometries": [
-		{"sphere": {
-			"center": [0, 0, 0],
-			"radius": 0.1001
-		}}
-	],
 	"number-density": {
 		"default": 1
 	},
@@ -33,10 +27,7 @@
 		"default": [0, 0, 0]
 	},
 	"pressure": {
-		"default": 0.1,
-		"initial-conditions": [
-			{"geometry-id": 0, "value": 10}
-		]
+		"default": "(x^2+y^2 < 0.1^2) ? 10 : 0.1"
 	},
 	"magnetic-field": {
 		"default": [0, 0, 0]
