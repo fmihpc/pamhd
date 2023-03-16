@@ -330,12 +330,32 @@ std::array<int, 2> get_target_refinement_level(
 	return ret_val;
 }
 
+// for adapt_grid() below
+struct Default_Cells_Handler {
+	template <class Grid, class Cells> void operator()(const Grid&, const Cells&) const {
+		return;
+	}
+};
+
+/*! Adapts given grid based on given geometrical options
+
+Handlers must have following operator() signature:
+nch(grid, new_cells);
+rch(grid, removed_cells);
+where
+const auto new_cells = grid.stop_refining();
+const auto removed_cells = grid.get_removed_cells();
+*/
 template <
-	class Grid
+	class Grid,
+	class New_Cells_Handler = Default_Cells_Handler,
+	class Removed_Cells_Handler = Default_Cells_Handler
 > void adapt_grid(
 	Grid& grid,
 	Options& options,
-	const double& sim_time
+	const double& sim_time,
+	const New_Cells_Handler& nch = Default_Cells_Handler(),
+	const Removed_Cells_Handler& rch = Default_Cells_Handler()
 ) {
 	for (int i = 0; i < grid.get_maximum_refinement_level(); i++) {
 		for (const auto& cell: grid.local_cells()) {
@@ -351,7 +371,13 @@ template <
 		}
 		const auto new_cells = grid.stop_refining();
 		const auto removed_cells = grid.get_removed_cells();
-		if (new_cells.size() == 0 and removed_cells.size() == 0) break;
+		if (new_cells.size() == 0 and removed_cells.size() == 0) {
+			break;
+		} else {
+			nch(grid, new_cells);
+			rch(grid, removed_cells);
+			grid.clear_refined_unrefined_data();
+		}
 	}
 }
 

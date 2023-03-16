@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "cmath"
 #include "limits"
+#include "set"
 #include "string"
 #include "tuple"
 #include "vector"
@@ -250,118 +251,175 @@ was refined or their children if some were unrefined.
 -PFace variable should be initialized before calling this.
 */
 template <
-	class Solver_Info,
-	class Cells,
-	class Grid,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
 	class Face_Magnetic_Field_Getter_Pos,
 	class Face_Magnetic_Field_Getter_Neg,
-	class Is_Primary_Face_Getter,
 	class Target_Refinement_Level_Getter,
 	class Solver_Info_Getter
-> void initialize_new_cells(
-	const Cells& new_cells,
-	Grid& grid,
-	const Mass_Density_Getter Mas,
-	const Momentum_Density_Getter Mom,
-	const Total_Energy_Density_Getter Nrj,
-	const Face_Magnetic_Field_Getter_Pos Face_Bp,
-	const Face_Magnetic_Field_Getter_Neg Face_Bn,
-	const Is_Primary_Face_Getter /*PFace*/,
-	const Target_Refinement_Level_Getter Ref,
-	const Solver_Info_Getter Sol_Info
-) {
-	using std::to_string;
+> struct New_Cells_Handler {
+	const Mass_Density_Getter& Mas;
+	const Momentum_Density_Getter& Mom;
+	const Total_Energy_Density_Getter& Nrj;
+	const Face_Magnetic_Field_Getter_Pos& Face_Bp;
+	const Face_Magnetic_Field_Getter_Neg& Face_Bn;
+	const Target_Refinement_Level_Getter& Ref;
+	const Solver_Info_Getter& Sol_Info;
 
-	for (const auto& new_cell_id: new_cells) {
-		auto* const cell_data = grid[new_cell_id];
-		if (cell_data == nullptr) {
-			throw std::runtime_error(__FILE__ ":" + to_string(__LINE__));
-		}
+	New_Cells_Handler(
+		const Mass_Density_Getter& Mas_,
+		const Momentum_Density_Getter& Mom_,
+		const Total_Energy_Density_Getter& Nrj_,
+		const Face_Magnetic_Field_Getter_Pos& Face_Bp_,
+		const Face_Magnetic_Field_Getter_Neg& Face_Bn_,
+		const Target_Refinement_Level_Getter& Ref_,
+		const Solver_Info_Getter& Sol_Info_
+	) :
+		Mas(Mas_), Mom(Mom_), Nrj(Nrj_),
+		Face_Bp(Face_Bp_), Face_Bn(Face_Bn_),
+		Ref(Ref_), Sol_Info(Sol_Info_)
+	{};
 
-		const auto parent_id = grid.mapping.get_parent(new_cell_id);
-		auto* const parent_data = grid[parent_id];
-		if (parent_data == nullptr) {
-			throw std::runtime_error(__FILE__ ":" + to_string(__LINE__));
-		}
+	template<
+		class Grid,
+		class Cells
+	> void operator()(
+		const Grid& grid,
+		const Cells& new_cells
+	) const {
+		using std::runtime_error;
+		using std::to_string;
 
-		Sol_Info(*cell_data) = Sol_Info(*parent_data);
-		Mas(*cell_data) = Mas(*parent_data);
-		Mom(*cell_data) = Mom(*parent_data);
-		Nrj(*cell_data) = Nrj(*parent_data);
-		Ref(*cell_data) = Ref(*parent_data);
+		for (const auto& new_cell_id: new_cells) {
+			auto* const cell_data = grid[new_cell_id];
+			if (cell_data == nullptr) {
+				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
+			}
 
-		const auto
-			cindex = grid.mapping.get_indices(new_cell_id),
-			pindex = grid.mapping.get_indices(parent_id);
-		for (size_t dim = 0; dim < 3; dim++) {
-			const auto avg_b = 0.5*(Face_Bn(*parent_data)[dim] + Face_Bp(*parent_data)[dim]);
-			if (cindex[dim] == pindex[dim]) { // neg faces coincide
-				Face_Bn(*cell_data)[dim] = Face_Bn(*parent_data)[dim];
-				Face_Bp(*cell_data)[dim] = avg_b;
-			} else { // pos faces coincide
-				Face_Bp(*cell_data)[dim] = Face_Bp(*parent_data)[dim];
-				Face_Bn(*cell_data)[dim] = avg_b;
+			const auto parent_id = grid.mapping.get_parent(new_cell_id);
+			auto* const parent_data = grid[parent_id];
+			if (parent_data == nullptr) {
+				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
+			}
+
+			Sol_Info(*cell_data) = Sol_Info(*parent_data);
+			Mas(*cell_data) = Mas(*parent_data);
+			Mom(*cell_data) = Mom(*parent_data);
+			Nrj(*cell_data) = Nrj(*parent_data);
+			Ref(*cell_data) = Ref(*parent_data);
+
+			const auto
+				cindex = grid.mapping.get_indices(new_cell_id),
+				pindex = grid.mapping.get_indices(parent_id);
+			for (size_t dim = 0; dim < 3; dim++) {
+				const auto avg_b = 0.5*(Face_Bn(*parent_data)[dim] + Face_Bp(*parent_data)[dim]);
+				if (cindex[dim] == pindex[dim]) { // neg faces coincide
+					Face_Bn(*cell_data)[dim] = Face_Bn(*parent_data)[dim];
+					Face_Bp(*cell_data)[dim] = avg_b;
+				} else { // pos faces coincide
+					Face_Bp(*cell_data)[dim] = Face_Bp(*parent_data)[dim];
+					Face_Bn(*cell_data)[dim] = avg_b;
+				}
 			}
 		}
 	}
+};
 
-	const std::vector<uint64_t> removed_cells = grid.get_removed_cells();
 
-	// process each parent of removed cells only once
-	std::set<uint64_t> parents;
-	for (const auto& removed_cell: removed_cells) {
-		parents.insert(grid.mapping.get_parent(removed_cell));
-	}
+template <
+	class Mass_Density_Getter,
+	class Momentum_Density_Getter,
+	class Total_Energy_Density_Getter,
+	class Face_Magnetic_Field_Getter_Pos,
+	class Face_Magnetic_Field_Getter_Neg,
+	class Target_Refinement_Level_Getter,
+	class Solver_Info_Getter
+> struct Removed_Cells_Handler {
+	const Mass_Density_Getter& Mas;
+	const Momentum_Density_Getter& Mom;
+	const Total_Energy_Density_Getter& Nrj;
+	const Face_Magnetic_Field_Getter_Pos& Face_Bp;
+	const Face_Magnetic_Field_Getter_Neg& Face_Bn;
+	const Target_Refinement_Level_Getter& Ref;
+	const Solver_Info_Getter& Sol_Info;
 
-	// initialize data of parents of removed cells
-	for (const auto& parent: parents) {
-		auto* const parent_data = grid[parent];
-		if (parent_data == nullptr) {
-			throw std::runtime_error(__FILE__ ":" + to_string(__LINE__));
+	Removed_Cells_Handler(
+		const Mass_Density_Getter& Mas_,
+		const Momentum_Density_Getter& Mom_,
+		const Total_Energy_Density_Getter& Nrj_,
+		const Face_Magnetic_Field_Getter_Pos& Face_Bp_,
+		const Face_Magnetic_Field_Getter_Neg& Face_Bn_,
+		const Target_Refinement_Level_Getter& Ref_,
+		const Solver_Info_Getter& Sol_Info_
+	) :
+		Mas(Mas_), Mom(Mom_), Nrj(Nrj_),
+		Face_Bp(Face_Bp_), Face_Bn(Face_Bn_),
+		Ref(Ref_), Sol_Info(Sol_Info_)
+	{};
+
+	template<
+		class Grid,
+		class Cells
+	> void operator()(
+		const Grid& grid,
+		const Cells& removed_cells
+	) const {
+		using std::runtime_error;
+		using std::to_string;
+
+		// process each parent of removed cells only once
+		std::set<uint64_t> parents;
+		for (const auto& removed_cell: removed_cells) {
+			parents.insert(grid.mapping.get_parent(removed_cell));
 		}
-		Mas(*parent_data) =
-		Nrj(*parent_data) = 0;
-		Mom(*parent_data)     =
-		Face_Bn(*parent_data) =
-		Face_Bp(*parent_data) = {0, 0, 0};
-	}
 
-	// average parents' plasma parameters from their children, etc
-	for (const auto& removed_cell_id: removed_cells) {
-		auto* const removed_cell_data = grid[removed_cell_id];
-		if (removed_cell_data == nullptr) {
-			throw std::runtime_error(__FILE__ ":" + to_string(__LINE__));
+		// initialize data of parents of removed cells
+		for (const auto& parent: parents) {
+			auto* const parent_data = grid[parent];
+			if (parent_data == nullptr) {
+				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
+			}
+			Mas(*parent_data) =
+			Nrj(*parent_data) = 0;
+			Mom(*parent_data)     =
+			Face_Bn(*parent_data) =
+			Face_Bp(*parent_data) = {0, 0, 0};
 		}
 
-		const auto parent_id = grid.mapping.get_parent(removed_cell_id);
-		auto* const parent_data = grid[parent_id];
-		if (parent_data == nullptr) {
-			throw std::runtime_error(__FILE__ ":" + to_string(__LINE__));
-		}
+		// average parents' plasma parameters from their children, etc
+		for (const auto& removed_cell_id: removed_cells) {
+			auto* const removed_cell_data = grid[removed_cell_id];
+			if (removed_cell_data == nullptr) {
+				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
+			}
 
-		// all children included
-		Mas(*parent_data) += Mas(*removed_cell_data) / 8;
-		Mom(*parent_data) += Mom(*removed_cell_data) / 8;
-		Nrj(*parent_data) += Nrj(*removed_cell_data) / 8;
+			const auto parent_id = grid.mapping.get_parent(removed_cell_id);
+			auto* const parent_data = grid[parent_id];
+			if (parent_data == nullptr) {
+				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
+			}
 
-		const auto
-			pindex = grid.mapping.get_indices(parent_id),
-			rindex = grid.mapping.get_indices(removed_cell_id);
-		for (size_t dim = 0; dim < 3; dim++) {
-			// only children sharing a face with parent included
-			if (pindex[dim] == rindex[dim]) {
-				Face_Bn(*parent_data) += Face_Bn(*removed_cell_data) / 4;
-			} else {
-				Face_Bp(*parent_data) += Face_Bp(*removed_cell_data) / 4;
+			// all children included
+			Mas(*parent_data) += Mas(*removed_cell_data) / 8;
+			Mom(*parent_data) += Mom(*removed_cell_data) / 8;
+			Nrj(*parent_data) += Nrj(*removed_cell_data) / 8;
+
+			const auto
+				pindex = grid.mapping.get_indices(parent_id),
+				rindex = grid.mapping.get_indices(removed_cell_id);
+			for (size_t dim = 0; dim < 3; dim++) {
+				// only children sharing a face with parent included
+				if (pindex[dim] == rindex[dim]) {
+					Face_Bn(*parent_data) += Face_Bn(*removed_cell_data) / 4;
+				} else {
+					Face_Bp(*parent_data) += Face_Bp(*removed_cell_data) / 4;
+				}
 			}
 		}
 	}
+};
 
-	grid.clear_refined_unrefined_data();
-}
 
 }} // namespaces
 

@@ -727,25 +727,9 @@ int main(int argc, char* argv[])
 				cout << "...\nAdapting grid at time " << simulation_time << "...";
 			}
 
-			pamhd::mhd::get_target_refinement_levels<pamhd::mhd::Solver_Info>(
-				grid.local_cells(), grid,
-				Ref,
-				Mas, Mom, Nrj, Mag, Bg_B,
-				PFace, Sol_Info,
-				options_sim.adiabatic_index,
-				options_sim.vacuum_permeability
-			);
-			const auto new_cells = pamhd::mhd::adapt_grid<pamhd::mhd::Solver_Info>(
-				grid.local_cells(), grid,
-				Ref, Sol_Info
-			);
-			std::cout << new_cells.size() << " new cells" << std::endl;
-			pamhd::mhd::initialize_new_cells<pamhd::mhd::Solver_Info>(
-				new_cells, grid,
-				Mas, Mom, Nrj,
-				Face_B, Face_B_neg,
-				PFace, Ref, Sol_Info
-			);
+			const pamhd::mhd::New_Cells_Handler nch(Mas, Mom, Nrj, Face_B, Face_B_neg, Ref, Sol_Info);
+			const pamhd::mhd::Removed_Cells_Handler rch(Mas, Mom, Nrj, Face_B, Face_B_neg, Ref, Sol_Info);
+			pamhd::grid::adapt_grid(grid, options_grid, simulation_time, nch, rch);
 			pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
 			pamhd::grid::update_primary_edges(grid.local_cells(), grid, PEdge);
 		}
