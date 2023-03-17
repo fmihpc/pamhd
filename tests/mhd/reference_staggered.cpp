@@ -66,7 +66,7 @@ using Cell = gensimcell::Cell<
 	pamhd::Edge_Electric_Field,
 	pamhd::mhd::HD_Flux_Conservative,
 	pamhd::Magnetic_Field_Flux, // not real flux, used as dB
-	pamhd::Bg_Magnetic_Field_Pos_X
+	pamhd::Bg_Magnetic_Field
 >;
 using Grid = std::array<Cell, grid_length>;
 
@@ -77,56 +77,46 @@ Return a reference to data of corresponding variable in given simulation cell.
 */
 
 // conservative MHD variables
-const auto Mas
-	= [](Cell& cell_data)->typename pamhd::mhd::Mass_Density::data_type&{
-		return cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Mass_Density()];
-	};
+const auto Mas = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Mass_Density()];
+};
 
-const auto Mom
-	= [](Cell& cell_data)->typename pamhd::mhd::Momentum_Density::data_type&{
-		return cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Momentum_Density()];
-	};
+const auto Mom = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Momentum_Density()];
+};
 
-const auto Nrj
-	= [](Cell& cell_data)->typename pamhd::mhd::Total_Energy_Density::data_type&{
-		return cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Total_Energy_Density()];
-	};
+const auto Nrj = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Total_Energy_Density()];
+};
 
-const auto Mag
-	= [](Cell& cell_data)->typename pamhd::Magnetic_Field::data_type&{
-		return cell_data[pamhd::Magnetic_Field()];
-	};
+const auto Mag = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::Magnetic_Field()];
+};
 
-const auto Ele
-	= [](Cell& cell_data)->typename pamhd::Edge_Electric_Field::data_type&{
-		return cell_data[pamhd::Edge_Electric_Field()];
-	};
+const auto Ele = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::Edge_Electric_Field()];
+};
 
-const auto Bg_Mag
-	= [](Cell& cell_data)->typename pamhd::Bg_Magnetic_Field_Pos_X::data_type&{
-		return cell_data[pamhd::Bg_Magnetic_Field_Pos_X()];
-	};
+const auto Bg_Mag = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::Bg_Magnetic_Field()](0,1);
+};
 
 // fluxes of conservative MHD variables
-const auto Mas_f
-	= [](Cell& cell_data)->typename pamhd::mhd::Mass_Density::data_type&{
-		return cell_data[pamhd::mhd::HD_Flux_Conservative()][pamhd::mhd::Mass_Density()];
-	};
+const auto Mas_f = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::HD_Flux_Conservative()][pamhd::mhd::Mass_Density()];
+};
 
-const auto Mom_f
-	= [](Cell& cell_data)->typename pamhd::mhd::Momentum_Density::data_type&{
-		return cell_data[pamhd::mhd::HD_Flux_Conservative()][pamhd::mhd::Momentum_Density()];
-	};
+const auto Mom_f = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::HD_Flux_Conservative()][pamhd::mhd::Momentum_Density()];
+};
 
-const auto Nrj_f
-	= [](Cell& cell_data)->typename pamhd::mhd::Total_Energy_Density::data_type&{
-		return cell_data[pamhd::mhd::HD_Flux_Conservative()][pamhd::mhd::Total_Energy_Density()];
-	};
+const auto Nrj_f = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::HD_Flux_Conservative()][pamhd::mhd::Total_Energy_Density()];
+};
 
-const auto Mag_f
-	= [](Cell& cell_data)->typename pamhd::Magnetic_Field_Flux::data_type&{
-		return cell_data[pamhd::Magnetic_Field_Flux()];
-	};
+const auto Mag_f = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::Magnetic_Field_Flux()];
+};
 
 
 /*!
@@ -223,18 +213,18 @@ template <
 		Mag_f(cell_data)[1] =
 		Mag_f(cell_data)[2] = 0;
 
-		Mom(cell_data)[0]    =
-		Mom(cell_data)[1]    =
-		Mom(cell_data)[2]    =
-		Mag(cell_data)[0]    =
-		Mag(cell_data)[1]    =
-		Mag(cell_data)[2]    =
-		Ele(cell_data)[0]    =
-		Ele(cell_data)[1]    =
-		Ele(cell_data)[2]    =
-		Bg_Mag(cell_data)[0] =
-		Bg_Mag(cell_data)[1] =
-		Bg_Mag(cell_data)[2] = 0;
+		Mom(cell_data)[0]     =
+		Mom(cell_data)[1]     =
+		Mom(cell_data)[2]     =
+		Mag(cell_data)[0]     =
+		Mag(cell_data)[1]     =
+		Mag(cell_data)[2]     =
+		Ele(cell_data)(0,0,0) =
+		Ele(cell_data)(1,0,0) =
+		Ele(cell_data)(2,0,0) =
+		Bg_Mag(cell_data)[0]  =
+		Bg_Mag(cell_data)[1]  =
+		Bg_Mag(cell_data)[2]  = 0;
 
 		const double center = get_cell_center(cell_i);
 		double pressure = -1;
@@ -399,21 +389,21 @@ template <
 		const auto
 			v_c = (Mom(cell) / Mas(cell)).eval(),
 			v_n = (Mom(neighbor) / Mas(neighbor)).eval();
-		Ele(cell)[0] = 0;
+		Ele(cell)(0,0,0) = 0;
 		if (v_c[0] + v_n[0] > 0) {
-			Ele(cell)[1] = v_c[0]*Mag(cell)[2] - v_c[2]*Mag(cell)[0];
-			Ele(cell)[2] = v_c[1]*Mag(cell)[0] - v_c[0]*Mag(cell)[1];
+			Ele(cell)(1,0,0) = v_c[0]*Mag(cell)[2] - v_c[2]*Mag(cell)[0];
+			Ele(cell)(2,0,0) = v_c[1]*Mag(cell)[0] - v_c[0]*Mag(cell)[1];
 		} else {
-			Ele(cell)[1] = v_n[0]*Mag(neighbor)[2] - v_n[2]*Mag(cell)[0];
-			Ele(cell)[2] = v_n[1]*Mag(cell)[0] - v_n[0]*Mag(neighbor)[1];
+			Ele(cell)(1,0,0) = v_n[0]*Mag(neighbor)[2] - v_n[2]*Mag(cell)[0];
+			Ele(cell)(2,0,0) = v_n[1]*Mag(cell)[0] - v_n[0]*Mag(neighbor)[1];
 		}
 
 		Mag_f(cell)[0] = 0;
-		Mag_f(cell)[1] = Ele(cell)[2];
-		Mag_f(cell)[2] = -Ele(cell)[1];
+		Mag_f(cell)[1] = Ele(cell)(2,0,0);
+		Mag_f(cell)[2] = -Ele(cell)(1,0,0);
 		if (cell_i > 0) {
-			Mag_f(cell)[1] -= Ele(grid[cell_i-1])[2];
-			Mag_f(cell)[2] += Ele(grid[cell_i-1])[1];
+			Mag_f(cell)[1] -= Ele(grid[cell_i-1])(2,0,0);
+			Mag_f(cell)[2] += Ele(grid[cell_i-1])(1,0,0);
 		}
 		Mag_f(cell) *= dt;
 	}
