@@ -2,6 +2,7 @@
 Handles boundary logic of MHD part of PAMHD.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
+Copyright 2023 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -275,21 +276,20 @@ template<
 }
 
 
-// as apply_boundaries() below but for magnetic field only.
+// as apply_magnetic_field_boundaries() below but for staggered solver.
 template<
 	class Grid,
 	class Boundaries,
 	class Boundary_Geometries,
 	class Magnetic_Field_Pos_Getter,
 	class Magnetic_Field_Neg_Getter
-> void apply_magnetic_field_boundaries(
+> void apply_magnetic_field_boundaries_staggered(
 	Grid& grid,
 	Boundaries& boundaries,
 	const Boundary_Geometries& bdy_geoms,
 	const double simulation_time,
 	const Magnetic_Field_Pos_Getter& Magp,
-	const Magnetic_Field_Neg_Getter& /*Magn*/,
-	const bool staggered
+	const Magnetic_Field_Neg_Getter& /*Magn*/
 ) {
 	// magnetic field
 	constexpr pamhd::Magnetic_Field B{};
@@ -304,12 +304,10 @@ template<
 		for (const auto& cell: cells) {
 			const auto c = [&](){
 				auto c_ = grid.geometry.get_center(cell);
-				if (staggered) {
-					const auto len = grid.geometry.get_length(cell);
-					c_[0] += len[0]/2;
-					c_[1] += len[1]/2;
-					c_[2] += len[2]/2;
-				}
+				const auto len = grid.geometry.get_length(cell);
+				c_[0] += len[0]/2;
+				c_[1] += len[1]/2;
+				c_[2] += len[2]/2;
 				return c_;
 			}();
 			const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
@@ -357,6 +355,79 @@ template<
 		}
 
 		Magp(*target_data) = source_value;
+	}
+}
+
+// as apply_boundaries() below but for magnetic field only.
+template<
+	class Grid,
+	class Boundaries,
+	class Boundary_Geometries,
+	class Magnetic_Field_Getter
+> void apply_magnetic_field_boundaries(
+	Grid& grid,
+	Boundaries& boundaries,
+	const Boundary_Geometries& bdy_geoms,
+	const double simulation_time,
+	const Magnetic_Field_Getter& Mag
+) {
+	// magnetic field
+	constexpr pamhd::Magnetic_Field B{};
+	for (
+		size_t i = 0;
+		i < boundaries.get_number_of_value_boundaries(B);
+		i++
+	) {
+		auto& value_bdy = boundaries.get_value_boundary(B, i);
+		const auto& geometry_id = value_bdy.get_geometry_id();
+		const auto& cells = bdy_geoms.get_cells(geometry_id);
+		for (const auto& cell: cells) {
+			const auto c = grid.geometry.get_center(cell);
+			const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
+			const auto
+				lat = asin(c[2] / r),
+				lon = atan2(c[1], c[0]);
+
+			const auto magnetic_field = value_bdy.get_data(
+				simulation_time,
+				c[0], c[1], c[2],
+				r, lat, lon
+			);
+
+			auto* const cell_data = grid[cell];
+			if (cell_data == nullptr) {
+				std::cerr <<  __FILE__ << "(" << __LINE__ << std::endl;
+				abort();
+			}
+
+			Mag(*cell_data) = magnetic_field;
+		}
+	}
+	for (const auto& item: boundaries.get_copy_boundary_cells(B)) {
+		if (item.size() < 2) {
+			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
+			abort();
+		}
+
+		pamhd::Magnetic_Field::data_type source_value{0, 0, 0};
+		for (size_t i = 1; i < item.size(); i++) {
+			auto* source_data = grid[item[i]];
+			if (source_data == nullptr) {
+				std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
+				abort();
+			}
+
+			source_value += Mag(*source_data);
+		}
+		source_value /= item.size() - 1;
+
+		auto *target_data = grid[item[0]];
+		if (target_data == nullptr) {
+			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
+			abort();
+		}
+
+		Mag(*target_data) = source_value;
 	}
 }
 

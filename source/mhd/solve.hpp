@@ -2,7 +2,7 @@
 Solves the MHD part of PAMHD using an external flux function.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2019 Finnish Meteorological Institute
+Copyright 2018, 2019, 2023 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -66,9 +66,7 @@ template <
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
 	class Magnetic_Field_Getter,
-	class Background_Magnetic_Field_Pos_X_Getter,
-	class Background_Magnetic_Field_Pos_Y_Getter,
-	class Background_Magnetic_Field_Pos_Z_Getter,
+	class Background_Magnetic_Field_Getter,
 	class Mass_Density_Flux_Getter,
 	class Momentum_Density_Flux_Getter,
 	class Total_Energy_Density_Flux_Getter,
@@ -85,9 +83,7 @@ template <
 	const Momentum_Density_Getter Mom,
 	const Total_Energy_Density_Getter Nrj,
 	const Magnetic_Field_Getter Mag,
-	const Background_Magnetic_Field_Pos_X_Getter Bg_B_Pos_X,
-	const Background_Magnetic_Field_Pos_Y_Getter Bg_B_Pos_Y,
-	const Background_Magnetic_Field_Pos_Z_Getter Bg_B_Pos_Z,
+	const Background_Magnetic_Field_Getter Bg_B,
 	const Mass_Density_Flux_Getter Mas_f,
 	const Momentum_Density_Flux_Getter Mom_f,
 	const Total_Energy_Density_Flux_Getter Nrj_f,
@@ -199,13 +195,13 @@ template <
 
 				switch (neighbor_dir) {
 				case 1:
-					bg_face_b = get_rotated_vector(Bg_B_Pos_X(*cell.data), 1);
+					bg_face_b = get_rotated_vector(Bg_B(*cell.data)(0,0), 1);
 					break;
 				case 2:
-					bg_face_b = get_rotated_vector(Bg_B_Pos_Y(*cell.data), 2);
+					bg_face_b = get_rotated_vector(Bg_B(*cell.data)(1,0), 2);
 					break;
 				case 3:
-					bg_face_b = get_rotated_vector(Bg_B_Pos_Z(*cell.data), 3);
+					bg_face_b = get_rotated_vector(Bg_B(*cell.data)(2,0), 3);
 					break;
 				default:
 					abort();
@@ -223,13 +219,13 @@ template <
 
 				switch (neighbor_dir) {
 				case -1:
-					bg_face_b = get_rotated_vector(Bg_B_Pos_X(*neighbor.data), 1);
+					bg_face_b = get_rotated_vector(Bg_B(*neighbor.data)(0,0), 1);
 					break;
 				case -2:
-					bg_face_b = get_rotated_vector(Bg_B_Pos_Y(*neighbor.data), 2);
+					bg_face_b = get_rotated_vector(Bg_B(*neighbor.data)(1,0), 2);
 					break;
 				case -3:
-					bg_face_b = get_rotated_vector(Bg_B_Pos_Z(*neighbor.data), 3);
+					bg_face_b = get_rotated_vector(Bg_B(*neighbor.data)(2,0), 3);
 					break;
 				default:
 					abort();

@@ -532,13 +532,12 @@ int main(int argc, char* argv[])
 		Mag_nfz(*cell.data) = {0, 0, 0};
 	}
 
-	pamhd::mhd::apply_magnetic_field_boundaries(
+	pamhd::mhd::apply_magnetic_field_boundaries_staggered(
 		grid,
 		boundaries,
 		geometries,
 		simulation_time,
-		Face_B, Face_B_neg,
-		true
+		Face_B, Face_B_neg
 	);
 
 	Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
@@ -739,13 +738,12 @@ int main(int argc, char* argv[])
 		*/
 
 		// TODO: split into inner and outer cells
-		pamhd::mhd::apply_magnetic_field_boundaries(
+		pamhd::mhd::apply_magnetic_field_boundaries_staggered(
 			grid,
 			boundaries,
 			geometries,
 			simulation_time,
-			Face_B, Face_B_neg,
-			true
+			Face_B, Face_B_neg
 		);
 
 
