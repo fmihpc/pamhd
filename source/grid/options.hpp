@@ -350,6 +350,9 @@ public:
 				);
 			}
 		} else {
+			if (grid_options.HasMember("max-ref-lvl")) {
+				std::cout << "NOTE: JSON item max-ref-lvl exists but ref-lvl-at-least doesn't" << std::endl;
+			}
 			this->min_ref_lvl_i = 0;
 		}
 
@@ -386,6 +389,9 @@ public:
 				);
 			}
 		} else {
+			if (grid_options.HasMember("max-ref-lvl")) {
+				std::cout << "NOTE: JSON item max-ref-lvl exists but ref-lvl-at-most doesn't" << std::endl;
+			}
 			this->max_ref_lvl_i = 0;
 		}
 	}
