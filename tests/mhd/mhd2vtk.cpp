@@ -197,9 +197,7 @@ boost::optional<std::array<double, 4>> read_data(
 		pamhd::mhd::Solver_Info(),
 		pamhd::MPI_Rank(),
 		pamhd::Resistivity(),
-		pamhd::Bg_Magnetic_Field_Pos_X(),
-		pamhd::Bg_Magnetic_Field_Pos_Y(),
-		pamhd::Bg_Magnetic_Field_Pos_Z()
+		pamhd::Bg_Magnetic_Field()
 	);
 	for (const auto& item: cells_offsets) {
 		const uint64_t
@@ -378,30 +376,28 @@ void convert(
 		vtk_file << simulation_data.at(cell)[pamhd::mhd::Solver_Info()] << "\n";
 	}
 
-	constexpr pamhd::Bg_Magnetic_Field_Pos_X BgBPX{};
+	constexpr pamhd::Bg_Magnetic_Field BgB{};
 	vtk_file << "VECTORS background_B_pos_x double\n";
 	for (const auto& cell: cells) {
-		const auto magnetic_field = simulation_data.at(cell)[BgBPX];
+		const auto magnetic_field = simulation_data.at(cell)[BgB](0,0);
 		vtk_file
 			<< magnetic_field[0] << " "
 			<< magnetic_field[1] << " "
 			<< magnetic_field[2] << "\n";
 	}
 
-	constexpr pamhd::Bg_Magnetic_Field_Pos_Y BgBPY{};
 	vtk_file << "VECTORS background_B_pos_y double\n";
 	for (const auto& cell: cells) {
-		const auto magnetic_field = simulation_data.at(cell)[BgBPY];
+		const auto magnetic_field = simulation_data.at(cell)[BgB](1,0);
 		vtk_file
 			<< magnetic_field[0] << " "
 			<< magnetic_field[1] << " "
 			<< magnetic_field[2] << "\n";
 	}
 
-	constexpr pamhd::Bg_Magnetic_Field_Pos_Z BgBPZ{};
 	vtk_file << "VECTORS background_B_pos_z double\n";
 	for (const auto& cell: cells) {
-		const auto magnetic_field = simulation_data.at(cell)[BgBPZ];
+		const auto magnetic_field = simulation_data.at(cell)[BgB](2,0);
 		vtk_file
 			<< magnetic_field[0] << " "
 			<< magnetic_field[1] << " "
