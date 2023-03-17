@@ -50,7 +50,7 @@ using namespace std;
 
 
 constexpr double
-	adiabatic_index = 5.0 / 3.0,    
+	adiabatic_index = 5.0 / 3.0,
 	vacuum_permeability = 4e-7 * M_PI,
 	proton_mass = 1.672621777e-27;
 
@@ -64,7 +64,7 @@ using Cell = gensimcell::Cell<
 	pamhd::Magnetic_Field,
 	pamhd::mhd::HD_Flux_Conservative,
 	pamhd::Magnetic_Field_Flux,
-	pamhd::Bg_Magnetic_Field_Pos_X
+	pamhd::Bg_Magnetic_Field
 >;
 using Grid = std::array<Cell, grid_length>;
 
@@ -75,51 +75,42 @@ Return a reference to data of corresponding variable in given simulation cell.
 */
 
 // conservative MHD variables
-const auto Mas
-	= [](Cell& cell_data)->typename pamhd::mhd::Mass_Density::data_type&{
-		return cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Mass_Density()];
-	};
+const auto Mas = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Mass_Density()];
+};
 
-const auto Mom
-	= [](Cell& cell_data)->typename pamhd::mhd::Momentum_Density::data_type&{
-		return cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Momentum_Density()];
-	};
+const auto Mom = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Momentum_Density()];
+};
 
-const auto Nrj
-	= [](Cell& cell_data)->typename pamhd::mhd::Total_Energy_Density::data_type&{
-		return cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Total_Energy_Density()];
-	};
+const auto Nrj = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::HD_State_Conservative()][pamhd::mhd::Total_Energy_Density()];
+};
 
-const auto Mag
-	= [](Cell& cell_data)->typename pamhd::Magnetic_Field::data_type&{
-		return cell_data[pamhd::Magnetic_Field()];
-	};
+const auto Mag = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::Magnetic_Field()];
+};
 
-const auto Bg_Mag
-	= [](Cell& cell_data)->typename pamhd::Bg_Magnetic_Field_Pos_X::data_type&{
-		return cell_data[pamhd::Bg_Magnetic_Field_Pos_X()];
-	};
+const auto Bg_Mag = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::Bg_Magnetic_Field()](0,1);
+};
 
 // fluxes of conservative MHD variables
-const auto Mas_f
-	= [](Cell& cell_data)->typename pamhd::mhd::Mass_Density::data_type&{
-		return cell_data[pamhd::mhd::HD_Flux_Conservative()][pamhd::mhd::Mass_Density()];
-	};
+const auto Mas_f = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::HD_Flux_Conservative()][pamhd::mhd::Mass_Density()];
+};
 
-const auto Mom_f
-	= [](Cell& cell_data)->typename pamhd::mhd::Momentum_Density::data_type&{
-		return cell_data[pamhd::mhd::HD_Flux_Conservative()][pamhd::mhd::Momentum_Density()];
-	};
+const auto Mom_f = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::HD_Flux_Conservative()][pamhd::mhd::Momentum_Density()];
+};
 
-const auto Nrj_f
-	= [](Cell& cell_data)->typename pamhd::mhd::Total_Energy_Density::data_type&{
-		return cell_data[pamhd::mhd::HD_Flux_Conservative()][pamhd::mhd::Total_Energy_Density()];
-	};
+const auto Nrj_f = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::HD_Flux_Conservative()][pamhd::mhd::Total_Energy_Density()];
+};
 
-const auto Mag_f
-	= [](Cell& cell_data)->typename pamhd::Magnetic_Field_Flux::data_type&{
-		return cell_data[pamhd::Magnetic_Field_Flux()];
-	};
+const auto Mag_f = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::Magnetic_Field_Flux()];
+};
 
 
 /*!
