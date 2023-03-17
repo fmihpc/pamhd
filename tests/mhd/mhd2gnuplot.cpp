@@ -199,9 +199,7 @@ boost::optional<std::array<double, 4>> read_data(
 		pamhd::MPI_Rank(),
 		pamhd::Resistivity(),
 		pamhd::Magnetic_Field(),
-		pamhd::Bg_Magnetic_Field_Pos_X(),
-		pamhd::Bg_Magnetic_Field_Pos_Y(),
-		pamhd::Bg_Magnetic_Field_Pos_Z()
+		pamhd::Bg_Magnetic_Field()
 	);
 	for (const auto& item: cells_offsets) {
 		const uint64_t
@@ -438,21 +436,21 @@ int plot_1d(
 		     "'-' u 1:2 w l lw 2 t 'component 3'\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field_Pos_X()];
+		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](0,0);
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		gnuplot_file << x << " " << B[0] << "\n";
 	}
 	gnuplot_file << "end\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field_Pos_X()];
+		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](0,0);
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		gnuplot_file << x << " " << B[1] << "\n";
 	}
 	gnuplot_file << "end\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field_Pos_X()];
+		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](0,0);
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		gnuplot_file << x << " " << B[2] << "\n";
 	}
@@ -775,7 +773,7 @@ int plot_2d(
 			"Bx_tot",
 			"\n" + magnetic_field_cmd + " 1\"\n",
 			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Magnetic_Field()][0] + cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][0];
+				return cell_data[pamhd::Magnetic_Field()][0] + cell_data[pamhd::Bg_Magnetic_Field()](0,0)[0];
 			}
 		);
 
@@ -783,7 +781,7 @@ int plot_2d(
 			"By_tot",
 			"\n" + magnetic_field_cmd + " 2\"\n",
 			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Magnetic_Field()][1] + cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][1];
+				return cell_data[pamhd::Magnetic_Field()][1] + cell_data[pamhd::Bg_Magnetic_Field()](0,0)[1];
 			}
 		);
 
@@ -791,7 +789,7 @@ int plot_2d(
 			"Bz_tot",
 			"\n" + magnetic_field_cmd + " 3\"\n",
 			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Magnetic_Field()][2] + cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][2];
+				return cell_data[pamhd::Magnetic_Field()][2] + cell_data[pamhd::Bg_Magnetic_Field()](0,0)[2];
 			}
 		);
 	}
@@ -802,7 +800,7 @@ int plot_2d(
 			"Bx_bg",
 			"\n" + magnetic_field_cmd + " 1\"\n",
 			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][0];
+				return cell_data[pamhd::Bg_Magnetic_Field()](0,0)[0];
 			}
 		);
 
@@ -810,7 +808,7 @@ int plot_2d(
 			"By_bg",
 			"\n" + magnetic_field_cmd + " 2\"\n",
 			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][1];
+				return cell_data[pamhd::Bg_Magnetic_Field()](0,0)[1];
 			}
 		);
 
@@ -818,7 +816,7 @@ int plot_2d(
 			"Bz_bg",
 			"\n" + magnetic_field_cmd + " 3\"\n",
 			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Bg_Magnetic_Field_Pos_X()][2];
+				return cell_data[pamhd::Bg_Magnetic_Field()](0,0)[2];
 			}
 		);
 	}
@@ -911,7 +909,7 @@ int plot_2d(
 			max_B = B;
 		}
 
-		const double B0 = simulation_data.at(cells[i])[pamhd::Bg_Magnetic_Field_Pos_X()].norm();
+		const double B0 = simulation_data.at(cells[i])[pamhd::Bg_Magnetic_Field()](0,0).norm();
 		if (max_B0 < B0) {
 			max_B0 = B0;
 		}
@@ -1013,7 +1011,7 @@ int plot_2d(
 			continue;
 		}
 
-		const auto& B0 = simulation_data.at(cells[i])[pamhd::Bg_Magnetic_Field_Pos_X()];
+		const auto& B0 = simulation_data.at(cells[i])[pamhd::Bg_Magnetic_Field()](0,0);
 		const auto cell_center = geometry.get_center(cells[i]);
 		gnuplot_file
 			<< cell_center[dimensions[0]] << " "
