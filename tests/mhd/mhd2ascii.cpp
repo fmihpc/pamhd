@@ -196,9 +196,7 @@ boost::optional<std::array<double, 4>> read_data(
 		pamhd::mhd::Solver_Info(),
 		pamhd::MPI_Rank(),
 		pamhd::Resistivity(),
-		pamhd::Bg_Magnetic_Field_Pos_X(),
-		pamhd::Bg_Magnetic_Field_Pos_Y(),
-		pamhd::Bg_Magnetic_Field_Pos_Z()
+		pamhd::Bg_Magnetic_Field()
 	);
 	for (const auto& item: cells_offsets) {
 		const uint64_t
@@ -332,7 +330,7 @@ void convert(
 			<< magnetic_field[1] << " "
 			<< magnetic_field[2] << " ";
 
-		const auto& background_magnetic_field = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field_Pos_X()];
+		const auto& background_magnetic_field = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](0,0);
 		ascii_file
 			<< background_magnetic_field[0] << " "
 			<< background_magnetic_field[1] << " "
