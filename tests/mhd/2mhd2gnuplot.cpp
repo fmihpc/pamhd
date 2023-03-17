@@ -201,9 +201,7 @@ boost::optional<std::array<double, 4>> read_data(
 		pamhd::MPI_Rank(),
 		pamhd::Resistivity(),
 		pamhd::Magnetic_Field(),
-		pamhd::Bg_Magnetic_Field_Pos_X(),
-		pamhd::Bg_Magnetic_Field_Pos_Y(),
-		pamhd::Bg_Magnetic_Field_Pos_Z()
+		pamhd::Bg_Magnetic_Field()
 	);
 	for (const auto& item: cells_offsets) {
 		const uint64_t
