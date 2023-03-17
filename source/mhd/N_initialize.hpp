@@ -2,7 +2,7 @@
 Two-population version of PAMHD MHD initialization.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019 Finnish Meteorological Institute
+Copyright 2019, 2023 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -74,9 +74,7 @@ template <
 	class Total_Energy_Density_Getter1,
 	class Total_Energy_Density_Getter2,
 	class Magnetic_Field_Getter,
-	class Background_Magnetic_Field_Pos_X_Getter,
-	class Background_Magnetic_Field_Pos_Y_Getter,
-	class Background_Magnetic_Field_Pos_Z_Getter,
+	class Background_Magnetic_Field_Getter,
 	class Mass_Density_Flux_Getter1,
 	class Mass_Density_Flux_Getter2,
 	class Momentum_Density_Flux_Getter1,
@@ -102,9 +100,7 @@ template <
 	const Total_Energy_Density_Getter1 Nrj1,
 	const Total_Energy_Density_Getter2 Nrj2,
 	const Magnetic_Field_Getter Mag,
-	const Background_Magnetic_Field_Pos_X_Getter Bg_B_Pos_X,
-	const Background_Magnetic_Field_Pos_Y_Getter Bg_B_Pos_Y,
-	const Background_Magnetic_Field_Pos_Z_Getter Bg_B_Pos_Z,
+	const Background_Magnetic_Field_Getter Bg_B,
 	const Mass_Density_Flux_Getter1 Mas_f1,
 	const Mass_Density_Flux_Getter2 Mas_f2,
 	const Momentum_Density_Flux_Getter1 Mom_f1,
@@ -227,15 +223,15 @@ template <
 		}
 
 		const auto cell_end = grid.geometry.get_max(cell.id);
-		Bg_B_Pos_X(*cell.data) = bg_B.get_background_field(
+		Bg_B(*cell.data)(0,0) = bg_B.get_background_field(
 			{cell_end[0], c[1], c[2]},
 			vacuum_permeability
 		);
-		Bg_B_Pos_Y(*cell.data) = bg_B.get_background_field(
+		Bg_B(*cell.data)(1,0) = bg_B.get_background_field(
 			{c[0], cell_end[1], c[2]},
 			vacuum_permeability
 		);
-		Bg_B_Pos_Z(*cell.data) = bg_B.get_background_field(
+		Bg_B(*cell.data)(2,0) = bg_B.get_background_field(
 			{c[0], c[1], cell_end[2]},
 			vacuum_permeability
 		);

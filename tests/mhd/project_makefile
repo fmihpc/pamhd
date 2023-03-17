@@ -62,6 +62,7 @@ TEST_MHD_COMMON_DEPS = \
 
 TEST_MHD_PROGRAM_DEPS = \
   $(TEST_MHD_COMMON_DEPS) \
+  source/grid/amr.hpp \
   source/grid/options.hpp \
   source/variables.hpp \
   source/boundaries/boundaries.hpp \
@@ -93,7 +94,11 @@ TEST_MHD_COMPILE_COMMOM = \
   $(BOOST_LDFLAGS) \
   $(BOOST_LIBS) \
   $(EIGEN_CPPFLAGS) \
-  $(GENSIMCELL_CPPFLAGS)
+  $(GENSIMCELL_CPPFLAGS) \
+  $(MUPARSERX_CPPFLAGS) \
+  $(MUPARSERX_LDFLAGS) \
+  $(MUPARSERX_LIBS) \
+  $(RAPIDJSON_CPPFLAGS)
 
 tests/mhd/reference.exe: \
   tests/mhd/reference.cpp \
