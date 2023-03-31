@@ -328,8 +328,8 @@ int plot_1d(
 		<< " : " << to_string(tube_end)
 		<< "]\n" << density_pressure_cmd
 		<< "\nplot "
-		     "'-' using 1:2 axes x1y1 with line linewidth 2, "
-		     "'-' u 1:2 axes x1y2 w l lt 3 lw 2\n";
+		     "'-' using 1:2 axes x1y1 linewidth 2, "
+		     "'-' u 1:2 axes x1y2 lt 3 lw 2\n";
 
 	for (const auto& cell_id: cells) {
 		const auto& mhd_data
@@ -368,9 +368,9 @@ int plot_1d(
 		<< output_file_name_prefix + "_V.png"
 		<< "'\n" << velocity_cmd
 		<< "\nset key horizontal bottom outside\nplot "
-		     "'-' u 1:2 w l lw 2 t 'component 1', "
-		     "'-' u 1:2 w l lw 2 t 'component 2', "
-		     "'-' u 1:2 w l lw 2 t 'component 3'\n";
+		     "'-' u 1:2 lw 2 t 'component 1', "
+		     "'-' u 1:2 lw 2 t 'component 2', "
+		     "'-' u 1:2 lw 2 t 'component 3'\n";
 
 	for (const auto& cell_id: cells) {
 		const auto& mhd_data
@@ -421,9 +421,9 @@ int plot_1d(
 		<< output_file_name_prefix + "_B1.png"
 		<< "'\n" << magnetic_field_cmd
 		<< "\nset key horizontal bottom outside\nplot "
-		     "'-' u 1:2 w l lw 2 t 'component 1', "
-		     "'-' u 1:2 w l lw 2 t 'component 2', "
-		     "'-' u 1:2 w l lw 2 t 'component 3'\n";
+		     "'-' u 1:2 lw 2 t 'component 1', "
+		     "'-' u 1:2 lw 2 t 'component 2', "
+		     "'-' u 1:2 lw 2 t 'component 3'\n";
 
 	for (const auto& cell_id: cells) {
 		const auto& B = simulation_data.at(cell_id)[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()];
@@ -452,9 +452,9 @@ int plot_1d(
 		<< output_file_name_prefix + "_B0px.png"
 		<< "'\n" << magnetic_field_cmd
 		<< "\nset key horizontal bottom outside\nplot "
-		     "'-' u 1:2 w l lw 2 t 'component 1', "
-		     "'-' u 1:2 w l lw 2 t 'component 2', "
-		     "'-' u 1:2 w l lw 2 t 'component 3'\n";
+		     "'-' u 1:2 lw 2 t 'component 1', "
+		     "'-' u 1:2 lw 2 t 'component 2', "
+		     "'-' u 1:2 lw 2 t 'component 3'\n";
 
 	for (const auto& cell_id: cells) {
 		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](0, 1);
@@ -484,9 +484,9 @@ int plot_1d(
 		<< output_file_name_prefix + "_J.png"
 		<< "'\n" << current_density_cmd
 		<< "\nset key horizontal bottom outside\nplot "
-		     "'-' u 1:2 w l lw 2 t 'component 1', "
-		     "'-' u 1:2 w l lw 2 t 'component 2', "
-		     "'-' u 1:2 w l lw 2 t 'component 3'\n";
+		     "'-' u 1:2 lw 2 t 'component 1', "
+		     "'-' u 1:2 lw 2 t 'component 2', "
+		     "'-' u 1:2 lw 2 t 'component 3'\n";
 
 	for (const auto& cell_id: cells) {
 		const auto& J = simulation_data.at(cell_id)[pamhd::Electric_Current_Density()];
@@ -527,8 +527,8 @@ int plot_1d(
 		   "set format y2 '%.2e'\n"
 		   "set y2tics auto\n"
 		   "plot "
-		     "'-' using 1:2 axes x1y1 with line linewidth 2, "
-		     "'-' u 1:2 axes x1y2 w l lt 3 lw 2\n";
+		     "'-' using 1:2 axes x1y1 linewidth 2, "
+		     "'-' u 1:2 axes x1y2 lt 3 lw 2\n";
 
 	for (const auto& cell_id: cells) {
 		const double x = geometry.get_center(cell_id)[tube_dim];
@@ -550,9 +550,9 @@ int plot_1d(
 		<< output_file_name_prefix + "_Btot.png"
 		<< "'\n" << magnetic_field_cmd
 		<< "\nset key horizontal bottom outside\nplot "
-		     "'-' u 1:2 w l lw 2 t 'component 1', "
-		     "'-' u 1:2 w l lw 2 t 'component 2', "
-		     "'-' u 1:2 w l lw 2 t 'component 3'\n";
+		     "'-' u 1:2 lw 2 t 'component 1', "
+		     "'-' u 1:2 lw 2 t 'component 2', "
+		     "'-' u 1:2 lw 2 t 'component 3'\n";
 
 	for (const auto& cell_id: cells) {
 		const auto
@@ -588,9 +588,9 @@ int plot_1d(
 		<< output_file_name_prefix + "_Bf.png"
 		<< "'\n" << magnetic_field_cmd
 		<< "\nset key horizontal bottom outside\nplot "
-		     "'-' u 1:2 w l lw 2 t 'component 1', "
-		     "'-' u 1:2 w l lw 2 t 'component 2', "
-		     "'-' u 1:2 w l lw 2 t 'component 3'\n";
+		     "'-' u 1:2 lw 2 t 'component 1', "
+		     "'-' u 1:2 lw 2 t 'component 2', "
+		     "'-' u 1:2 lw 2 t 'component 3'\n";
 
 	for (const auto& cell_id: cells) {
 		const auto& B = simulation_data.at(cell_id)[pamhd::Face_Magnetic_Field()];
@@ -620,9 +620,9 @@ int plot_1d(
 		<< output_file_name_prefix + "_Ee.png"
 		<< "'\n" << electric_field_cmd
 		<< "\nset key horizontal bottom outside\nplot "
-		     "'-' u 1:2 w l lw 2 t 'component 1', "
-		     "'-' u 1:2 w l lw 2 t 'component 2', "
-		     "'-' u 1:2 w l lw 2 t 'component 3'\n";
+		     "'-' u 1:2 lw 2 t 'component 1', "
+		     "'-' u 1:2 lw 2 t 'component 2', "
+		     "'-' u 1:2 lw 2 t 'component 3'\n";
 
 	for (const auto& cell_id: cells) {
 		const auto& E = simulation_data.at(cell_id)[pamhd::Edge_Electric_Field()];
