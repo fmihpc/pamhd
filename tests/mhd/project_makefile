@@ -3,6 +3,7 @@ TESTS_MHD_EXECUTABLES = \
   tests/mhd/reference_staggered.exe \
   tests/mhd/two_reference.exe \
   tests/mhd/mhd2ascii.exe \
+  tests/mhd/mhd2ascii_staggered.exe \
   tests/mhd/mhd2gnuplot.exe \
   tests/mhd/mhd2gnuplot_staggered.exe \
   tests/mhd/mhd2vtk.exe \
@@ -117,6 +118,15 @@ tests/mhd/two_reference.exe: \
 
 tests/mhd/mhd2ascii.exe: \
   tests/mhd/mhd2ascii.cpp \
+  $(TEST_MHD_COMMON_DEPS)
+	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM) \
+	  $(DCCRG_CPPFLAGS) \
+	  $(ZOLTAN_CPPFLAGS) \
+	  $(ZOLTAN_LDFLAGS) \
+	  $(ZOLTAN_LIBS)
+
+tests/mhd/mhd2ascii_staggered.exe: \
+  tests/mhd/mhd2ascii_staggered.cpp \
   $(TEST_MHD_COMMON_DEPS)
 	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM) \
 	  $(DCCRG_CPPFLAGS) \

@@ -130,14 +130,7 @@ template <
 			continue;
 		}
 
-		const std::array<double, 3>
-			cell_length = grid.geometry.get_length(cell.id),
-			// area of cell perpendicular to each dimension
-			cell_area{{
-				cell_length[1] * cell_length[2],
-				cell_length[0] * cell_length[2],
-				cell_length[0] * cell_length[1]
-			}};
+		const auto cell_length = grid.geometry.get_length(cell.id);
 
 		const auto primary = PFace(*cell.data);
 		for (const auto& neighbor: cell.neighbors_of) {
@@ -154,28 +147,6 @@ template <
 
 			if ((Sol_Info(*neighbor.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
 				continue;
-			}
-
-			const size_t neighbor_dim = size_t(abs(neighbor.face_neighbor) - 1);
-
-			const std::array<double, 3>
-				neighbor_length = grid.geometry.get_length(neighbor.id),
-				neighbor_area{{
-					neighbor_length[1] * neighbor_length[2],
-					neighbor_length[0] * neighbor_length[2],
-					neighbor_length[0] * neighbor_length[1]
-				}};
-
-			const double shared_area
-				= std::min(cell_area[neighbor_dim], neighbor_area[neighbor_dim]);
-
-			if (not std::isnormal(shared_area) or shared_area < 0) {
-				throw std::domain_error(
-					"Invalid area between cells "
-					+ to_string(cell.id) + " and "
-					+ to_string(neighbor.id) + ": "
-					+ to_string(shared_area)
-				);
 			}
 
 			detail::MHD state_neg, state_pos;
@@ -196,6 +167,7 @@ template <
 				state_pos = temp;
 			}
 
+			const size_t neighbor_dim = size_t(abs(neighbor.face_neighbor) - 1);
 			Magnetic_Field::data_type bg_face_b;
 			if (neighbor.face_neighbor < 0) {
 				bg_face_b = Bg_B(*neighbor.data)(neighbor_dim, 1);
@@ -345,8 +317,12 @@ template <
 	const Primary_Edge_Getter PEdge,
 	const Solver_Info_Getter Sol_Info
 ) {
+	using std::array;
 	using std::get;
+	using std::make_tuple;
 	using std::pow;
+	using std::runtime_error;
+	using std::to_string;
 
 	const auto
 		Mas_fnx = get<0>(Mas_f), Mas_fpx = get<1>(Mas_f),
@@ -367,76 +343,150 @@ template <
 			continue;
 		}
 
-		const auto [dx, dy, dz] = grid.geometry.get_length(cell.id);
-		const auto [rx, ry, rz] = grid.geometry.get_center(cell.id);
-
 		bool
 			update_mas = ((Sol_Info(*cell.data) & Solver_Info::mass_density_bdy) == 0),
 			update_mom = ((Sol_Info(*cell.data) & Solver_Info::velocity_bdy) == 0),
 			update_nrj = ((Sol_Info(*cell.data) & Solver_Info::pressure_bdy) == 0),
 			update_mag = ((Sol_Info(*cell.data) & Solver_Info::magnetic_field_bdy) == 0);
 
-		const auto pface = PFace(*cell.data);
-		const auto pedge = PEdge(*cell.data);
+		const auto pface = PFace(*cell.data); // primary face true/false
+		const auto pedge = PEdge(*cell.data); // primary edge true/false
 		auto& edge_e = Edge_E(*cell.data);
-		std::array<std::array<std::array<double, 2>, 2>, 3> e_items;
+		array<array<array<double, 2>, 2>, 3> e_items;
 		for (size_t d: {0, 1, 2}) // parallel dim of edge
 		for (size_t a: {0, 1}) // side in 1st perpendicular dim of edge
 		for (size_t b: {0, 1}) { // side of cell in 2nd perp dim
 			edge_e(d,a,b) = 0.0;
 			e_items[d][a][b] = 0;
-			if (not pedge(d,a,b)) {
-				continue;
+		}
+
+		/*! Contributions to edge electric fields
+
+		Edge directed along x:
+			Flux through touching face with normal in y direction:
+				-Bz flux is added to E
+			Flux through face with normal in z direction:
+				+By flux is added to E
+		Edge y:
+			Flux x: +Bz flux added
+			Flux z: -Bx flux added
+		Edge z:
+			Flux x: -By
+			Flux y: +Bx
+		*/
+
+		// cell's own face can contribute to all touching edges
+		if (pface[0]) {
+			// non-primary edges are handled by another cell
+			if (pedge(1,0,0)) {
+				edge_e(1,0,0) += get<0>(Mag_f)(*cell.data)[2];
+				e_items[1][0][0]++;
 			}
-			if (d == 0) {
-				if (a == 1) {
-					if (b == 1) {
-						if (pface[3]) {
-							edge_e(d,a,b) -= get<3>(Mag_f)(*cell.data)[2]; e_items[d][a][b]++;
-						} else {
-							throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
-						}
-						if (pface[5]) {
-							edge_e(d,a,b) += get<5>(Mag_f)(*cell.data)[1]; e_items[d][a][b]++;
-						} else {
-							throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
-						}
-					}
-				}
+			if (pedge(1,0,1)) {
+				edge_e(1,0,1) += get<0>(Mag_f)(*cell.data)[2];
+				e_items[1][0][1]++;
 			}
-			if (d == 1) {
-				if (a == 1) {
-					if (b == 1) {
-						if (pface[1]) {
-							edge_e(d,a,b) += get<1>(Mag_f)(*cell.data)[2]; e_items[d][a][b]++;
-						} else {
-							throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
-						}
-						if (pface[5]) {
-							edge_e(d,a,b) -= get<5>(Mag_f)(*cell.data)[0]; e_items[d][a][b]++;
-						} else {
-							throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
-						}
-					}
-				}
+			if (pedge(2,0,0)) {
+				edge_e(2,0,0) -= get<0>(Mag_f)(*cell.data)[1];
+				e_items[2][0][0]++;
 			}
-			if (d == 2) {
-				if (a == 1) {
-					if (b == 1) {
-						if (pface[1]) {
-							edge_e(d,a,b) -= get<1>(Mag_f)(*cell.data)[1]; e_items[d][a][b]++;
-						} else {
-							throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
-						}
-						if (pface[3]) {
-							edge_e(d,a,b) += get<3>(Mag_f)(*cell.data)[0]; e_items[d][a][b]++;
-						} else {
-							throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
-						}
-					}
-				}
+			if (pedge(2,0,1)) {
+				edge_e(2,0,1) -= get<0>(Mag_f)(*cell.data)[1];
+				e_items[2][0][1]++;
 			}
 		}
+		if (pface[1]) {
+			if (pedge(1,1,0)) {
+				edge_e(1,1,0) += get<1>(Mag_f)(*cell.data)[2];
+				e_items[1][1][0]++;
+			}
+			if (pedge(1,1,1)) {
+				edge_e(1,1,1) += get<1>(Mag_f)(*cell.data)[2];
+				e_items[1][1][1]++;
+			}
+			if (pedge(2,1,0)) {
+				edge_e(2,1,0) -= get<1>(Mag_f)(*cell.data)[1];
+				e_items[2][1][0]++;
+			}
+			if (pedge(2,1,1)) {
+				edge_e(2,1,1) -= get<1>(Mag_f)(*cell.data)[1];
+				e_items[2][1][1]++;
+			}
+		}
+		if (pface[2]) {
+			if (pedge(0,0,0)) {
+				edge_e(0,0,0) -= get<2>(Mag_f)(*cell.data)[2];
+				e_items[0][0][0]++;
+			}
+			if (pedge(0,0,1)) {
+				edge_e(0,0,1) -= get<2>(Mag_f)(*cell.data)[2];
+				e_items[0][0][1]++;
+			}
+			if (pedge(2,0,0)) {
+				edge_e(2,0,0) += get<2>(Mag_f)(*cell.data)[0];
+				e_items[2][0][0]++;
+			}
+			if (pedge(2,1,0)) {
+				edge_e(2,1,0) += get<2>(Mag_f)(*cell.data)[0];
+				e_items[2][1][0]++;
+			}
+		}
+		if (pface[3]) {
+			if (pedge(0,1,0)) {
+				edge_e(0,1,0) -= get<3>(Mag_f)(*cell.data)[2];
+				e_items[0][1][0]++;
+			}
+			if (pedge(0,1,1)) {
+				edge_e(0,1,1) -= get<3>(Mag_f)(*cell.data)[2];
+				e_items[0][1][1]++;
+			}
+			if (pedge(2,0,1)) {
+				edge_e(2,0,1) += get<3>(Mag_f)(*cell.data)[0];
+				e_items[2][0][1]++;
+			}
+			if (pedge(2,1,1)) {
+				edge_e(2,1,1) += get<3>(Mag_f)(*cell.data)[0];
+				e_items[2][1][1]++;
+			}
+		}
+		if (pface[4]) {
+			if (pedge(0,0,0)) {
+				edge_e(0,0,0) += get<4>(Mag_f)(*cell.data)[1];
+				e_items[0][0][0]++;
+			}
+			if (pedge(0,1,0)) {
+				edge_e(0,1,0) += get<4>(Mag_f)(*cell.data)[1];
+				e_items[0][1][0]++;
+			}
+			if (pedge(1,0,0)) {
+				edge_e(1,0,0) -= get<4>(Mag_f)(*cell.data)[0];
+				e_items[1][0][0]++;
+			}
+			if (pedge(1,1,0)) {
+				edge_e(1,1,0) -= get<4>(Mag_f)(*cell.data)[0];
+				e_items[1][1][0]++;
+			}
+		}
+		if (pface[5]) {
+			if (pedge(0,0,1)) {
+				edge_e(0,0,1) += get<5>(Mag_f)(*cell.data)[1];
+				e_items[0][0][1]++;
+			}
+			if (pedge(0,1,1)) {
+				edge_e(0,1,1) += get<5>(Mag_f)(*cell.data)[1];
+				e_items[0][1][1]++;
+			}
+			if (pedge(1,0,1)) {
+				edge_e(1,0,1) -= get<5>(Mag_f)(*cell.data)[0];
+				e_items[1][0][1]++;
+			}
+			if (pedge(1,1,1)) {
+				edge_e(1,1,1) -= get<5>(Mag_f)(*cell.data)[0];
+				e_items[1][1][1]++;
+			}
+		}
+
+		const auto [dx, dy, dz] = grid.geometry.get_length(cell.id);
 
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
@@ -451,11 +501,15 @@ template <
 
 			const auto [dtdx, dtdy, dtdz] = [&]{
 				if (neighbor.relative_size > 0) {
-					return std::make_tuple(dt/dx/4, dt/dy/4, dt/dz/4);
+					return make_tuple(dt/dx/4, dt/dy/4, dt/dz/4);
 				} else {
-					return std::make_tuple(dt/dx, dt/dy, dt/dz);
+					return make_tuple(dt/dx, dt/dy, dt/dz);
 				}
 			}();
+
+			/*
+			Apply fluxes
+			*/
 
 			if (fn == -1) {
 				if (pface[0]) {
@@ -541,33 +595,399 @@ template <
 				}
 			}
 
+			/*
+			Contributions to edge electric fields
+			*/
 			const auto npface = PFace(*neighbor.data);
-			//const auto npedge = PEdge(*neighbor.data);
 
-			if (fn == 1) {
-				if (npface[5]) {
-					edge_e(1,1,1) -= get<5>(Mag_f)(*neighbor.data)[0]; e_items[1][1][1]++;}
-				if (npface[3]) {
-					edge_e(2,1,1) += get<3>(Mag_f)(*neighbor.data)[0]; e_items[2][1][1]++;}
+			if (fn == -1) {
+				/*
+				Use larger neighbor's flux in all smaller siblings.
+				TODO: investigate using e.g. average
+				of +- face fluxes or upwinding instead.
+				*/
+				if (npface[2] and pedge(2,0,0)/* and neighbor.y == 0*/) {
+					edge_e(2,0,0) += get<2>(Mag_f)(*neighbor.data)[0];
+					e_items[2][0][0]++;
+				}
+				if (npface[3] and pedge(2,0,1)/* and cleni == neighbor.y + nleni*/) {
+					edge_e(2,0,1) += get<3>(Mag_f)(*neighbor.data)[0];
+					e_items[2][0][1]++;
+				}
+				if (npface[4] and pedge(1,0,0)/* and neighbor.z == 0*/) {
+					edge_e(1,0,0) -= get<4>(Mag_f)(*neighbor.data)[0];
+					e_items[1][0][0]++;
+				}
+				if (npface[5] and pedge(1,0,1)/* and cleni == neighbor.z + nleni*/) {
+					edge_e(1,0,1) -= get<5>(Mag_f)(*neighbor.data)[0];
+					e_items[1][0][1]++;
+				}
 			}
-			if (fn == 2) {
-				if (npface[5]) {
-					edge_e(0,1,1) += get<5>(Mag_f)(*neighbor.data)[1]; e_items[0][1][1]++;}
-				if (npface[1]) {
-					edge_e(2,1,1) -= get<1>(Mag_f)(*neighbor.data)[1]; e_items[2][1][1]++;}
+
+			if (fn == +1) {
+				if (npface[2] and pedge(2,1,0)/* and neighbor.y == 0*/) {
+					edge_e(2,1,0) += get<2>(Mag_f)(*neighbor.data)[0];
+					e_items[2][1][0]++;
+				}
+				if (npface[3] and pedge(2,1,1)/* and cleni == neighbor.y + nleni*/) {
+					edge_e(2,1,1) += get<3>(Mag_f)(*neighbor.data)[0];
+					e_items[2][1][1]++;
+				}
+				if (npface[4] and pedge(1,1,0)/* and neighbor.z == 0*/) {
+					edge_e(1,1,0) -= get<4>(Mag_f)(*neighbor.data)[0];
+					e_items[1][1][0]++;
+				}
+				if (npface[5] and pedge(1,1,1)/* and cleni == neighbor.z + nleni*/) {
+					edge_e(1,1,1) -= get<5>(Mag_f)(*neighbor.data)[0];
+					e_items[1][1][1]++;
+				}
 			}
-			if (fn == 3) {
+
+			if (fn == -2) {
+				if (npface[0] and pedge(2,0,0)/* and neighbor.x == 0*/) {
+					edge_e(2,0,0) -= get<0>(Mag_f)(*neighbor.data)[1];
+					e_items[2][0][0]++;
+				}
+				if (npface[1] and pedge(2,1,0)/* and cleni == neighbor.x + nleni*/) {
+					edge_e(2,1,0) -= get<1>(Mag_f)(*neighbor.data)[1];
+					e_items[2][1][0]++;
+				}
+				if (npface[4] and pedge(0,0,0)/* and neighbor.z == 0*/) {
+					edge_e(0,0,0) += get<4>(Mag_f)(*neighbor.data)[1];
+					e_items[0][0][0]++;
+				}
+				if (npface[5] and pedge(0,0,1)/* and cleni == neighbor.z + nleni*/) {
+					edge_e(0,0,1) += get<5>(Mag_f)(*neighbor.data)[1];
+					e_items[0][0][1]++;
+				}
+			}
+
+			if (fn == +2) {
+				if (npface[0] and pedge(2,0,1)/* and neighbor.x == 0*/) {
+					edge_e(2,0,1) -= get<0>(Mag_f)(*neighbor.data)[1];
+					e_items[2][0][1]++;
+				}
+				if (npface[1] and pedge(2,1,1)/* and cleni == neighbor.x + nleni*/) {
+					edge_e(2,1,1) -= get<1>(Mag_f)(*neighbor.data)[1];
+					e_items[2][1][1]++;
+				}
+				if (npface[4] and pedge(0,1,0)/* and neighbor.z == 0*/) {
+					edge_e(0,1,0) += get<4>(Mag_f)(*neighbor.data)[1];
+					e_items[0][1][0]++;
+				}
+				if (npface[5] and pedge(0,1,1)/* and cleni == neighbor.z + nleni*/) {
+					edge_e(0,1,1) += get<5>(Mag_f)(*neighbor.data)[1];
+					e_items[0][1][1]++;
+				}
+			}
+
+			if (fn == -3) {
+				if (npface[0] and pedge(1,0,0)/* and neighbor.x == 0*/) {
+					edge_e(1,0,0) += get<0>(Mag_f)(*neighbor.data)[2];
+					e_items[1][0][0]++;
+				}
+				if (npface[1] and pedge(1,1,0)/* and cleni == neighbor.x + nleni*/) {
+					edge_e(1,1,0) += get<1>(Mag_f)(*neighbor.data)[2];
+					e_items[1][1][0]++;
+				}
+				if (npface[2] and pedge(0,0,0)/* and neighbor.y == 0*/) {
+					edge_e(0,0,0) -= get<2>(Mag_f)(*neighbor.data)[2];
+					e_items[0][0][0]++;
+				}
+				if (npface[3] and pedge(0,1,0)/* and cleni == neighbor.y + nleni*/) {
+					edge_e(0,1,0) -= get<3>(Mag_f)(*neighbor.data)[2];
+					e_items[0][1][0]++;
+				}
+			}
+
+			if (fn == +3) {
+				if (npface[0] and pedge(1,0,1)/* and neighbor.x == 0*/) {
+					edge_e(1,0,1) += get<0>(Mag_f)(*neighbor.data)[2];
+					e_items[1][0][1]++;
+				}
+				if (npface[1] and pedge(1,1,1)/* and cleni == neighbor.x + nleni*/) {
+					edge_e(1,1,1) += get<1>(Mag_f)(*neighbor.data)[2];
+					e_items[1][1][1]++;
+				}
+				if (npface[2] and pedge(0,0,1)/* and neighbor.y == 0*/) {
+					edge_e(0,0,1) -= get<2>(Mag_f)(*neighbor.data)[2];
+					e_items[0][0][1]++;
+				}
+				if (npface[3] and pedge(0,1,1)/* and cleni == neighbor.y + nleni*/) {
+					edge_e(0,1,1) -= get<3>(Mag_f)(*neighbor.data)[2];
+					e_items[0][1][1]++;
+				}
+			}
+
+			if (en[0] == 0 and en[1] == 0 and en[2] == 0 and pedge(0,0,0)) {
 				if (npface[3]) {
-					edge_e(0,1,1) -= get<3>(Mag_f)(*neighbor.data)[2]; e_items[0][1][1]++;}
+					edge_e(0,0,0) -= get<3>(Mag_f)(*neighbor.data)[2];
+					e_items[0][0][0]++;
+				}
+				if (npface[5]) {
+					edge_e(0,0,0) += get<5>(Mag_f)(*neighbor.data)[1];
+					e_items[0][0][0]++;
+				}
+			}
+			if (en[0] == 0 and en[1] == 0 and en[2] == 1 and pedge(0,0,1)) {
+				if (npface[3]) {
+					edge_e(0,0,1) -= get<3>(Mag_f)(*neighbor.data)[2];
+					e_items[0][0][1]++;
+				}
+				if (npface[4]) {
+					edge_e(0,0,1) += get<4>(Mag_f)(*neighbor.data)[1];
+					e_items[0][0][1]++;
+				}
+			}
+			if (en[0] == 0 and en[1] == 1 and en[2] == 0 and pedge(0,1,0)) {
+				if (npface[2]) {
+					edge_e(0,1,0) -= get<2>(Mag_f)(*neighbor.data)[2];
+					e_items[0][1][0]++;
+				}
+				if (npface[5]) {
+					edge_e(0,1,0) += get<5>(Mag_f)(*neighbor.data)[1];
+					e_items[0][1][0]++;
+				}
+			}
+			if (en[0] == 0 and en[1] == 1 and en[2] == 1 and pedge(0,1,1)) {
+				if (npface[2]) {
+					edge_e(0,1,1) -= get<2>(Mag_f)(*neighbor.data)[2];
+					e_items[0][1][1]++;
+				}
+				if (npface[4]) {
+					edge_e(0,1,1) += get<4>(Mag_f)(*neighbor.data)[1];
+					e_items[0][1][1]++;
+				}
+			}
+
+			if (en[0] == 1 and en[1] == 0 and en[2] == 0 and pedge(1,0,0)) {
 				if (npface[1]) {
-					edge_e(1,1,1) += get<1>(Mag_f)(*neighbor.data)[2]; e_items[1][1][1]++;}
+					edge_e(1,0,0) += get<1>(Mag_f)(*neighbor.data)[2];
+					e_items[1][0][0]++;
+				}
+				if (npface[5]) {
+					edge_e(1,0,0) -= get<5>(Mag_f)(*neighbor.data)[0];
+					e_items[1][0][0]++;
+				}
+			}
+			if (en[0] == 1 and en[1] == 0 and en[2] == 1 and pedge(1,0,1)) {
+				if (npface[1]) {
+					edge_e(1,0,1) += get<1>(Mag_f)(*neighbor.data)[2];
+					e_items[1][0][1]++;
+				}
+				if (npface[4]) {
+					edge_e(1,0,1) -= get<4>(Mag_f)(*neighbor.data)[0];
+					e_items[1][0][1]++;
+				}
+			}
+			if (en[0] == 1 and en[1] == 1 and en[2] == 0 and pedge(1,1,0)) {
+				if (npface[0]) {
+					edge_e(1,1,0) += get<0>(Mag_f)(*neighbor.data)[2];
+					e_items[1][1][0]++;
+				}
+				if (npface[5]) {
+					edge_e(1,1,0) -= get<5>(Mag_f)(*neighbor.data)[0];
+					e_items[1][1][0]++;
+				}
+			}
+			if (en[0] == 1 and en[1] == 1 and en[2] == 1 and pedge(1,1,1)) {
+				if (npface[0]) {
+					edge_e(1,1,1) += get<0>(Mag_f)(*neighbor.data)[2];
+					e_items[1][1][1]++;
+				}
+				if (npface[4]) {
+					edge_e(1,1,1) -= get<4>(Mag_f)(*neighbor.data)[0];
+					e_items[1][1][1]++;
+				}
+			}
+
+			if (en[0] == 2 and en[1] == 0 and en[2] == 0 and pedge(2,0,0)) {
+				if (npface[1]) {
+					edge_e(2,0,0) -= get<1>(Mag_f)(*neighbor.data)[1];
+					e_items[2][0][0]++;
+				}
+				if (npface[3]) {
+					edge_e(2,0,0) += get<3>(Mag_f)(*neighbor.data)[0];
+					e_items[2][0][0]++;
+				}
+			}
+			if (en[0] == 2 and en[1] == 0 and en[2] == 1 and pedge(2,0,1)) {
+				if (npface[1]) {
+					edge_e(2,0,1) -= get<1>(Mag_f)(*neighbor.data)[1];
+					e_items[2][0][1]++;
+				}
+				if (npface[2]) {
+					edge_e(2,0,1) += get<2>(Mag_f)(*neighbor.data)[0];
+					e_items[2][0][1]++;
+				}
+			}
+			if (en[0] == 2 and en[1] == 1 and en[2] == 0 and pedge(2,1,0)) {
+				if (npface[0]) {
+					edge_e(2,1,0) -= get<0>(Mag_f)(*neighbor.data)[1];
+					e_items[2][1][0]++;
+				}
+				if (npface[3]) {
+					edge_e(2,1,0) += get<3>(Mag_f)(*neighbor.data)[0];
+					e_items[2][1][0]++;
+				}
+			}
+			if (en[0] == 2 and en[1] == 1 and en[2] == 1 and pedge(2,1,1)) {
+				if (npface[0]) {
+					edge_e(2,1,1) -= get<0>(Mag_f)(*neighbor.data)[1];
+					e_items[2][1][1]++;
+				}
+				if (npface[2]) {
+					edge_e(2,1,1) += get<2>(Mag_f)(*neighbor.data)[0];
+					e_items[2][1][1]++;
+				}
+			}
+			// these shouldn't be possible but keep for reference
+			if (fn == -1 and npface[1]) {
+				if (pedge(1,0,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(1,0,0) += get<1>(Mag_f)(*neighbor.data)[2];
+					//e_items[1][0][0]++;
+				}
+				if (pedge(1,0,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(1,0,1) += get<1>(Mag_f)(*neighbor.data)[2];
+					//e_items[1][0][1]++;
+				}
+				if (pedge(2,0,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(2,0,0) -= get<1>(Mag_f)(*neighbor.data)[1];
+					//e_items[2][0][0]++;
+				}
+				if (pedge(2,0,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(2,0,1) -= get<1>(Mag_f)(*neighbor.data)[1];
+					//e_items[2][0][1]++;
+				}
+			}
+			if (fn == +1 and npface[0]) {
+				if (pedge(1,1,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(1,1,0) += get<0>(Mag_f)(*neighbor.data)[2];
+					//e_items[1][1][0]++;
+				}
+				if (pedge(1,1,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(1,1,1) += get<0>(Mag_f)(*neighbor.data)[2];
+					//e_items[1][1][1]++;
+				}
+				if (pedge(2,1,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(2,1,0) -= get<0>(Mag_f)(*neighbor.data)[1];
+					//e_items[2][1][0]++;
+				}
+				if (pedge(2,1,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(2,1,1) -= get<0>(Mag_f)(*neighbor.data)[1];
+					//e_items[2][1][1]++;
+				}
+			}
+			if (fn == -2 and npface[3]) {
+				if (pedge(0,0,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(0,0,0) -= get<3>(Mag_f)(*neighbor.data)[2];
+					//e_items[0][0][0]++;
+				}
+				if (pedge(0,0,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(0,0,1) -= get<3>(Mag_f)(*neighbor.data)[2];
+					//e_items[0][0][1]++;
+				}
+				if (pedge(2,0,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(2,0,0) += get<3>(Mag_f)(*neighbor.data)[0];
+					//e_items[2][0][0]++;
+				}
+				if (pedge(2,1,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(2,1,0) += get<3>(Mag_f)(*neighbor.data)[0];
+					//e_items[2][1][0]++;
+				}
+			}
+			if (fn == +2 and npface[2]) {
+				if (pedge(0,1,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(0,1,0) -= get<2>(Mag_f)(*neighbor.data)[2];
+					//e_items[0][1][0]++;
+				}
+				if (pedge(0,1,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(0,1,1) -= get<2>(Mag_f)(*neighbor.data)[2];
+					//e_items[0][1][1]++;
+				}
+				if (pedge(2,0,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(2,0,1) += get<2>(Mag_f)(*neighbor.data)[0];
+					//e_items[2][0][1]++;
+				}
+				if (pedge(2,1,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(2,1,1) += get<2>(Mag_f)(*neighbor.data)[0];
+					//e_items[2][1][1]++;
+				}
+			}
+			if (fn == -3 and npface[5]) {
+				if (pedge(0,0,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(0,0,0) += get<5>(Mag_f)(*neighbor.data)[1];
+					//e_items[0][0][0]++;
+				}
+				if (pedge(0,1,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(0,1,0) += get<5>(Mag_f)(*neighbor.data)[1];
+					//e_items[0][1][0]++;
+				}
+				if (pedge(1,0,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(1,0,0) -= get<5>(Mag_f)(*neighbor.data)[0];
+					//e_items[1][0][0]++;
+				}
+				if (pedge(1,1,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(1,1,0) -= get<5>(Mag_f)(*neighbor.data)[0];
+					//e_items[1][1][0]++;
+				}
+			}
+			if (fn == +3 and npface[4]) {
+				if (pedge(0,0,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(0,0,1) += get<4>(Mag_f)(*neighbor.data)[1];
+					//e_items[0][0][1]++;
+				}
+				if (pedge(0,1,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(0,1,1) += get<4>(Mag_f)(*neighbor.data)[1];
+					//e_items[0][1][1]++;
+				}
+				if (pedge(1,0,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(1,0,1) -= get<4>(Mag_f)(*neighbor.data)[0];
+					//e_items[1][0][1]++;
+				}
+				if (pedge(1,1,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//edge_e(1,1,1) -= get<4>(Mag_f)(*neighbor.data)[0];
+					//e_items[1][1][1]++;
+				}
 			}
 		}
+
 		for (size_t d: {0, 1, 2})
 		for (size_t a: {0, 1})
-		for (size_t b: {0, 1})
-			if (e_items[d][a][b] != 0) edge_e(d,a,b) /= e_items[d][a][b];
+		for (size_t b: {0, 1}) {
+			if (not pedge(d,a,b)) {
+				if (e_items[d][a][b] != 0) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				continue;
+			}
+			if (e_items[d][a][b] != 4) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+			edge_e(d,a,b) /= e_items[d][a][b];
+		}
 
+		const auto [rx, ry, rz] = grid.geometry.get_center(cell.id);
 		if (Mas(*cell.data) < 0) {
 			std::cerr <<  __FILE__ << "(" << __LINE__ << ") "
 				<< "Negative mass density in cell " << cell.id
@@ -632,18 +1052,21 @@ template <
 	Grid& grid,
 	const double dt,
 	const Face_Magnetic_Field_Pos_Getter Face_B_pos,
-	const Face_Magnetic_Field_Neg_Getter /*Face_B_neg*/,
+	const Face_Magnetic_Field_Neg_Getter Face_B_neg,
 	const Edge_Electric_Field_Getter Edge_E,
 	const Primary_Face_Getter PFace,
 	const Primary_Edge_Getter PEdge,
 	const Solver_Info_Getter Sol_Info
 ) {
+	using std::runtime_error;
+	using std::to_string;
+
 	for (const auto& cell: cells) {
 		if ((Sol_Info(*cell.data) & Solver_Info::dont_solve) > 0) {
 			continue;
 		}
 
-		const std::array<double, 3> cell_length = grid.geometry.get_length(cell.id);
+		const auto cell_length = grid.geometry.get_length(cell.id);
 
 		typename std::remove_reference<decltype(Face_B_pos(*cell.data))>::type face_db_p{0, 0, 0}, face_db_n{0, 0, 0};
 
@@ -651,24 +1074,57 @@ template <
 		const auto& cpedge = PEdge(*cell.data);
 		const auto& cedge_e = Edge_E(*cell.data);
 
+		/*! Contributions from edge electric fields to face Bs
+
+		Right-hand line integral over edges touching each face:
+		dBx: E(2,*,1)dz - E(2,*,0)dz - E(1,*,1)dx + E(1,*,0)dx
+		dBy: E(0,*,1)dx - E(0,*,0)dx - E(2,1,*)dz + E(2,0,*)dz
+		dBz: E(1,1,*)dy - E(1,0,*)dy + E(0,0,*)dx - E(0,1,*)dx
+		*/
+		if (cpface[0]) {
+			if (cpedge(1,0,0)) face_db_n[0] += cell_length[1]*cedge_e(1,0,0);
+			if (cpedge(1,0,1)) face_db_n[0] -= cell_length[1]*cedge_e(1,0,1);
+			if (cpedge(2,0,0)) face_db_n[0] -= cell_length[2]*cedge_e(2,0,0);
+			if (cpedge(2,0,1)) face_db_n[0] += cell_length[2]*cedge_e(2,0,1);
+		}
 		if (cpface[1]) {
-			if (cpedge(2,1,1)) face_db_p[0] += cell_length[2]*cedge_e(2,1,1);
+			if (cpedge(1,1,0)) face_db_p[0] += cell_length[1]*cedge_e(1,1,0);
 			if (cpedge(1,1,1)) face_db_p[0] -= cell_length[1]*cedge_e(1,1,1);
+			if (cpedge(2,1,0)) face_db_p[0] -= cell_length[2]*cedge_e(2,1,0);
+			if (cpedge(2,1,1)) face_db_p[0] += cell_length[2]*cedge_e(2,1,1);
+		}
+		if (cpface[2]) {
+			if (cpedge(0,0,0)) face_db_n[1] -= cell_length[0]*cedge_e(0,0,0);
+			if (cpedge(0,0,1)) face_db_n[1] += cell_length[0]*cedge_e(0,0,1);
+			if (cpedge(2,0,0)) face_db_n[1] += cell_length[2]*cedge_e(2,0,0);
+			if (cpedge(2,1,0)) face_db_n[1] -= cell_length[2]*cedge_e(2,1,0);
 		}
 		if (cpface[3]) {
+			if (cpedge(0,1,0)) face_db_p[1] -= cell_length[0]*cedge_e(0,1,0);
 			if (cpedge(0,1,1)) face_db_p[1] += cell_length[0]*cedge_e(0,1,1);
+			if (cpedge(2,0,1)) face_db_p[1] += cell_length[2]*cedge_e(2,0,1);
 			if (cpedge(2,1,1)) face_db_p[1] -= cell_length[2]*cedge_e(2,1,1);
 		}
-		if (cpface[5]) {
-			if (cpedge(1,1,1)) face_db_p[2] += cell_length[1]*cedge_e(1,1,1);
-			if (cpedge(0,1,1)) face_db_p[2] -= cell_length[0]*cedge_e(0,1,1);
+		if (cpface[4]) {
+			if (cpedge(0,0,0)) face_db_n[2] += cell_length[0]*cedge_e(0,0,0);
+			if (cpedge(0,1,0)) face_db_n[2] -= cell_length[0]*cedge_e(0,1,0);
+			if (cpedge(1,0,0)) face_db_n[2] -= cell_length[1]*cedge_e(1,0,0);
+			if (cpedge(1,1,0)) face_db_n[2] += cell_length[1]*cedge_e(1,1,0);
 		}
+		if (cpface[5]) {
+			if (cpedge(0,0,1)) face_db_p[2] += cell_length[0]*cedge_e(0,0,1);
+			if (cpedge(0,1,1)) face_db_p[2] -= cell_length[0]*cedge_e(0,1,1);
+			if (cpedge(1,0,1)) face_db_p[2] -= cell_length[1]*cedge_e(1,0,1);
+			if (cpedge(1,1,1)) face_db_p[2] += cell_length[1]*cedge_e(1,1,1);
+		}
+
+		const auto cleni = grid.mapping.get_cell_length_in_indices(cell.id);
 
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
-			//const auto& en = neighbor.edge_neighbor;
+			const auto& en = neighbor.edge_neighbor;
 
-			if (fn >= 0) {
+			if (fn == 0 and en[0] < 0) {
 				continue;
 			}
 
@@ -676,25 +1132,224 @@ template <
 				continue;
 			}
 
-			//const auto& npface = PFace(*neighbor.data);
+			const auto neigh_length = grid.geometry.get_length(neighbor.id);
+			const auto nleni = grid.mapping.get_cell_length_in_indices(neighbor.id);
+
 			const auto& npedge = PEdge(*neighbor.data);
 			const auto& nedge_e = Edge_E(*neighbor.data);
 
-			if (cpface[1]) {
-				if (fn == -2 and npedge(2,1,1)) face_db_p[0] -= cell_length[2]*nedge_e(2,1,1);
-				if (fn == -3 and npedge(1,1,1)) face_db_p[0] += cell_length[1]*nedge_e(1,1,1);
+			if (cpface[0] and neighbor.x == 0) {
+				if (fn == -2 and npedge(2,0,1)) face_db_n[0] -= neigh_length[2]*nedge_e(2,0,1);
+				if (fn == +2 and npedge(2,0,0)) face_db_n[0] += neigh_length[2]*nedge_e(2,0,0);
+				if (fn == -3 and npedge(1,0,1)) face_db_n[0] += neigh_length[1]*nedge_e(1,0,1);
+				if (fn == +3 and npedge(1,0,0)) face_db_n[0] -= neigh_length[1]*nedge_e(1,0,0);
 			}
-			if (cpface[3]) {
-				if (fn == -1 and npedge(2,1,1)) face_db_p[1] += cell_length[2]*nedge_e(2,1,1);
-				if (fn == -3 and npedge(0,1,1)) face_db_p[1] -= cell_length[0]*nedge_e(0,1,1);
+			if (cpface[1] and cleni == neighbor.x + nleni) {
+				if (fn == -2 and npedge(2,1,1)) face_db_p[0] -= neigh_length[2]*nedge_e(2,1,1);
+				if (fn == +2 and npedge(2,1,0)) face_db_p[0] += neigh_length[2]*nedge_e(2,1,0);
+				if (fn == -3 and npedge(1,1,1)) face_db_p[0] += neigh_length[1]*nedge_e(1,1,1);
+				if (fn == +3 and npedge(1,1,0)) face_db_p[0] -= neigh_length[1]*nedge_e(1,1,0);
 			}
-			if (cpface[5]) {
-				if (fn == -1 and npedge(1,1,1)) face_db_p[2] -= cell_length[1]*nedge_e(1,1,1);
-				if (fn == -2 and npedge(0,1,1)) face_db_p[2] += cell_length[0]*nedge_e(0,1,1);
+			if (cpface[2] and neighbor.y == 0) {
+				if (fn == -1 and npedge(2,1,0)) face_db_n[1] += neigh_length[2]*nedge_e(2,1,0);
+				if (fn == +1 and npedge(2,0,0)) face_db_n[1] -= neigh_length[2]*nedge_e(2,0,0);
+				if (fn == -3 and npedge(0,0,1)) face_db_n[1] -= neigh_length[0]*nedge_e(0,0,1);
+				if (fn == +3 and npedge(0,0,0)) face_db_n[1] += neigh_length[0]*nedge_e(0,0,0);
+			}
+			if (cpface[3] and cleni == neighbor.y + nleni) {
+				if (fn == -1 and npedge(2,1,1)) face_db_p[1] += neigh_length[2]*nedge_e(2,1,1);
+				if (fn == +1 and npedge(2,0,1)) face_db_p[1] -= neigh_length[2]*nedge_e(2,0,1);
+				if (fn == -3 and npedge(0,1,1)) face_db_p[1] -= neigh_length[0]*nedge_e(0,1,1);
+				if (fn == +3 and npedge(0,1,0)) face_db_p[1] += neigh_length[0]*nedge_e(0,1,0);
+			}
+			if (cpface[4] and neighbor.z == 0) {
+				if (fn == -1 and npedge(1,1,0)) face_db_n[2] -= neigh_length[1]*nedge_e(1,1,0);
+				if (fn == +1 and npedge(1,0,0)) face_db_n[2] += neigh_length[1]*nedge_e(1,0,0);
+				if (fn == -2 and npedge(0,1,0)) face_db_n[2] += neigh_length[0]*nedge_e(0,1,0);
+				if (fn == +2 and npedge(0,0,0)) face_db_n[2] -= neigh_length[0]*nedge_e(0,0,0);
+			}
+			if (cpface[5] and cleni == neighbor.z + nleni) {
+				if (fn == -1 and npedge(1,1,1)) face_db_p[2] -= neigh_length[1]*nedge_e(1,1,1);
+				if (fn == +1 and npedge(1,0,1)) face_db_p[2] += neigh_length[1]*nedge_e(1,0,1);
+				if (fn == -2 and npedge(0,1,1)) face_db_p[2] += neigh_length[0]*nedge_e(0,1,1);
+				if (fn == +2 and npedge(0,0,1)) face_db_p[2] -= neigh_length[0]*nedge_e(0,0,1);
+			}
+			if (en[0] == 0 and en[1] == 0 and en[2] == 0 and npedge(0,1,1)) {
+				if (cpedge(0,0,0)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				if (cpface[2]) face_db_n[1] -= neigh_length[0]*nedge_e(0,1,1);
+				if (cpface[4]) face_db_n[2] += neigh_length[0]*nedge_e(0,1,1);
+			}
+			if (en[0] == 0 and en[1] == 0 and en[2] == 1 and npedge(0,1,0)) {
+				if (cpedge(0,0,1)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				if (cpface[2]) face_db_n[1] += neigh_length[0]*nedge_e(0,1,0);
+				if (cpface[5]) face_db_p[2] += neigh_length[0]*nedge_e(0,1,0);
+			}
+			if (en[0] == 0 and en[1] == 1 and en[2] == 0 and npedge(0,0,1)) {
+				if (cpedge(0,1,0)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				if (cpface[3]) face_db_p[1] -= neigh_length[0]*nedge_e(0,0,1);
+				if (cpface[4]) face_db_n[2] -= neigh_length[0]*nedge_e(0,0,1);
+			}
+			if (en[0] == 0 and en[1] == 1 and en[2] == 1 and npedge(0,0,0)) {
+				if (cpedge(0,1,1)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				if (cpface[3]) face_db_p[1] += neigh_length[0]*nedge_e(0,0,0);
+				if (cpface[5]) face_db_p[2] -= neigh_length[0]*nedge_e(0,0,0);
+			}
+			if (en[0] == 1 and en[1] == 0 and en[2] == 0 and npedge(1,1,1)) {
+				if (cpedge(1,0,0)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				if (cpface[0]) face_db_n[0] += neigh_length[1]*nedge_e(1,1,1);
+				if (cpface[4]) face_db_n[2] -= neigh_length[1]*nedge_e(1,1,1);
+			}
+			if (en[0] == 1 and en[1] == 0 and en[2] == 1 and npedge(1,1,0)) {
+				if (cpedge(1,0,1)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				if (cpface[0]) face_db_n[0] -= neigh_length[1]*nedge_e(1,1,0);
+				if (cpface[5]) face_db_p[2] -= neigh_length[1]*nedge_e(1,1,0);
+			}
+			if (en[0] == 1 and en[1] == 1 and en[2] == 0 and npedge(1,0,1)) {
+				if (cpedge(1,1,0)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				if (cpface[1]) face_db_p[0] += neigh_length[1]*nedge_e(1,0,1);
+				if (cpface[4]) face_db_n[2] += neigh_length[1]*nedge_e(1,0,1);
+			}
+			if (en[0] == 1 and en[1] == 1 and en[2] == 1 and npedge(1,0,0)) {
+				if (cpedge(1,1,1)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				if (cpface[1]) face_db_p[0] -= neigh_length[1]*nedge_e(1,0,0);
+				if (cpface[5]) face_db_p[2] += neigh_length[1]*nedge_e(1,0,0);
+			}
+			if (en[0] == 2 and en[1] == 0 and en[2] == 0 and npedge(2,1,1)) {
+				if (cpedge(2,0,0)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				if (cpface[0]) face_db_n[0] -= neigh_length[2]*nedge_e(2,1,1);
+				if (cpface[2]) face_db_n[1] += neigh_length[2]*nedge_e(2,1,1);
+			}
+			if (en[0] == 2 and en[1] == 0 and en[2] == 1 and npedge(2,1,0)) {
+				if (cpedge(2,0,1)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				if (cpface[0]) face_db_n[0] += neigh_length[2]*nedge_e(2,1,0);
+				if (cpface[3]) face_db_p[1] += neigh_length[2]*nedge_e(2,1,0);
+			}
+			if (en[0] == 2 and en[1] == 1 and en[2] == 0 and npedge(2,0,1)) {
+				if (cpedge(2,1,0)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				if (cpface[1]) face_db_p[0] -= neigh_length[2]*nedge_e(2,0,1);
+				if (cpface[2]) face_db_n[1] -= neigh_length[2]*nedge_e(2,0,1);
+			}
+			if (en[0] == 2 and en[1] == 1 and en[2] == 1 and npedge(2,0,0)) {
+				if (cpedge(2,1,1)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				if (cpface[1]) face_db_p[0] += neigh_length[2]*nedge_e(2,0,0);
+				if (cpface[3]) face_db_p[1] -= neigh_length[2]*nedge_e(2,0,0);
+			}
+			// these shouldn't be possible but keep for reference
+			if (cpface[0] and fn == -1) {
+				if (npedge(1,1,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_n[0] += neigh_length[1]*nedge_e(1,1,0);
+				}
+				if (npedge(1,1,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_n[0] -= neigh_length[1]*nedge_e(1,1,1);
+				}
+				if (npedge(2,1,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_n[0] -= neigh_length[2]*nedge_e(2,1,0);
+				}
+				if (npedge(2,1,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_n[0] += neigh_length[2]*nedge_e(2,1,1);
+				}
+			}
+			if (cpface[1] and fn == +1) {
+				if (npedge(1,0,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_p[0] += neigh_length[1]*nedge_e(1,0,0);
+				}
+				if (npedge(1,0,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_p[0] -= neigh_length[1]*nedge_e(1,0,1);
+				}
+				if (npedge(2,0,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_p[0] -= neigh_length[2]*nedge_e(2,0,0);
+				}
+				if (npedge(2,0,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_p[0] += neigh_length[2]*nedge_e(2,0,1);
+				}
+			}
+			if (cpface[2] and fn == -2) {
+				if (npedge(0,1,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_n[1] -= neigh_length[0]*nedge_e(0,1,0);
+				}
+				if (npedge(0,1,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_n[1] += neigh_length[0]*nedge_e(0,1,1);
+				}
+				if (npedge(2,0,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_n[1] += neigh_length[2]*nedge_e(2,0,1);
+				}
+				if (npedge(2,1,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_n[1] -= neigh_length[2]*nedge_e(2,1,1);
+				}
+			}
+			if (cpface[3] and fn == +2) {
+				if (npedge(0,0,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_p[1] -= neigh_length[0]*nedge_e(0,0,0);
+				}
+				if (npedge(0,0,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_p[1] += neigh_length[0]*nedge_e(0,0,1);
+				}
+				if (npedge(2,0,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_p[1] += neigh_length[2]*nedge_e(2,0,0);
+				}
+				if (npedge(2,1,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_p[1] -= neigh_length[2]*nedge_e(2,1,0);
+				}
+			}
+			if (cpface[4] and fn == -3) {
+				if (npedge(0,0,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_n[2] += neigh_length[0]*nedge_e(0,0,1);
+				}
+				if (npedge(0,1,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_n[2] -= neigh_length[0]*nedge_e(0,1,1);
+				}
+				if (npedge(1,0,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_n[2] -= neigh_length[1]*nedge_e(1,0,1);
+				}
+				if (npedge(1,1,1)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_n[2] += neigh_length[1]*nedge_e(1,1,1);
+				}
+			}
+			if (cpface[5] and fn == +3) {
+				if (npedge(0,0,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_p[2] += neigh_length[0]*nedge_e(0,0,0);
+				}
+				if (npedge(0,1,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_p[2] -= neigh_length[0]*nedge_e(0,1,0);
+				}
+				if (npedge(1,0,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_p[2] -= neigh_length[1]*nedge_e(1,0,0);
+				}
+				if (npedge(1,1,0)) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					//face_db_p[2] += neigh_length[1]*nedge_e(1,1,0);
+				}
 			}
 		}
+
+		if (cpface[0]) Face_B_neg(*cell.data)[0] -= dt*face_db_n[0]/(cell_length[1]*cell_length[2]);
 		if (cpface[1]) Face_B_pos(*cell.data)[0] -= dt*face_db_p[0]/(cell_length[1]*cell_length[2]);
+		if (cpface[2]) Face_B_neg(*cell.data)[1] -= dt*face_db_n[1]/(cell_length[1]*cell_length[2]);
 		if (cpface[3]) Face_B_pos(*cell.data)[1] -= dt*face_db_p[1]/(cell_length[0]*cell_length[2]);
+		if (cpface[4]) Face_B_neg(*cell.data)[2] -= dt*face_db_n[2]/(cell_length[1]*cell_length[2]);
 		if (cpface[5]) Face_B_pos(*cell.data)[2] -= dt*face_db_p[2]/(cell_length[0]*cell_length[1]);
 	}
 }
@@ -745,6 +1400,7 @@ template <
 	const double vacuum_permeability,
 	const bool constant_thermal_pressure
 ) {
+	using std::runtime_error;
 	using std::to_string;
 
 	for (const auto& cell: cells) {
@@ -784,17 +1440,17 @@ template <
 			if (n == +3) have_pz_neigh = true;
 		}*/
 
-		const auto primary = PFace(*cell.data);
-		if (not primary[0]) FMagN(*cell.data)[0] = 0.0;
-		if (not primary[1]) FMagP(*cell.data)[0] = 0.0;
-		if (not primary[2]) FMagN(*cell.data)[1] = 0.0;
-		if (not primary[3]) FMagP(*cell.data)[1] = 0.0;
-		if (not primary[4]) FMagN(*cell.data)[2] = 0.0;
-		if (not primary[5]) FMagP(*cell.data)[2] = 0.0;
+		const auto cpface = PFace(*cell.data);
+		if (not cpface[0]) FMagN(*cell.data)[0] = 0.0;
+		if (not cpface[1]) FMagP(*cell.data)[0] = 0.0;
+		if (not cpface[2]) FMagN(*cell.data)[1] = 0.0;
+		if (not cpface[3]) FMagP(*cell.data)[1] = 0.0;
+		if (not cpface[4]) FMagN(*cell.data)[2] = 0.0;
+		if (not cpface[5]) FMagP(*cell.data)[2] = 0.0;
 
 		for (const auto& neighbor: cell.neighbors_of) {
-			const auto n = neighbor.face_neighbor;
-			if (n == 0) {
+			const auto fn = neighbor.face_neighbor;
+			if (fn == 0) {
 				continue;
 			}
 			if (Cell_Type(*neighbor.data) < 0) {
@@ -809,22 +1465,30 @@ template <
 				}
 			}();
 
-			if (n == -1 and not primary[0]) {
+			const auto npface = PFace(*neighbor.data);
+
+			if (fn == -1 and not cpface[0]) {
+				if (not npface[1]) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 				FMagN(*cell.data)[0] += FMagP(*neighbor.data)[0] * factor;
 			}
-			if (n == +1 and not primary[1]) {
+			if (fn == +1 and not cpface[1]) {
+				if (not npface[0]) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 				FMagP(*cell.data)[0] += FMagN(*neighbor.data)[0] * factor;
 			}
-			if (n == -2 and not primary[2]) {
+			if (fn == -2 and not cpface[2]) {
+				if (not npface[3]) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 				FMagN(*cell.data)[1] += FMagP(*neighbor.data)[1] * factor;
 			}
-			if (n == +2 and not primary[3]) {
+			if (fn == +2 and not cpface[3]) {
+				if (not npface[2]) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 				FMagP(*cell.data)[1] += FMagN(*neighbor.data)[1] * factor;
 			}
-			if (n == -3 and not primary[4]) {
+			if (fn == -3 and not cpface[4]) {
+				if (not npface[5]) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 				FMagN(*cell.data)[2] += FMagP(*neighbor.data)[2] * factor;
 			}
-			if (n == +3 and not primary[5]) {
+			if (fn == +3 and not cpface[5]) {
+				if (not npface[4]) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 				FMagP(*cell.data)[2] += FMagN(*neighbor.data)[2] * factor;
 			}
 		}
