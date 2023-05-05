@@ -1,5 +1,5 @@
 {
-	"output-directory": "results/magnetohydrodynamic/fast_magnetosonic_wave/1d/+y/small/rusanov_staggered",
+	"output-directory": "results/magnetohydrodynamic/fast_magnetosonic_wave/1d/+y/small_staggered_amr_rusanov",
 	"time-start": 0,
 	"time-length": 199.8,
 	"minimum-pressure": 0,
@@ -12,9 +12,13 @@
 	"mhd-time-step-factor": 0.5,
 	"grid-options": {
 		"periodic": "{true, true, true}",
-		"cells": "{1, 100, 1}",
+		"cells": "{1, 20, 1}",
 		"volume": "{1, 1, 1}",
-		"start": "{0, 0, 0}"
+		"start": "{0, 0, 0}",
+		"max-ref-lvl": 1,
+		"amr-n": 0,
+		"ref-lvl-at-least": "(abs(y - 0.5) < 0.2) ? 1 : 0",
+		"ref-lvl-at-most": "(abs(y - 0.5) < 0.2) ? 1 : 0"
 	},
 	"number-density": {"default": "1 + 0.001 * sin(2*pi*y)"},
 	"velocity": {"default": "{0, 0.05 * 0.001 * sin(2*pi*y), 0}"},

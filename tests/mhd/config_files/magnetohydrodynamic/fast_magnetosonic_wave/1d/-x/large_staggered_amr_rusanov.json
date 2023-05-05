@@ -1,0 +1,28 @@
+{
+	"comment": "as large_staggered_rusanov.json but includes refined mesh",
+	"output-directory": "results/magnetohydrodynamic/fast_magnetosonic_wave/1d/-x/large_staggered_amr_rusanov",
+	"time-start": 0,
+	"time-length": 199.8,
+	"minimum-pressure": 0,
+	"solver-mhd": "rusanov",
+	"load-balancer": "RANDOM",
+	"save-mhd-n": 19.98,
+	"adiabatic-index": 1.6666666666666667,
+	"vacuum-permeability": 1,
+	"proton-mass": 1,
+	"mhd-time-step-factor": 0.5,
+	"grid-options": {
+		"periodic": "{true, true, true}",
+		"cells": "{20, 1, 1}",
+		"volume": "{1, 1, 1}",
+		"start": "{0, 0, 0}",
+		"max-ref-lvl": 1,
+		"amr-n": 0,
+		"ref-lvl-at-least": "(abs(x - 0.5) < 0.2) ? 1 : 0",
+		"ref-lvl-at-most": "(abs(x - 0.5) < 0.2) ? 1 : 0"
+	},
+	"number-density": {"default": "1 + 0.1 * sin(2*pi*x)"},
+	"velocity": {"default": "{-0.05 * 0.1 * sin(2*pi*x), 0, 0}"},
+	"pressure": {"default": "3.0/5.0 * 9e-4 * (1 + (5.0/3.0)*0.1*sin(2*pi*x))"},
+	"magnetic-field": {"default": "{0, -0.04 * (1 + 0.1 * sin(2*pi*x)), 0}"}
+}
