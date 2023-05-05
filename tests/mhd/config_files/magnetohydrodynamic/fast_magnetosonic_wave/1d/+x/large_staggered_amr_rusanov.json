@@ -1,6 +1,6 @@
 {
-	"comment": "as large_staggered.json but includes refined mesh",
-	"output-directory": "results/magnetohydrodynamic/fast_magnetosonic_wave/1d/+x/large/rusanov_staggered_amr",
+	"comment": "as large_staggered_rusanov.json but includes refined mesh",
+	"output-directory": "results/magnetohydrodynamic/fast_magnetosonic_wave/1d/+x/large_staggered_amr_rusanov",
 	"time-start": 0,
 	"time-length": 199.8,
 	"minimum-pressure": 0,

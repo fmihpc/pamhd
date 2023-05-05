@@ -1,6 +1,6 @@
 {
-	"comment": "as medium_staggered.json but includes refined mesh",
-	"output-directory": "results/magnetohydrodynamic/fast_magnetosonic_wave/1d/+x/medium/rusanov_staggered_amr",
+	"comment": "as medium.json but different solver",
+	"output-directory": "results/magnetohydrodynamic/fast_magnetosonic_wave/1d/+x/medium_staggered_rusanov",
 	"time-start": 0,
 	"time-length": 199.8,
 	"minimum-pressure": 0,
@@ -13,13 +13,9 @@
 	"mhd-time-step-factor": 0.5,
 	"grid-options": {
 		"periodic": "{true, true, true}",
-		"cells": "{20, 1, 1}",
+		"cells": "{100, 1, 1}",
 		"volume": "{1, 1, 1}",
-		"start": "{0, 0, 0}",
-		"max-ref-lvl": 1,
-		"amr-n": 0,
-		"ref-lvl-at-least": "(abs(x - 0.5) < 0.2) ? 1 : 0",
-		"ref-lvl-at-most": "(abs(x - 0.5) < 0.2) ? 1 : 0"
+		"start": "{0, 0, 0}"
 	},
 	"number-density": {"default": "1 + 0.01 * sin(2*pi*x)"},
 	"velocity": {"default": "{0.05 * 0.01 * sin(2*pi*x), 0, 0}"},

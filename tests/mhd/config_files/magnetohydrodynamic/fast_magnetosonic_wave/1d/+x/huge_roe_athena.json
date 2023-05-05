@@ -1,6 +1,6 @@
 {
 	"comment": "0.6 magnitude perturbation",
-	"output-directory": "results/magnetohydrodynamic/fast_magnetosonic_wave/1d/+x/huge/roe_athena",
+	"output-directory": "results/magnetohydrodynamic/fast_magnetosonic_wave/1d/+x/huge_roe_athena",
 	"time-start": 0,
 	"time-length": 199.8,
 	"minimum-pressure": 0,
