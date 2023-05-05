@@ -80,6 +80,7 @@ TEST_MHD_PROGRAM_DEPS = \
   source/background_magnetic_field.hpp \
   source/mhd/boundaries.hpp \
   source/mhd/initialize.hpp \
+  source/mhd/initialize_staggered.hpp \
   source/mhd/options.hpp \
   source/mhd/save.hpp \
   source/mhd/solve.hpp \

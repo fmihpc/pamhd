@@ -54,6 +54,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "mhd/hll_athena.hpp"
 #include "mhd/hlld_athena.hpp"
 #include "mhd/initialize.hpp"
+#include "mhd/initialize_staggered.hpp"
 #include "mhd/options.hpp"
 #include "mhd/roe_athena.hpp"
 #include "mhd/rusanov.hpp"
@@ -451,24 +452,16 @@ int main(int argc, char* argv[])
 		cout << "Initializing MHD... " << endl;
 	}
 
-	pamhd::mhd::initialize_magnetic_field<pamhd::Magnetic_Field>(
+	pamhd::mhd::initialize_magnetic_field_staggered<pamhd::Magnetic_Field>(
 		geometries,
 		initial_conditions,
 		background_B,
 		grid,
 		simulation_time,
 		options_sim.vacuum_permeability,
-		Face_B, Mag_pfx,
-		Bg_B
+		Mag, Face_B, Face_B_neg,
+		Mag_fs, Bg_B, PFace
 	);
-	for (const auto& cell: grid.local_cells()) {
-		Mag_nfx(*cell.data)    =
-		Mag_pfy(*cell.data)    =
-		Mag_nfy(*cell.data)    =
-		Mag_pfz(*cell.data)    =
-		Mag_nfz(*cell.data)    =
-		Face_B_neg(*cell.data) = {0, 0, 0};
-	}
 
 	// update background field between processes
 	// update face B for calculating vol B
