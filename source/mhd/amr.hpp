@@ -411,9 +411,9 @@ template <
 			for (size_t dim = 0; dim < 3; dim++) {
 				// only children sharing a face with parent included
 				if (pindex[dim] == rindex[dim]) {
-					Face_Bn(*parent_data) += Face_Bn(*removed_cell_data) / 4;
+					Face_Bn(*parent_data)[dim] += Face_Bn(*removed_cell_data)[dim] / 4;
 				} else {
-					Face_Bp(*parent_data) += Face_Bp(*removed_cell_data) / 4;
+					Face_Bp(*parent_data)[dim] += Face_Bp(*removed_cell_data)[dim] / 4;
 				}
 			}
 		}
