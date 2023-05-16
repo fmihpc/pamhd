@@ -382,6 +382,7 @@ template <
 			cpface[dir_i]
 		) {
 			{const size_t d1 = 1, d2 = 0, Bd = 2;
+			// y directed edge, -x side of cell center, -z side of cell center
 			if (const size_t d3 = 0;
 				// non-primary edges are handled by another cell
 				cpedge(d1,d2,d3)
@@ -389,6 +390,7 @@ template <
 				edge_e(d1,d2,d3) += get<dir_i>(Mag_f)(*cell.data)[Bd];
 				e_items[d1][d2][d3]++;
 			}
+			// y directed edge, -x side of cell center, +z side of cell center
 			if (const size_t d3 = 1;
 				cpedge(d1,d2,d3)
 			) {
@@ -403,6 +405,7 @@ template <
 				edge_e(d1,d2,d3) -= get<dir_i>(Mag_f)(*cell.data)[Bd];
 				e_items[d1][d2][d3]++;
 			}
+			// z directed edge, -x side of cell center, +y side of cell center
 			if (const size_t d3 = 1;
 				cpedge(d1,d2,d3)
 			) {
@@ -728,29 +731,29 @@ template <
 				of +- face fluxes or upwinding instead,
 				would require larger neighborhood than 3x3x3.
 				*/
-				const size_t Bd = 0;
-				if (constexpr size_t dir_i = 4, d1 = 1, d2 = 0, d3 = 0;
+				const size_t d2 = 0, Bd = 0;
+				if (constexpr size_t dir_i = 4, d1 = 1, d3 = 0;
 					cpedge(d1,d2,d3) and npface[dir_i] and neighbor.z == 0
 				) {
 					edge_e(d1,d2,d3) -= get<dir_i>(Mag_f)(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
-				if (constexpr size_t dir_i = 5, d1 = 1, d2 = 0, d3 = 1;
+				if (constexpr size_t dir_i = 5, d1 = 1, d3 = 1;
 					cpedge(d1,d2,d3) and npface[dir_i] and cleni == neighbor.z + nleni
 				) {
 					edge_e(d1,d2,d3) -= get<dir_i>(Mag_f)(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
-				if (constexpr size_t dir_i = 2, d1 = 2, d2 = 0, d3 = 0;
+				if (constexpr size_t dir_i = 2, d1 = 2, d3 = 0;
 					cpedge(d1,d2,d3) and npface[dir_i] and neighbor.y == 0
 				) {
 					edge_e(d1,d2,d3) += get<dir_i>(Mag_f)(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
-				if (constexpr size_t dir_i = 3, d1 = 2, d2 = 0, d3 = 1;
+				if (constexpr size_t dir_i = 3, d1 = 2, d3 = 1;
 					cpedge(d1,d2,d3) and npface[dir_i] and cleni == neighbor.y + nleni
 				) {
 					edge_e(d1,d2,d3) += get<dir_i>(Mag_f)(*neighbor.data)[Bd];
@@ -759,29 +762,29 @@ template <
 			}
 
 			if (fn == +1) {
-				const size_t Bd = 0;
-				if (constexpr size_t dir_i = 2, d1 = 2, d2 = 1, d3 = 0;
+				const size_t d2 = 1, Bd = 0;
+				if (constexpr size_t dir_i = 2, d1 = 2, d3 = 0;
 					cpedge(d1,d2,d3) and npface[dir_i] and neighbor.y == 0
 				) {
 					edge_e(d1,d2,d3) += get<dir_i>(Mag_f)(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
-				if (constexpr size_t dir_i = 3, d1 = 2, d2 = 1, d3 = 1;
+				if (constexpr size_t dir_i = 3, d1 = 2, d3 = 1;
 					cpedge(d1,d2,d3) and npface[dir_i] and cleni == neighbor.y + nleni
 				) {
 					edge_e(d1,d2,d3) += get<dir_i>(Mag_f)(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
-				if (constexpr size_t dir_i = 4, d1 = 1, d2 = 1, d3 = 0;
+				if (constexpr size_t dir_i = 4, d1 = 1, d3 = 0;
 					cpedge(d1,d2,d3) and npface[dir_i] and neighbor.z == 0
 				) {
 					edge_e(d1,d2,d3) -= get<dir_i>(Mag_f)(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
-				if (constexpr size_t dir_i = 5, d1 = 1, d2 = 1, d3 = 1;
+				if (constexpr size_t dir_i = 5, d1 = 1, d3 = 1;
 					cpedge(d1,d2,d3) and npface[dir_i] and cleni == neighbor.z + nleni
 				) {
 					edge_e(d1,d2,d3) -= get<dir_i>(Mag_f)(*neighbor.data)[Bd];
@@ -852,29 +855,29 @@ template <
 			}
 
 			if (fn == -3) {
-				const size_t Bd = 2;
-				if (constexpr size_t dir_i = 0, d1 = 1, d2 = 0, d3 = 0;
+				const size_t d3 = 0, Bd = 2;
+				if (constexpr size_t dir_i = 0, d1 = 1, d2 = 0;
 					cpedge(d1,d2,d3) and npface[dir_i] and neighbor.x == 0
 				) {
 					edge_e(d1,d2,d3) += get<dir_i>(Mag_f)(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
-				if (constexpr size_t dir_i = 1, d1 = 1, d2 = 1, d3 = 0;
+				if (constexpr size_t dir_i = 1, d1 = 1, d2 = 1;
 					cpedge(d1,d2,d3) and npface[dir_i] and cleni == neighbor.x + nleni
 				) {
 					edge_e(d1,d2,d3) += get<dir_i>(Mag_f)(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
-				if (constexpr size_t dir_i = 2, d1 = 0, d2 = 0, d3 = 0;
+				if (constexpr size_t dir_i = 2, d1 = 0, d2 = 0;
 					cpedge(d1,d2,d3) and npface[dir_i] and neighbor.y == 0
 				) {
 					edge_e(d1,d2,d3) -= get<dir_i>(Mag_f)(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
-				if (constexpr size_t dir_i = 3, d1 = 0, d2 = 1, d3 = 0;
+				if (constexpr size_t dir_i = 3, d1 = 0, d2 = 1;
 					cpedge(d1,d2,d3) and npface[dir_i] and cleni == neighbor.y + nleni
 				) {
 					edge_e(d1,d2,d3) -= get<dir_i>(Mag_f)(*neighbor.data)[Bd];
@@ -883,29 +886,29 @@ template <
 			}
 
 			if (fn == +3) {
-				const size_t Bd = 2;
-				if (constexpr size_t dir_i = 0, d1 = 1, d2 = 0, d3 = 1;
+				const size_t d3 = 1, Bd = 2;
+				if (constexpr size_t dir_i = 0, d1 = 1, d2 = 0;
 					cpedge(d1,d2,d3) and npface[dir_i] and neighbor.x == 0
 				) {
 					edge_e(d1,d2,d3) += get<dir_i>(Mag_f)(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
-				if (constexpr size_t dir_i = 1, d1 = 1, d2 = 1, d3 = 1;
+				if (constexpr size_t dir_i = 1, d1 = 1, d2 = 1;
 					cpedge(d1,d2,d3) and npface[dir_i] and cleni == neighbor.x + nleni
 				) {
 					edge_e(d1,d2,d3) += get<dir_i>(Mag_f)(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
-				if (constexpr size_t dir_i = 2, d1 = 0, d2 = 0, d3 = 1;
+				if (constexpr size_t dir_i = 2, d1 = 0, d2 = 0;
 					cpedge(d1,d2,d3) and npface[dir_i] and neighbor.y == 0
 				) {
 					edge_e(d1,d2,d3) -= get<dir_i>(Mag_f)(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
-				if (constexpr size_t dir_i = 3, d1 = 0, d2 = 1, d3 = 1;
+				if (constexpr size_t dir_i = 3, d1 = 0, d2 = 1;
 					cpedge(d1,d2,d3) and npface[dir_i] and cleni == neighbor.y + nleni
 				) {
 					edge_e(d1,d2,d3) -= get<dir_i>(Mag_f)(*neighbor.data)[Bd];
@@ -922,7 +925,6 @@ template <
 					edge_e(d1,d2,d3) -= get<dir_i>(Mag_f)(*neighbor.data)[2];
 					e_items[d1][d2][d3]++;
 				}
-
 				if (constexpr size_t dir_i = 5;
 					npface[dir_i]
 				) {
@@ -1214,19 +1216,19 @@ template <
 						e_items[d1][d2][d3]++;
 					}
 				}
-				if (en[1] == d2 and en[2] != d3 and pxs < 0) {
-					if (constexpr size_t dir_i = 3;
-						npface[dir_i]
-					) {
-						edge_e(d1,d2,d3) += get<dir_i>(Mag_f)(*neighbor.data)[0];
-						e_items[d1][d2][d3]++;
-					}
-				}
 				if (en[1] != d2 and en[2] == d3 and pys < 0) {
 					if (constexpr size_t dir_i = 1;
 						npface[dir_i]
 					) {
 						edge_e(d1,d2,d3) -= get<dir_i>(Mag_f)(*neighbor.data)[1];
+						e_items[d1][d2][d3]++;
+					}
+				}
+				if (en[1] == d2 and en[2] != d3 and pxs < 0) {
+					if (constexpr size_t dir_i = 3;
+						npface[dir_i]
+					) {
+						edge_e(d1,d2,d3) += get<dir_i>(Mag_f)(*neighbor.data)[0];
 						e_items[d1][d2][d3]++;
 					}
 				}
