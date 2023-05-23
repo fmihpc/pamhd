@@ -17,8 +17,8 @@
 		"start": "{-0.5, -0.5, -0.5}",
 		"max-ref-lvl": 1,
 		"amr-n": 0,
-		"ref-lvl-at-least": "x+z < 1e-6 ? 1 : 0",
-		"ref-lvl-at-most": "x+z < 1e-6 ? 1 : 0"
+		"ref-lvl-at-least": "x+z < -1e-6 ? 1 : 0",
+		"ref-lvl-at-most": "x+z < -1e-6 ? 1 : 0"
 	},
 	"number-density": {"default": 1},
 	"velocity": {"default": [0, 0, 0]},
