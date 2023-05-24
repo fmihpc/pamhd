@@ -1741,13 +1741,17 @@ template <
 				}
 			}
 		}
-
-		if (cpface[0]) Face_B_neg(*cell.data)[0] -= dt*face_db_n[0]/(cell_length[1]*cell_length[2]);
-		if (cpface[1]) Face_B_pos(*cell.data)[0] -= dt*face_db_p[0]/(cell_length[1]*cell_length[2]);
-		if (cpface[2]) Face_B_neg(*cell.data)[1] -= dt*face_db_n[1]/(cell_length[1]*cell_length[2]);
-		if (cpface[3]) Face_B_pos(*cell.data)[1] -= dt*face_db_p[1]/(cell_length[0]*cell_length[2]);
-		if (cpface[4]) Face_B_neg(*cell.data)[2] -= dt*face_db_n[2]/(cell_length[1]*cell_length[2]);
-		if (cpface[5]) Face_B_pos(*cell.data)[2] -= dt*face_db_p[2]/(cell_length[0]*cell_length[1]);
+		const std::array<double, 3> area{
+			cell_length[1]*cell_length[2],
+			cell_length[0]*cell_length[2],
+			cell_length[0]*cell_length[1]
+		};
+		if (cpface[0]) Face_B_neg(*cell.data)[0] -= dt*face_db_n[0]/area[0];
+		if (cpface[1]) Face_B_pos(*cell.data)[0] -= dt*face_db_p[0]/area[0];
+		if (cpface[2]) Face_B_neg(*cell.data)[1] -= dt*face_db_n[1]/area[1];
+		if (cpface[3]) Face_B_pos(*cell.data)[1] -= dt*face_db_p[1]/area[1];
+		if (cpface[4]) Face_B_neg(*cell.data)[2] -= dt*face_db_n[2]/area[2];
+		if (cpface[5]) Face_B_pos(*cell.data)[2] -= dt*face_db_p[2]/area[2];
 	}
 }
 
