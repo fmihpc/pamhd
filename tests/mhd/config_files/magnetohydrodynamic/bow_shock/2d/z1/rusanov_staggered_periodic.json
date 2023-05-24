@@ -1,0 +1,24 @@
+{
+	"comment": "periodic version that doesn't require boundary logic",
+	"output-directory": "results/magnetohydrodynamic/bow_shock/2d/z1/rusanov_staggered_periodic",
+	"time-start": 0,
+	"time-length": 1,
+	"minimum-pressure": 0,
+	"solver-mhd": "rusanov",
+	"load-balancer": "RANDOM",
+	"save-mhd-n": 0.2,
+	"adiabatic-index": 1.6666666666666667,
+	"vacuum-permeability": 1,
+	"proton-mass": 1,
+	"mhd-time-step-factor": 0.5,
+	"grid-options": {
+		"periodic": "{true, true, true}",
+		"cells": "{20, 30, 1}",
+		"volume": "{2, 3, 2}",
+		"start": "{-1, -1.5, -1}"
+	},
+	"number-density": {"default": "radius < 0.0625 ? 100 : 0.01"},
+	"velocity": {"default": "{radius < 0.0625 ? 0 : 1, 0, 0}"},
+	"pressure": {"default": 0.0015},
+	"magnetic-field": {"default": [0.02, 0, 0]}
+}
