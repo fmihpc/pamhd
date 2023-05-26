@@ -128,7 +128,34 @@ template <
 	double max_dt = std::numeric_limits<double>::max();
 
 	for (const auto& cell: cells) {
-		if (SInfo(*cell.data) != 1) {
+		Mas_fnx(*cell.data) =
+		Mas_fny(*cell.data) =
+		Mas_fnz(*cell.data) =
+		Mas_fpx(*cell.data) =
+		Mas_fpy(*cell.data) =
+		Mas_fpz(*cell.data) =
+		Nrj_fnx(*cell.data) =
+		Nrj_fny(*cell.data) =
+		Nrj_fnz(*cell.data) =
+		Nrj_fpx(*cell.data) =
+		Nrj_fpy(*cell.data) =
+		Nrj_fpz(*cell.data) = 0;
+
+		Mom_fnx(*cell.data) =
+		Mom_fny(*cell.data) =
+		Mom_fnz(*cell.data) =
+		Mom_fpx(*cell.data) =
+		Mom_fpy(*cell.data) =
+		Mom_fpz(*cell.data) =
+		Mag_fnx(*cell.data) =
+		Mag_fny(*cell.data) =
+		Mag_fnz(*cell.data) =
+		Mag_fpx(*cell.data) =
+		Mag_fpy(*cell.data) =
+		Mag_fpz(*cell.data) = {0, 0, 0};
+
+		// solve flux also if boundary cell on negative side of face
+		if (SInfo(*cell.data) < 0) {
 			continue;
 		}
 
@@ -148,6 +175,9 @@ template <
 			if (n == +3 and not primary[5]) continue;
 
 			if (SInfo(*neighbor.data) < 0) {
+				continue;
+			}
+			if (SInfo(*cell.data) == 0 and SInfo(*neighbor.data) == 0) {
 				continue;
 			}
 
@@ -288,7 +318,7 @@ template <
 /*!
 Calculates edge electric fields in given cells.
 
-Also updates MHD state with fluxes and zeroes them.
+Also updates MHD state with fluxes.
 
 Saves edge E of cells with SInfo(*cell_data) == 1,
 ignores cells with SInfo < 0.
@@ -345,22 +375,23 @@ template <
 		Mag_fnz = get<4>(Mag_f), Mag_fpz = get<5>(Mag_f);
 
 	for (const auto& cell: grid.local_cells()) {
-		if (SInfo(*cell.data) != 1) {
-			continue;
-		}
-
-		const auto cpface = PFace(*cell.data); // primary face true/false
-		const auto cpedge = PEdge(*cell.data); // primary edge true/false
-
+		auto& edge_e = Edge_E(*cell.data);
 		// track number of contributions to edge_e()s
 		array<array<array<int, 2>, 2>, 3> e_items;
-		auto& edge_e = Edge_E(*cell.data);
 		for (size_t d1: {0, 1, 2}) // parallel dim of edge
 		for (size_t d2: {0, 1}) // side in 1st perpendicular dim of edge
 		for (size_t d3: {0, 1}) { // side of cell in 2nd perp dim
 			edge_e(d1,d2,d3) = 0.0;
 			e_items[d1][d2][d3] = 0;
 		}
+
+		if (SInfo(*cell.data) != 1) {
+std::cout << "u skipping abnormal cell " << cell.id << std::endl;
+			continue;
+		}
+
+		const auto cpface = PFace(*cell.data); // primary face true/false
+		const auto cpedge = PEdge(*cell.data); // primary edge true/false
 
 		/*! Contributions to edge electric fields
 
@@ -619,6 +650,7 @@ template <
 			}
 
 			if (SInfo(*neighbor.data) < 0) {
+std::cout << "u skipping dont_solve neighbor " << neighbor.id << std::endl;
 				continue;
 			}
 
@@ -1398,34 +1430,6 @@ template <
 				<< " at " << rx << ", " << ry << ", " << rz << std::endl;
 			abort();
 		}
-	}
-
-	for (const auto& cell: grid.local_cells()) {
-		Mas_fnx(*cell.data) =
-		Mas_fny(*cell.data) =
-		Mas_fnz(*cell.data) =
-		Mas_fpx(*cell.data) =
-		Mas_fpy(*cell.data) =
-		Mas_fpz(*cell.data) =
-		Nrj_fnx(*cell.data) =
-		Nrj_fny(*cell.data) =
-		Nrj_fnz(*cell.data) =
-		Nrj_fpx(*cell.data) =
-		Nrj_fpy(*cell.data) =
-		Nrj_fpz(*cell.data) = 0;
-
-		Mom_fnx(*cell.data) =
-		Mom_fny(*cell.data) =
-		Mom_fnz(*cell.data) =
-		Mom_fpx(*cell.data) =
-		Mom_fpy(*cell.data) =
-		Mom_fpz(*cell.data) =
-		Mag_fnx(*cell.data) =
-		Mag_fny(*cell.data) =
-		Mag_fnz(*cell.data) =
-		Mag_fpx(*cell.data) =
-		Mag_fpy(*cell.data) =
-		Mag_fpz(*cell.data) = {0, 0, 0};
 	}
 }
 
