@@ -64,9 +64,11 @@ Returns the maximum allowed length of time step for the next step on this proces
 
 Flux getters with array indices [0..5] should return variables in this order:
 -x,+x,-y,+y,-z,+z.
+
+Saves fluxes of cells with SInfo(*cell_data) == 1,
+ignores cells with SInfo < 0.
 */
 template <
-	class Solver_Info,
 	class Cell_Iter,
 	class Grid,
 	class Mass_Density_Getter,
@@ -96,7 +98,7 @@ template <
 	const Total_Energy_Density_Flux_Getters Nrj_f,
 	const Magnetic_Field_Flux_Getters Mag_f,
 	const Primary_Face_Getter PFace,
-	const Solver_Info_Getter Sol_Info
+	const Solver_Info_Getter SInfo
 ) {
 	using std::abs;
 	using std::get;
@@ -126,7 +128,7 @@ template <
 	double max_dt = std::numeric_limits<double>::max();
 
 	for (const auto& cell: cells) {
-		if ((Sol_Info(*cell.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
+		if (SInfo(*cell.data) != 1) {
 			continue;
 		}
 
@@ -145,7 +147,7 @@ template <
 			if (n == -3 and not primary[4]) continue;
 			if (n == +3 and not primary[5]) continue;
 
-			if ((Sol_Info(*neighbor.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
+			if (SInfo(*neighbor.data) < 0) {
 				continue;
 			}
 
@@ -215,8 +217,8 @@ template <
 				std::cerr <<  __FILE__ << "(" << __LINE__ << ") "
 					<< "Solution failed between cells " << cell.id
 					<< " and " << neighbor.id
-					<< " of boundary type " << Sol_Info(*cell.data)
-					<< " and " << Sol_Info(*neighbor.data)
+					<< " of boundary type " << SInfo(*cell.data)
+					<< " and " << SInfo(*neighbor.data)
 					<< " at " << grid.geometry.get_center(cell.id)
 					<< " and " << grid.geometry.get_center(neighbor.id)
 					<< " in direction " << neighbor.face_neighbor
@@ -287,9 +289,11 @@ template <
 Calculates edge electric fields in given cells.
 
 Also updates MHD state with fluxes and zeroes them.
+
+Saves edge E of cells with SInfo(*cell_data) == 1,
+ignores cells with SInfo < 0.
 */
 template <
-	class Solver_Info,
 	class Grid,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
@@ -317,7 +321,7 @@ template <
 	const Magnetic_Field_Flux_Getters Mag_f,
 	const Primary_Face_Getter PFace,
 	const Primary_Edge_Getter PEdge,
-	const Solver_Info_Getter Sol_Info
+	const Solver_Info_Getter SInfo
 ) {
 	using std::array;
 	using std::get;
@@ -341,15 +345,9 @@ template <
 		Mag_fnz = get<4>(Mag_f), Mag_fpz = get<5>(Mag_f);
 
 	for (const auto& cell: grid.local_cells()) {
-		if ((Sol_Info(*cell.data) & Solver_Info::dont_solve) > 0) {
+		if (SInfo(*cell.data) != 1) {
 			continue;
 		}
-
-		bool
-			update_mas = ((Sol_Info(*cell.data) & Solver_Info::mass_density_bdy) == 0),
-			update_mom = ((Sol_Info(*cell.data) & Solver_Info::velocity_bdy) == 0),
-			update_nrj = ((Sol_Info(*cell.data) & Solver_Info::pressure_bdy) == 0),
-			update_mag = ((Sol_Info(*cell.data) & Solver_Info::magnetic_field_bdy) == 0);
 
 		const auto cpface = PFace(*cell.data); // primary face true/false
 		const auto cpedge = PEdge(*cell.data); // primary edge true/false
@@ -620,7 +618,7 @@ template <
 				continue;
 			}
 
-			if ((Sol_Info(*neighbor.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
+			if (SInfo(*neighbor.data) < 0) {
 				continue;
 			}
 
@@ -638,85 +636,85 @@ template <
 
 			if (fn == -1) {
 				if (cpface[0]) {
-					if (update_mas) Mas(*cell.data) += Mas_fnx(*cell.data)*dtdx;
-					if (update_mom) Mom(*cell.data) += Mom_fnx(*cell.data)*dtdx;
-					if (update_nrj) Nrj(*cell.data) += Nrj_fnx(*cell.data)*dtdx;
-					if (update_mag) Mag(*cell.data) += Mag_fnx(*cell.data)*dtdx;
+					Mas(*cell.data) += Mas_fnx(*cell.data)*dtdx;
+					Mom(*cell.data) += Mom_fnx(*cell.data)*dtdx;
+					Nrj(*cell.data) += Nrj_fnx(*cell.data)*dtdx;
+					Mag(*cell.data) += Mag_fnx(*cell.data)*dtdx;
 				} else {
-					if (update_mas) Mas(*cell.data) += Mas_fpx(*neighbor.data)*dtdx;
-					if (update_mom) Mom(*cell.data) += Mom_fpx(*neighbor.data)*dtdx;
-					if (update_nrj) Nrj(*cell.data) += Nrj_fpx(*neighbor.data)*dtdx;
-					if (update_mag) Mag(*cell.data) += Mag_fpx(*neighbor.data)*dtdx;
+					Mas(*cell.data) += Mas_fpx(*neighbor.data)*dtdx;
+					Mom(*cell.data) += Mom_fpx(*neighbor.data)*dtdx;
+					Nrj(*cell.data) += Nrj_fpx(*neighbor.data)*dtdx;
+					Mag(*cell.data) += Mag_fpx(*neighbor.data)*dtdx;
 				}
 			}
 
 			if (fn == 1) {
 				if (cpface[1]) {
-					if (update_mas) Mas(*cell.data) -= Mas_fpx(*cell.data)*dtdx;
-					if (update_mom) Mom(*cell.data) -= Mom_fpx(*cell.data)*dtdx;
-					if (update_nrj) Nrj(*cell.data) -= Nrj_fpx(*cell.data)*dtdx;
-					if (update_mag) Mag(*cell.data) -= Mag_fpx(*cell.data)*dtdx;
+					Mas(*cell.data) -= Mas_fpx(*cell.data)*dtdx;
+					Mom(*cell.data) -= Mom_fpx(*cell.data)*dtdx;
+					Nrj(*cell.data) -= Nrj_fpx(*cell.data)*dtdx;
+					Mag(*cell.data) -= Mag_fpx(*cell.data)*dtdx;
 				} else {
-					if (update_mas) Mas(*cell.data) -= Mas_fnx(*neighbor.data)*dtdx;
-					if (update_mom) Mom(*cell.data) -= Mom_fnx(*neighbor.data)*dtdx;
-					if (update_nrj) Nrj(*cell.data) -= Nrj_fnx(*neighbor.data)*dtdx;
-					if (update_mag) Mag(*cell.data) -= Mag_fnx(*neighbor.data)*dtdx;
+					Mas(*cell.data) -= Mas_fnx(*neighbor.data)*dtdx;
+					Mom(*cell.data) -= Mom_fnx(*neighbor.data)*dtdx;
+					Nrj(*cell.data) -= Nrj_fnx(*neighbor.data)*dtdx;
+					Mag(*cell.data) -= Mag_fnx(*neighbor.data)*dtdx;
 				}
 			}
 
 			if (fn == -2) {
 				if (cpface[2]) {
-					if (update_mas) Mas(*cell.data) += Mas_fny(*cell.data)*dtdy;
-					if (update_mom) Mom(*cell.data) += Mom_fny(*cell.data)*dtdy;
-					if (update_nrj) Nrj(*cell.data) += Nrj_fny(*cell.data)*dtdy;
-					if (update_mag) Mag(*cell.data) += Mag_fny(*cell.data)*dtdy;
+					Mas(*cell.data) += Mas_fny(*cell.data)*dtdy;
+					Mom(*cell.data) += Mom_fny(*cell.data)*dtdy;
+					Nrj(*cell.data) += Nrj_fny(*cell.data)*dtdy;
+					Mag(*cell.data) += Mag_fny(*cell.data)*dtdy;
 				} else {
-					if (update_mas) Mas(*cell.data) += Mas_fpy(*neighbor.data)*dtdy;
-					if (update_mom) Mom(*cell.data) += Mom_fpy(*neighbor.data)*dtdy;
-					if (update_nrj) Nrj(*cell.data) += Nrj_fpy(*neighbor.data)*dtdy;
-					if (update_mag) Mag(*cell.data) += Mag_fpy(*neighbor.data)*dtdy;
+					Mas(*cell.data) += Mas_fpy(*neighbor.data)*dtdy;
+					Mom(*cell.data) += Mom_fpy(*neighbor.data)*dtdy;
+					Nrj(*cell.data) += Nrj_fpy(*neighbor.data)*dtdy;
+					Mag(*cell.data) += Mag_fpy(*neighbor.data)*dtdy;
 				}
 			}
 
 			if (fn == 2) {
 				if (cpface[3]) {
-					if (update_mas) Mas(*cell.data) -= Mas_fpy(*cell.data)*dtdy;
-					if (update_mom) Mom(*cell.data) -= Mom_fpy(*cell.data)*dtdy;
-					if (update_nrj) Nrj(*cell.data) -= Nrj_fpy(*cell.data)*dtdy;
-					if (update_mag) Mag(*cell.data) -= Mag_fpy(*cell.data)*dtdy;
+					Mas(*cell.data) -= Mas_fpy(*cell.data)*dtdy;
+					Mom(*cell.data) -= Mom_fpy(*cell.data)*dtdy;
+					Nrj(*cell.data) -= Nrj_fpy(*cell.data)*dtdy;
+					Mag(*cell.data) -= Mag_fpy(*cell.data)*dtdy;
 				} else {
-					if (update_mas) Mas(*cell.data) -= Mas_fny(*neighbor.data)*dtdy;
-					if (update_mom) Mom(*cell.data) -= Mom_fny(*neighbor.data)*dtdy;
-					if (update_nrj) Nrj(*cell.data) -= Nrj_fny(*neighbor.data)*dtdy;
-					if (update_mag) Mag(*cell.data) -= Mag_fny(*neighbor.data)*dtdy;
+					Mas(*cell.data) -= Mas_fny(*neighbor.data)*dtdy;
+					Mom(*cell.data) -= Mom_fny(*neighbor.data)*dtdy;
+					Nrj(*cell.data) -= Nrj_fny(*neighbor.data)*dtdy;
+					Mag(*cell.data) -= Mag_fny(*neighbor.data)*dtdy;
 				}
 			}
 
 			if (fn == -3) {
 				if (cpface[4]) {
-					if (update_mas) Mas(*cell.data) += Mas_fnz(*cell.data)*dtdz;
-					if (update_mom) Mom(*cell.data) += Mom_fnz(*cell.data)*dtdz;
-					if (update_nrj) Nrj(*cell.data) += Nrj_fnz(*cell.data)*dtdz;
-					if (update_mag) Mag(*cell.data) += Mag_fnz(*cell.data)*dtdz;
+					Mas(*cell.data) += Mas_fnz(*cell.data)*dtdz;
+					Mom(*cell.data) += Mom_fnz(*cell.data)*dtdz;
+					Nrj(*cell.data) += Nrj_fnz(*cell.data)*dtdz;
+					Mag(*cell.data) += Mag_fnz(*cell.data)*dtdz;
 				} else {
-					if (update_mas) Mas(*cell.data) += Mas_fpz(*neighbor.data)*dtdz;
-					if (update_mom) Mom(*cell.data) += Mom_fpz(*neighbor.data)*dtdz;
-					if (update_nrj) Nrj(*cell.data) += Nrj_fpz(*neighbor.data)*dtdz;
-					if (update_mag) Mag(*cell.data) += Mag_fpz(*neighbor.data)*dtdz;
+					Mas(*cell.data) += Mas_fpz(*neighbor.data)*dtdz;
+					Mom(*cell.data) += Mom_fpz(*neighbor.data)*dtdz;
+					Nrj(*cell.data) += Nrj_fpz(*neighbor.data)*dtdz;
+					Mag(*cell.data) += Mag_fpz(*neighbor.data)*dtdz;
 				}
 			}
 
 			if (fn == 3) {
 				if (cpface[5]) {
-					if (update_mas) Mas(*cell.data) -= Mas_fpz(*cell.data)*dtdz;
-					if (update_mom) Mom(*cell.data) -= Mom_fpz(*cell.data)*dtdz;
-					if (update_nrj) Nrj(*cell.data) -= Nrj_fpz(*cell.data)*dtdz;
-					if (update_mag) Mag(*cell.data) -= Mag_fpz(*cell.data)*dtdz;
+					Mas(*cell.data) -= Mas_fpz(*cell.data)*dtdz;
+					Mom(*cell.data) -= Mom_fpz(*cell.data)*dtdz;
+					Nrj(*cell.data) -= Nrj_fpz(*cell.data)*dtdz;
+					Mag(*cell.data) -= Mag_fpz(*cell.data)*dtdz;
 				} else {
-					if (update_mas) Mas(*cell.data) -= Mas_fnz(*neighbor.data)*dtdz;
-					if (update_mom) Mom(*cell.data) -= Mom_fnz(*neighbor.data)*dtdz;
-					if (update_nrj) Nrj(*cell.data) -= Nrj_fnz(*neighbor.data)*dtdz;
-					if (update_mag) Mag(*cell.data) -= Mag_fnz(*neighbor.data)*dtdz;
+					Mas(*cell.data) -= Mas_fnz(*neighbor.data)*dtdz;
+					Mom(*cell.data) -= Mom_fnz(*neighbor.data)*dtdz;
+					Nrj(*cell.data) -= Nrj_fnz(*neighbor.data)*dtdz;
+					Mag(*cell.data) -= Mag_fnz(*neighbor.data)*dtdz;
 				}
 			}
 
@@ -1432,12 +1430,14 @@ template <
 }
 
 
-/* Solves new face magnetic fields from edge electric fields.
+/*! Solves new face magnetic fields from edge electric fields.
 
 Equations 13-15 of https://doi.org/10.1006/jcph.1998.6153
+
+Saves new face B of cells with SInfo(*cell_data) == 1,
+ignores cells with SInfo < 0.
 */
 template <
-	class Solver_Info,
 	class Cells,
 	class Grid,
 	class Face_Magnetic_Field_Pos_Getter,
@@ -1455,13 +1455,13 @@ template <
 	const Edge_Electric_Field_Getter Edge_E,
 	const Primary_Face_Getter PFace,
 	const Primary_Edge_Getter PEdge,
-	const Solver_Info_Getter Sol_Info
+	const Solver_Info_Getter SInfo
 ) {
 	using std::runtime_error;
 	using std::to_string;
 
 	for (const auto& cell: cells) {
-		if ((Sol_Info(*cell.data) & Solver_Info::dont_solve) > 0) {
+		if (SInfo(*cell.data) != 1) {
 			continue;
 		}
 
@@ -1527,7 +1527,7 @@ template <
 				continue;
 			}
 
-			if ((Sol_Info(*neighbor.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
+			if (SInfo(*neighbor.data) < 0) {
 				continue;
 			}
 
@@ -1777,9 +1777,11 @@ overriden are copied/averaged from other cell(s).
 
 If constant_thermal_pressure == true total energy is
 adjusted after averaging volume B.
+
+Saves B of cells with SInfo(*cell_data) == 1,
+ignores cells with SInfo < 0.
 */
 template <
-	class Solver_Info,
 	class Cell_Iter,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
@@ -1788,7 +1790,7 @@ template <
 	class Face_Magnetic_Field_Pos_Getter,
 	class Face_Magnetic_Field_Neg_Getter,
 	class Primary_Face_Getter,
-	class Cell_Type_Getter
+	class Solver_Info_Getter
 > void update_B_consistency(
 	const Cell_Iter& cells,
 	const Mass_Density_Getter Mas,
@@ -1798,7 +1800,7 @@ template <
 	const Face_Magnetic_Field_Pos_Getter FMagP,
 	const Face_Magnetic_Field_Neg_Getter FMagN,
 	const Primary_Face_Getter PFace,
-	const Cell_Type_Getter Cell_Type,
+	const Solver_Info_Getter SInfo,
 	const double adiabatic_index,
 	const double vacuum_permeability,
 	const bool constant_thermal_pressure
@@ -1807,7 +1809,7 @@ template <
 	using std::to_string;
 
 	for (const auto& cell: cells) {
-		if (Cell_Type(*cell.data) < 0) {
+		if (SInfo(*cell.data) != 1) {
 			continue;
 		}
 		if (constant_thermal_pressure and Mas(*cell.data) <= 0) {
@@ -1856,7 +1858,7 @@ template <
 			if (fn == 0) {
 				continue;
 			}
-			if (Cell_Type(*neighbor.data) < 0) {
+			if (SInfo(*neighbor.data) < 0) {
 				continue;
 			}
 

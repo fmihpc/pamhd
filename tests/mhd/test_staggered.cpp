@@ -115,13 +115,16 @@ const auto Edge_E = [](Cell& cell_data)->auto& {
 const auto Sol_Info = [](Cell& cell_data)->auto& {
 		return cell_data[pamhd::mhd::Solver_Info()];
 	};
-// simple version of above for non-MHD purposes
+// returns 1 for normal cell, -1 for dont_solve and 0 otherwise
 const auto Sol_Info2 = [](Cell& cell_data)->int {
 		const auto info = cell_data[pamhd::mhd::Solver_Info()];
-		if (info == pamhd::mhd::Solver_Info::dont_solve) {
+		if (info == 0) {
+			return 1;
+		}
+		if ((info & pamhd::mhd::Solver_Info::dont_solve) > 0) {
 			return -1;
 		}
-		return 1;
+		return 0;
 	};
 // flux of mass density through positive x face of cell
 const auto Mas_pfx = [](Cell& cell_data)->auto& {
@@ -477,10 +480,10 @@ int main(int argc, char* argv[])
 		pamhd::Bg_Magnetic_Field()
 	);
 
-	pamhd::mhd::update_B_consistency<pamhd::mhd::Solver_Info>(
+	pamhd::mhd::update_B_consistency(
 		grid.local_cells(),
 		Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
-		PFace, Sol_Info,
+		PFace, Sol_Info2,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		false
@@ -537,10 +540,10 @@ int main(int argc, char* argv[])
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
-	pamhd::mhd::update_B_consistency<pamhd::mhd::Solver_Info>(
+	pamhd::mhd::update_B_consistency(
 		grid.local_cells(),
 		Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
-		PFace, Sol_Info,
+		PFace, Sol_Info2,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		true
@@ -618,7 +621,7 @@ int main(int argc, char* argv[])
 		Cell::set_transfer_all(true, pamhd::mhd::MHD_State_Conservative());
 		grid.start_remote_neighbor_copy_updates();
 
-		double solve_max_dt = pamhd::mhd::get_fluxes<pamhd::mhd::Solver_Info>(
+		double solve_max_dt = pamhd::mhd::get_fluxes(
 			mhd_solver,
 			grid.inner_cells(),
 			grid,
@@ -628,13 +631,13 @@ int main(int argc, char* argv[])
 			Mas, Mom, Nrj, Mag,
 			Bg_B,
 			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-			PFace, Sol_Info
+			PFace, Sol_Info2
 		);
 		max_dt_mhd = min(solve_max_dt, max_dt_mhd);
 
 		grid.wait_remote_neighbor_copy_update_receives();
 
-		solve_max_dt = pamhd::mhd::get_fluxes<pamhd::mhd::Solver_Info>(
+		solve_max_dt = pamhd::mhd::get_fluxes(
 			mhd_solver,
 			grid.outer_cells(),
 			grid,
@@ -644,7 +647,7 @@ int main(int argc, char* argv[])
 			Mas, Mom, Nrj, Mag,
 			Bg_B,
 			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-			PFace, Sol_Info
+			PFace, Sol_Info2
 		);
 		max_dt_mhd = min(solve_max_dt, max_dt_mhd);
 
@@ -660,32 +663,32 @@ int main(int argc, char* argv[])
 		grid.update_copies_of_remote_neighbors();
 		Cell::set_transfer_all(false, pamhd::mhd::MHD_Flux());
 		// TODO: split into inner and outer cells
-		pamhd::mhd::get_edge_electric_field<pamhd::mhd::Solver_Info>(
+		pamhd::mhd::get_edge_electric_field(
 			grid, time_step,
 			Mas, Mom, Nrj, Mag, Edge_E,
 			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-			PFace, PEdge, Sol_Info
+			PFace, PEdge, Sol_Info2
 		);
 		Cell::set_transfer_all(true, pamhd::Edge_Electric_Field());
 		grid.update_copies_of_remote_neighbors();
 		Cell::set_transfer_all(false, pamhd::Edge_Electric_Field());
-		pamhd::mhd::get_face_magnetic_field<pamhd::mhd::Solver_Info>(
+		pamhd::mhd::get_face_magnetic_field(
 			grid.local_cells(),
 			grid,
 			time_step,
 			Face_B, Face_B_neg, Edge_E,
 			PFace, PEdge,
-			Sol_Info
+			Sol_Info2
 		);
 
 		// constant thermal pressure when updating vol B after solution
 		Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
 		grid.start_remote_neighbor_copy_updates();
 
-		pamhd::mhd::update_B_consistency<pamhd::mhd::Solver_Info>(
+		pamhd::mhd::update_B_consistency(
 			grid.inner_cells(),
 			Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
-			PFace, Sol_Info,
+			PFace, Sol_Info2,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			true
@@ -693,10 +696,10 @@ int main(int argc, char* argv[])
 
 		grid.wait_remote_neighbor_copy_update_receives();
 
-		pamhd::mhd::update_B_consistency<pamhd::mhd::Solver_Info>(
+		pamhd::mhd::update_B_consistency(
 			grid.outer_cells(),
 			Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
-			PFace, Sol_Info,
+			PFace, Sol_Info2,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			true
@@ -720,7 +723,7 @@ int main(int argc, char* argv[])
 			}
 
 			const pamhd::mhd::New_Cells_Handler nch(Mas, Mom, Nrj, Face_B, Face_B_neg, Ref, Sol_Info);
-			const pamhd::mhd::Removed_Cells_Handler rch(Mas, Mom, Nrj, Face_B, Face_B_neg, Ref, Sol_Info);
+			const pamhd::mhd::Removed_Cells_Handler rch(Mas, Mom, Nrj, Face_B, Face_B_neg, Ref);
 			pamhd::grid::adapt_grid(grid, options_grid, simulation_time, nch, rch);
 			pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
 			pamhd::grid::update_primary_edges(grid.local_cells(), grid, PEdge);
@@ -743,10 +746,10 @@ int main(int argc, char* argv[])
 		Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
 		grid.start_remote_neighbor_copy_updates();
 
-		pamhd::mhd::update_B_consistency<pamhd::mhd::Solver_Info>(
+		pamhd::mhd::update_B_consistency(
 			grid.inner_cells(),
 			Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
-			PFace, Sol_Info,
+			PFace, Sol_Info2,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			false
@@ -754,10 +757,10 @@ int main(int argc, char* argv[])
 
 		grid.wait_remote_neighbor_copy_update_receives();
 
-		pamhd::mhd::update_B_consistency<pamhd::mhd::Solver_Info>(
+		pamhd::mhd::update_B_consistency(
 			grid.outer_cells(),
 			Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
-			PFace, Sol_Info,
+			PFace, Sol_Info2,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			false
