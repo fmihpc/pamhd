@@ -333,8 +333,7 @@ template <
 	class Total_Energy_Density_Getter,
 	class Face_Magnetic_Field_Getter_Pos,
 	class Face_Magnetic_Field_Getter_Neg,
-	class Target_Refinement_Level_Getter,
-	class Solver_Info_Getter
+	class Target_Refinement_Level_Getter
 > struct Removed_Cells_Handler {
 	const Mass_Density_Getter& Mas;
 	const Momentum_Density_Getter& Mom;
@@ -342,7 +341,6 @@ template <
 	const Face_Magnetic_Field_Getter_Pos& Face_Bp;
 	const Face_Magnetic_Field_Getter_Neg& Face_Bn;
 	const Target_Refinement_Level_Getter& Ref;
-	const Solver_Info_Getter& Sol_Info;
 
 	Removed_Cells_Handler(
 		const Mass_Density_Getter& Mas_,
@@ -350,12 +348,11 @@ template <
 		const Total_Energy_Density_Getter& Nrj_,
 		const Face_Magnetic_Field_Getter_Pos& Face_Bp_,
 		const Face_Magnetic_Field_Getter_Neg& Face_Bn_,
-		const Target_Refinement_Level_Getter& Ref_,
-		const Solver_Info_Getter& Sol_Info_
+		const Target_Refinement_Level_Getter& Ref_
 	) :
 		Mas(Mas_), Mom(Mom_), Nrj(Nrj_),
 		Face_Bp(Face_Bp_), Face_Bn(Face_Bn_),
-		Ref(Ref_), Sol_Info(Sol_Info_)
+		Ref(Ref_)
 	{};
 
 	template<
