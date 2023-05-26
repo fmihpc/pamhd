@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include "iostream"
+#include "set"
 #include "stdexcept"
 #include "string"
 
@@ -74,7 +75,7 @@ int main(int argc, char* argv[])
 	grid.stop_refining();
 	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
 	for (const auto& cell: grid.local_cells()) {
-		if (cell.id < 2 or cell.id > 18) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
 		if (cell.id % 2 == 0) {
 			if (pf[0] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
@@ -102,7 +103,7 @@ int main(int argc, char* argv[])
 	grid.stop_refining();
 	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
 	for (const auto& cell: grid.local_cells()) {
-		if (cell.id < 2 or cell.id > 18) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
 		if (cell.id % 2 == 0) {
 			if (pf[0] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
@@ -136,7 +137,7 @@ int main(int argc, char* argv[])
 	grid.stop_refining();
 	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
 	for (const auto& cell: grid.local_cells()) {
-		if (cell.id < 2 or cell.id > 18) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
 		if (cell.id % 2 == 0) {
 			if (pf[0] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
@@ -168,7 +169,7 @@ int main(int argc, char* argv[])
 	grid.stop_refining();
 	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
 	for (const auto& cell: grid.local_cells()) {
-		if (cell.id < 2 or cell.id > 18) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
 		if (cell.id % 4 == 3) {
 			if (pf[0] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
@@ -180,6 +181,27 @@ int main(int argc, char* argv[])
 		if (pf[3] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (pf[4] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (pf[5] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+	}}
+
+	{Grid grid; grid
+		.set_periodic(false, false, false)
+		.set_initial_length({2, 1, 1})
+		.set_neighborhood_length(0)
+		.set_maximum_refinement_level(1)
+		.initialize(comm);
+	for (const auto& cell: grid.local_cells()) if (cell.id == 1) grid.refine_completely(cell.id);
+	grid.stop_refining();
+	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
+	const set<int> pf0{3,7,11,15}, pf2{3,4,11,12}, pf4{3,4,7,8};
+	for (const auto& cell: grid.local_cells()) {
+		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		const auto pf = PFace(*cell.data);
+		if (pf[1] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf[3] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf[5] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf[0] == false and pf0.count(cell.id) > 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf[2] == false and pf2.count(cell.id) > 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf[4] == false and pf4.count(cell.id) > 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	{Grid grid; grid
@@ -223,7 +245,7 @@ int main(int argc, char* argv[])
 	grid.stop_refining();
 	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
 	for (const auto& cell: grid.local_cells()) {
-		if (cell.id < 2 or cell.id > 18) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
 		if (pf[0] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (pf[1] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
@@ -251,7 +273,7 @@ int main(int argc, char* argv[])
 	grid.stop_refining();
 	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
 	for (const auto& cell: grid.local_cells()) {
-		if (cell.id < 2 or cell.id > 18) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
 		if (pf[0] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (pf[1] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
@@ -275,7 +297,7 @@ int main(int argc, char* argv[])
 	grid.stop_refining();
 	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
 	for (const auto& cell: grid.local_cells()) {
-		if (cell.id < 2 or cell.id > 18) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
 		if (pf[0] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (pf[1] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
@@ -303,7 +325,7 @@ int main(int argc, char* argv[])
 	grid.stop_refining();
 	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
 	for (const auto& cell: grid.local_cells()) {
-		if (cell.id < 2 or cell.id > 18) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
 		if (pf[0] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (pf[1] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
