@@ -58,7 +58,7 @@ namespace mhd {
 
 
 /*!
-Advances MHD solution for one time step of length dt with given solver.
+Calculates MHD fluxes in/out of given cells.
 
 Returns the maximum allowed length of time step for the next step on this process.
 
@@ -80,7 +80,7 @@ template <
 	class Magnetic_Field_Flux_Getters,
 	class Primary_Face_Getter,
 	class Solver_Info_Getter
-> double solve_staggered(
+> double get_fluxes(
 	const Solver solver,
 	const Cell_Iter& cells,
 	Grid& grid,
@@ -284,7 +284,9 @@ template <
 
 
 /*!
-Applies the MHD solution to normal cells of \p grid.
+Calculates edge electric fields in given cells.
+
+Also updates MHD state with fluxes and zeroes them.
 */
 template <
 	class Solver_Info,
@@ -301,7 +303,7 @@ template <
 	class Primary_Face_Getter,
 	class Primary_Edge_Getter,
 	class Solver_Info_Getter
-> void apply_fluxes_staggered(
+> void get_edge_electric_field(
 	Grid& grid,
 	const double dt,
 	const Mass_Density_Getter Mas,
@@ -1444,7 +1446,7 @@ template <
 	class Primary_Face_Getter,
 	class Primary_Edge_Getter,
 	class Solver_Info_Getter
-> void solve_B(
+> void get_face_magnetic_field(
 	const Cells& cells,
 	Grid& grid,
 	const double dt,

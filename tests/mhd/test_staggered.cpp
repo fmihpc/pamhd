@@ -618,7 +618,7 @@ int main(int argc, char* argv[])
 		Cell::set_transfer_all(true, pamhd::mhd::MHD_State_Conservative());
 		grid.start_remote_neighbor_copy_updates();
 
-		double solve_max_dt = pamhd::mhd::solve_staggered<pamhd::mhd::Solver_Info>(
+		double solve_max_dt = pamhd::mhd::get_fluxes<pamhd::mhd::Solver_Info>(
 			mhd_solver,
 			grid.inner_cells(),
 			grid,
@@ -634,7 +634,7 @@ int main(int argc, char* argv[])
 
 		grid.wait_remote_neighbor_copy_update_receives();
 
-		solve_max_dt = pamhd::mhd::solve_staggered<pamhd::mhd::Solver_Info>(
+		solve_max_dt = pamhd::mhd::get_fluxes<pamhd::mhd::Solver_Info>(
 			mhd_solver,
 			grid.outer_cells(),
 			grid,
@@ -660,7 +660,7 @@ int main(int argc, char* argv[])
 		grid.update_copies_of_remote_neighbors();
 		Cell::set_transfer_all(false, pamhd::mhd::MHD_Flux());
 		// TODO: split into inner and outer cells
-		pamhd::mhd::apply_fluxes_staggered<pamhd::mhd::Solver_Info>(
+		pamhd::mhd::get_edge_electric_field<pamhd::mhd::Solver_Info>(
 			grid, time_step,
 			Mas, Mom, Nrj, Mag, Edge_E,
 			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
@@ -669,7 +669,7 @@ int main(int argc, char* argv[])
 		Cell::set_transfer_all(true, pamhd::Edge_Electric_Field());
 		grid.update_copies_of_remote_neighbors();
 		Cell::set_transfer_all(false, pamhd::Edge_Electric_Field());
-		pamhd::mhd::solve_B<pamhd::mhd::Solver_Info>(
+		pamhd::mhd::get_face_magnetic_field<pamhd::mhd::Solver_Info>(
 			grid.local_cells(),
 			grid,
 			time_step,
