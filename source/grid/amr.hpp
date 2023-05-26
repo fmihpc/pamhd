@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define PAMHD_GRID_AMR_HPP
 
 
+#include "algorithm"
 #include "initializer_list"
 #include "stdexcept"
 #include "string"
@@ -179,10 +180,7 @@ template<class Data_Type> struct Edge_Type {
 		if (other.size() != this->edge.size()) {
 			throw std::runtime_error(__FILE__"(" + std::to_string(__LINE__) + ")");
 		}
-		size_t i = 0;
-		for (const auto& o: other) {
-			this->edge[i++] = o;
-		}
+		std::copy(other.begin(), other.end(), this->edge.begin());
 		return this->edge;
 	}
 
