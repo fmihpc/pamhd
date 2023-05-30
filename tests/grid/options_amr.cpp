@@ -52,7 +52,8 @@ int main()
 			"\"volume\": \"{1, 1, 1}\","
 			"\"start\": \"{0, 0, 0}\","
 			"\"max-ref-lvl\": 0,"
-			"\"ref-lvl-at-least\": 0"
+			"\"ref-lvl-at-least\": 0,"
+			"\"ref-lvl-at-most\": 0"
 		"}"
 	"}";
 	rapidjson::Document document;
