@@ -57,6 +57,101 @@ struct Target_Refinement_Level {
 };
 
 
+/*! Common accessors for values stored on cell faces.
+*/
+template<class Data_Type> struct Face_Type {
+	std::array<Data_Type, 6> face;
+
+	/*! Returns data of given cell face.
+	dir: -1 == -x, +1 == +x, -2 == -y, ..., +3 == +z face
+	*/
+	const Data_Type& operator()(const int dir) const {
+		if (dir == 0 or dir < -3 or dir > +3) {
+			throw std::domain_error(__FILE__ "(" + std::to_string(__LINE__) + "): Invalid direction, must be -3,-2,-1,1,2,3 but is " + std::to_string(dir));
+		}
+		if        (dir == -1) {
+			return this->face[0];
+		} else if (dir == +1) {
+			return this->face[1];
+		} else if (dir == -2) {
+			return this->face[2];
+		} else if (dir == +2) {
+			return this->face[3];
+		} else if (dir == -3) {
+			return this->face[4];
+		} else if (dir == +3) {
+			return this->face[5];
+		} else throw std::runtime_error("Internal error");
+	}
+
+	// https://stackoverflow.com/a/123995
+	Data_Type& operator()(const int dir) {
+		return const_cast<Data_Type&>(static_cast<const Face_Type<Data_Type>&>(*this).operator()(dir));
+	}
+
+	/*! Returns data of given cell face.
+	dim: 0 == cell face with normal in x direction, 1 == y, 2 == z,
+	side: -1 == negative side of cell from center, +1 == positive
+	*/
+	const Data_Type& operator()(
+		const size_t dim,
+		const int side
+	) const {
+		if (dim > 2) {
+			throw std::domain_error("Invalid dimension, must be 0..2 but is " + std::to_string(dim));
+		}
+		if (side != -1 and side != +1) {
+			throw std::domain_error("Invalid side, must be -1,1 but is " + std::to_string(side));
+		}
+		if        (dim == 0) {
+			if (side < 0) return this->face[0];
+			else          return this->face[1];
+		} else if (dim == 1) {
+			if (side < 0) return this->face[2];
+			else          return this->face[3];
+		} else if (dim == 2) {
+			if (side < 0) return this->face[4];
+			else          return this->face[5];
+		} else throw std::runtime_error("Internal error");
+	}
+
+	Face_Type<Data_Type>& operator=(const Face_Type<Data_Type>& other) noexcept {
+		if (this == &other) {
+			return *this;
+		}
+		this->face = other.face;
+		return *this;
+	}
+
+	decltype(face)& operator=(const decltype(face)& other) noexcept {
+		this->face = other;
+		return this->face;
+	}
+
+	decltype(face)& operator=(const std::initializer_list<Data_Type>& other) {
+		if (other.size() != this->face.size()) {
+			throw std::runtime_error(__FILE__"(" + std::to_string(__LINE__) + ")");
+		}
+		std::copy(other.begin(), other.end(), this->face.begin());
+		return this->face;
+	}
+
+	#ifdef MPI_VERSION
+	std::tuple<void*, int, MPI_Datatype> get_mpi_datatype() const {
+		if constexpr (std::is_same_v<Data_Type, double>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_DOUBLE);
+		} else if constexpr (std::is_same_v<Data_Type, float>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_FLOAT);
+		} else if constexpr (std::is_same_v<Data_Type, bool>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_CXX_BOOL);
+		} else {
+			static_assert(true, "Unsupported face item type for MPI");
+			//return std::make_tuple(nullptr, 0, MPI_BYTE);
+		}
+	}
+	#endif
+};
+
 /*! Records which of cell's faces are primary.
 
 By default positive faces are primary, i.e. values in
@@ -68,12 +163,7 @@ Faces of smaller neighbors are always primary.
 0 == -x, 1 == +x, ..., 5 == +z
 */
 struct Is_Primary_Face {
-	using data_type = std::array<bool, 6>;
-	#ifdef MPI_VERSION
-	std::tuple<void*, int, MPI_Datatype> get_mpi_datatype() const {
-		return std::make_tuple(nullptr, 0, MPI_BYTE);
-	}
-	#endif
+	using data_type = Face_Type<bool>;
 };
 
 
@@ -98,17 +188,10 @@ template <
 			}
 			if (neighbor.relative_size > 0) {
 				// smaller neighbor always has priority
-				if (n == -1) Faces(*cell.data)[0] = false;
-				if (n == +1) Faces(*cell.data)[1] = false;
-				if (n == -2) Faces(*cell.data)[2] = false;
-				if (n == +2) Faces(*cell.data)[3] = false;
-				if (n == -3) Faces(*cell.data)[4] = false;
-				if (n == +3) Faces(*cell.data)[5] = false;
+				Faces(*cell.data)(n) = false;
 				continue;
 			}
-			if (n == -1) Faces(*cell.data)[0] = false;
-			if (n == -2) Faces(*cell.data)[2] = false;
-			if (n == -3) Faces(*cell.data)[4] = false;
+			if (n < 0) Faces(*cell.data)(n) = false;
 		}
 	}
 }
@@ -120,17 +203,17 @@ template<class Data_Type> struct Edge_Type {
 	std::array<Data_Type, 12> edge;
 
 	/*
-	par_dim_i = dimension to which electric field is parallel to,
+	par_dim_i = dimension which edge is parallel to,
 	0 = x, 1 = y, 2 = z.
 	first_perp_dim_i = negative or positive side of cell in
-	lexically earlier dimension perpendicular to electric field,
+	lexically earlier dimension perpendicular to edge,
 	e.g. if par_dim_i = 0, first_perp_dim_i = 1 means positive side of
 	cell in y dimension.
 	second_perp_dim = neg or pos side in lexically later dimension,
 	if par_dim_i = 2, second_perp_dim_i = 0 means negative side of
 	cell in y dimension.
-	par_dim_i | first_perp_dim_i | second..._i | E on edge of cell
-	    0     |         0        |      0      | x directed: -y, -z
+	par_dim_i | first_perp_dim_i | second..._i | edge of cell
+	    0     |         0        |      0      | x directed: -y, -z sides
 	    0     |         0        |      1      | x dir:      -y, +z
 	    0     |         1        |      1      | x dir:      +y, +z
 	...
@@ -188,10 +271,13 @@ template<class Data_Type> struct Edge_Type {
 	std::tuple<void*, int, MPI_Datatype> get_mpi_datatype() const {
 		if constexpr (std::is_same_v<Data_Type, double>) {
 			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_DOUBLE);
+		} else if constexpr (std::is_same_v<Data_Type, float>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_FLOAT);
 		} else if constexpr (std::is_same_v<Data_Type, bool>) {
 			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_CXX_BOOL);
 		} else {
-			return std::make_tuple(nullptr, 0, MPI_BYTE);
+			static_assert(true, "Unsupported edge item type for MPI");
+			//return std::make_tuple(nullptr, 0, MPI_BYTE);
 		}
 	}
 	#endif

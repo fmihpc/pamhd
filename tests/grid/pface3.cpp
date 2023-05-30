@@ -78,19 +78,19 @@ int main(int argc, char* argv[])
 		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
 		if (cell.id % 2 == 0) {
-			if (pf[0] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[0] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 		if (cell.id == 2) {
-			if (pf[1] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[1] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pf[2] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[3] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[4] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[5] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-2) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+2) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-3) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+3) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	{Grid grid; grid
@@ -106,25 +106,25 @@ int main(int argc, char* argv[])
 		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
 		if (cell.id % 2 == 0) {
-			if (pf[0] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[0] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 		if (cell.id == 2) {
-			if (pf[1] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[1] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pf[2] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[3] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-2) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+2) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (cell.id >= 2 and cell.id <= 8) {
-			if (pf[4] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-3) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[4] == true) {
+			if (pf(-3) == true) {
 				throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			}
 		}
-		if (pf[5] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+3) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	{Grid grid; grid
@@ -140,23 +140,23 @@ int main(int argc, char* argv[])
 		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
 		if (cell.id % 2 == 0) {
-			if (pf[0] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[0] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 		if (cell.id == 2) {
-			if (pf[1] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[1] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 		if (cell.id % 8 > 0 and cell.id % 8 < 5) {
-			if (pf[2] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-2) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[2] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-2) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pf[3] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[4] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[5] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+2) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-3) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+3) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	{Grid grid; grid
@@ -172,15 +172,15 @@ int main(int argc, char* argv[])
 		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
 		if (cell.id % 4 == 3) {
-			if (pf[0] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[0] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pf[1] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[2] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[3] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[4] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[5] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-2) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+2) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-3) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+3) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	{Grid grid; grid
@@ -196,12 +196,12 @@ int main(int argc, char* argv[])
 	for (const auto& cell: grid.local_cells()) {
 		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
-		if (pf[1] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[3] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[5] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[0] == false and pf0.count(cell.id) > 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[2] == false and pf2.count(cell.id) > 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[4] == false and pf4.count(cell.id) > 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+2) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+3) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-1) == false and pf0.count(cell.id) > 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-2) == false and pf2.count(cell.id) > 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-3) == false and pf4.count(cell.id) > 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	{Grid grid; grid
@@ -217,22 +217,22 @@ int main(int argc, char* argv[])
 		if (cell.id < 1 or cell.id > 18) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
 		if (cell.id == 1) {
-			if (pf[0] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-			if (pf[1] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else if (cell.id % 2 == 0) {
-			if (pf[0] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[0] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 		if (cell.id == 1) {
-			if (pf[1] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[1] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pf[2] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[3] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[4] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[5] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-2) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+2) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-3) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+3) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	{Grid grid; grid
@@ -247,20 +247,20 @@ int main(int argc, char* argv[])
 	for (const auto& cell: grid.local_cells()) {
 		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
-		if (pf[0] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[1] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (cell.id > 2 and cell.id % 8 < 5) {
-			if (pf[2] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-2) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[2] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-2) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 		if (cell.id == 2) {
-			if (pf[3] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(+2) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[3] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(+2) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pf[4] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[5] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-3) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+3) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	{Grid grid; grid
@@ -275,16 +275,16 @@ int main(int argc, char* argv[])
 	for (const auto& cell: grid.local_cells()) {
 		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
-		if (pf[0] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[1] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (cell.id == 2 or cell.id % 8 > 4) {
-			if (pf[2] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-2) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[2] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-2) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pf[3] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[4] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[5] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+2) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-3) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+3) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	{Grid grid; grid
@@ -299,19 +299,19 @@ int main(int argc, char* argv[])
 	for (const auto& cell: grid.local_cells()) {
 		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
-		if (pf[0] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[1] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[2] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[3] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-2) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+2) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (cell.id == 2 or cell.id > 6) {
-			if (pf[4] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-3) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[4] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-3) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 		if (cell.id == 2) {
-			if (pf[5] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(+3) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[5] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(+3) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 	}}
 
@@ -327,16 +327,16 @@ int main(int argc, char* argv[])
 	for (const auto& cell: grid.local_cells()) {
 		if (cell.id < 2 or cell.id > 16) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pf = PFace(*cell.data);
-		if (pf[0] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[1] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[2] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pf[3] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(-2) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+2) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (cell.id == 2 or cell.id > 6) {
-			if (pf[4] == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-3) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pf[4] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pf(-3) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pf[5] == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pf(+3) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	MPI_Finalize();

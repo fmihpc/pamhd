@@ -41,7 +41,7 @@ TEST_MATH_COMMON_DEPS = \
   Makefile
 
 MPICXX_TESTS_MATH_MPICXX = \
-  $(MPICXX) $< -o $@ -I . \
+  $(MPICXX) $< -o $@ -I . -I source \
   $(CPPFLAGS) \
   $(CXXFLAGS) \
   $(LDFLAGS) \

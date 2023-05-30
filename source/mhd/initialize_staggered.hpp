@@ -124,28 +124,28 @@ template <
 		);
 
 		const auto& pface = PFace(*cell.data);
-		for (size_t i = 0; i < 6; i++) {
-			if (not pface[i]) continue;
+		for (const int i: {-1,+1,-2,+2,-3,+3}) {
+			if (not pface(i)) continue;
 
 			// center of face
 			const auto [x, y, z] = [&](){
 				switch (i) {
-				case 0:
+				case -1:
 					return make_tuple(sx, ry, rz);
 					break;
-				case 1:
+				case +1:
 					return make_tuple(ex, ry, rz);
 					break;
-				case 2:
+				case -2:
 					return make_tuple(rx, sy, rz);
 					break;
-				case 3:
+				case +2:
 					return make_tuple(rx, ey, rz);
 					break;
-				case 4:
+				case -3:
 					return make_tuple(rx, ry, sz);
 					break;
-				case 5:
+				case +3:
 					return make_tuple(rx, ry, ez);
 					break;
 				default:
@@ -167,10 +167,11 @@ template <
 					r, lat, lon
 				);
 
-			if (i % 2 == 0) {
-				Face_B_neg(*cell.data) = magnetic_field;
+			const size_t dim = std::abs(i) - 1;
+			if (i < 0) {
+				Face_B_neg(*cell.data)[dim] = magnetic_field[dim];
 			} else {
-				Face_B_pos(*cell.data) = magnetic_field;
+				Face_B_pos(*cell.data)[dim] = magnetic_field[dim];
 			}
 		}
 	}
@@ -197,28 +198,28 @@ template <
 			const auto [rx, ry, rz] = grid.geometry.get_center(cell_id);
 			const auto [sx, sy, sz] = grid.geometry.get_min(cell_id);
 			const auto [ex, ey, ez] = grid.geometry.get_max(cell_id);
-			for (size_t i = 0; i < 6; i++) {
-				if (not pface[i]) continue;
+			for (const int i: {-1,+1,-2,+2,-3,+3}) {
+				if (not pface(i)) continue;
 
 				// center of face
 				const auto [x, y, z] = [&](){
 					switch (i) {
-					case 0:
+					case -1:
 						return make_tuple(sx, ry, rz);
 						break;
-					case 1:
+					case +1:
 						return make_tuple(ex, ry, rz);
 						break;
-					case 2:
+					case -2:
 						return make_tuple(rx, sy, rz);
 						break;
-					case 3:
+					case +2:
 						return make_tuple(rx, ey, rz);
 						break;
-					case 4:
+					case -3:
 						return make_tuple(rx, ry, sz);
 						break;
-					case 5:
+					case +3:
 						return make_tuple(rx, ry, ez);
 						break;
 					default:
@@ -239,10 +240,11 @@ template <
 						r, lat, lon
 					);
 
-				if (i % 2 == 0) {
-					Face_B_neg(*cell_data) = magnetic_field;
+				const size_t dim = std::abs(i) - 1;
+				if (i < 0) {
+					Face_B_neg(*cell_data)[dim] = magnetic_field[dim];
 				} else {
-					Face_B_pos(*cell_data) = magnetic_field;
+					Face_B_pos(*cell_data)[dim] = magnetic_field[dim];
 				}
 			}
 		}

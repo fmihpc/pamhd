@@ -37,6 +37,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "gensimcell.hpp"
 
+#include "grid/amr.hpp"
+
 //! each component is normal to and at corresponding + dir face
 struct Vector_Pos {
 	using data_type = std::array<double, 3>;
@@ -52,10 +54,7 @@ struct Divergence {
 };
 
 struct Is_Primary_Face {
-	using data_type = std::array<bool, 6>;
-	std::tuple<void*, int, MPI_Datatype> get_mpi_datatype() const {
-		return std::make_tuple(nullptr, 0, MPI_BYTE);
-	}
+	using data_type = pamhd::grid::Face_Type<bool>;
 };
 
 struct Type {

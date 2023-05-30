@@ -50,6 +50,8 @@ Same as get_divergence() but for vector variable that's stored on cell faces.
 Vector_Pos returns vector whose components are at cell faces on positive
 side from cell center and are normal to said faces, Vector_Neg returns
 components on negative side faces pointing in positive direction.
+
+Returns average absolute divergence in cells of all processes.
 */
 template <
 	class Cell_Iterator,
@@ -80,21 +82,14 @@ template <
 		auto& div = Divergence(*cell.data);
 		div = 0.0;
 
-		const auto primary = PFace(*cell.data);
-		for (size_t i = 0; i < 3; i++) {
-			if (primary[2*i + 0]) div -= Vector_Neg(*cell.data)[i] / cell_length[i];
-			if (primary[2*i + 1]) div += Vector_Pos(*cell.data)[i] / cell_length[i];
+		for (size_t d = 0; d < 3; d++) {
+			if (PFace(*cell.data)(d, -1)) div -= Vector_Neg(*cell.data)[d] / cell_length[d];
+			if (PFace(*cell.data)(d, +1)) div += Vector_Pos(*cell.data)[d] / cell_length[d];
 		}
 
 		for (const auto& neighbor: cell.neighbors_of) {
-			const auto n = neighbor.face_neighbor;
-			if (n == 0) continue;
-			if (n == -1 and primary[0]) continue;
-			if (n == +1 and primary[1]) continue;
-			if (n == -2 and primary[2]) continue;
-			if (n == +2 and primary[3]) continue;
-			if (n == -3 and primary[4]) continue;
-			if (n == +3 and primary[5]) continue;
+			const auto& n = neighbor.face_neighbor;
+			if (n == 0 or PFace(*cell.data)(n)) continue;
 
 			if (Cell_Type(*neighbor.data) < 0) {
 				continue;

@@ -533,7 +533,8 @@ int main(int argc, char* argv[])
 		boundaries,
 		geometries,
 		simulation_time,
-		Face_B, Face_B_neg
+		Face_B, Face_B_neg,
+		PFace
 	);
 
 	Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
@@ -739,7 +740,8 @@ int main(int argc, char* argv[])
 			boundaries,
 			geometries,
 			simulation_time,
-			Face_B, Face_B_neg
+			Face_B, Face_B_neg,
+			PFace
 		);
 
 

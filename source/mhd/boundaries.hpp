@@ -282,16 +282,22 @@ template<
 	class Boundaries,
 	class Boundary_Geometries,
 	class Magnetic_Field_Pos_Getter,
-	class Magnetic_Field_Neg_Getter
+	class Magnetic_Field_Neg_Getter,
+	class Primary_Face_Getter
 > void apply_magnetic_field_boundaries_staggered(
 	Grid& grid,
 	Boundaries& boundaries,
 	const Boundary_Geometries& bdy_geoms,
-	const double simulation_time,
-	const Magnetic_Field_Pos_Getter& Magp,
-	const Magnetic_Field_Neg_Getter& /*Magn*/
+	const double t,
+	const Magnetic_Field_Pos_Getter& Face_B_pos,
+	const Magnetic_Field_Neg_Getter& Face_B_neg,
+	const Primary_Face_Getter PFace
 ) {
-	// magnetic field
+	using std::array;
+	using std::asin;
+	using std::atan2;
+	using std::sqrt;
+
 	constexpr pamhd::Magnetic_Field B{};
 	for (
 		size_t i = 0;
@@ -302,34 +308,34 @@ template<
 		const auto& geometry_id = value_bdy.get_geometry_id();
 		const auto& cells = bdy_geoms.get_cells(geometry_id);
 		for (const auto& cell: cells) {
-			const auto c = [&](){
-				auto c_ = grid.geometry.get_center(cell);
-				const auto len = grid.geometry.get_length(cell);
-				c_[0] += len[0]/2;
-				c_[1] += len[1]/2;
-				c_[2] += len[2]/2;
-				return c_;
-			}();
-			const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
-			const auto
-				lat = asin(c[2] / r),
-				lon = atan2(c[1], c[0]);
-
-			const auto magnetic_field = value_bdy.get_data(
-				simulation_time,
-				c[0], c[1], c[2],
-				r, lat, lon
-			);
-
 			auto* const cell_data = grid[cell];
 			if (cell_data == nullptr) {
 				std::cerr <<  __FILE__ << "(" << __LINE__ << std::endl;
 				abort();
 			}
 
-			Magp(*cell_data) = magnetic_field;
+			const auto
+				c = grid.geometry.get_center(cell),
+				len = grid.geometry.get_length(cell);
+
+			const auto get_B = [&value_bdy, &t](const array<double, 3>& c) -> pamhd::Magnetic_Field::data_type {
+				const auto
+					r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]),
+					lat = asin(c[2] / c[0]),
+					lon = atan2(c[1], c[0]);
+				return value_bdy.get_data(t, c[0], c[1], c[2], r, lat, lon);
+			};
+
+			const auto& pface = PFace(*cell_data);
+			if (pface(-1)) Face_B_neg(*cell_data)[0] = get_B({c[0]-len[0]/2, c[1], c[2]})[0];
+			if (pface(+1)) Face_B_pos(*cell_data)[0] = get_B({c[0]-len[0]/2, c[1], c[2]})[0];
+			if (pface(-2)) Face_B_neg(*cell_data)[1] = get_B({c[0], c[1]-len[1]/2, c[2]})[1];
+			if (pface(+2)) Face_B_pos(*cell_data)[1] = get_B({c[0], c[1]+len[1]/2, c[2]})[1];
+			if (pface(-3)) Face_B_neg(*cell_data)[2] = get_B({c[0], c[1], c[2]-len[2]/2})[2];
+			if (pface(+3)) Face_B_pos(*cell_data)[2] = get_B({c[0], c[1], c[2]+len[2]/2})[2];
 		}
 	}
+
 	for (const auto& item: boundaries.get_copy_boundary_cells(B)) {
 		if (item.size() < 2) {
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
@@ -344,7 +350,7 @@ template<
 				abort();
 			}
 
-			source_value += Magp(*source_data);
+			source_value += Face_B_pos(*source_data);
 		}
 		source_value /= item.size() - 1;
 
@@ -354,7 +360,7 @@ template<
 			abort();
 		}
 
-		Magp(*target_data) = source_value;
+		Face_B_pos(*target_data) = source_value;
 	}
 }
 
