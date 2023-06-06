@@ -1,5 +1,5 @@
 {
-	"output-directory": "results/magnetohydrodynamic/bow_shock/2d/z1/rusanov_staggered",
+	"output-directory": "results/magnetohydrodynamic/bow_shock/2d/z1/rusanov_staggered2",
 	"time-start": 0,
 	"time-length": 5,
 	"minimum-pressure": 0,
@@ -12,7 +12,7 @@
 	"mhd-time-step-factor": 0.5,
 	"grid-options": {
 		"periodic": "{false, false, true}",
-		"cells": "{20 + 2, 30 + 2, 1}",
+		"cells": "{80 + 2, 120 + 2, 1}",
 		"volume": "{2*(1 + 2/cells[0]), 3*(1 + 2/cells[1]), 2}",
 		"start": "{-1 - 2/cells[0], -1.5 - 3/cells[1], -1}"
 	},
@@ -37,21 +37,21 @@
 	"number-density": {
 		"default": "radius < 0.0625 ? 100 : 0.01",
 		"value-boundaries": [
-			{"geometry-id": 0, "time-stamps": [0], "values": [0.01]}
+			{"geometry-id": 1, "time-stamps": [0], "values": [0.01]}
 		],
 		"copy-boundaries": [
-			{"geometry-id": 1},
+			{"geometry-id": 0},
 			{"geometry-id": 2},
 			{"geometry-id": 3}
 		]
 	},
 	"velocity": {
-		"default": "{radius < 0.0625 or (x > 0 and y < 0.0625 and y > -0.0625) ? 0 : 1, 0, 0}",
+		"default": "{radius < 0.0625 or (x < 0 and y < 0.0625 and y > -0.0625) ? 0 : -1, 0, 0}",
 		"value-boundaries": [
-			{"geometry-id": 0, "time-stamps": [0], "values": [[1, 0, 0]]}
+			{"geometry-id": 1, "time-stamps": [0], "values": [[-1, 0, 0]]}
 		],
 		"copy-boundaries": [
-			{"geometry-id": 1},
+			{"geometry-id": 0},
 			{"geometry-id": 2},
 			{"geometry-id": 3}
 		]
@@ -59,10 +59,10 @@
 	"pressure": {
 		"default": 0.0015,
 		"value-boundaries": [
-			{"geometry-id": 0, "time-stamps": [0], "values": [0.0015]}
+			{"geometry-id": 1, "time-stamps": [0], "values": [0.0015]}
 		],
 		"copy-boundaries": [
-			{"geometry-id": 1},
+			{"geometry-id": 0},
 			{"geometry-id": 2},
 			{"geometry-id": 3}
 		]
@@ -70,10 +70,10 @@
 	"magnetic-field": {
 		"default": [0.02, 0, 0],
 		"value-boundaries": [
-			{"geometry-id": 0, "time-stamps": [0], "values": [[0.02, 0, 0]]}
+			{"geometry-id": 1, "time-stamps": [0], "values": [[0.02, 0, 0]]}
 		],
 		"copy-boundaries": [
-			{"geometry-id": 1},
+			{"geometry-id": 0},
 			{"geometry-id": 2},
 			{"geometry-id": 3}
 		]
