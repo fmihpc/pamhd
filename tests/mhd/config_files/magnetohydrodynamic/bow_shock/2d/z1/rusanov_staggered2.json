@@ -12,7 +12,7 @@
 	"mhd-time-step-factor": 0.5,
 	"grid-options": {
 		"periodic": "{false, false, true}",
-		"cells": "{80 + 2, 120 + 2, 1}",
+		"cells": "{20 + 2, 30 + 2, 1}",
 		"volume": "{2*(1 + 2/cells[0]), 3*(1 + 2/cells[1]), 2}",
 		"start": "{-1 - 2/cells[0], -1.5 - 3/cells[1], -1}"
 	},
