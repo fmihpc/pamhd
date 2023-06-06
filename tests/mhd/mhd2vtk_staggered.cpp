@@ -461,6 +461,11 @@ void convert(
 		vtk_file << simulation_data.at(cell)[pamhd::mhd::Solver_Info()] << "\n";
 	}
 
+	vtk_file << "SCALARS divergence_of_magnetic_field double 1\nlookup_table default\n";
+	for (const auto& cell: cells) {
+		vtk_file << simulation_data.at(cell)[pamhd::Magnetic_Field_Divergence()] << "\n";
+	}
+
 	vtk_file << "VECTORS background_B_pos_x double\n";
 	for (const auto& cell: cells) {
 		const auto magnetic_field = simulation_data.at(cell)[pamhd::Bg_Magnetic_Field()](0, 1);
