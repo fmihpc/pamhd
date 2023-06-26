@@ -115,6 +115,10 @@ template<class Data_Type> struct Face_Type {
 		} else throw std::runtime_error("Internal error");
 	}
 
+	Data_Type& operator()(const size_t dim, const int side) {
+		return const_cast<Data_Type&>(static_cast<const Face_Type<Data_Type>&>(*this).operator()(dim, side));
+	}
+
 	Face_Type<Data_Type>& operator=(const Face_Type<Data_Type>& other) noexcept {
 		if (this == &other) {
 			return *this;
@@ -142,11 +146,40 @@ template<class Data_Type> struct Face_Type {
 			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_DOUBLE);
 		} else if constexpr (std::is_same_v<Data_Type, float>) {
 			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_FLOAT);
+		} else if constexpr (std::is_same_v<Data_Type, uint64_t>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_UINT64_T);
+		} else if constexpr (std::is_same_v<Data_Type, uint32_t>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_UINT32_T);
+		} else if constexpr (std::is_same_v<Data_Type, uint16_t>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_UINT16_T);
+		} else if constexpr (std::is_same_v<Data_Type, uint8_t>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_UINT8_T);
+		} else if constexpr (std::is_same_v<Data_Type, int64_t>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_INT64_T);
+		} else if constexpr (std::is_same_v<Data_Type, int32_t>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_INT32_T);
+		} else if constexpr (std::is_same_v<Data_Type, int16_t>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_INT16_T);
+		} else if constexpr (std::is_same_v<Data_Type, int8_t>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_INT8_T);
+		} else if constexpr (std::is_same_v<Data_Type, long long>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_LONG_LONG);
+		} else if constexpr (std::is_same_v<Data_Type, long>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_LONG);
+		} else if constexpr (std::is_same_v<Data_Type, int>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_INT);
+		} else if constexpr (std::is_same_v<Data_Type, short>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_SHORT);
+		} else if constexpr (std::is_same_v<Data_Type, char>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_CHAR);
+		} else if constexpr (std::is_same_v<Data_Type, signed char>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_SIGNED_CHAR);
+		} else if constexpr (std::is_same_v<Data_Type, unsigned char>) {
+			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_UNSIGNED_CHAR);
 		} else if constexpr (std::is_same_v<Data_Type, bool>) {
 			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_CXX_BOOL);
 		} else {
-			static_assert(true, "Unsupported face item type for MPI");
-			//return std::make_tuple(nullptr, 0, MPI_BYTE);
+			static_assert(false, "Unsupported face item type for MPI");
 		}
 	}
 	#endif
@@ -273,11 +306,40 @@ template<class Data_Type> struct Edge_Type {
 			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_DOUBLE);
 		} else if constexpr (std::is_same_v<Data_Type, float>) {
 			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_FLOAT);
+		} else if constexpr (std::is_same_v<Data_Type, uint64_t>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_UINT64_T);
+		} else if constexpr (std::is_same_v<Data_Type, uint32_t>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_UINT32_T);
+		} else if constexpr (std::is_same_v<Data_Type, uint16_t>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_UINT16_T);
+		} else if constexpr (std::is_same_v<Data_Type, uint8_t>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_UINT8_T);
+		} else if constexpr (std::is_same_v<Data_Type, int64_t>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_INT64_T);
+		} else if constexpr (std::is_same_v<Data_Type, int32_t>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_INT32_T);
+		} else if constexpr (std::is_same_v<Data_Type, int16_t>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_INT16_T);
+		} else if constexpr (std::is_same_v<Data_Type, int8_t>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_INT8_T);
+		} else if constexpr (std::is_same_v<Data_Type, long long>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_LONG_LONG);
+		} else if constexpr (std::is_same_v<Data_Type, long>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_LONG);
+		} else if constexpr (std::is_same_v<Data_Type, int>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_INT);
+		} else if constexpr (std::is_same_v<Data_Type, short>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_SHORT);
+		} else if constexpr (std::is_same_v<Data_Type, char>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_CHAR);
+		} else if constexpr (std::is_same_v<Data_Type, signed char>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_SIGNED_CHAR);
+		} else if constexpr (std::is_same_v<Data_Type, unsigned char>) {
+			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_UNSIGNED_CHAR);
 		} else if constexpr (std::is_same_v<Data_Type, bool>) {
 			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_CXX_BOOL);
 		} else {
-			static_assert(true, "Unsupported edge item type for MPI");
-			//return std::make_tuple(nullptr, 0, MPI_BYTE);
+			static_assert(false, "Unsupported edge item type for MPI");
 		}
 	}
 	#endif
