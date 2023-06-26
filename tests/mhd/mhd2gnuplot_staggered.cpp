@@ -892,6 +892,33 @@ int plot_2d(
 		);
 	}
 
+	// magnetic field
+	if (magnetic_field_cmd != "") {
+		write_gnuplot_cmd_current(
+			"fBx",
+			"\n" + magnetic_field_cmd + " 1\"\n",
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
+				return cell_data[pamhd::Face_Magnetic_Field()][0];
+			}
+		);
+
+		write_gnuplot_cmd_current(
+			"fBy",
+			"\n" + magnetic_field_cmd + " 2\"\n",
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
+				return cell_data[pamhd::Face_Magnetic_Field()][1];
+			}
+		);
+
+		write_gnuplot_cmd_current(
+			"fBz",
+			"\n" + magnetic_field_cmd + " 3\"\n",
+			[](const pamhd::mhd::Cell_Staggered& cell_data){
+				return cell_data[pamhd::Face_Magnetic_Field()][2];
+			}
+		);
+	}
+
 	// total magnetic field
 	if (magnetic_field_cmd != "") {
 		write_gnuplot_cmd_current(

@@ -1,0 +1,27 @@
+{
+	"output-directory": "results/magnetohydrodynamic/magnetic_field_advection/2d/z1/rusanov_staggered_amr2",
+	"time-start": 0,
+	"time-length": 1,
+	"minimum-pressure": 0,
+	"solver-mhd": "rusanov",
+	"load-balancer": "RCB",
+	"save-mhd-n": 0.1,
+	"adiabatic-index": 1.666666667,
+	"vacuum-permeability": 1,
+	"proton-mass": 1,
+	"mhd-time-step-factor": 0.5,
+	"grid-options": {
+		"periodic": "{true, true, true}",
+		"cells": "{20, 10, 1}",
+		"volume": "{2, 1, 1}",
+		"start": "{-1, -0.5, -0.5}",
+		"max-ref-lvl": 2,
+		"amr-n": 0,
+		"ref-lvl-at-least": "x*x + y*y < 0.16 ? 2 : 0",
+		"ref-lvl-at-most": "x*x + y*y < 16 ? 2 : 0"
+	},
+	"number-density": {"default": 1},
+	"velocity": {"default": "{2, 1, 0}"},
+	"pressure": {"default": 1},
+	"magnetic-field": {"default": "{0, 0, x*x + y*y < 0.09 ? 0.01 : 0}"}
+}

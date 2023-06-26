@@ -124,12 +124,12 @@ template <
 		);
 
 		const auto& pface = PFace(*cell.data);
-		for (const int i: {-1,+1,-2,+2,-3,+3}) {
-			if (not pface(i)) continue;
+		for (const int dir: {-1,+1,-2,+2,-3,+3}) {
+			if (not pface(dir)) continue;
 
 			// center of face
 			const auto [x, y, z] = [&](){
-				switch (i) {
+				switch (dir) {
 				case -1:
 					return make_tuple(sx, ry, rz);
 					break;
@@ -167,8 +167,8 @@ template <
 					r, lat, lon
 				);
 
-			const size_t dim = std::abs(i) - 1;
-			if (i < 0) {
+			const size_t dim = std::abs(dir) - 1;
+			if (dir < 0) {
 				Face_B_neg(*cell.data)[dim] = magnetic_field[dim];
 			} else {
 				Face_B_pos(*cell.data)[dim] = magnetic_field[dim];
@@ -198,12 +198,12 @@ template <
 			const auto [rx, ry, rz] = grid.geometry.get_center(cell_id);
 			const auto [sx, sy, sz] = grid.geometry.get_min(cell_id);
 			const auto [ex, ey, ez] = grid.geometry.get_max(cell_id);
-			for (const int i: {-1,+1,-2,+2,-3,+3}) {
-				if (not pface(i)) continue;
+			for (const int dir: {-1,+1,-2,+2,-3,+3}) {
+				if (not pface(dir)) continue;
 
 				// center of face
 				const auto [x, y, z] = [&](){
-					switch (i) {
+					switch (dir) {
 					case -1:
 						return make_tuple(sx, ry, rz);
 						break;
@@ -240,8 +240,8 @@ template <
 						r, lat, lon
 					);
 
-				const size_t dim = std::abs(i) - 1;
-				if (i < 0) {
+				const size_t dim = std::abs(dir) - 1;
+				if (dir < 0) {
 					Face_B_neg(*cell_data)[dim] = magnetic_field[dim];
 				} else {
 					Face_B_pos(*cell_data)[dim] = magnetic_field[dim];

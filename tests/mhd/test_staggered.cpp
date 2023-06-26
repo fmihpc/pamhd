@@ -220,6 +220,12 @@ const auto PFace = [](Cell& cell_data)->auto& {
 const auto PEdge = [](Cell& cell_data)->auto& {
 		return cell_data[pamhd::grid::Is_Primary_Edge()];
 	};
+const auto FInfo = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::Face_Boundary_Type()];
+};
+const auto EInfo = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::Edge_Boundary_Type()];
+};
 const auto Ref = [](Cell& cell_data)->auto& {
 		return cell_data[pamhd::grid::Target_Refinement_Level()];
 	};
@@ -420,14 +426,12 @@ int main(int argc, char* argv[])
 		abort();
 	}
 
+	pamhd::mhd::enforce_boundary_cell_sizes(grid, Sol_Info2);
 	pamhd::grid::adapt_grid(grid, options_grid, options_sim.time_start);
 	grid.balance_load();
-
-	// update owner process of cells for saving into file
 	for (const auto& cell: grid.local_cells()) {
 		(*cell.data)[pamhd::MPI_Rank()] = rank;
 	}
-
 	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
 	pamhd::grid::update_primary_edges(grid.local_cells(), grid, PEdge);
 
@@ -466,27 +470,13 @@ int main(int argc, char* argv[])
 		Mag_fs, Bg_B, PFace
 	);
 
-	// update background field between processes
-	// update face B for calculating vol B
-	Cell::set_transfer_all(
-		true,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::Bg_Magnetic_Field()
-	);
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(
-		false,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::Bg_Magnetic_Field()
-	);
-
 	pamhd::mhd::update_B_consistency(
 		grid.local_cells(),
 		Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
-		PFace, Sol_Info2,
+		PFace, FInfo,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
-		false
+		false // fluid not initialized yet
 	);
 
 	// update vol B for calculating fluid pressure
@@ -506,27 +496,27 @@ int main(int argc, char* argv[])
 		Mas, Mom, Nrj, Mag,
 		Mas_pfx, Mom_pfx, Nrj_pfx
 	);
-	for (const auto& cell: grid.local_cells()) {
-		Mas_nfx(*cell.data) =
-		Mas_pfy(*cell.data) =
-		Mas_nfy(*cell.data) =
-		Mas_pfz(*cell.data) =
-		Mas_nfz(*cell.data) =
-		Nrj_nfx(*cell.data) =
-		Nrj_pfy(*cell.data) =
-		Nrj_nfy(*cell.data) =
-		Nrj_pfz(*cell.data) =
-		Nrj_nfz(*cell.data) = 0;
-		Mom_nfx(*cell.data) =
-		Mom_pfy(*cell.data) =
-		Mom_nfy(*cell.data) =
-		Mom_pfz(*cell.data) =
-		Mom_nfz(*cell.data) =
-		Mag_pfy(*cell.data) =
-		Mag_nfy(*cell.data) =
-		Mag_pfz(*cell.data) =
-		Mag_nfz(*cell.data) = {0, 0, 0};
-	}
+
+	/*
+	Classify cells into normal, boundary and dont_solve
+	*/
+
+	pamhd::mhd::set_solver_info<pamhd::mhd::Solver_Info>(
+		grid, boundaries, geometries, Sol_Info
+	);
+	pamhd::mhd::classify_faces(grid, PFace, Sol_Info2, FInfo);
+	pamhd::mhd::classify_edges(grid.local_cells(), /*grid, */PFace, PEdge, FInfo, EInfo);
+
+	pamhd::mhd::apply_fluid_boundaries(
+		grid,
+		boundaries,
+		geometries,
+		simulation_time,
+		Mas, Mom, Nrj, Mag, Sol_Info2,
+		options_sim.proton_mass,
+		options_sim.adiabatic_index,
+		options_sim.vacuum_permeability
+	);
 
 	pamhd::mhd::apply_magnetic_field_boundaries_staggered(
 		grid,
@@ -534,50 +524,21 @@ int main(int argc, char* argv[])
 		geometries,
 		simulation_time,
 		Face_B, Face_B_neg,
-		PFace
+		PFace, FInfo
 	);
-
-	Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
 	pamhd::mhd::update_B_consistency(
 		grid.local_cells(),
 		Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
-		PFace, Sol_Info2,
+		PFace, FInfo,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		true
 	);
 
-	Cell::set_transfer_all(true, pamhd::mhd::MHD_State_Conservative());
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
-
-	pamhd::mhd::apply_fluid_boundaries(
-		grid,
-		boundaries,
-		geometries,
-		simulation_time,
-		Mas, Mom, Nrj, Mag,
-		options_sim.proton_mass,
-		options_sim.adiabatic_index,
-		options_sim.vacuum_permeability
-	);
-
 	if (rank == 0) {
 		cout << "Done initializing MHD" << endl;
 	}
-
-	/*
-	Classify cells into normal, boundary and dont_solve
-	*/
-
-	Cell::set_transfer_all(true, pamhd::mhd::Solver_Info());
-	pamhd::mhd::set_solver_info<pamhd::mhd::Solver_Info>(
-		grid, boundaries, geometries, Sol_Info
-	);
-	Cell::set_transfer_all(false, pamhd::mhd::Solver_Info());
 
 	size_t simulation_step = 0;
 	while (simulation_time < time_end) {
@@ -626,7 +587,6 @@ int main(int argc, char* argv[])
 			mhd_solver,
 			grid.inner_cells(),
 			grid,
-			//time_step,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			Mas, Mom, Nrj, Mag,
@@ -642,7 +602,6 @@ int main(int argc, char* argv[])
 			mhd_solver,
 			grid.outer_cells(),
 			grid,
-			//time_step,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			Mas, Mom, Nrj, Mag,
@@ -656,58 +615,39 @@ int main(int argc, char* argv[])
 		Cell::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
 
 
-		/*
-		Apply solution
-		*/
-
 		Cell::set_transfer_all(true, pamhd::mhd::MHD_Flux());
 		grid.update_copies_of_remote_neighbors();
 		Cell::set_transfer_all(false, pamhd::mhd::MHD_Flux());
+
 		// TODO: split into inner and outer cells
 		pamhd::mhd::get_edge_electric_field(
 			grid, time_step,
 			Mas, Mom, Nrj, Mag, Edge_E,
 			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-			PFace, PEdge, Sol_Info2
+			PFace, PEdge, FInfo
 		);
+
 		Cell::set_transfer_all(true, pamhd::Edge_Electric_Field());
 		grid.update_copies_of_remote_neighbors();
 		Cell::set_transfer_all(false, pamhd::Edge_Electric_Field());
+
 		pamhd::mhd::get_face_magnetic_field(
 			grid.local_cells(),
 			grid,
 			time_step,
 			Face_B, Face_B_neg, Edge_E,
-			PFace, PEdge,
-			Sol_Info2
+			PFace, PEdge, FInfo
 		);
 
 		// constant thermal pressure when updating vol B after solution
-		Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
-		grid.start_remote_neighbor_copy_updates();
-
 		pamhd::mhd::update_B_consistency(
-			grid.inner_cells(),
+			grid.local_cells(),
 			Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
-			PFace, Sol_Info2,
+			PFace, FInfo,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			true
 		);
-
-		grid.wait_remote_neighbor_copy_update_receives();
-
-		pamhd::mhd::update_B_consistency(
-			grid.outer_cells(),
-			Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
-			PFace, Sol_Info2,
-			options_sim.adiabatic_index,
-			options_sim.vacuum_permeability,
-			true
-		);
-
-		grid.wait_remote_neighbor_copy_update_sends();
-		Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
 		simulation_time += time_step;
 
@@ -725,51 +665,58 @@ int main(int argc, char* argv[])
 
 			const pamhd::mhd::New_Cells_Handler nch(Mas, Mom, Nrj, Face_B, Face_B_neg, Ref, Sol_Info);
 			const pamhd::mhd::Removed_Cells_Handler rch(Mas, Mom, Nrj, Face_B, Face_B_neg, Ref);
+			pamhd::mhd::enforce_boundary_cell_sizes(grid, Sol_Info2);
 			pamhd::grid::adapt_grid(grid, options_grid, simulation_time, nch, rch);
+			for (const auto& cell: grid.local_cells()) {
+				(*cell.data)[pamhd::MPI_Rank()] = rank;
+			}
 			pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
 			pamhd::grid::update_primary_edges(grid.local_cells(), grid, PEdge);
+			pamhd::mhd::classify_faces(grid, PFace, Sol_Info2, FInfo);
+			pamhd::mhd::classify_edges(grid.local_cells(), /*grid, */PFace, PEdge, FInfo, EInfo);
+
+			pamhd::mhd::update_B_consistency(
+				grid.local_cells(),
+				Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
+				PFace, FInfo,
+				options_sim.adiabatic_index,
+				options_sim.vacuum_permeability,
+				true
+			);
 		}
 
 		/*
 		Update boundaries
 		*/
 
-		// TODO: split into inner and outer cells
+		pamhd::mhd::apply_fluid_boundaries(
+			grid,
+			boundaries,
+			geometries,
+			simulation_time,
+			Mas, Mom, Nrj, Mag, Sol_Info2,
+			options_sim.proton_mass,
+			options_sim.adiabatic_index,
+			options_sim.vacuum_permeability
+		);
+
 		pamhd::mhd::apply_magnetic_field_boundaries_staggered(
 			grid,
 			boundaries,
 			geometries,
 			simulation_time,
 			Face_B, Face_B_neg,
-			PFace
+			PFace, FInfo
 		);
-
-
-		Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
-		grid.start_remote_neighbor_copy_updates();
 
 		pamhd::mhd::update_B_consistency(
-			grid.inner_cells(),
+			grid.local_cells(),
 			Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
-			PFace, Sol_Info2,
+			PFace, FInfo,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
-			false
+			true
 		);
-
-		grid.wait_remote_neighbor_copy_update_receives();
-
-		pamhd::mhd::update_B_consistency(
-			grid.outer_cells(),
-			Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
-			PFace, Sol_Info2,
-			options_sim.adiabatic_index,
-			options_sim.vacuum_permeability,
-			false
-		);
-
-		grid.wait_remote_neighbor_copy_update_sends();
-		Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
 		const auto total_div = pamhd::math::get_divergence_staggered(
 			grid.local_cells(), grid,
@@ -786,18 +733,6 @@ int main(int argc, char* argv[])
 		Cell::set_transfer_all(true, pamhd::mhd::MHD_State_Conservative());
 		grid.update_copies_of_remote_neighbors();
 		Cell::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
-
-		// TODO: split into inner and outer cells
-		pamhd::mhd::apply_fluid_boundaries(
-			grid,
-			boundaries,
-			geometries,
-			simulation_time,
-			Mas, Mom, Nrj, Mag,
-			options_sim.proton_mass,
-			options_sim.adiabatic_index,
-			options_sim.vacuum_permeability
-		);
 
 		/*
 		Save simulation to disk

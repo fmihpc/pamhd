@@ -45,6 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "gensimcell.hpp"
 #include "prettyprint.hpp"
 
+#include "grid/amr.hpp"
 #include "mhd/rusanov.hpp"
 #include "mhd/hll_athena.hpp"
 #include "mhd/hlld_athena.hpp"
@@ -158,7 +159,6 @@ template <
 		if (SInfo(*cell.data) < 0) {
 			continue;
 		}
-
 		const auto cell_length = grid.geometry.get_length(cell.id);
 
 		const auto& cpface = PFace(*cell.data);
@@ -168,9 +168,6 @@ template <
 			if (n == 0 or not cpface(n)) continue;
 
 			if (SInfo(*neighbor.data) < 0) {
-				continue;
-			}
-			if (SInfo(*cell.data) == 0 and SInfo(*neighbor.data) == 0) {
 				continue;
 			}
 
@@ -305,6 +302,7 @@ template <
 	}
 
 	return max_dt;
+
 } catch (const std::exception& e) {
 	throw std::runtime_error(__func__ + std::string(": ") + e.what());
 }
@@ -331,7 +329,7 @@ template <
 	class Magnetic_Field_Flux_Getters,
 	class Primary_Face_Getter,
 	class Primary_Edge_Getter,
-	class Solver_Info_Getter
+	class Face_Info_Getter
 > void get_edge_electric_field(
 	Grid& grid,
 	const double dt,
@@ -346,7 +344,7 @@ template <
 	const Magnetic_Field_Flux_Getters Mag_f,
 	const Primary_Face_Getter PFace,
 	const Primary_Edge_Getter PEdge,
-	const Solver_Info_Getter SInfo
+	const Face_Info_Getter FInfo
 ) try {
 	using std::array;
 	using std::get;
@@ -380,11 +378,8 @@ template <
 			e_items[d1][d2][d3] = 0;
 		}
 
-		if (SInfo(*cell.data) != 1) {
-			continue;
-		}
-
 		const auto& cpface = PFace(*cell.data); // primary face true/false
+		const auto& cfinfo = FInfo(*cell.data); // face type -1/0/+1
 		const auto& cpedge = PEdge(*cell.data); // primary edge true/false
 
 		/*! Contributions to edge electric fields
@@ -403,7 +398,7 @@ template <
 		*/
 
 		// cell's own face can contribute to all touching edges
-		if (cpface(-1)) {
+		if (cpface(-1) and cfinfo(-1) >= 0) {
 			{const size_t d1 = 1, d2 = 0, Bd = 2;
 			// y directed edge, -x side of cell center, -z side of cell center
 			if (const size_t d3 = 0;
@@ -437,7 +432,7 @@ template <
 			}}
 		}
 
-		if (cpface(+1)) {
+		if (cpface(+1) and cfinfo(+1) >= 0) {
 			{const size_t d1 = 1, d2 = 1, Bd = 2;
 			if (const size_t d3 = 0;
 				cpedge(d1,d2,d3)
@@ -467,7 +462,7 @@ template <
 			}}
 		}
 
-		if (cpface(-2)) {
+		if (cpface(-2) and cfinfo(-2) >= 0) {
 			{const size_t d1 = 0, d2 = 0, Bd = 2;
 			if (const size_t d3 = 0;
 				cpedge(d1,d2,d3)
@@ -497,7 +492,7 @@ template <
 			}}
 		}
 
-		if (cpface(+2)) {
+		if (cpface(+2) and cfinfo(+2) >= 0) {
 			{const size_t d1 = 0, d2 = 1, Bd = 2;
 			if (const size_t d3 = 0;
 				cpedge(d1,d2,d3)
@@ -527,7 +522,7 @@ template <
 			}}
 		}
 
-		if (cpface(-3)) {
+		if (cpface(-3) and cfinfo(-3) >= 0) {
 			{const size_t d1 = 0, d3 = 0, Bd = 1;
 			if (const size_t d2 = 0;
 				cpedge(d1,d2,d3)
@@ -557,7 +552,7 @@ template <
 			}}
 		}
 
-		if (cpface(+3)) {
+		if (cpface(+3) and cfinfo(+3) >= 0) {
 			{const size_t d1 = 0, d3 = 1, Bd = 1;
 			if (const size_t d2 = 0;
 				cpedge(d1,d2,d3)
@@ -616,22 +611,10 @@ template <
 			}
 		}
 
-		if (nxs == 9) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-		if (pxs == 9) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-		if (nys == 9) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-		if (pys == 9) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-		if (nzs == 9) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-		if (pzs == 9) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-
-
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
 			const auto& en = neighbor.edge_neighbor;
 			if (fn == 0 and en[0] < 0) {
-				continue;
-			}
-
-			if (SInfo(*neighbor.data) < 0) {
 				continue;
 			}
 
@@ -734,7 +717,8 @@ template <
 			/*
 			Contributions to edge electric fields
 			*/
-			const auto npface = PFace(*neighbor.data);
+			const auto& npface = PFace(*neighbor.data);
+			const auto& nfinfo = FInfo(*neighbor.data);
 			const auto nleni = grid.mapping.get_cell_length_in_indices(neighbor.id);
 
 			if (fn == -1) {
@@ -746,28 +730,28 @@ template <
 				*/
 				constexpr size_t d2 = 0, Bd = 0;
 				if (constexpr size_t d1 = 1, d3 = 0;
-					cpedge(d1,d2,d3) and npface(-3) and neighbor.z == 0
+					nfinfo(-3) >= 0 and cpedge(d1,d2,d3) and npface(-3) and neighbor.z == 0
 				) {
 					edge_e(d1,d2,d3) -= Mag_fnz(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 1, d3 = 1;
-					cpedge(d1,d2,d3) and npface(+3) and cleni == neighbor.z + nleni
+					nfinfo(+3) >= 0 and cpedge(d1,d2,d3) and npface(+3) and cleni == neighbor.z + nleni
 				) {
 					edge_e(d1,d2,d3) -= Mag_fpz(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 2, d3 = 0;
-					cpedge(d1,d2,d3) and npface(-2) and neighbor.y == 0
+					nfinfo(-2) >= 0 and cpedge(d1,d2,d3) and npface(-2) and neighbor.y == 0
 				) {
 					edge_e(d1,d2,d3) += Mag_fny(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 2, d3 = 1;
-					cpedge(d1,d2,d3) and npface(+2) and cleni == neighbor.y + nleni
+					nfinfo(+2) >= 0 and cpedge(d1,d2,d3) and npface(+2) and cleni == neighbor.y + nleni
 				) {
 					edge_e(d1,d2,d3) += Mag_fpy(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
@@ -777,28 +761,28 @@ template <
 			if (fn == +1) {
 				constexpr size_t d2 = 1, Bd = 0;
 				if (constexpr size_t d1 = 2, d3 = 0;
-					cpedge(d1,d2,d3) and npface(-2) and neighbor.y == 0
+					nfinfo(-2) >= 0 and cpedge(d1,d2,d3) and npface(-2) and neighbor.y == 0
 				) {
 					edge_e(d1,d2,d3) += Mag_fny(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 2, d3 = 1;
-					cpedge(d1,d2,d3) and npface(+2) and cleni == neighbor.y + nleni
+					nfinfo(+2) >= 0 and cpedge(d1,d2,d3) and npface(+2) and cleni == neighbor.y + nleni
 				) {
 					edge_e(d1,d2,d3) += Mag_fpy(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 1, d3 = 0;
-					cpedge(d1,d2,d3) and npface(-3) and neighbor.z == 0
+					nfinfo(-3) >= 0 and cpedge(d1,d2,d3) and npface(-3) and neighbor.z == 0
 				) {
 					edge_e(d1,d2,d3) -= Mag_fnz(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 1, d3 = 1;
-					cpedge(d1,d2,d3) and npface(+3) and cleni == neighbor.z + nleni
+					nfinfo(+3) >= 0 and cpedge(d1,d2,d3) and npface(+3) and cleni == neighbor.z + nleni
 				) {
 					edge_e(d1,d2,d3) -= Mag_fpz(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
@@ -808,28 +792,28 @@ template <
 			if (fn == -2) {
 				constexpr size_t Bd = 1;
 				if (constexpr size_t d1 = 2, d2 = 0, d3 = 0;
-					cpedge(d1,d2,d3) and npface(-1) and neighbor.x == 0
+					nfinfo(-1) >= 0 and cpedge(d1,d2,d3) and npface(-1) and neighbor.x == 0
 				) {
 					edge_e(d1,d2,d3) -= Mag_fnx(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 2, d2 = 1, d3 = 0;
-					cpedge(d1,d2,d3) and npface(+1) and cleni == neighbor.x + nleni
+					nfinfo(+1) >= 0 and cpedge(d1,d2,d3) and npface(+1) and cleni == neighbor.x + nleni
 				) {
 					edge_e(d1,d2,d3) -= Mag_fpx(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 0, d2 = 0, d3 = 0;
-					cpedge(d1,d2,d3) and npface(-3) and neighbor.z == 0
+					nfinfo(-3) >= 0 and cpedge(d1,d2,d3) and npface(-3) and neighbor.z == 0
 				) {
 					edge_e(d1,d2,d3) += Mag_fnz(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 0, d2 = 0, d3 = 1;
-					cpedge(d1,d2,d3) and npface(+3) and cleni == neighbor.z + nleni
+					nfinfo(+3) >= 0 and cpedge(d1,d2,d3) and npface(+3) and cleni == neighbor.z + nleni
 				) {
 					edge_e(d1,d2,d3) += Mag_fpz(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
@@ -839,28 +823,28 @@ template <
 			if (fn == +2) {
 				constexpr size_t Bd = 1;
 				if (constexpr size_t d1 = 2, d2 = 0, d3 = 1;
-					cpedge(d1,d2,d3) and npface(-1) and neighbor.x == 0
+					nfinfo(-1) >= 0 and cpedge(d1,d2,d3) and npface(-1) and neighbor.x == 0
 				) {
 					edge_e(d1,d2,d3) -= Mag_fnx(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 2, d2 = 1, d3 = 1;
-					cpedge(d1,d2,d3) and npface(+1) and cleni == neighbor.x + nleni
+					nfinfo(+1) >= 0 and cpedge(d1,d2,d3) and npface(+1) and cleni == neighbor.x + nleni
 				) {
 					edge_e(d1,d2,d3) -= Mag_fpx(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 0, d2 = 1, d3 = 0;
-					cpedge(d1,d2,d3) and npface(-3) and neighbor.z == 0
+					nfinfo(-3) >= 0 and cpedge(d1,d2,d3) and npface(-3) and neighbor.z == 0
 				) {
 					edge_e(d1,d2,d3) += Mag_fnz(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 0, d2 = 1, d3 = 1;
-					cpedge(d1,d2,d3) and npface(+3) and cleni == neighbor.z + nleni
+					nfinfo(+3) >= 0 and cpedge(d1,d2,d3) and npface(+3) and cleni == neighbor.z + nleni
 				) {
 					edge_e(d1,d2,d3) += Mag_fpz(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
@@ -870,28 +854,28 @@ template <
 			if (fn == -3) {
 				constexpr size_t d3 = 0, Bd = 2;
 				if (constexpr size_t d1 = 1, d2 = 0;
-					cpedge(d1,d2,d3) and npface(-1) and neighbor.x == 0
+					nfinfo(-1) >= 0 and cpedge(d1,d2,d3) and npface(-1) and neighbor.x == 0
 				) {
 					edge_e(d1,d2,d3) += Mag_fnx(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 1, d2 = 1;
-					cpedge(d1,d2,d3) and npface(+1) and cleni == neighbor.x + nleni
+					nfinfo(+1) >= 0 and cpedge(d1,d2,d3) and npface(+1) and cleni == neighbor.x + nleni
 				) {
 					edge_e(d1,d2,d3) += Mag_fpx(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 0, d2 = 0;
-					cpedge(d1,d2,d3) and npface(-2) and neighbor.y == 0
+					nfinfo(-2) >= 0 and cpedge(d1,d2,d3) and npface(-2) and neighbor.y == 0
 				) {
 					edge_e(d1,d2,d3) -= Mag_fny(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 0, d2 = 1;
-					cpedge(d1,d2,d3) and npface(+2) and cleni == neighbor.y + nleni
+					nfinfo(+2) >= 0 and cpedge(d1,d2,d3) and npface(+2) and cleni == neighbor.y + nleni
 				) {
 					edge_e(d1,d2,d3) -= Mag_fpy(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
@@ -901,28 +885,28 @@ template <
 			if (fn == +3) {
 				constexpr size_t d3 = 1, Bd = 2;
 				if (constexpr size_t d1 = 1, d2 = 0;
-					cpedge(d1,d2,d3) and npface(-1) and neighbor.x == 0
+					nfinfo(-1) >= 0 and cpedge(d1,d2,d3) and npface(-1) and neighbor.x == 0
 				) {
 					edge_e(d1,d2,d3) += Mag_fnx(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 1, d2 = 1;
-					cpedge(d1,d2,d3) and npface(+1) and cleni == neighbor.x + nleni
+					nfinfo(+1) >= 0 and cpedge(d1,d2,d3) and npface(+1) and cleni == neighbor.x + nleni
 				) {
 					edge_e(d1,d2,d3) += Mag_fpx(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 0, d2 = 0;
-					cpedge(d1,d2,d3) and npface(-2) and neighbor.y == 0
+					nfinfo(-2) >= 0 and cpedge(d1,d2,d3) and npface(-2) and neighbor.y == 0
 				) {
 					edge_e(d1,d2,d3) -= Mag_fny(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
 				}
 
 				if (constexpr size_t d1 = 0, d2 = 1;
-					cpedge(d1,d2,d3) and npface(+2) and cleni == neighbor.y + nleni
+					nfinfo(+2) >= 0 and cpedge(d1,d2,d3) and npface(+2) and cleni == neighbor.y + nleni
 				) {
 					edge_e(d1,d2,d3) -= Mag_fpy(*neighbor.data)[Bd];
 					e_items[d1][d2][d3]++;
@@ -932,11 +916,11 @@ template <
 			if (constexpr size_t d1 = 0, d2 = 0, d3 = 0;
 				cpedge(d1,d2,d3) and en[0] == d1 and en[1] == d2 and en[2] == d3
 			) {
-				if (npface(+2)) {
+				if (nfinfo(+2) >= 0 and npface(+2)) {
 					edge_e(d1,d2,d3) -= Mag_fpy(*neighbor.data)[2];
 					e_items[d1][d2][d3]++;
 				}
-				if (npface(+3)) {
+				if (nfinfo(+3) >= 0 and npface(+3)) {
 					edge_e(d1,d2,d3) += Mag_fpz(*neighbor.data)[1];
 					e_items[d1][d2][d3]++;
 				}
@@ -946,17 +930,17 @@ template <
 				cpedge(d1,d2,d3) and en[0] == d1 and en[1] == d2
 			) {
 				if (en[2] == d3) {
-					if (npface(+2)) {
+					if (nfinfo(+2) >= 0 and npface(+2)) {
 						edge_e(d1,d2,d3) -= Mag_fpy(*neighbor.data)[2];
 						e_items[d1][d2][d3]++;
 					}
-					if (npface(-3)) {
+					if (nfinfo(-3) >= 0 and npface(-3)) {
 						edge_e(d1,d2,d3) += Mag_fnz(*neighbor.data)[1];
 						e_items[d1][d2][d3]++;
 					}
 				}
 				if (en[2] != d3 and nys < 0) {
-					if (npface(+3)) {
+					if (nfinfo(+3) >= 0 and npface(+3)) {
 						edge_e(d1,d2,d3) += Mag_fpz(*neighbor.data)[1];
 						e_items[d1][d2][d3]++;
 					}
@@ -967,17 +951,17 @@ template <
 				cpedge(d1,d2,d3) and en[0] == d1 and en[2] == d3
 			) {
 				if (en[1] == d2) {
-					if (npface(-2)) {
+					if (nfinfo(-2) >= 0 and npface(-2)) {
 						edge_e(d1,d2,d3) -= Mag_fny(*neighbor.data)[2];
 						e_items[d1][d2][d3]++;
 					}
-					if (npface(+3)) {
+					if (nfinfo(+3) >= 0 and npface(+3)) {
 						edge_e(d1,d2,d3) += Mag_fpz(*neighbor.data)[1];
 						e_items[d1][d2][d3]++;
 					}
 				}
 				if (en[1] != d2 and nzs < 0) {
-					if (npface(+2)) {
+					if (nfinfo(+2) >= 0 and npface(+2)) {
 						edge_e(d1,d2,d3) -= Mag_fpy(*neighbor.data)[2];
 						e_items[d1][d2][d3]++;
 					}
@@ -988,23 +972,23 @@ template <
 				cpedge(d1,d2,d3) and en[0] == d1
 			) {
 				if (en[1] == d2 and en[2] == d3) {
-					if (npface(-2)) {
+					if (nfinfo(-2) >= 0 and npface(-2)) {
 						edge_e(d1,d2,d3) -= Mag_fny(*neighbor.data)[2];
 						e_items[d1][d2][d3]++;
 					}
-					if (npface(-3)) {
+					if (nfinfo(-3) >= 0 and npface(-3)) {
 						edge_e(d1,d2,d3) += Mag_fnz(*neighbor.data)[1];
 						e_items[d1][d2][d3]++;
 					}
 				}
 				if (en[1] != d2 and en[2] == d3 and pzs < 0) {
-					if (npface(+2)) {
+					if (nfinfo(+2) >= 0 and npface(+2)) {
 						edge_e(d1,d2,d3) -= Mag_fpy(*neighbor.data)[2];
 						e_items[d1][d2][d3]++;
 					}
 				}
 				if (en[1] == d2 and en[2] != d3 and pys < 0) {
-					if (npface(+3)) {
+					if (nfinfo(+3) >= 0 and npface(+3)) {
 						edge_e(d1,d2,d3) += Mag_fpz(*neighbor.data)[1];
 						e_items[d1][d2][d3]++;
 					}
@@ -1014,11 +998,11 @@ template <
 			if (constexpr size_t d1 = 1, d2 = 0, d3 = 0;
 				cpedge(d1,d2,d3) and en[0] == d1 and en[1] == d2 and en[2] == d3
 			) {
-				if (npface(+1)) {
+				if (nfinfo(+1) >= 0 and npface(+1)) {
 					edge_e(d1,d2,d3) += Mag_fpx(*neighbor.data)[2];
 					e_items[d1][d2][d3]++;
 				}
-				if (npface(+3)) {
+				if (nfinfo(+3) >= 0 and npface(+3)) {
 					edge_e(d1,d2,d3) -= Mag_fpz(*neighbor.data)[0];
 					e_items[d1][d2][d3]++;
 				}
@@ -1028,17 +1012,17 @@ template <
 				cpedge(d1,d2,d3) and en[0] == d1 and en[1] == d2
 			) {
 				if (en[2] == d3) {
-					if (npface(+1)) {
+					if (nfinfo(+1) >= 0 and npface(+1)) {
 						edge_e(d1,d2,d3) += Mag_fpx(*neighbor.data)[2];
 						e_items[d1][d2][d3]++;
 					}
-					if (npface(-3)) {
+					if (nfinfo(-3) >= 0 and npface(-3)) {
 						edge_e(d1,d2,d3) -= Mag_fnz(*neighbor.data)[0];
 						e_items[d1][d2][d3]++;
 					}
 				}
 				if (en[2] != d3 and nxs < 0) {
-					if (npface(+3)) {
+					if (nfinfo(+3) >= 0 and npface(+3)) {
 						edge_e(d1,d2,d3) -= Mag_fpz(*neighbor.data)[0];
 						e_items[d1][d2][d3]++;
 					}
@@ -1049,17 +1033,17 @@ template <
 				cpedge(d1,d2,d3) and en[0] == d1 and en[2] == d3
 			) {
 				if (en[1] == d2) {
-					if (npface(-1)) {
+					if (nfinfo(-1) >= 0 and npface(-1)) {
 						edge_e(d1,d2,d3) += Mag_fnx(*neighbor.data)[2];
 						e_items[d1][d2][d3]++;
 					}
-					if (npface(+3)) {
+					if (nfinfo(+3) >= 0 and npface(+3)) {
 						edge_e(d1,d2,d3) -= Mag_fpz(*neighbor.data)[0];
 						e_items[d1][d2][d3]++;
 					}
 				}
 				if (en[1] != d2 and nzs < 0) {
-					if (npface(+1)) {
+					if (nfinfo(+1) >= 0 and npface(+1)) {
 						edge_e(d1,d2,d3) += Mag_fpx(*neighbor.data)[2];
 						e_items[d1][d2][d3]++;
 					}
@@ -1070,23 +1054,23 @@ template <
 				cpedge(d1,d2,d3) and en[0] == d1
 			) {
 				if (en[1] == d2 and en[2] == d3) {
-					if (npface(-1)) {
+					if (nfinfo(-1) >= 0 and npface(-1)) {
 						edge_e(d1,d2,d3) += Mag_fnx(*neighbor.data)[2];
 						e_items[d1][d2][d3]++;
 					}
-					if (npface(-3)) {
+					if (nfinfo(-3) >= 0 and npface(-3)) {
 						edge_e(d1,d2,d3) -= Mag_fnz(*neighbor.data)[0];
 						e_items[d1][d2][d3]++;
 					}
 				}
 				if (en[1] != d2 and en[2] == d3 and pzs < 0) {
-					if (npface(+1)) {
+					if (nfinfo(+1) >= 0 and npface(+1)) {
 						edge_e(d1,d2,d3) += Mag_fpx(*neighbor.data)[2];
 						e_items[d1][d2][d3]++;
 					}
 				}
 				if (en[1] == d2 and en[2] != d3 and pxs < 0) {
-					if (npface(+3)) {
+					if (nfinfo(+3) >= 0 and npface(+3)) {
 						edge_e(d1,d2,d3) -= Mag_fpz(*neighbor.data)[0];
 						e_items[d1][d2][d3]++;
 					}
@@ -1096,11 +1080,11 @@ template <
 			if (constexpr size_t d1 = 2, d2 = 0, d3 = 0;
 				cpedge(d1,d2,d3) and en[0] == d1 and en[1] == d2 and en[2] == d3
 			) {
-				if (npface(+1)) {
+				if (nfinfo(+1) >= 0 and npface(+1)) {
 					edge_e(d1,d2,d3) -= Mag_fpx(*neighbor.data)[1];
 					e_items[d1][d2][d3]++;
 				}
-				if (npface(+2)) {
+				if (nfinfo(+2) >= 0 and npface(+2)) {
 					edge_e(d1,d2,d3) += Mag_fpy(*neighbor.data)[0];
 					e_items[d1][d2][d3]++;
 				}
@@ -1110,17 +1094,17 @@ template <
 				cpedge(d1,d2,d3) and en[0] == d1 and en[1] == d2
 			) {
 				if (en[2] == d3) {
-					if (npface(+1)) {
+					if (nfinfo(+1) >= 0 and npface(+1)) {
 						edge_e(d1,d2,d3) -= Mag_fpx(*neighbor.data)[1];
 						e_items[d1][d2][d3]++;
 					}
-					if (npface(-2)) {
+					if (nfinfo(-2) >= 0 and npface(-2)) {
 						edge_e(d1,d2,d3) += Mag_fny(*neighbor.data)[0];
 						e_items[d1][d2][d3]++;
 					}
 				}
 				if (en[2] != d3 and nxs < 0) {
-					if (npface(+2)) {
+					if (nfinfo(+2) >= 0 and npface(+2)) {
 						edge_e(d1,d2,d3) += Mag_fpy(*neighbor.data)[0];
 						e_items[d1][d2][d3]++;
 					}
@@ -1131,17 +1115,17 @@ template <
 				cpedge(d1,d2,d3) and en[0] == d1 and en[2] == d3
 			) {
 				if (en[1] == d2) {
-					if (npface(-1)) {
+					if (nfinfo(-1) >= 0 and npface(-1)) {
 						edge_e(d1,d2,d3) -= Mag_fnx(*neighbor.data)[1];
 						e_items[d1][d2][d3]++;
 					}
-					if (npface(+2)) {
+					if (nfinfo(+2) >= 0 and npface(+2)) {
 						edge_e(d1,d2,d3) += Mag_fpy(*neighbor.data)[0];
 						e_items[d1][d2][d3]++;
 					}
 				}
 				if (en[1] != d2 and nys < 0) {
-					if (npface(+1)) {
+					if (nfinfo(+1) >= 0 and npface(+1)) {
 						edge_e(d1,d2,d3) -= Mag_fpx(*neighbor.data)[1];
 						e_items[d1][d2][d3]++;
 					}
@@ -1152,23 +1136,23 @@ template <
 				cpedge(d1,d2,d3) and en[0] == d1
 			) {
 				if (en[1] == d2 and en[2] == d3) {
-					if (npface(-1)) {
+					if (nfinfo(-1) >= 0 and npface(-1)) {
 						edge_e(d1,d2,d3) -= Mag_fnx(*neighbor.data)[1];
 						e_items[d1][d2][d3]++;
 					}
-					if (npface(-2)) {
+					if (nfinfo(-2) >= 0 and npface(-2)) {
 						edge_e(d1,d2,d3) += Mag_fny(*neighbor.data)[0];
 						e_items[d1][d2][d3]++;
 					}
 				}
 				if (en[1] != d2 and en[2] == d3 and pys < 0) {
-					if (npface(+1)) {
+					if (nfinfo(+1) >= 0 and npface(+1)) {
 						edge_e(d1,d2,d3) -= Mag_fpx(*neighbor.data)[1];
 						e_items[d1][d2][d3]++;
 					}
 				}
 				if (en[1] == d2 and en[2] != d3 and pxs < 0) {
-					if (npface(+2)) {
+					if (nfinfo(+2) >= 0 and npface(+2)) {
 						edge_e(d1,d2,d3) += Mag_fpy(*neighbor.data)[0];
 						e_items[d1][d2][d3]++;
 					}
@@ -1317,12 +1301,7 @@ template <
 				if (e_items[d1][d2][d3] != 0) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 				continue;
 			}
-			if (e_items[d1][d2][d3] != 4) throw runtime_error(
-				__FILE__ "(" + to_string(__LINE__) + "): "
-				+ to_string(d1) + "," + to_string(d2) + "," + to_string(d3)
-				+ ":" + to_string(e_items[d1][d2][d3])
-				+ "; " + to_string(cell.id));
-			edge_e(d1,d2,d3) /= e_items[d1][d2][d3];
+			if (e_items[d1][d2][d3] > 0) edge_e(d1,d2,d3) /= e_items[d1][d2][d3];
 		}
 
 		const auto [rx, ry, rz] = grid.geometry.get_center(cell.id);
@@ -1360,7 +1339,7 @@ template <
 	class Edge_Electric_Field_Getter,
 	class Primary_Face_Getter,
 	class Primary_Edge_Getter,
-	class Solver_Info_Getter
+	class Face_Info_Getter
 > void get_face_magnetic_field(
 	const Cells& cells,
 	Grid& grid,
@@ -1370,21 +1349,18 @@ template <
 	const Edge_Electric_Field_Getter Edge_E,
 	const Primary_Face_Getter PFace,
 	const Primary_Edge_Getter PEdge,
-	const Solver_Info_Getter SInfo
+	const Face_Info_Getter FInfo
 ) try {
 	using std::runtime_error;
 	using std::to_string;
 
 	for (const auto& cell: cells) {
-		if (SInfo(*cell.data) != 1) {
-			continue;
-		}
-
 		const auto cell_length = grid.geometry.get_length(cell.id);
 
 		typename std::remove_reference<decltype(Face_B_pos(*cell.data))>::type face_db_p{0, 0, 0}, face_db_n{0, 0, 0};
 
 		const auto& cpface = PFace(*cell.data);
+		const auto& cfinfo = FInfo(*cell.data);
 		const auto& cpedge = PEdge(*cell.data);
 		const auto& cedge_e = Edge_E(*cell.data);
 
@@ -1395,37 +1371,37 @@ template <
 		dBy: E(0,*,1)dx - E(0,*,0)dx - E(2,1,*)dz + E(2,0,*)dz
 		dBz: E(1,1,*)dy - E(1,0,*)dy + E(0,0,*)dx - E(0,1,*)dx
 		*/
-		if (cpface(0,-1)) {
+		if (cfinfo(0,-1) >= 0 and cpface(0,-1)) {
 			if (cpedge(1,0,0)) face_db_n[0] += cell_length[1]*cedge_e(1,0,0);
 			if (cpedge(1,0,1)) face_db_n[0] -= cell_length[1]*cedge_e(1,0,1);
 			if (cpedge(2,0,0)) face_db_n[0] -= cell_length[2]*cedge_e(2,0,0);
 			if (cpedge(2,0,1)) face_db_n[0] += cell_length[2]*cedge_e(2,0,1);
 		}
-		if (cpface(0,+1)) {
+		if (cfinfo(0,+1) >= 0 and cpface(0,+1)) {
 			if (cpedge(1,1,0)) face_db_p[0] += cell_length[1]*cedge_e(1,1,0);
 			if (cpedge(1,1,1)) face_db_p[0] -= cell_length[1]*cedge_e(1,1,1);
 			if (cpedge(2,1,0)) face_db_p[0] -= cell_length[2]*cedge_e(2,1,0);
 			if (cpedge(2,1,1)) face_db_p[0] += cell_length[2]*cedge_e(2,1,1);
 		}
-		if (cpface(1,-1)) {
+		if (cfinfo(1,-1) >= 0 and cpface(1,-1)) {
 			if (cpedge(0,0,0)) face_db_n[1] -= cell_length[0]*cedge_e(0,0,0);
 			if (cpedge(0,0,1)) face_db_n[1] += cell_length[0]*cedge_e(0,0,1);
 			if (cpedge(2,0,0)) face_db_n[1] += cell_length[2]*cedge_e(2,0,0);
 			if (cpedge(2,1,0)) face_db_n[1] -= cell_length[2]*cedge_e(2,1,0);
 		}
-		if (cpface(1,+1)) {
+		if (cfinfo(1,+1) >= 0 and cpface(1,+1)) {
 			if (cpedge(0,1,0)) face_db_p[1] -= cell_length[0]*cedge_e(0,1,0);
 			if (cpedge(0,1,1)) face_db_p[1] += cell_length[0]*cedge_e(0,1,1);
 			if (cpedge(2,0,1)) face_db_p[1] += cell_length[2]*cedge_e(2,0,1);
 			if (cpedge(2,1,1)) face_db_p[1] -= cell_length[2]*cedge_e(2,1,1);
 		}
-		if (cpface(2,-1)) {
+		if (cfinfo(2,-1) >= 0 and cpface(2,-1)) {
 			if (cpedge(0,0,0)) face_db_n[2] += cell_length[0]*cedge_e(0,0,0);
 			if (cpedge(0,1,0)) face_db_n[2] -= cell_length[0]*cedge_e(0,1,0);
 			if (cpedge(1,0,0)) face_db_n[2] -= cell_length[1]*cedge_e(1,0,0);
 			if (cpedge(1,1,0)) face_db_n[2] += cell_length[1]*cedge_e(1,1,0);
 		}
-		if (cpface(2,+1)) {
+		if (cfinfo(2,+1) >= 0 and cpface(2,+1)) {
 			if (cpedge(0,0,1)) face_db_p[2] += cell_length[0]*cedge_e(0,0,1);
 			if (cpedge(0,1,1)) face_db_p[2] -= cell_length[0]*cedge_e(0,1,1);
 			if (cpedge(1,0,1)) face_db_p[2] -= cell_length[1]*cedge_e(1,0,1);
@@ -1442,47 +1418,43 @@ template <
 				continue;
 			}
 
-			if (SInfo(*neighbor.data) < 0) {
-				continue;
-			}
-
 			const auto neigh_length = grid.geometry.get_length(neighbor.id);
 			const auto nleni = grid.mapping.get_cell_length_in_indices(neighbor.id);
 
 			const auto& npedge = PEdge(*neighbor.data);
 			const auto& nedge_e = Edge_E(*neighbor.data);
 
-			if (cpface(-1) and neighbor.x == 0) {
+			if (cfinfo(-1) >= 0 and cpface(-1) and neighbor.x == 0) {
 				if (fn == -2 and npedge(2,0,1)) face_db_n[0] -= neigh_length[2]*nedge_e(2,0,1);
 				if (fn == +2 and npedge(2,0,0)) face_db_n[0] += neigh_length[2]*nedge_e(2,0,0);
 				if (fn == -3 and npedge(1,0,1)) face_db_n[0] += neigh_length[1]*nedge_e(1,0,1);
 				if (fn == +3 and npedge(1,0,0)) face_db_n[0] -= neigh_length[1]*nedge_e(1,0,0);
 			}
-			if (cpface(+1) and cleni == neighbor.x + nleni) {
+			if (cfinfo(+1) >= 0 and cpface(+1) and cleni == neighbor.x + nleni) {
 				if (fn == -2 and npedge(2,1,1)) face_db_p[0] -= neigh_length[2]*nedge_e(2,1,1);
 				if (fn == +2 and npedge(2,1,0)) face_db_p[0] += neigh_length[2]*nedge_e(2,1,0);
 				if (fn == -3 and npedge(1,1,1)) face_db_p[0] += neigh_length[1]*nedge_e(1,1,1);
 				if (fn == +3 and npedge(1,1,0)) face_db_p[0] -= neigh_length[1]*nedge_e(1,1,0);
 			}
-			if (cpface(-2) and neighbor.y == 0) {
+			if (cfinfo(-2) >= 0 and cpface(-2) and neighbor.y == 0) {
 				if (fn == -1 and npedge(2,1,0)) face_db_n[1] += neigh_length[2]*nedge_e(2,1,0);
 				if (fn == +1 and npedge(2,0,0)) face_db_n[1] -= neigh_length[2]*nedge_e(2,0,0);
 				if (fn == -3 and npedge(0,0,1)) face_db_n[1] -= neigh_length[0]*nedge_e(0,0,1);
 				if (fn == +3 and npedge(0,0,0)) face_db_n[1] += neigh_length[0]*nedge_e(0,0,0);
 			}
-			if (cpface(+2) and cleni == neighbor.y + nleni) {
+			if (cfinfo(+2) >= 0 and cpface(+2) and cleni == neighbor.y + nleni) {
 				if (fn == -1 and npedge(2,1,1)) face_db_p[1] += neigh_length[2]*nedge_e(2,1,1);
 				if (fn == +1 and npedge(2,0,1)) face_db_p[1] -= neigh_length[2]*nedge_e(2,0,1);
 				if (fn == -3 and npedge(0,1,1)) face_db_p[1] -= neigh_length[0]*nedge_e(0,1,1);
 				if (fn == +3 and npedge(0,1,0)) face_db_p[1] += neigh_length[0]*nedge_e(0,1,0);
 			}
-			if (cpface(-3) and neighbor.z == 0) {
+			if (cfinfo(-3) >= 0 and cpface(-3) and neighbor.z == 0) {
 				if (fn == -1 and npedge(1,1,0)) face_db_n[2] -= neigh_length[1]*nedge_e(1,1,0);
 				if (fn == +1 and npedge(1,0,0)) face_db_n[2] += neigh_length[1]*nedge_e(1,0,0);
 				if (fn == -2 and npedge(0,1,0)) face_db_n[2] += neigh_length[0]*nedge_e(0,1,0);
 				if (fn == +2 and npedge(0,0,0)) face_db_n[2] -= neigh_length[0]*nedge_e(0,0,0);
 			}
-			if (cpface(+3) and cleni == neighbor.z + nleni) {
+			if (cfinfo(+3) >= 0 and cpface(+3) and cleni == neighbor.z + nleni) {
 				if (fn == -1 and npedge(1,1,1)) face_db_p[2] -= neigh_length[1]*nedge_e(1,1,1);
 				if (fn == +1 and npedge(1,0,1)) face_db_p[2] += neigh_length[1]*nedge_e(1,0,1);
 				if (fn == -2 and npedge(0,1,1)) face_db_p[2] += neigh_length[0]*nedge_e(0,1,1);
@@ -1490,63 +1462,63 @@ template <
 			}
 			if (en[0] == 0 and en[1] == 0 and en[2] == 0 and npedge(0,1,1)) {
 				if (cpedge(0,0,0)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-				if (cpface(-2)) face_db_n[1] -= neigh_length[0]*nedge_e(0,1,1);
-				if (cpface(-3)) face_db_n[2] += neigh_length[0]*nedge_e(0,1,1);
+				if (cfinfo(-2) >= 0 and cpface(-2)) face_db_n[1] -= neigh_length[0]*nedge_e(0,1,1);
+				if (cfinfo(-3) >= 0 and cpface(-3)) face_db_n[2] += neigh_length[0]*nedge_e(0,1,1);
 			}
 			if (en[0] == 0 and en[1] == 0 and en[2] == 1 and npedge(0,1,0)) {
 				if (cpedge(0,0,1)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-				if (cpface(-2)) face_db_n[1] += neigh_length[0]*nedge_e(0,1,0);
-				if (cpface(+3)) face_db_p[2] += neigh_length[0]*nedge_e(0,1,0);
+				if (cfinfo(-2) >= 0 and cpface(-2)) face_db_n[1] += neigh_length[0]*nedge_e(0,1,0);
+				if (cfinfo(+3) >= 0 and cpface(+3)) face_db_p[2] += neigh_length[0]*nedge_e(0,1,0);
 			}
 			if (en[0] == 0 and en[1] == 1 and en[2] == 0 and npedge(0,0,1)) {
 				if (cpedge(0,1,0)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-				if (cpface(+2)) face_db_p[1] -= neigh_length[0]*nedge_e(0,0,1);
-				if (cpface(-3)) face_db_n[2] -= neigh_length[0]*nedge_e(0,0,1);
+				if (cfinfo(+2) >= 0 and cpface(+2)) face_db_p[1] -= neigh_length[0]*nedge_e(0,0,1);
+				if (cfinfo(-3) >= 0 and cpface(-3)) face_db_n[2] -= neigh_length[0]*nedge_e(0,0,1);
 			}
 			if (en[0] == 0 and en[1] == 1 and en[2] == 1 and npedge(0,0,0)) {
 				if (cpedge(0,1,1)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-				if (cpface(+2)) face_db_p[1] += neigh_length[0]*nedge_e(0,0,0);
-				if (cpface(+3)) face_db_p[2] -= neigh_length[0]*nedge_e(0,0,0);
+				if (cfinfo(+2) >= 0 and cpface(+2)) face_db_p[1] += neigh_length[0]*nedge_e(0,0,0);
+				if (cfinfo(+3) >= 0 and cpface(+3)) face_db_p[2] -= neigh_length[0]*nedge_e(0,0,0);
 			}
 			if (en[0] == 1 and en[1] == 0 and en[2] == 0 and npedge(1,1,1)) {
 				if (cpedge(1,0,0)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-				if (cpface(-1)) face_db_n[0] += neigh_length[1]*nedge_e(1,1,1);
-				if (cpface(-3)) face_db_n[2] -= neigh_length[1]*nedge_e(1,1,1);
+				if (cfinfo(-1) >= 0 and cpface(-1)) face_db_n[0] += neigh_length[1]*nedge_e(1,1,1);
+				if (cfinfo(-3) >= 0 and cpface(-3)) face_db_n[2] -= neigh_length[1]*nedge_e(1,1,1);
 			}
 			if (en[0] == 1 and en[1] == 0 and en[2] == 1 and npedge(1,1,0)) {
 				if (cpedge(1,0,1)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-				if (cpface(-1)) face_db_n[0] -= neigh_length[1]*nedge_e(1,1,0);
-				if (cpface(+3)) face_db_p[2] -= neigh_length[1]*nedge_e(1,1,0);
+				if (cfinfo(-1) >= 0 and cpface(-1)) face_db_n[0] -= neigh_length[1]*nedge_e(1,1,0);
+				if (cfinfo(+3) >= 0 and cpface(+3)) face_db_p[2] -= neigh_length[1]*nedge_e(1,1,0);
 			}
 			if (en[0] == 1 and en[1] == 1 and en[2] == 0 and npedge(1,0,1)) {
 				if (cpedge(1,1,0)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-				if (cpface(+1)) face_db_p[0] += neigh_length[1]*nedge_e(1,0,1);
-				if (cpface(-3)) face_db_n[2] += neigh_length[1]*nedge_e(1,0,1);
+				if (cfinfo(+1) >= 0 and cpface(+1)) face_db_p[0] += neigh_length[1]*nedge_e(1,0,1);
+				if (cfinfo(-3) >= 0 and cpface(-3)) face_db_n[2] += neigh_length[1]*nedge_e(1,0,1);
 			}
 			if (en[0] == 1 and en[1] == 1 and en[2] == 1 and npedge(1,0,0)) {
 				if (cpedge(1,1,1)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-				if (cpface(+1)) face_db_p[0] -= neigh_length[1]*nedge_e(1,0,0);
-				if (cpface(+3)) face_db_p[2] += neigh_length[1]*nedge_e(1,0,0);
+				if (cfinfo(+1) >= 0 and cpface(+1)) face_db_p[0] -= neigh_length[1]*nedge_e(1,0,0);
+				if (cfinfo(+3) >= 0 and cpface(+3)) face_db_p[2] += neigh_length[1]*nedge_e(1,0,0);
 			}
 			if (en[0] == 2 and en[1] == 0 and en[2] == 0 and npedge(2,1,1)) {
 				if (cpedge(2,0,0)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-				if (cpface(-1)) face_db_n[0] -= neigh_length[2]*nedge_e(2,1,1);
-				if (cpface(-2)) face_db_n[1] += neigh_length[2]*nedge_e(2,1,1);
+				if (cfinfo(-1) >= 0 and cpface(-1)) face_db_n[0] -= neigh_length[2]*nedge_e(2,1,1);
+				if (cfinfo(-2) >= 0 and cpface(-2)) face_db_n[1] += neigh_length[2]*nedge_e(2,1,1);
 			}
 			if (en[0] == 2 and en[1] == 0 and en[2] == 1 and npedge(2,1,0)) {
 				if (cpedge(2,0,1)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-				if (cpface(-1)) face_db_n[0] += neigh_length[2]*nedge_e(2,1,0);
-				if (cpface(+2)) face_db_p[1] += neigh_length[2]*nedge_e(2,1,0);
+				if (cfinfo(-1) >= 0 and cpface(-1)) face_db_n[0] += neigh_length[2]*nedge_e(2,1,0);
+				if (cfinfo(+2) >= 0 and cpface(+2)) face_db_p[1] += neigh_length[2]*nedge_e(2,1,0);
 			}
 			if (en[0] == 2 and en[1] == 1 and en[2] == 0 and npedge(2,0,1)) {
 				if (cpedge(2,1,0)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-				if (cpface(+1)) face_db_p[0] -= neigh_length[2]*nedge_e(2,0,1);
-				if (cpface(-2)) face_db_n[1] -= neigh_length[2]*nedge_e(2,0,1);
+				if (cfinfo(+1) >= 0 and cpface(+1)) face_db_p[0] -= neigh_length[2]*nedge_e(2,0,1);
+				if (cfinfo(-2) >= 0 and cpface(-2)) face_db_n[1] -= neigh_length[2]*nedge_e(2,0,1);
 			}
 			if (en[0] == 2 and en[1] == 1 and en[2] == 1 and npedge(2,0,0)) {
 				if (cpedge(2,1,1)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-				if (cpface(+1)) face_db_p[0] += neigh_length[2]*nedge_e(2,0,0);
-				if (cpface(+2)) face_db_p[1] -= neigh_length[2]*nedge_e(2,0,0);
+				if (cfinfo(+1) >= 0 and cpface(+1)) face_db_p[0] += neigh_length[2]*nedge_e(2,0,0);
+				if (cfinfo(+2) >= 0 and cpface(+2)) face_db_p[1] -= neigh_length[2]*nedge_e(2,0,0);
 			}
 			// these shouldn't be possible but kept for reference
 			if (cpface(-1) and fn == -1) {
@@ -1663,12 +1635,12 @@ template <
 			cell_length[0]*cell_length[2],
 			cell_length[0]*cell_length[1]
 		};
-		if (cpface(-1)) Face_B_neg(*cell.data)[0] -= dt*face_db_n[0]/area[0];
-		if (cpface(+1)) Face_B_pos(*cell.data)[0] -= dt*face_db_p[0]/area[0];
-		if (cpface(-2)) Face_B_neg(*cell.data)[1] -= dt*face_db_n[1]/area[1];
-		if (cpface(+2)) Face_B_pos(*cell.data)[1] -= dt*face_db_p[1]/area[1];
-		if (cpface(-3)) Face_B_neg(*cell.data)[2] -= dt*face_db_n[2]/area[2];
-		if (cpface(+3)) Face_B_pos(*cell.data)[2] -= dt*face_db_p[2]/area[2];
+		if (cfinfo(-1) >= 0 and cpface(-1)) Face_B_neg(*cell.data)[0] -= dt*face_db_n[0]/area[0];
+		if (cfinfo(+1) >= 0 and cpface(+1)) Face_B_pos(*cell.data)[0] -= dt*face_db_p[0]/area[0];
+		if (cfinfo(-2) >= 0 and cpface(-2)) Face_B_neg(*cell.data)[1] -= dt*face_db_n[1]/area[1];
+		if (cfinfo(+2) >= 0 and cpface(+2)) Face_B_pos(*cell.data)[1] -= dt*face_db_p[1]/area[1];
+		if (cfinfo(-3) >= 0 and cpface(-3)) Face_B_neg(*cell.data)[2] -= dt*face_db_n[2]/area[2];
+		if (cfinfo(+3) >= 0 and cpface(+3)) Face_B_pos(*cell.data)[2] -= dt*face_db_p[2]/area[2];
 	}
 } catch (const std::exception& e) {
 	throw std::runtime_error(__func__ + std::string(": ") + e.what());
@@ -1676,7 +1648,7 @@ template <
 
 
 /*!
-Makes B consistent in given cells of type 1.
+Makes B consistent in given cells.
 
 Face B can have two values at any location since
 cells store it at every face. FMagP is used by default
@@ -1694,9 +1666,6 @@ overriden are copied/averaged from other cell(s).
 
 If constant_thermal_pressure == true total energy is
 adjusted after averaging volume B.
-
-Saves B of cells with SInfo(*cell_data) == 1,
-ignores cells with SInfo < 0.
 */
 template <
 	class Cell_Iter,
@@ -1707,17 +1676,17 @@ template <
 	class Face_Magnetic_Field_Pos_Getter,
 	class Face_Magnetic_Field_Neg_Getter,
 	class Primary_Face_Getter,
-	class Solver_Info_Getter
+	class Face_Type_Getter
 > void update_B_consistency(
 	const Cell_Iter& cells,
 	const Mass_Density_Getter Mas,
 	const Momentum_Density_Getter Mom,
 	const Total_Energy_Density_Getter Nrj,
 	const Volume_Magnetic_Field_Getter VMag,
-	const Face_Magnetic_Field_Pos_Getter FMagP,
-	const Face_Magnetic_Field_Neg_Getter FMagN,
+	const Face_Magnetic_Field_Pos_Getter Face_B_pos,
+	const Face_Magnetic_Field_Neg_Getter Face_B_neg,
 	const Primary_Face_Getter PFace,
-	const Solver_Info_Getter SInfo,
+	const Face_Type_Getter FInfo,
 	const double adiabatic_index,
 	const double vacuum_permeability,
 	const bool constant_thermal_pressure
@@ -1726,9 +1695,6 @@ template <
 	using std::to_string;
 
 	for (const auto& cell: cells) {
-		if (SInfo(*cell.data) != 1) {
-			continue;
-		}
 		if (constant_thermal_pressure and Mas(*cell.data) <= 0) {
 			continue;
 		}
@@ -1743,19 +1709,40 @@ template <
 			}
 		}();
 
-		const auto cpface = PFace(*cell.data);
-		for (const int i: {-1,+1,-2,+2,-3,+3}) {
-			if (cpface(i)) FMagN(*cell.data)[std::abs(i) - 1] = 0.0;
+		auto
+			&c_face_b_neg = Face_B_neg(*cell.data),
+			&c_face_b_pos = Face_B_pos(*cell.data);
+
+		const auto& cpface = PFace(*cell.data);
+		const auto& cfinfo = FInfo(*cell.data);
+
+		for (const size_t dim: {0, 1, 2})
+		for (const int side: {-1, +1}) {
+			if (not cpface(dim, side)) {
+				if (side < 0) {
+					c_face_b_neg[dim] = 0;
+				} else {
+					c_face_b_pos[dim] = 0;
+				}
+			} else if (cfinfo(dim, side) < 0) { // handle dont_solve face
+				if (side < 0) {
+					c_face_b_neg[dim] = 0;
+				} else {
+					c_face_b_pos[dim] = 0;
+				}
+				if (cpface(dim, -side) and cfinfo(dim, -side) >= 0) {
+					if (side < 0) {
+						c_face_b_neg[dim] = c_face_b_pos[dim];
+					} else {
+						c_face_b_pos[dim] = c_face_b_neg[dim];
+					}
+				}
+			}
 		}
 
 		for (const auto& neighbor: cell.neighbors_of) {
-			const auto fn = neighbor.face_neighbor;
-			if (fn == 0) {
-				continue;
-			}
-			if (SInfo(*neighbor.data) < 0) {
-				continue;
-			}
+			const auto& fn = neighbor.face_neighbor;
+			if (fn == 0) continue;
 
 			const double factor = [&]{
 				if (neighbor.relative_size > 0) {
@@ -1765,20 +1752,35 @@ template <
 				}
 			}();
 
-			const auto npface = PFace(*neighbor.data);
+			const auto
+				&n_face_b_neg = Face_B_neg(*neighbor.data),
+				&n_face_b_pos = Face_B_pos(*neighbor.data);
 
-			const auto dim = std::abs(fn) - 1;
+			const auto& npface = PFace(*neighbor.data);
+			const auto& nfinfo = FInfo(*neighbor.data);
+
+			const size_t dim = std::abs(fn) - 1;
 			if (not cpface(fn)) {
 				if (not npface(-fn)) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				if (nfinfo(-fn) < 0) continue;
+
 				if (fn < 0) {
-					FMagN(*cell.data)[dim] += FMagP(*neighbor.data)[dim] * factor;
+					c_face_b_neg[dim] += n_face_b_pos[dim] * factor;
 				} else {
-					FMagP(*cell.data)[dim] += FMagN(*neighbor.data)[dim] * factor;
+					c_face_b_pos[dim] += n_face_b_neg[dim] * factor;
+				}
+			}
+			// handle dont_solve face
+			if (cpface(-fn) and cfinfo(-fn) < 0 and npface(-fn) and nfinfo(-fn) >= 0) {
+				if (fn < 0) {
+					c_face_b_pos[dim] += n_face_b_pos[dim] * factor;
+				} else {
+					c_face_b_neg[dim] += n_face_b_neg[dim] * factor;
 				}
 			}
 		}
 
-		VMag(*cell.data) = 0.5 * (FMagN(*cell.data) + FMagP(*cell.data));
+		VMag(*cell.data) = 0.5 * (c_face_b_neg + c_face_b_pos);
 
 		if (constant_thermal_pressure) {
 			const auto vel = (Mom(*cell.data)/Mas(*cell.data)).eval();

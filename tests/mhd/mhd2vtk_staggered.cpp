@@ -423,7 +423,7 @@ void convert(
 			<< velocity[2] << "\n";
 	}
 
-	vtk_file << "VECTORS magnetic_field_cell_center double\n";
+	vtk_file << "VECTORS perturbed_magnetic_field_cell_center double\n";
 	for (const auto& cell: cells) {
 		const auto magnetic_field = simulation_data.at(cell)[MHD][MagCell];
 		vtk_file
@@ -432,7 +432,20 @@ void convert(
 			<< magnetic_field[2] << "\n";
 	}
 
-	vtk_file << "VECTORS magnetic_field_face double\n";
+	vtk_file << "VECTORS total_face_magnetic_field double\n";
+	for (const auto& cell: cells) {
+		const auto
+			b0x = simulation_data.at(cell)[pamhd::Bg_Magnetic_Field()](0, 1)[0],
+			b0y = simulation_data.at(cell)[pamhd::Bg_Magnetic_Field()](1, 1)[1],
+			b0z = simulation_data.at(cell)[pamhd::Bg_Magnetic_Field()](2, 1)[2];
+		const auto b1 = simulation_data.at(cell)[MHD][MagCell];
+		vtk_file
+			<< b1[0] + b0x << " "
+			<< b1[1] + b0y << " "
+			<< b1[2] + b0z << "\n";
+	}
+
+	vtk_file << "VECTORS perturbed_magnetic_field_face double\n";
 	for (const auto& cell: cells) {
 		const auto& magnetic_field_face = simulation_data.at(cell)[MagFace];
 		vtk_file

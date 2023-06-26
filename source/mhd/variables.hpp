@@ -339,6 +339,14 @@ struct MHD_Flux_Neg_Z {
 	using data_type = MHD_Conservative;
 };
 
+struct Face_Boundary_Type {
+	using data_type = pamhd::grid::Face_Type<int>;
+};
+
+struct Edge_Boundary_Type {
+	using data_type = pamhd::grid::Edge_Type<int>;
+};
+
 // cell type for staggered solver MHD test program
 using Cell_Staggered = gensimcell::Cell<
 	gensimcell::Optional_Transfer,
@@ -358,7 +366,9 @@ using Cell_Staggered = gensimcell::Cell<
 	pamhd::Edge_Electric_Field,
 	pamhd::grid::Is_Primary_Face,
 	pamhd::grid::Is_Primary_Edge,
-	pamhd::grid::Target_Refinement_Level
+	pamhd::grid::Target_Refinement_Level,
+	pamhd::mhd::Face_Boundary_Type,
+	pamhd::mhd::Edge_Boundary_Type
 >;
 
 

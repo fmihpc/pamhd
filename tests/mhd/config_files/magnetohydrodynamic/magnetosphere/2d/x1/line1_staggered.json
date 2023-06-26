@@ -15,19 +15,19 @@
 		"periodic": "{true, false, false}",
 		"cells": "{1, 64 + 2, 48 + 2}",
 		"volume": "{150 * 6.371e6, 200 * 6.371e6 * (1 + 2/(cells[1] - 2)), 150 * 6.371e6 * (1 + 2/(cells[2] - 2))}",
-		"start": "{-volume[0] / 2, -(1/2 + 1/4*cells[1]) * volume[1] / cells[1], -volume[2] / 2}"
+		"start": "{-volume[0] / 2, -volume[1] / 2, -volume[2] / 2}"
 	},
 	"geometries": [
 		{"box": {
 			"start": [-9e99, -9e99, -9e99],
-			"end": [9e99, -3.186e8, 9e99]
+			"end": [9e99, -6.371e8, 9e99]
 		}},
 		{"sphere": {
 			"center": [0, 0, 0],
 			"radius": 1.3e7
 		}},
 		{"box": {
-			"start": [-9e99, 9.557e8, -9e99],
+			"start": [-9e99, 6.371e8, -9e99],
 			"end": [9e99, 9e99, 9e99]
 		}},
 		{"box": {
