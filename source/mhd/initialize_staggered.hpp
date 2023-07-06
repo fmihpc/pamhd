@@ -57,7 +57,6 @@ template <
 	class Init_Cond,
 	class Background_Magnetic_Field,
 	class Grid,
-	class Magnetic_Field_Getter,
 	class Face_Magnetic_Field_Pos_Getter,
 	class Face_Magnetic_Field_Neg_Getter,
 	class Magnetic_Field_Flux_Getters,
@@ -70,7 +69,6 @@ template <
 	Grid& grid,
 	const double time,
 	const double vacuum_permeability,
-	const Magnetic_Field_Getter /*VMag*/, // set with update_B_consistency()
 	const Face_Magnetic_Field_Pos_Getter Face_B_pos,
 	const Face_Magnetic_Field_Neg_Getter Face_B_neg,
 	const Magnetic_Field_Flux_Getters Mag_f,

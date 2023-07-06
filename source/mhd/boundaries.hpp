@@ -1136,7 +1136,7 @@ Types: normal cell/face == 1, boundary == 0, dont_solve == -1.
 
 CInfo must be set for cells.
 
-TODO: Update of FInfo variable between processes must be enabled.
+Update of FInfo variable between processes must be enabled.
 */
 template <
 	class Grid,
@@ -1178,7 +1178,7 @@ template <
 		}
 	}
 
-	//TODO: grid.update_copies_of_remote_neighbors();
+	grid.update_copies_of_remote_neighbors();
 
 	/*
 	Face(s) sharing edge(s) with normal face(s) or face(s)
@@ -1302,7 +1302,7 @@ template <
 		}
 	}
 
-	//TODO: grid.update_copies_of_remote_neighbors();
+	grid.update_copies_of_remote_neighbors();
 
 	// face(s) sharing edge(s) with boundary face(s) is dont_solve
 	for (const auto& cell: grid.local_cells()) {
@@ -1423,7 +1423,6 @@ template <
 			if (cpface(dir) and cfinfo(dir) == -99) FInfo(*cell.data)(dir) = -1;
 		}
 	}
-	//TODO: grid.update_copies_of_remote_neighbors();
 } catch (const std::exception& e) {
 	throw std::runtime_error(__func__ + std::string(": ") + e.what());
 }
@@ -1446,7 +1445,6 @@ template <
 	class Edge_Info_Getter
 > void classify_edges(
 	const Cells& cells,
-	//Grid& grid,
 	const Primary_Face_Getter& PFace,
 	const Primary_Edge_Getter& PEdge,
 	const Face_Info_Getter& FInfo,
@@ -1622,8 +1620,6 @@ template <
 			}}
 		}
 
-		//const auto cleni = grid.mapping.get_cell_length_in_indices(cell.id);
-
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
 			const auto& en = neighbor.edge_neighbor;
@@ -1633,7 +1629,6 @@ template <
 
 			const auto& npface = PFace(*neighbor.data);
 			const auto& nfinfo = FInfo(*neighbor.data);
-			//const auto nleni = grid.mapping.get_cell_length_in_indices(neighbor.id);
 
 			if (fn == -1) {
 				constexpr size_t d2 = 0;//, Bd = 0;

@@ -318,27 +318,6 @@ struct MHD_Flux {
 	using data_type = MHD_Flux_type;
 };
 
-//! Flux from neighbor in negative x direction into cell
-struct MHD_Flux_Neg_X {
-	using data_type = MHD_Conservative;
-};
-
-struct MHD_Flux_Pos_Y {
-	using data_type = MHD_Conservative;
-};
-
-struct MHD_Flux_Neg_Y {
-	using data_type = MHD_Conservative;
-};
-
-struct MHD_Flux_Pos_Z {
-	using data_type = MHD_Conservative;
-};
-
-struct MHD_Flux_Neg_Z {
-	using data_type = MHD_Conservative;
-};
-
 struct Face_Boundary_Type {
 	using data_type = pamhd::grid::Face_Type<int>;
 };

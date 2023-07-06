@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define PAMHD_MHD_AMR_HPP
 
 
+#include "array"
 #include "cmath"
 #include "limits"
 #include "set"
@@ -255,17 +256,15 @@ template <
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
 	class Face_Magnetic_Field_Getter_Pos,
-	class Face_Magnetic_Field_Getter_Neg,
-	class Target_Refinement_Level_Getter,
-	class Solver_Info_Getter
+	class Face_Magnetic_Field_Getter_Neg
 > struct New_Cells_Handler {
 	const Mass_Density_Getter& Mas;
 	const Momentum_Density_Getter& Mom;
 	const Total_Energy_Density_Getter& Nrj;
 	const Face_Magnetic_Field_Getter_Pos& Face_Bp;
 	const Face_Magnetic_Field_Getter_Neg& Face_Bn;
-	const Target_Refinement_Level_Getter& Ref;
-	const Solver_Info_Getter& Sol_Info;
+	const double& adiabatic_index;
+	const double& vacuum_permeability;
 
 	New_Cells_Handler(
 		const Mass_Density_Getter& Mas_,
@@ -273,12 +272,13 @@ template <
 		const Total_Energy_Density_Getter& Nrj_,
 		const Face_Magnetic_Field_Getter_Pos& Face_Bp_,
 		const Face_Magnetic_Field_Getter_Neg& Face_Bn_,
-		const Target_Refinement_Level_Getter& Ref_,
-		const Solver_Info_Getter& Sol_Info_
+		const double& adiabatic_index_,
+		const double& vacuum_permeability_
 	) :
 		Mas(Mas_), Mom(Mom_), Nrj(Nrj_),
 		Face_Bp(Face_Bp_), Face_Bn(Face_Bn_),
-		Ref(Ref_), Sol_Info(Sol_Info_)
+		adiabatic_index(adiabatic_index_),
+		vacuum_permeability(vacuum_permeability_)
 	{};
 
 	template<
@@ -288,6 +288,7 @@ template <
 		const Grid& grid,
 		const Cells& new_cells
 	) const {
+		using std::array;
 		using std::runtime_error;
 		using std::to_string;
 
@@ -302,26 +303,51 @@ template <
 			if (parent_data == nullptr) {
 				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
 			}
-
-			Sol_Info(*cell_data) = Sol_Info(*parent_data);
 			Mas(*cell_data) = Mas(*parent_data);
 			Mom(*cell_data) = Mom(*parent_data);
 			Nrj(*cell_data) = Nrj(*parent_data);
-			Ref(*cell_data) = Ref(*parent_data);
+
+			// inherit thermal pressure
+			const typename std::remove_reference<decltype(Mom(*parent_data))>::type p_avg_b{
+				0.5*(Face_Bn(*parent_data)[0] + Face_Bp(*parent_data)[0]),
+				0.5*(Face_Bn(*parent_data)[1] + Face_Bp(*parent_data)[1]),
+				0.5*(Face_Bn(*parent_data)[2] + Face_Bp(*parent_data)[2])
+			};
+			const double parent_pressure = get_pressure(
+				Mas(*parent_data),
+				Mom(*parent_data),
+				Nrj(*parent_data),
+				p_avg_b,
+				adiabatic_index,
+				vacuum_permeability
+			);
 
 			const auto
 				cindex = grid.mapping.get_indices(new_cell_id),
 				pindex = grid.mapping.get_indices(parent_id);
 			for (size_t dim = 0; dim < 3; dim++) {
-				const auto avg_b = 0.5*(Face_Bn(*parent_data)[dim] + Face_Bp(*parent_data)[dim]);
 				if (cindex[dim] == pindex[dim]) { // neg faces coincide
 					Face_Bn(*cell_data)[dim] = Face_Bn(*parent_data)[dim];
-					Face_Bp(*cell_data)[dim] = avg_b;
+					Face_Bp(*cell_data)[dim] = p_avg_b[dim];
 				} else { // pos faces coincide
 					Face_Bp(*cell_data)[dim] = Face_Bp(*parent_data)[dim];
-					Face_Bn(*cell_data)[dim] = avg_b;
+					Face_Bn(*cell_data)[dim] = p_avg_b[dim];
 				}
 			}
+
+			const typename std::remove_reference<decltype(Mom(*cell_data))>::type c_avg_b{
+				0.5*(Face_Bn(*cell_data)[0] + Face_Bp(*cell_data)[0]),
+				0.5*(Face_Bn(*cell_data)[1] + Face_Bp(*cell_data)[1]),
+				0.5*(Face_Bn(*cell_data)[2] + Face_Bp(*cell_data)[2])
+			};
+			Nrj(*cell_data) = get_total_energy_density(
+				Mas(*cell_data),
+				(Mom(*cell_data) / Mas(*cell_data)).eval(),
+				parent_pressure,
+				c_avg_b,
+				adiabatic_index,
+				vacuum_permeability
+			);
 		}
 	}
 };
@@ -332,27 +358,23 @@ template <
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
 	class Face_Magnetic_Field_Getter_Pos,
-	class Face_Magnetic_Field_Getter_Neg,
-	class Target_Refinement_Level_Getter
+	class Face_Magnetic_Field_Getter_Neg
 > struct Removed_Cells_Handler {
 	const Mass_Density_Getter& Mas;
 	const Momentum_Density_Getter& Mom;
 	const Total_Energy_Density_Getter& Nrj;
 	const Face_Magnetic_Field_Getter_Pos& Face_Bp;
 	const Face_Magnetic_Field_Getter_Neg& Face_Bn;
-	const Target_Refinement_Level_Getter& Ref;
 
 	Removed_Cells_Handler(
 		const Mass_Density_Getter& Mas_,
 		const Momentum_Density_Getter& Mom_,
 		const Total_Energy_Density_Getter& Nrj_,
 		const Face_Magnetic_Field_Getter_Pos& Face_Bp_,
-		const Face_Magnetic_Field_Getter_Neg& Face_Bn_,
-		const Target_Refinement_Level_Getter& Ref_
+		const Face_Magnetic_Field_Getter_Neg& Face_Bn_
 	) :
 		Mas(Mas_), Mom(Mom_), Nrj(Nrj_),
-		Face_Bp(Face_Bp_), Face_Bn(Face_Bn_),
-		Ref(Ref_)
+		Face_Bp(Face_Bp_), Face_Bn(Face_Bn_)
 	{};
 
 	template<

@@ -503,6 +503,7 @@ template <
 	const New_Cells_Handler& nch = Default_Cells_Handler(),
 	const Removed_Cells_Handler& rch = Default_Cells_Handler()
 ) {
+	MPI_Comm comm = grid.get_communicator();
 	for (int i = 0; i < grid.get_maximum_refinement_level(); i++) {
 		for (const auto& cell: grid.local_cells()) {
 			const auto c = grid.geometry.get_center(cell.id);
@@ -518,14 +519,19 @@ template <
 		}
 		const auto new_cells = grid.stop_refining();
 		const auto removed_cells = grid.get_removed_cells();
-		if (new_cells.size() == 0 and removed_cells.size() == 0) {
+
+		const uint64_t total_size_local = new_cells.size() + removed_cells.size();
+		uint64_t total_size_global = dccrg::All_Reduce()(total_size_local, comm);
+
+		if (total_size_global == 0) {
 			break;
 		} else {
-			nch(grid, new_cells);
-			rch(grid, removed_cells);
+			if (new_cells.size() > 0) nch(grid, new_cells);
+			if (removed_cells.size() > 0) rch(grid, removed_cells);
 			grid.clear_refined_unrefined_data();
 		}
 	}
+	MPI_Comm_free(&comm);
 }
 
 }} // namespaces
