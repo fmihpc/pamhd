@@ -1,0 +1,27 @@
+{
+	"output-directory": "results/magnetohydrodynamic/blast_wave/1d/z/rusanov_staggered_amr",
+	"time-start": 0,
+	"time-length": 0.009,
+	"minimum-pressure": 0,
+	"solver-mhd": "rusanov",
+	"load-balancer": "RCB",
+	"save-mhd-n": 0.0005,
+	"adiabatic-index": 1.666666667,
+	"vacuum-permeability": 1,
+	"proton-mass": 1,
+	"mhd-time-step-factor": 0.5,
+	"grid-options": {
+		"periodic": "{true, true, true}",
+		"cells": "{1, 1, 20}",
+		"volume": "{0.0002, 0.0002, 0.03}",
+		"start": "{-0.0001, -0.0001, -0.015}",
+		"max-ref-lvl": 1,
+		"amr-n": 0,
+		"ref-lvl-at-least": "(radius < 0.0075) ? 0 : (radius > 0.0125) ? 0 : 1",
+		"ref-lvl-at-most": "(radius < 0.0075) ? 0 : (radius > 0.0125) ? 0 : 1"
+	},
+	"number-density": {"default": 1},
+	"velocity": {"default": [0, 0, 0]},
+	"pressure": {"default": "radius > 0.01 ? 10 : 0.1"},
+	"magnetic-field": {"default": "{1 / sqrt(2), 0, 1 / sqrt(2)}"}
+}
