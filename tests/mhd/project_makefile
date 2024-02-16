@@ -24,7 +24,9 @@ TESTS_MHD_TESTS = \
   tests/mhd/two_reference.tst_rusanov \
   tests/mhd/two_reference.tst_hll_athena \
   tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered/mhd_staggered_000001147.dc \
-  tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered.ok
+  tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered.ok \
+  tests/mhd/results/hydrodynamic/density_advection/1d/-x/rusanov_staggered/mhd_staggered_000001147.dc \
+  tests/mhd/results/hydrodynamic/density_advection/1d/-x/rusanov_staggered.ok
 
 tests/mhd_executables: $(TESTS_MHD_EXECUTABLES)
 
@@ -266,3 +268,9 @@ tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered/mhd_sta
 
 tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered.ok: tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered/mhd_staggered_000001147.dc tests/mhd/reference/hydrodynamic/density_advection/1d/+x/rusanov_staggered/mhd_staggered_000001147.dc
 	@printf "CHECK HD advection 1d +x Rusanov staggered...  " && tests/mhd/mhd_diff_staggered.py $^ && printf "PASS\n" && touch $@
+
+tests/mhd/results/hydrodynamic/density_advection/1d/-x/rusanov_staggered/mhd_staggered_000001147.dc: tests/mhd/test_staggered.exe tests/mhd/config_files/hydrodynamic/density_advection/1d/-x/rusanov_staggered.json
+	@printf MPIRUN\ $<" HD advection 1d -x Rusanov staggered...  "  && $(MPIRUN) ./$^ > /dev/null && printf "\n"
+
+tests/mhd/results/hydrodynamic/density_advection/1d/-x/rusanov_staggered.ok: tests/mhd/results/hydrodynamic/density_advection/1d/-x/rusanov_staggered/mhd_staggered_000001147.dc tests/mhd/reference/hydrodynamic/density_advection/1d/-x/rusanov_staggered/mhd_staggered_000001147.dc
+	@printf "CHECK HD advection 1d -x Rusanov staggered...  " && tests/mhd/mhd_diff_staggered.py $^ && printf "PASS\n" && touch $@
