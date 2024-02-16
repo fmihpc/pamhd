@@ -2,7 +2,7 @@
 MHD test program of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2019, 2022, 2023 Finnish Meteorological Institute
+Copyright 2018, 2019, 2022, 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -896,13 +896,8 @@ int main(int argc, char* argv[])
 		*/
 
 		if (
-			(
-				options_mhd.save_n >= 0
-				and (
-					simulation_time == options_sim.time_start
-					or simulation_time >= time_end
-				)
-			) or (options_mhd.save_n > 0 and simulation_time >= next_mhd_save)
+			(options_mhd.save_n >= 0 and simulation_time >= time_end)
+			or (options_mhd.save_n > 0 and simulation_time >= next_mhd_save)
 		) {
 			if (next_mhd_save <= simulation_time) {
 				next_mhd_save
