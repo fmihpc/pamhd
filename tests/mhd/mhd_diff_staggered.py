@@ -172,7 +172,8 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 		vel1 = vel1.dot(vel1)**0.5
 		vel2 = cell_data2[0][1] / cell_data2[0][0]
 		vel2 = vel2.dot(vel2)**0.5
-		if denom != 0 and args.velocity < abs(vel1 - vel2) / maximum(vel1, vel2):
+		denom = maximum(vel1, vel2)
+		if denom != 0 and args.velocity < abs(vel1 - vel2) / denom:
 			error = 'Velocity differs too much in cell ' + str(cell_id) + ': ' + str(vel1) + ' vs ' + str(vel2)
 
 		nrj1 = cell_data1[0][2]
@@ -185,7 +186,8 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 		mag1 = mag1.dot(mag1)**0.5
 		mag2 = cell_data2[0][3]
 		mag2 = mag2.dot(mag2)**0.5
-		if denom != 0 and args.magnetic_field < abs(mag1 - mag2) / maximum(mag1, mag2):
+		denom = maximum(mag1, mag2)
+		if denom != 0 and args.magnetic_field < abs(mag1 - mag2) / denom:
 			error = 'Perturbed magnetic field differs too much in cell ' + str(cell_id) + ': ' + str(mag1) + ' vs ' + str(mag2)
 
 		if args.write:
