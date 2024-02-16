@@ -22,7 +22,9 @@ TESTS_MHD_TESTS = \
   tests/mhd/reference.tst_roe_athena \
   tests/mhd/reference_staggered.tst_rusanov \
   tests/mhd/two_reference.tst_rusanov \
-  tests/mhd/two_reference.tst_hll_athena
+  tests/mhd/two_reference.tst_hll_athena \
+  tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered/mhd_staggered_000001147.dc \
+  tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered.ok
 
 tests/mhd_executables: $(TESTS_MHD_EXECUTABLES)
 
@@ -252,9 +254,15 @@ tests/mhd/reference.tst_roe_athena: tests/mhd/reference.exe
 	@printf RUN\ Roe_Athena\ $<...\ \  && $(RUN) ./$< --solver roe_athena && printf "PASS\n" && touch $@
 
 tests/mhd/reference_staggered.tst_rusanov: tests/mhd/reference_staggered.exe
-	@printf RUN\ Staggered\ Rusanov\ $<...\ \  && $(RUN) ./$< --solver rusanov && printf "PASS\n" && touch $@
+	@printf RUN\ staggered\ Rusanov\ $<...\ \  && $(RUN) ./$< --solver rusanov && printf "PASS\n" && touch $@
 
 tests/mhd/two_reference.tst_hll_athena: tests/mhd/two_reference.exe
 	@printf RUN\ HLL_Athena\ $<...\ \  && $(RUN) ./$< --solver hll_athena && printf "PASS\n" && touch $@
 tests/mhd/two_reference.tst_rusanov: tests/mhd/two_reference.exe
 	@printf RUN\ Rusanov\ $<...\ \  && $(RUN) ./$< --solver rusanov && printf "PASS\n" && touch $@
+
+tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered/mhd_staggered_000001147.dc: tests/mhd/test_staggered.exe tests/mhd/config_files/hydrodynamic/density_advection/1d/+x/rusanov_staggered.json
+	@printf MPIRUN\ $<" HD advection 1d +x Rusanov staggered...  "  && $(MPIRUN) ./$^ > /dev/null && printf "\n"
+
+tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered.ok: tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered/mhd_staggered_000001147.dc tests/mhd/reference/hydrodynamic/density_advection/1d/+x/rusanov_staggered/mhd_staggered_000001147.dc
+	@printf "CHECK HD advection 1d +x Rusanov staggered...  " && tests/mhd/mhd_diff_staggered.py $^ && printf "PASS\n" && touch $@
