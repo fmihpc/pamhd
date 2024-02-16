@@ -462,7 +462,7 @@ int main(int argc, char* argv[])
 	double
 		max_dt_mhd = 0,
 		simulation_time = options_sim.time_start,
-		next_mhd_save = options_mhd.save_n,
+		next_mhd_save = 0,
 		next_amr = options_grid.amr_n;
 
 	// initialize MHD
