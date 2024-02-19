@@ -232,11 +232,13 @@ int main(int argc, char* argv[])
 {
 	using std::asin;
 	using std::atan2;
+	using std::ceil;
 	using std::cerr;
 	using std::cout;
 	using std::endl;
 	using std::flush;
 	using std::get;
+	using std::max;
 	using std::min;
 	using std::sqrt;
 
@@ -902,7 +904,7 @@ int main(int argc, char* argv[])
 			if (next_mhd_save <= simulation_time) {
 				next_mhd_save
 					+= options_mhd.save_n
-					* ceil((simulation_time - next_mhd_save) / options_mhd.save_n);
+					* ceil(max(1.0, simulation_time - next_mhd_save) / options_mhd.save_n);
 			}
 
 			if (rank == 0) {
