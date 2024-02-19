@@ -904,7 +904,7 @@ int main(int argc, char* argv[])
 			if (next_mhd_save <= simulation_time) {
 				next_mhd_save
 					+= options_mhd.save_n
-					* ceil(max(1.0, simulation_time - next_mhd_save) / options_mhd.save_n);
+					* ceil(max(options_mhd.save_n, simulation_time - next_mhd_save) / options_mhd.save_n);
 			}
 
 			if (rank == 0) {
