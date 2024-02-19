@@ -5,7 +5,7 @@
 	"minimum-pressure": 0,
 	"solver-mhd": "rusanov",
 	"load-balancer": "RANDOM",
-	"save-mhd-n": 0.1,
+	"save-mhd-n": 0,
 	"adiabatic-index": 1.6666666666666667,
 	"vacuum-permeability": 1,
 	"proton-mass": 1,
