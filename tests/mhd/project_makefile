@@ -59,6 +59,14 @@ TESTS_MHD_TESTS = \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/+z/small_staggered_rusanov.ok \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/-z/small_staggered_rusanov/mhd_staggered_000000203.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/-z/small_staggered_rusanov.ok \
+  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov1/mhd_staggered_000000019.dc \
+  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov1.ok \
+  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov2/mhd_staggered_000000034.dc \
+  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov2.ok \
+  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov1/mhd_staggered_000000019.dc \
+  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov1.ok \
+  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov2/mhd_staggered_000000034.dc \
+  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov2.ok \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov1/mhd_staggered_000000019.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov1.ok \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov2/mhd_staggered_000000034.dc \
@@ -412,6 +420,32 @@ tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/-z/small_staggered_rusanov
 tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/-z/small_staggered_rusanov.ok: tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/-z/small_staggered_rusanov/mhd_staggered_000000203.dc tests/mhd/reference/magnetohydrodynamic/Alfvén_wave/1d/-z/small_staggered_rusanov/mhd_staggered_000000203.dc
 	@printf "CHECK MHD Alfvén wave 1d -z small Rusanov staggered...  " && tests/mhd/mhd_diff_staggered.py $^ && printf "PASS\n" && touch $@
 
+
+
+tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov1/mhd_staggered_000000019.dc: tests/mhd/test_staggered.exe tests/mhd/config_files/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov1.json
+	@printf MPIRUN\ $<" MHD Alfvén wave 2d x small Rusanov staggered...  "  && $(MPIRUN) ./$^ > /dev/null && printf "\n"
+
+tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov1.ok: tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov1/mhd_staggered_000000019.dc tests/mhd/reference/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov1/mhd_staggered_000000019.dc
+	@printf "CHECK MHD Alfvén wave 2d x small Rusanov staggered...  " && tests/mhd/mhd_diff_staggered.py $^ && printf "PASS\n" && touch $@
+
+tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov2/mhd_staggered_000000034.dc: tests/mhd/test_staggered.exe tests/mhd/config_files/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov2.json
+	@printf MPIRUN\ $<" MHD Alfvén wave 2d x small Rusanov staggered2...  "  && $(MPIRUN) ./$^ > /dev/null && printf "\n"
+
+tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov2.ok: tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov2/mhd_staggered_000000034.dc tests/mhd/reference/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov2/mhd_staggered_000000034.dc
+	@printf "CHECK MHD Alfvén wave 2d x small Rusanov staggered2...  " && tests/mhd/mhd_diff_staggered.py $^ && printf "PASS\n" && touch $@
+
+
+tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov1/mhd_staggered_000000019.dc: tests/mhd/test_staggered.exe tests/mhd/config_files/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov1.json
+	@printf MPIRUN\ $<" MHD Alfvén wave 2d y small Rusanov staggered...  "  && $(MPIRUN) ./$^ > /dev/null && printf "\n"
+
+tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov1.ok: tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov1/mhd_staggered_000000019.dc tests/mhd/reference/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov1/mhd_staggered_000000019.dc
+	@printf "CHECK MHD Alfvén wave 2d y small Rusanov staggered...  " && tests/mhd/mhd_diff_staggered.py $^ && printf "PASS\n" && touch $@
+
+tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov2/mhd_staggered_000000034.dc: tests/mhd/test_staggered.exe tests/mhd/config_files/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov2.json
+	@printf MPIRUN\ $<" MHD Alfvén wave 2d y small Rusanov staggered2...  "  && $(MPIRUN) ./$^ > /dev/null && printf "\n"
+
+tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov2.ok: tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov2/mhd_staggered_000000034.dc tests/mhd/reference/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov2/mhd_staggered_000000034.dc
+	@printf "CHECK MHD Alfvén wave 2d y small Rusanov staggered2...  " && tests/mhd/mhd_diff_staggered.py $^ && printf "PASS\n" && touch $@
 
 
 tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov1/mhd_staggered_000000019.dc: tests/mhd/test_staggered.exe tests/mhd/config_files/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov1.json
