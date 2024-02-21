@@ -9,12 +9,12 @@
 	"adiabatic-index": 1.6666666666666667,
 	"vacuum-permeability": 1.2566370614359173e-06,
 	"proton-mass": 1.6726217770000001e-27,
-	"mhd-time-step-factor": 0.5,
+	"mhd-time-step-factor": 0.3,
 	"grid-options": {
 		"periodic": "{false, false, false}",
 		"cells": "{64 + 2, 48 + 2, 48 + 2}",
-		"volume": "{200 * 6.371e6 * (1 + 2/(cells[0] - 2)), 150 * 6.371e6 * (1 + 2/(cells[1] - 2)), 150 * 6.371e6 * (1 + 2/(cells[2] - 2))}",
-		"start": "{-(1/2 + 1/4*cells[0]) * volume[0] / cells[0], -volume[1] / 2, -volume[2] / 2}",
+		"volume": "{200 * 6.371e6*(1 + 2/(cells[0] - 2)), 150 * 6.371e6*(1 + 2/(cells[1] - 2)), 150 * 6.371e6*(1 + 2/(cells[2] - 2))}",
+		"start": "{-volume[0]/2, -volume[1]/2, -volume[2]/2}",
 		"max-ref-lvl": 1,
 		"amr-n": 0,
 		"ref-lvl-at-least": "radius < 6.371e7 ? 1 : 0",
@@ -23,14 +23,14 @@
 	"geometries": [
 		{"box": {
 			"start": [-9e99, -9e99, -9e99],
-			"end": [-3.186e8, 9e99, 9e99]
+			"end": [-6.371e8, 9e99, 9e99]
 		}},
 		{"sphere": {
 			"center": [0, 0, 0],
 			"radius": 1.3e7
 		}},
 		{"box": {
-			"start": [9.557e8, -9e99, -9e99],
+			"start": [6.371e8, -9e99, -9e99],
 			"end": [9e99, 9e99, 9e99]
 		}},
 		{"box": {
