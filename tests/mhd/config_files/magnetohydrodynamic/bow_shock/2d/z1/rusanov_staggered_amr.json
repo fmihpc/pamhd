@@ -39,7 +39,7 @@
 		}}
 	],
 	"number-density": {
-		"default": "x^2+y^2 < 0.0625^2 ? 100 : 0.01",
+		"default": "x^2+y^2 < 0.0725^2 ? 100 : 0.01",
 		"value-boundaries": [
 			{"geometry-id": 0, "time-stamps": [0], "values": [0.01]}
 		],
@@ -50,7 +50,7 @@
 		]
 	},
 	"velocity": {
-		"default": "{x^2+y^2 < 0.0625^2 or (x > 0 and y < 0.0625 and y > -0.0625) ? 0 : 1, 0, 0}",
+		"default": "{x^2+y^2 < 0.0725^2 or (x > 0 and y < 0.0725 and y > -0.0725) ? 0 : 1, 0, 0}",
 		"value-boundaries": [
 			{"geometry-id": 0, "time-stamps": [0], "values": [[1, 0, 0]]}
 		],
