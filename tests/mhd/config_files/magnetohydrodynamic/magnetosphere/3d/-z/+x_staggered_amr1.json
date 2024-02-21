@@ -12,13 +12,13 @@
 	"mhd-time-step-factor": 0.3,
 	"grid-options": {
 		"periodic": "{false, false, false}",
-		"cells": "{64 + 2, 48 + 2, 48 + 2}",
+		"cells": "{32 + 2, 24 + 2, 24 + 2}",
 		"volume": "{200 * 6.371e6*(1 + 2/(cells[0] - 2)), 150 * 6.371e6*(1 + 2/(cells[1] - 2)), 150 * 6.371e6*(1 + 2/(cells[2] - 2))}",
 		"start": "{-volume[0]/2, -volume[1]/2, -volume[2]/2}",
 		"max-ref-lvl": 1,
 		"amr-n": 0,
-		"ref-lvl-at-least": "radius < 6.371e7 ? 1 : 0",
-		"ref-lvl-at-most": "radius < 6.371e7 ? 1 : 0"
+		"ref-lvl-at-least": "radius < 2e8 ? 1 : 0",
+		"ref-lvl-at-most": "radius < 2e8 ? 1 : 0"
 	},
 	"geometries": [
 		{"box": {
