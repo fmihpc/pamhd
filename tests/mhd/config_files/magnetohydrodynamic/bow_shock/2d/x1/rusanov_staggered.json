@@ -35,7 +35,7 @@
 		}}
 	],
 	"number-density": {
-		"default": "radius < 0.0625 ? 100 : 0.01",
+		"default": "sqrt(y*y+z*z) < 0.0725 ? 100 : 0.01",
 		"value-boundaries": [
 			{"geometry-id": 0, "time-stamps": [0], "values": [0.01]}
 		],
@@ -46,7 +46,7 @@
 		]
 	},
 	"velocity": {
-		"default": "{0, radius < 0.0625 or (y > 0 and z < 0.0625 and z > -0.0625) ? 0 : 1, 0}",
+		"default": "{0, sqrt(y*y+z*z) < 0.0725 or (y > 0 and z < 0.0725 and z > -0.0725) ? 0 : 1, 0}",
 		"value-boundaries": [
 			{"geometry-id": 0, "time-stamps": [0], "values": [[0, 1, 0]]}
 		],
