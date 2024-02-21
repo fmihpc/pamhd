@@ -17,8 +17,8 @@
 		"volume": "{2, 3, 2}",
 		"start": "{-1, -1.5, -1}"
 	},
-	"number-density": {"default": "radius < 0.0625 ? 100 : 0.01"},
-	"velocity": {"default": "{radius < 0.0625 ? 0 : 1, 0, 0}"},
+	"number-density": {"default": "sqrt(x*x+y*y) < 0.0725 ? 100 : 0.01"},
+	"velocity": {"default": "{sqrt(x*x+y*y) < 0.0725 ? 0 : 1, 0, 0}"},
 	"pressure": {"default": 0.0015},
 	"magnetic-field": {"default": [0.02, 0, 0]}
 }
