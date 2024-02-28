@@ -71,7 +71,7 @@ def save_slice_plot(outname, variable = 'mass_density', axis = 'x'):
 	attrs.originType = attrs.Intercept
 	attrs.project2d = 1
 	if axis == 'x':
-		attrs.originIntercept = dx / 2
+		attrs.originIntercept = xmin + dx / 2
 		attrs.normal = (1, 0, 0)
 		attrs.axisType = attrs.XAxis
 		attrs.upAxis = (0, 0, 1)
@@ -79,14 +79,14 @@ def save_slice_plot(outname, variable = 'mass_density', axis = 'x'):
 		save_win_attrs.height = 900
 		save_win_attrs.width = int(900*dy/dz)
 	elif axis == 'y':
-		attrs.originIntercept = dy / 2
+		attrs.originIntercept = ymin + dy / 2
 		attrs.normal = (0, 1, 0)
 		attrs.axisType = attrs.YAxis
 		attrs.upAxis = (0, 0, 1)
 		save_win_attrs.height = 900
 		save_win_attrs.width = int(900*dx/dz)
 	elif axis == 'z':
-		attrs.originIntercept = dz / 2
+		attrs.originIntercept = zmin + dz / 2
 		attrs.normal = (0, 0, 1)
 		attrs.axisType = attrs.ZAxis
 		attrs.upAxis = (0, 1, 0)
