@@ -103,6 +103,9 @@ def save_slice_plot(outname, variable = 'mass_density', axis = 'x'):
 
 for arg in argv[1:]:
 	OpenDatabase(arg)
+	result = GetLastError()
+	if result != '':
+		exit("Couldn't load: " + arg)
 	for variable in [
 		'mass_density',
 		'number_density',
