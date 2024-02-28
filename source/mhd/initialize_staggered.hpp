@@ -83,6 +83,38 @@ template <
 		Mag_fny = get<2>(Mag_f), Mag_fpy = get<3>(Mag_f),
 		Mag_fnz = get<4>(Mag_f), Mag_fpz = get<5>(Mag_f);
 
+	// background B isn't updated between processes
+	for (const auto& cell: grid.remote_cells()) {
+		const auto [rx, ry, rz] = grid.geometry.get_center(cell.id);
+		const auto [sx, sy, sz] = grid.geometry.get_min(cell.id);
+		const auto [ex, ey, ez] = grid.geometry.get_max(cell.id);
+
+		Bg_B(*cell.data)(0, 0) = bg_B.get_background_field(
+			{sx, ry, rz},
+			vacuum_permeability
+		);
+		Bg_B(*cell.data)(0, 1) = bg_B.get_background_field(
+			{ex, ry, rz},
+			vacuum_permeability
+		);
+		Bg_B(*cell.data)(1, 0) = bg_B.get_background_field(
+			{rx, sy, rz},
+			vacuum_permeability
+		);
+		Bg_B(*cell.data)(1, 1) = bg_B.get_background_field(
+			{rx, ey, rz},
+			vacuum_permeability
+		);
+		Bg_B(*cell.data)(2, 0) = bg_B.get_background_field(
+			{rx, ry, sz},
+			vacuum_permeability
+		);
+		Bg_B(*cell.data)(2, 1) = bg_B.get_background_field(
+			{rx, ry, ez},
+			vacuum_permeability
+		);
+	}
+
 	// set default magnetic field
 	for (const auto& cell: grid.local_cells()) {
 		Mag_fnx(*cell.data) =
