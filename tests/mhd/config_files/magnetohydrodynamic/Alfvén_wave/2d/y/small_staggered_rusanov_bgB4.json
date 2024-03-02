@@ -1,0 +1,28 @@
+{
+	"output-directory": "tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov_bgB4",
+	"time-start": 0,
+	"time-length": 1,
+	"minimum-pressure": 0,
+	"solver-mhd": "rusanov",
+	"load-balancer": "RANDOM",
+	"save-mhd-n": 0,
+	"adiabatic-index": 1.6666666666666667,
+	"vacuum-permeability": 1,
+	"proton-mass": 1,
+	"mhd-time-step-factor": 0.5,
+	"grid-options": {
+		"periodic": "{true, true, true}",
+		"cells": "{10, 1, 10}",
+		"volume": "{1.1547, 1, 2}",
+		"start": "{0, 0, 0}",
+		"max-ref-lvl": 2,
+		"amr-n": 0,
+		"ref-lvl-at-least": "(abs(x - 0.57) > 0.25) ? 0 : 2",
+		"ref-lvl-at-most": "(abs(x - 0.57) > 0.25) ? 0 : 2"
+	},
+	"number-density": {"default": 1},
+	"velocity": {"default": "{-0.0005*cos(pi*(1.73205*x+z)), 0.001*sin(pi*(1.73205*x+z)), 0.00086603*cos(pi*(1.73205*x+z))}"},
+	"pressure": {"default": 0.1},
+	"magnetic-field": {"default": "{0.0005*cos(pi*(1.73205*x+z)), 0.001*sin(pi*(1.73205*x+z)), -0.00086603*cos(pi*(1.73205*x+z))}"},
+	"background-magnetic-field": {"value": [0.86603, 0, 0.5]}
+}

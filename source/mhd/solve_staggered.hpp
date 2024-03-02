@@ -2,7 +2,7 @@
 Solves the MHD part of PAMHD using an external flux function.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2019, 2022, 2023 Finnish Meteorological Institute
+Copyright 2018, 2019, 2022, 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -162,6 +162,7 @@ template <
 		const auto cell_length = grid.geometry.get_length(cell.id);
 
 		const auto& cpface = PFace(*cell.data);
+
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto n = neighbor.face_neighbor;
 			// flux stored in neighbor and calculated by its owner
@@ -183,7 +184,6 @@ template <
 			state_pos[nrj_int] = Nrj(*neighbor.data);
 			state_pos[mag_int] = get_rotated_vector(Mag(*neighbor.data), abs(neighbor.face_neighbor));
 			if (neighbor.face_neighbor < 0) {
-				// move data of cell on negative side of face to state_neg
 				const auto temp = state_neg;
 				state_neg = state_pos;
 				state_pos = temp;
@@ -585,32 +585,6 @@ template <
 		const auto [dx, dy, dz] = grid.geometry.get_length(cell.id);
 		const auto cleni = grid.mapping.get_cell_length_in_indices(cell.id);
 
-		// relative face neighbor sizes
-		int nxs = 9, pxs = 9, nys = 9, pys = 9, nzs = 9, pzs = 9;
-		for (const auto& neighbor: cell.neighbors_of) {
-			switch (neighbor.face_neighbor) {
-			case -1:
-				nxs = neighbor.relative_size;
-				break;
-			case +1:
-				pxs = neighbor.relative_size;
-				break;
-			case -2:
-				nys = neighbor.relative_size;
-				break;
-			case +2:
-				pys = neighbor.relative_size;
-				break;
-			case -3:
-				nzs = neighbor.relative_size;
-				break;
-			case +3:
-				pzs = neighbor.relative_size;
-				break;
-			default: break;
-			}
-		}
-
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
 			const auto& en = neighbor.edge_neighbor;
@@ -644,7 +618,7 @@ template <
 				}
 			}
 
-			if (fn == 1) {
+			if (fn == +1) {
 				if (cpface(fn)) {
 					Mas(*cell.data) -= Mas_fpx(*cell.data)*dtdx;
 					Mom(*cell.data) -= Mom_fpx(*cell.data)*dtdx;
@@ -672,7 +646,7 @@ template <
 				}
 			}
 
-			if (fn == 2) {
+			if (fn == +2) {
 				if (cpface(fn)) {
 					Mas(*cell.data) -= Mas_fpy(*cell.data)*dtdy;
 					Mom(*cell.data) -= Mom_fpy(*cell.data)*dtdy;
@@ -700,7 +674,7 @@ template <
 				}
 			}
 
-			if (fn == 3) {
+			if (fn == +3) {
 				if (cpface(fn)) {
 					Mas(*cell.data) -= Mas_fpz(*cell.data)*dtdz;
 					Mom(*cell.data) -= Mom_fpz(*cell.data)*dtdz;
@@ -722,194 +696,318 @@ template <
 			const auto nleni = grid.mapping.get_cell_length_in_indices(neighbor.id);
 
 			if (fn == -1) {
-				/*
-				Use closer larger neighbor's flux in smaller cells.
-				TODO: investigate using e.g. average
-				of +- face fluxes or upwinding instead,
-				would require larger neighborhood than 3x3x3.
-				*/
 				constexpr size_t d2 = 0, Bd = 0;
-				if (constexpr size_t d1 = 1, d3 = 0;
-					nfinfo(-3) >= 0 and cpedge(d1,d2,d3) and npface(-3) and neighbor.z == 0
-				) {
-					edge_e(d1,d2,d3) -= Mag_fnz(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+
+				if (constexpr size_t d1 = 1, d3 = 0; cpedge(d1,d2,d3)) {
+					if (npface(-3) and nfinfo(-3) >= 0 and neighbor.z == 0) {
+						edge_e(d1,d2,d3) -= Mag_fnz(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
+					if (cleni == neighbor.z + nleni) {
+						throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					}
 				}
 
-				if (constexpr size_t d1 = 1, d3 = 1;
-					nfinfo(+3) >= 0 and cpedge(d1,d2,d3) and npface(+3) and cleni == neighbor.z + nleni
-				) {
-					edge_e(d1,d2,d3) -= Mag_fpz(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 1, d3 = 1; cpedge(d1,d2,d3)) {
+					if (npface(+3) and nfinfo(+3) >= 0 and cleni == neighbor.z + nleni) {
+						edge_e(d1,d2,d3) -= Mag_fpz(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
+					/*
+					Substitute flux from missing face in larger neighbor
+					with one on opposite side of edge, in this cell.
+					*/
+					if (
+						neighbor.relative_size < 0
+						and cpface(+3)
+						and cfinfo(+3) >= 0
+						and neighbor.z == 0
+					) {
+						edge_e(d1,d2,d3) -= Mag_fpz(*cell.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
+					if (neighbor.relative_size >= 0 and neighbor.z == 0) {
+						throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					}
 				}
 
-				if (constexpr size_t d1 = 2, d3 = 0;
-					nfinfo(-2) >= 0 and cpedge(d1,d2,d3) and npface(-2) and neighbor.y == 0
-				) {
-					edge_e(d1,d2,d3) += Mag_fny(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 2, d3 = 0; cpedge(d1,d2,d3)) {
+					if (npface(-2) and nfinfo(-2) >= 0 and neighbor.y == 0) {
+						edge_e(d1,d2,d3) += Mag_fny(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
+					if (cleni == neighbor.y + nleni) {
+						throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					}
 				}
 
-				if (constexpr size_t d1 = 2, d3 = 1;
-					nfinfo(+2) >= 0 and cpedge(d1,d2,d3) and npface(+2) and cleni == neighbor.y + nleni
-				) {
-					edge_e(d1,d2,d3) += Mag_fpy(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 2, d3 = 1; cpedge(d1,d2,d3)) {
+					if (npface(+2) and nfinfo(+2) >= 0 and cleni == neighbor.y + nleni) {
+						edge_e(d1,d2,d3) += Mag_fpy(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
+					if (
+						neighbor.relative_size < 0
+						and cfinfo(+2) >= 0
+						and cpface(+2)
+						and neighbor.y == 0
+					) {
+						edge_e(d1,d2,d3) += Mag_fpy(*cell.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
+					if (neighbor.relative_size >= 0 and neighbor.y == 0) {
+						throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					}
 				}
 			}
 
 			if (fn == +1) {
 				constexpr size_t d2 = 1, Bd = 0;
-				if (constexpr size_t d1 = 2, d3 = 0;
-					nfinfo(-2) >= 0 and cpedge(d1,d2,d3) and npface(-2) and neighbor.y == 0
-				) {
-					edge_e(d1,d2,d3) += Mag_fny(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+
+				if (constexpr size_t d1 = 2, d3 = 0; cpedge(d1,d2,d3)) {
+					if (npface(-2) and nfinfo(-2) >= 0 and neighbor.y == 0) {
+						edge_e(d1,d2,d3) += Mag_fny(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 
-				if (constexpr size_t d1 = 2, d3 = 1;
-					nfinfo(+2) >= 0 and cpedge(d1,d2,d3) and npface(+2) and cleni == neighbor.y + nleni
-				) {
-					edge_e(d1,d2,d3) += Mag_fpy(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 2, d3 = 1; cpedge(d1,d2,d3)) {
+					if (npface(+2) and nfinfo(+2) >= 0 and cleni == neighbor.y + nleni) {
+						edge_e(d1,d2,d3) += Mag_fpy(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
+					if (
+						neighbor.relative_size < 0
+						and cpface(+2)
+						and cfinfo(+2) >= 0
+						and neighbor.y == 0
+					) {
+						edge_e(d1,d2,d3) += Mag_fpy(*cell.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 
-				if (constexpr size_t d1 = 1, d3 = 0;
-					nfinfo(-3) >= 0 and cpedge(d1,d2,d3) and npface(-3) and neighbor.z == 0
-				) {
-					edge_e(d1,d2,d3) -= Mag_fnz(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 1, d3 = 0; cpedge(d1,d2,d3)) {
+					if (npface(-3) and nfinfo(-3) >= 0 and neighbor.z == 0) {
+						edge_e(d1,d2,d3) -= Mag_fnz(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 
-				if (constexpr size_t d1 = 1, d3 = 1;
-					nfinfo(+3) >= 0 and cpedge(d1,d2,d3) and npface(+3) and cleni == neighbor.z + nleni
-				) {
-					edge_e(d1,d2,d3) -= Mag_fpz(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 1, d3 = 1; cpedge(d1,d2,d3)) {
+					if (npface(+3) and nfinfo(+3) >= 0 and cleni == neighbor.z + nleni) {
+						edge_e(d1,d2,d3) -= Mag_fpz(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
+					if (
+						neighbor.relative_size < 0
+						and cpface(+3)
+						and cfinfo(+3) >= 0
+						and neighbor.z == 0
+					) {
+						edge_e(d1,d2,d3) -= Mag_fpz(*cell.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 			}
 
 			if (fn == -2) {
 				constexpr size_t Bd = 1;
-				if (constexpr size_t d1 = 2, d2 = 0, d3 = 0;
-					nfinfo(-1) >= 0 and cpedge(d1,d2,d3) and npface(-1) and neighbor.x == 0
-				) {
-					edge_e(d1,d2,d3) -= Mag_fnx(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+
+				if (constexpr size_t d1 = 2, d2 = 0, d3 = 0; cpedge(d1,d2,d3)) {
+					if (npface(-1) and nfinfo(-1) >= 0 and neighbor.x == 0) {
+						edge_e(d1,d2,d3) -= Mag_fnx(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 
-				if (constexpr size_t d1 = 2, d2 = 1, d3 = 0;
-					nfinfo(+1) >= 0 and cpedge(d1,d2,d3) and npface(+1) and cleni == neighbor.x + nleni
-				) {
-					edge_e(d1,d2,d3) -= Mag_fpx(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 2, d2 = 1, d3 = 0; cpedge(d1,d2,d3)) {
+					if (nfinfo(+1) >= 0 and npface(+1) and cleni == neighbor.x + nleni) {
+						edge_e(d1,d2,d3) -= Mag_fpx(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
+					if (
+						neighbor.relative_size < 0
+						and cpface(+1)
+						and cfinfo(+1) >= 0
+						and neighbor.x == 0
+					) {
+						edge_e(d1,d2,d3) -= Mag_fpx(*cell.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 
-				if (constexpr size_t d1 = 0, d2 = 0, d3 = 0;
-					nfinfo(-3) >= 0 and cpedge(d1,d2,d3) and npface(-3) and neighbor.z == 0
-				) {
-					edge_e(d1,d2,d3) += Mag_fnz(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 0, d2 = 0, d3 = 0; cpedge(d1,d2,d3)) {
+					if (npface(-3) and nfinfo(-3) >= 0 and neighbor.z == 0) {
+						edge_e(d1,d2,d3) += Mag_fnz(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 
-				if (constexpr size_t d1 = 0, d2 = 0, d3 = 1;
-					nfinfo(+3) >= 0 and cpedge(d1,d2,d3) and npface(+3) and cleni == neighbor.z + nleni
-				) {
-					edge_e(d1,d2,d3) += Mag_fpz(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 0, d2 = 0, d3 = 1; cpedge(d1,d2,d3)) {
+					if (npface(+3) and nfinfo(+3) >= 0 and cleni == neighbor.z + nleni) {
+						edge_e(d1,d2,d3) += Mag_fpz(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
+					if (
+						neighbor.relative_size < 0
+						and cpface(+3)
+						and cfinfo(+3) >= 0
+						and neighbor.z == 0
+					) {
+						edge_e(d1,d2,d3) += Mag_fpz(*cell.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 			}
 
 			if (fn == +2) {
 				constexpr size_t Bd = 1;
-				if (constexpr size_t d1 = 2, d2 = 0, d3 = 1;
-					nfinfo(-1) >= 0 and cpedge(d1,d2,d3) and npface(-1) and neighbor.x == 0
-				) {
-					edge_e(d1,d2,d3) -= Mag_fnx(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+
+				if (constexpr size_t d1 = 2, d2 = 0, d3 = 1; cpedge(d1,d2,d3)) {
+					if (nfinfo(-1) >= 0 and npface(-1) and neighbor.x == 0) {
+						edge_e(d1,d2,d3) -= Mag_fnx(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 
-				if (constexpr size_t d1 = 2, d2 = 1, d3 = 1;
-					nfinfo(+1) >= 0 and cpedge(d1,d2,d3) and npface(+1) and cleni == neighbor.x + nleni
-				) {
-					edge_e(d1,d2,d3) -= Mag_fpx(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 2, d2 = 1, d3 = 1; cpedge(d1,d2,d3)) {
+					if (npface(+1) and nfinfo(+1) >= 0 and cleni == neighbor.x + nleni) {
+						edge_e(d1,d2,d3) -= Mag_fpx(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
+					if (
+						neighbor.relative_size < 0
+						and cpface(+1)
+						and cfinfo(+1) >= 0
+						and neighbor.x == 0
+					) {
+						edge_e(d1,d2,d3) -= Mag_fpx(*cell.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 
-				if (constexpr size_t d1 = 0, d2 = 1, d3 = 0;
-					nfinfo(-3) >= 0 and cpedge(d1,d2,d3) and npface(-3) and neighbor.z == 0
-				) {
-					edge_e(d1,d2,d3) += Mag_fnz(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 0, d2 = 1, d3 = 0; cpedge(d1,d2,d3)) {
+					if (nfinfo(-3) >= 0 and npface(-3) and neighbor.z == 0) {
+						edge_e(d1,d2,d3) += Mag_fnz(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 
-				if (constexpr size_t d1 = 0, d2 = 1, d3 = 1;
-					nfinfo(+3) >= 0 and cpedge(d1,d2,d3) and npface(+3) and cleni == neighbor.z + nleni
-				) {
-					edge_e(d1,d2,d3) += Mag_fpz(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 0, d2 = 1, d3 = 1; cpedge(d1,d2,d3)) {
+					if (npface(+3) and nfinfo(+3) >= 0 and cleni == neighbor.z + nleni) {
+						edge_e(d1,d2,d3) += Mag_fpz(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
+					if (
+						neighbor.relative_size < 0
+						and cpface(+3)
+						and cfinfo(+3) >= 0
+						and neighbor.z == 0
+					) {
+						edge_e(d1,d2,d3) += Mag_fpz(*cell.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 			}
 
 			if (fn == -3) {
 				constexpr size_t d3 = 0, Bd = 2;
-				if (constexpr size_t d1 = 1, d2 = 0;
-					nfinfo(-1) >= 0 and cpedge(d1,d2,d3) and npface(-1) and neighbor.x == 0
-				) {
-					edge_e(d1,d2,d3) += Mag_fnx(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+
+				if (constexpr size_t d1 = 1, d2 = 0; cpedge(d1,d2,d3)) {
+					if (npface(-1) and nfinfo(-1) >= 0 and neighbor.x == 0) {
+						edge_e(d1,d2,d3) += Mag_fnx(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 
-				if (constexpr size_t d1 = 1, d2 = 1;
-					nfinfo(+1) >= 0 and cpedge(d1,d2,d3) and npface(+1) and cleni == neighbor.x + nleni
-				) {
-					edge_e(d1,d2,d3) += Mag_fpx(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 1, d2 = 1; cpedge(d1,d2,d3)) {
+					if (npface(+1) and nfinfo(+1) >= 0 and cleni == neighbor.x + nleni) {
+						edge_e(d1,d2,d3) += Mag_fpx(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
+					if (
+						neighbor.relative_size < 0
+						and cpface(+1)
+						and cfinfo(+1) >= 0
+						and neighbor.x == 0
+					) {
+						edge_e(d1,d2,d3) += Mag_fpx(*cell.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 
-				if (constexpr size_t d1 = 0, d2 = 0;
-					nfinfo(-2) >= 0 and cpedge(d1,d2,d3) and npface(-2) and neighbor.y == 0
-				) {
-					edge_e(d1,d2,d3) -= Mag_fny(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 0, d2 = 0; cpedge(d1,d2,d3)) {
+					if (npface(-2) and nfinfo(-2) >= 0 and neighbor.y == 0) {
+						edge_e(d1,d2,d3) -= Mag_fny(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 
-				if (constexpr size_t d1 = 0, d2 = 1;
-					nfinfo(+2) >= 0 and cpedge(d1,d2,d3) and npface(+2) and cleni == neighbor.y + nleni
-				) {
-					edge_e(d1,d2,d3) -= Mag_fpy(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 0, d2 = 1; cpedge(d1,d2,d3)) {
+					if (npface(+2) and nfinfo(+2) >= 0 and cleni == neighbor.y + nleni) {
+						edge_e(d1,d2,d3) -= Mag_fpy(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
+					if (
+						neighbor.relative_size < 0
+						and cpface(+2)
+						and cfinfo(+2) >= 0
+						and neighbor.y == 0
+					) {
+						edge_e(d1,d2,d3) -= Mag_fpy(*cell.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 			}
 
 			if (fn == +3) {
 				constexpr size_t d3 = 1, Bd = 2;
-				if (constexpr size_t d1 = 1, d2 = 0;
-					nfinfo(-1) >= 0 and cpedge(d1,d2,d3) and npface(-1) and neighbor.x == 0
-				) {
-					edge_e(d1,d2,d3) += Mag_fnx(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+
+				if (constexpr size_t d1 = 1, d2 = 0; cpedge(d1,d2,d3)) {
+					if (npface(-1) and nfinfo(-1) >= 0 and neighbor.x == 0) {
+						edge_e(d1,d2,d3) += Mag_fnx(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 
-				if (constexpr size_t d1 = 1, d2 = 1;
-					nfinfo(+1) >= 0 and cpedge(d1,d2,d3) and npface(+1) and cleni == neighbor.x + nleni
-				) {
-					edge_e(d1,d2,d3) += Mag_fpx(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 1, d2 = 1; cpedge(d1,d2,d3)) {
+					if (npface(+1) and nfinfo(+1) >= 0 and cleni == neighbor.x + nleni) {
+						edge_e(d1,d2,d3) += Mag_fpx(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
+					if (
+						neighbor.relative_size < 0
+						and cpface(+1)
+						and cfinfo(+1) >= 0
+						and neighbor.x == 0
+					) {
+						edge_e(d1,d2,d3) += Mag_fpx(*cell.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 
-				if (constexpr size_t d1 = 0, d2 = 0;
-					nfinfo(-2) >= 0 and cpedge(d1,d2,d3) and npface(-2) and neighbor.y == 0
-				) {
-					edge_e(d1,d2,d3) -= Mag_fny(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 0, d2 = 0; cpedge(d1,d2,d3)) {
+					if (npface(-2) and nfinfo(-2) >= 0 and neighbor.y == 0) {
+						edge_e(d1,d2,d3) -= Mag_fny(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 
-				if (constexpr size_t d1 = 0, d2 = 1;
-					nfinfo(+2) >= 0 and cpedge(d1,d2,d3) and npface(+2) and cleni == neighbor.y + nleni
-				) {
-					edge_e(d1,d2,d3) -= Mag_fpy(*neighbor.data)[Bd];
-					e_items[d1][d2][d3]++;
+				if (constexpr size_t d1 = 0, d2 = 1; cpedge(d1,d2,d3)) {
+					if (npface(+2) and nfinfo(+2) >= 0 and cleni == neighbor.y + nleni) {
+						edge_e(d1,d2,d3) -= Mag_fpy(*neighbor.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
+					if (
+						neighbor.relative_size < 0
+						and cpface(+2)
+						and cfinfo(+2) >= 0
+						and neighbor.y == 0
+					) {
+						edge_e(d1,d2,d3) -= Mag_fpy(*cell.data)[Bd];
+						e_items[d1][d2][d3]++;
+					}
 				}
 			}
 
@@ -939,12 +1037,6 @@ template <
 						e_items[d1][d2][d3]++;
 					}
 				}
-				if (en[2] != d3 and nys < 0) {
-					if (nfinfo(+3) >= 0 and npface(+3)) {
-						edge_e(d1,d2,d3) += Mag_fpz(*neighbor.data)[1];
-						e_items[d1][d2][d3]++;
-					}
-				}
 			}
 
 			if (constexpr size_t d1 = 0, d2 = 1, d3 = 0;
@@ -960,12 +1052,6 @@ template <
 						e_items[d1][d2][d3]++;
 					}
 				}
-				if (en[1] != d2 and nzs < 0) {
-					if (nfinfo(+2) >= 0 and npface(+2)) {
-						edge_e(d1,d2,d3) -= Mag_fpy(*neighbor.data)[2];
-						e_items[d1][d2][d3]++;
-					}
-				}
 			}
 
 			if (constexpr size_t d1 = 0, d2 = 1, d3 = 1;
@@ -978,18 +1064,6 @@ template <
 					}
 					if (nfinfo(-3) >= 0 and npface(-3)) {
 						edge_e(d1,d2,d3) += Mag_fnz(*neighbor.data)[1];
-						e_items[d1][d2][d3]++;
-					}
-				}
-				if (en[1] != d2 and en[2] == d3 and pzs < 0) {
-					if (nfinfo(+2) >= 0 and npface(+2)) {
-						edge_e(d1,d2,d3) -= Mag_fpy(*neighbor.data)[2];
-						e_items[d1][d2][d3]++;
-					}
-				}
-				if (en[1] == d2 and en[2] != d3 and pys < 0) {
-					if (nfinfo(+3) >= 0 and npface(+3)) {
-						edge_e(d1,d2,d3) += Mag_fpz(*neighbor.data)[1];
 						e_items[d1][d2][d3]++;
 					}
 				}
@@ -1021,12 +1095,6 @@ template <
 						e_items[d1][d2][d3]++;
 					}
 				}
-				if (en[2] != d3 and nxs < 0) {
-					if (nfinfo(+3) >= 0 and npface(+3)) {
-						edge_e(d1,d2,d3) -= Mag_fpz(*neighbor.data)[0];
-						e_items[d1][d2][d3]++;
-					}
-				}
 			}
 
 			if (constexpr size_t d1 = 1, d2 = 1, d3 = 0;
@@ -1042,12 +1110,6 @@ template <
 						e_items[d1][d2][d3]++;
 					}
 				}
-				if (en[1] != d2 and nzs < 0) {
-					if (nfinfo(+1) >= 0 and npface(+1)) {
-						edge_e(d1,d2,d3) += Mag_fpx(*neighbor.data)[2];
-						e_items[d1][d2][d3]++;
-					}
-				}
 			}
 
 			if (constexpr size_t d1 = 1, d2 = 1, d3 = 1;
@@ -1060,18 +1122,6 @@ template <
 					}
 					if (nfinfo(-3) >= 0 and npface(-3)) {
 						edge_e(d1,d2,d3) -= Mag_fnz(*neighbor.data)[0];
-						e_items[d1][d2][d3]++;
-					}
-				}
-				if (en[1] != d2 and en[2] == d3 and pzs < 0) {
-					if (nfinfo(+1) >= 0 and npface(+1)) {
-						edge_e(d1,d2,d3) += Mag_fpx(*neighbor.data)[2];
-						e_items[d1][d2][d3]++;
-					}
-				}
-				if (en[1] == d2 and en[2] != d3 and pxs < 0) {
-					if (nfinfo(+3) >= 0 and npface(+3)) {
-						edge_e(d1,d2,d3) -= Mag_fpz(*neighbor.data)[0];
 						e_items[d1][d2][d3]++;
 					}
 				}
@@ -1103,12 +1153,6 @@ template <
 						e_items[d1][d2][d3]++;
 					}
 				}
-				if (en[2] != d3 and nxs < 0) {
-					if (nfinfo(+2) >= 0 and npface(+2)) {
-						edge_e(d1,d2,d3) += Mag_fpy(*neighbor.data)[0];
-						e_items[d1][d2][d3]++;
-					}
-				}
 			}
 
 			if (constexpr size_t d1 = 2, d2 = 1, d3 = 0;
@@ -1124,12 +1168,6 @@ template <
 						e_items[d1][d2][d3]++;
 					}
 				}
-				if (en[1] != d2 and nys < 0) {
-					if (nfinfo(+1) >= 0 and npface(+1)) {
-						edge_e(d1,d2,d3) -= Mag_fpx(*neighbor.data)[1];
-						e_items[d1][d2][d3]++;
-					}
-				}
 			}
 
 			if (constexpr size_t d1 = 2, d2 = 1, d3 = 1;
@@ -1142,18 +1180,6 @@ template <
 					}
 					if (nfinfo(-2) >= 0 and npface(-2)) {
 						edge_e(d1,d2,d3) += Mag_fny(*neighbor.data)[0];
-						e_items[d1][d2][d3]++;
-					}
-				}
-				if (en[1] != d2 and en[2] == d3 and pys < 0) {
-					if (nfinfo(+1) >= 0 and npface(+1)) {
-						edge_e(d1,d2,d3) -= Mag_fpx(*neighbor.data)[1];
-						e_items[d1][d2][d3]++;
-					}
-				}
-				if (en[1] == d2 and en[2] != d3 and pxs < 0) {
-					if (nfinfo(+2) >= 0 and npface(+2)) {
-						edge_e(d1,d2,d3) += Mag_fpy(*neighbor.data)[0];
 						e_items[d1][d2][d3]++;
 					}
 				}
