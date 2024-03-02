@@ -35,38 +35,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Author(s): Ilja Honkonen
 '''
 
-
-'''
-Returns dict of simulation data in given file open for reading
-in binary mode, excluding user data stored in simulation cells.
-'''
-def get_sim_data(infile):
-	from numpy import dtype, fromfile, int32, uint64, zeros
-	ret_val = dict()
-	file_version = fromfile(infile, dtype = 'uint64', count = 1)
-	if file_version[0] != 2:
-		exit('Unsupported file version: ' + str(file_version[0]))
-	ret_val['file_version'] = file_version
-	ret_val['sim_step'] = fromfile(infile, dtype = 'uint64', count = 1)
-	ret_val['sim_params'] = fromfile(infile, dtype = '4double', count = 1)
-	endianness = fromfile(infile, dtype = 'uint64', count = 1)
-	if endianness[0] != 0x1234567890abcdef:
-		exit('Unsupported endianness: ' + str(endianness[0]))
-	ret_val['endianness'] = endianness
-	ret_val['ref_lvl_0_cells'] = fromfile(infile, dtype = '3uint64', count = 1)
-	ret_val['max_ref_lvl'] = fromfile(infile, dtype = 'intc', count = 1)
-	ret_val['neighborhood_length'] = fromfile(infile, dtype = 'uintc', count = 1)
-	ret_val['periodicity'] = fromfile(infile, dtype = '3uint8', count = 1)
-	geometry_id = fromfile(infile, dtype = 'intc', count = 1)
-	if geometry_id[0] != int32(1):
-		exit('Unsupported geometry: ' + str(geometry_id[0]))
-	ret_val['geometry_id'] = geometry_id
-	ret_val['grid_start'] = fromfile(infile, dtype = '3double', count = 1)
-	ret_val['lvl_0_cell_length'] = fromfile(infile, dtype = '3double', count = 1)
-	total_cells = fromfile(infile, dtype = 'uint64', count = 1)
-	ret_val['total_cells'] = total_cells
-	ret_val['ids_offsets'] = fromfile(infile, dtype = '2uint64', count = total_cells[0])
-	return ret_val
+from importlib.util import module_from_spec, spec_from_file_location
+from os.path import dirname, join
+from sys import modules
+spec = spec_from_file_location('common', join(dirname(__file__), 'common.py'))
+common = module_from_spec(spec)
+modules['common'] = common
+spec.loader.exec_module(common)
 
 
 '''
@@ -79,17 +54,7 @@ Optionally writes difference between simulation data in
 infile1_name and infile2_name into outfile_name.
 '''
 def diff(args, infile1_name, infile2_name, outfile_name):
-	from os.path import exists, isfile
-	from numpy import abs, dtype, fromfile, int32, maximum, uint64, zeros
-
-	if not exists(infile1_name):
-		return 'Path ' + infile1_name + " doesn't exist"
-	if not isfile(infile1_name):
-		return 'Path ' + infile1_name + ' is not a file'
-	if not exists(infile2_name):
-		return 'Path ' + infile2_name + " doesn't exist"
-	if not isfile(infile2_name):
-		return 'Path ' + infile2_name + ' is not a file'
+	from numpy import abs, dtype, fromfile, int32, maximum, uint64
 
 	try:
 		infile1 = open(infile1_name, 'rb')
@@ -99,8 +64,8 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 
 	error = ''
 
-	data1 = get_sim_data(infile1)
-	data2 = get_sim_data(infile2)
+	data1 = common.get_metadata(infile1)
+	data2 = common.get_metadata(infile2)
 
 	if data1['file_version'] != data2['file_version']:
 		error = 'File version differs between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['file_version']) + ' != ' + str(data2['file_version'])
@@ -126,6 +91,8 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 		error = 'Length of refinement level 0 cells differ between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['lvl_0_cell_length']) + ' != ' + str(data2['lvl_0_cell_length'])
 	if data1['total_cells'] != data2['total_cells']:
 		error = 'Total number of cells differ between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['total_cells']) + ' != ' + str(data2['total_cells'])
+	data1['ids_offsets'] = common.get_cells(infile1, data1['total_cells'])
+	data2['ids_offsets'] = common.get_cells(infile2, data2['total_cells'])
 	ids1 = set([i[0] for i in data1['ids_offsets']])
 	ids2 = set([i[0] for i in data2['ids_offsets']])
 	if ids1 != ids2:
@@ -150,17 +117,13 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 		data1['total_cells'].tofile(outfile)
 		data1['ids_offsets'].tofile(outfile)
 
-	cell_data_t = 'double, 3double, double, 3double, intc, intc, 3double, 3double, 12double, 3double, 3double, 3double, 3double, 3double, 3double, double, intc'
 	ids_offsets2 = dict() # cells in different order than in infile1
 	for i in data2['ids_offsets']:
 		ids_offsets2[i[0]] = i[1]
 	for i in range(len(data1['ids_offsets'])):
 		cell_id = data1['ids_offsets'][i][0]
-		offset = data1['ids_offsets'][i][1]
-		infile1.seek(offset, 0)
-		cell_data1 = fromfile(infile1, dtype = cell_data_t, count = 1)
-		infile2.seek(ids_offsets2[cell_id], 0)
-		cell_data2 = fromfile(infile2, dtype = cell_data_t, count = 1)
+		cell_data1 = common.get_cell_data(infile1, data1['ids_offsets'][i][1])
+		cell_data2 = common.get_cell_data(infile2, ids_offsets2[cell_id])
 
 		rho1 = cell_data1[0][0]
 		rho2 = cell_data2[0][0]
@@ -201,7 +164,7 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 
 if __name__ == '__main__':
 	from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-	from os.path import basename, dirname, join
+	from os.path import basename
 	from sys import argv
 
 	parser = ArgumentParser(
