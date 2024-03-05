@@ -449,6 +449,9 @@ int main(int argc, char* argv[])
 	);
 
 	// assign cells into boundary geometries
+	for (const auto& gid: geometries.get_geometry_ids()) {
+		geometries.clear_cells(gid);
+	}
 	for (const auto& cell: grid.local_cells()) {
 		geometries.overlaps(
 			grid.geometry.get_min(cell.id),
@@ -786,6 +789,16 @@ int main(int argc, char* argv[])
 				pamhd::grid::Is_Primary_Face(),
 				pamhd::grid::Is_Primary_Edge()
 			);
+
+			for (const auto& gid: geometries.get_geometry_ids()) {
+				geometries.clear_cells(gid);
+			}
+			for (const auto& cell: grid.local_cells()) {
+				geometries.overlaps(
+					grid.geometry.get_min(cell.id),
+					grid.geometry.get_max(cell.id),
+					cell.id);
+			}
 
 			Cell::set_transfer_all(true, pamhd::mhd::Solver_Info());
 			pamhd::mhd::set_solver_info<pamhd::mhd::Solver_Info>(

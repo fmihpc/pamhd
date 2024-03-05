@@ -118,6 +118,9 @@ public:
 			value_bdy_cell{3},
 			copy_bdy_cell{4};
 
+		this->dont_solve_cells.clear();
+		this->value_bdy_cells.clear();
+
 		// all cells are normal by default
 		for (const auto& cell: grid.local_cells()) {
 			Cell_Type(*cell.data) = normal_cell;

@@ -204,9 +204,9 @@ public:
 
 	void clear_cells(const Geometry_Id& geometry) {
 		if (this->boxes.count(geometry) > 0) {
-			this->boxes.at(geometry).second.clear();
+			this->boxes.at(geometry).clear_cells();
 		} else if (this->spheres.count(geometry) > 0) {
-			this->spheres.at(geometry).clear();
+			this->spheres.at(geometry).clear_cells();
 		}
 	}
 
