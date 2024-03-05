@@ -756,10 +756,11 @@ int main(int argc, char* argv[])
 				cout << "...\nAdapting grid at time " << simulation_time << "..." << flush;
 			}
 			const pamhd::mhd::New_Cells_Handler nch(
-				Mas, Mom, Nrj, Face_B, Face_B_neg,
-				options_sim.adiabatic_index, options_sim.vacuum_permeability
-			);
-			const pamhd::mhd::Removed_Cells_Handler rch(Mas, Mom, Nrj, Face_B, Face_B_neg);
+				Mas, Mom, Nrj, Face_B, Face_B_neg, Bg_B, background_B,
+				options_sim.adiabatic_index, options_sim.vacuum_permeability);
+			const pamhd::mhd::Removed_Cells_Handler rch(
+				Mas, Mom, Nrj, Face_B, Face_B_neg, Bg_B, background_B,
+				options_sim.adiabatic_index, options_sim.vacuum_permeability);
 			pamhd::mhd::enforce_boundary_cell_sizes(grid, Sol_Info2);
 			Cell::set_transfer_all(true,
 				pamhd::Face_Magnetic_Field(),
@@ -836,6 +837,36 @@ int main(int argc, char* argv[])
 				pamhd::Face_Magnetic_Field_Neg(),
 				pamhd::mhd::MHD_State_Conservative()
 			);
+			// background B isn't updated between processes
+			for (const auto& cell: grid.remote_cells()) {
+				const auto [rx, ry, rz] = grid.geometry.get_center(cell.id);
+				const auto [sx, sy, sz] = grid.geometry.get_min(cell.id);
+				const auto [ex, ey, ez] = grid.geometry.get_max(cell.id);
+				Bg_B(*cell.data)(0, 0) = background_B.get_background_field(
+					{sx, ry, rz},
+					options_sim.vacuum_permeability
+				);
+				Bg_B(*cell.data)(0, 1) = background_B.get_background_field(
+					{ex, ry, rz},
+					options_sim.vacuum_permeability
+				);
+				Bg_B(*cell.data)(1, 0) = background_B.get_background_field(
+					{rx, sy, rz},
+					options_sim.vacuum_permeability
+				);
+				Bg_B(*cell.data)(1, 1) = background_B.get_background_field(
+					{rx, ey, rz},
+					options_sim.vacuum_permeability
+				);
+				Bg_B(*cell.data)(2, 0) = background_B.get_background_field(
+					{rx, ry, sz},
+					options_sim.vacuum_permeability
+				);
+				Bg_B(*cell.data)(2, 1) = background_B.get_background_field(
+					{rx, ry, ez},
+					options_sim.vacuum_permeability
+				);
+			}
 		}
 
 		/*
