@@ -31,9 +31,11 @@ from os.path import basename, dirname, join
 from sys import argv, stdout
 
 DefineScalarExpression('number_density', 'mass_density / 1.67262192369e-21')
+DefineScalarExpression('V', 'velocity_magnitude')
 DefineScalarExpression('Vx', 'velocity[0]')
 DefineScalarExpression('Vy', 'velocity[1]')
 DefineScalarExpression('Vz', 'velocity[2]')
+DefineScalarExpression('divB', 'divergence_of_magnetic_field')
 DefineScalarExpression('B', 'total_face_magnetic_field_magnitude')
 DefineScalarExpression('Bx', 'total_face_magnetic_field[0]')
 DefineScalarExpression('By', 'total_face_magnetic_field[1]')
@@ -126,11 +128,9 @@ def save_slice_plot(
 
 
 plot_vars = {
-	'number_density',
-	'number_density_log',
-	'pressure',
-	'pressure_log',
-	'Vx', 'Vy', 'Vz',
+	'mass_density', 'pressure',
+	'number_density', 'divB',
+	'V', 'Vx', 'Vy', 'Vz',
 	'B', 'Bx', 'By', 'Bz',
 	'B0', 'B0x', 'B0y', 'B0z',
 	'B1', 'B1x', 'B1y', 'B1z'
@@ -154,7 +154,7 @@ args.dimensions = [d for d in args.dimensions.split(',') if d in {'x','y','z'}]
 if args.verbose:
 	stdout.write('Plotting dimensions: ' + str(args.dimensions) + '\n')
 
-args.variables = [v for v in args.variables.split(',') if v in plot_vars]
+args.variables = [v for v in args.variables.split(',') if v.replace('_log','') in plot_vars]
 if args.verbose:
 	stdout.write('Plotting variables: ' + str(args.variables) + '\n')
 
