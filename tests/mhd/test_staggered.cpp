@@ -430,7 +430,6 @@ int main(int argc, char* argv[])
 		abort();
 	}
 
-	pamhd::mhd::enforce_boundary_cell_sizes(grid, Sol_Info2);
 	pamhd::grid::adapt_grid(grid, options_grid, options_sim.time_start);
 	grid.balance_load();
 	for (const auto& cell: grid.local_cells()) {
@@ -761,7 +760,6 @@ int main(int argc, char* argv[])
 			const pamhd::mhd::Removed_Cells_Handler rch(
 				Mas, Mom, Nrj, Face_B, Face_B_neg, Bg_B, background_B,
 				options_sim.adiabatic_index, options_sim.vacuum_permeability);
-			pamhd::mhd::enforce_boundary_cell_sizes(grid, Sol_Info2);
 			Cell::set_transfer_all(true,
 				pamhd::Face_Magnetic_Field(),
 				pamhd::Face_Magnetic_Field_Neg(),
