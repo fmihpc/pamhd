@@ -755,10 +755,10 @@ int main(int argc, char* argv[])
 				cout << "...\nAdapting grid at time " << simulation_time << "..." << flush;
 			}
 			const pamhd::mhd::New_Cells_Handler nch(
-				Mas, Mom, Nrj, Face_B, Face_B_neg, Bg_B, background_B,
+				Mas, Mom, Nrj, Face_B, Face_B_neg, Mag, Bg_B, background_B,
 				options_sim.adiabatic_index, options_sim.vacuum_permeability);
 			const pamhd::mhd::Removed_Cells_Handler rch(
-				Mas, Mom, Nrj, Face_B, Face_B_neg, Bg_B, background_B,
+				Mas, Mom, Nrj, Face_B, Face_B_neg, Mag, Bg_B, background_B,
 				options_sim.adiabatic_index, options_sim.vacuum_permeability);
 			Cell::set_transfer_all(true,
 				pamhd::Face_Magnetic_Field(),
@@ -822,7 +822,7 @@ int main(int argc, char* argv[])
 				PFace, FInfo,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
-				false // volume B undefined before this call
+				true
 			);
 			Cell::set_transfer_all(true,
 				pamhd::Face_Magnetic_Field(),
