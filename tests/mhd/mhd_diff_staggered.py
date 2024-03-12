@@ -97,6 +97,8 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 	ids2 = set([i[0] for i in data2['ids_offsets']])
 	if ids1 != ids2:
 		error = 'Cells that exist differs between ' + infile1_name + ' and ' + infile2_name
+	if error != '':
+		return error
 
 	if args.write:
 		try:
@@ -123,7 +125,11 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 	for i in range(len(data1['ids_offsets'])):
 		cell_id = data1['ids_offsets'][i][0]
 		cell_data1 = common.get_cell_data(infile1, data1['ids_offsets'][i][1])
+		if len(cell_data1) == 0:
+			return "Couldn't read data of cell " + str(cell_id) + ' at offset ' + str(data1['ids_offsets'][i][1]) + ' in file ' + infile1_name
 		cell_data2 = common.get_cell_data(infile2, ids_offsets2[cell_id])
+		if len(cell_data2) == 0:
+			return "Couldn't read data of cell " + str(cell_id) + ' at offset ' + str(ids_offsets2[cell_id]) + ' in file ' + infile2_name
 
 		rho1 = cell_data1[0][0]
 		rho2 = cell_data2[0][0]
