@@ -13,13 +13,13 @@
 	"mhd-time-step-factor": 0.4,
 	"grid-options": {
 		"periodic": "{false, true, false}",
-		"cells": "{63 + 2, 1, 37 + 2}",
-		"volume": "{250 * 6.371e6 * (1 + 2/(cells[0] - 2)), 150 * 6.371e6, 150 * 6.371e6 * (1 + 2/(cells[2] - 2))}",
-		"start": "{-150 * 6.371e6 - volume[0] / cells[0], -volume[1] / 2, -volume[2] / 2}"
+		"cells": "{40 + 2, 1, 20 + 2}",
+		"volume": "{400 * 6.371e6 * (1 + 2/(cells[0] - 2)), 200 * 6.371e6, 200 * 6.371e6 * (1 + 2/(cells[2] - 2))}",
+		"start": "{-volume[0] / 2, -volume[1] / 2, -volume[2] / 2}"
 	},
 	"geometries": [
 		{"box": {
-			"start": [6.371e8, -9e99, -9e99],
+			"start": [1.2742e9, -9e99, -9e99],
 			"end": [9e99, 9e99, 9e99]
 		}},
 		{"sphere": {
@@ -28,14 +28,14 @@
 		}},
 		{"box": {
 			"start": [-9e99, -9e99, -9e99],
-			"end": [-9.557e8, 9e99, 9e99]
+			"end": [-1.2742e9, 9e99, 9e99]
 		}},
 		{"box": {
 			"start": [-9e99, -9e99, -9e99],
-			"end": [9e99, 9e99, -4.779e8]
+			"end": [9e99, 9e99, -6.371e8]
 		}},
 		{"box": {
-			"start": [-9e99, -9e99, 4.779e8],
+			"start": [-9e99, -9e99, 6.371e8],
 			"end": [9e99, 9e99, 9e99]
 		}}
 	],
@@ -66,10 +66,10 @@
 	"pressure": {
 		"default": 1e-11,
 		"value-boundaries": [
-			{"geometry-id": 0, "time-stamps": [0], "values": [1e-11]}
+			{"geometry-id": 0, "time-stamps": [0], "values": [1e-11]},
+			{"geometry-id": 1, "time-stamps": [0], "values": [1e-10]}
 		],
 		"copy-boundaries": [
-			{"geometry-id": 1},
 			{"geometry-id": 2},
 			{"geometry-id": 3},
 			{"geometry-id": 4}
