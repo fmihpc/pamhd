@@ -2,6 +2,7 @@
 Particle variables and cell class of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_PARTICLE_VARIABLES_HPP
@@ -37,7 +41,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "array"
 #include "vector"
 
+#ifndef DONT_USE_MPI
 #include "mpi.h" // must be included before gensimcell.hpp
+#endif
 #include "Eigen/Core" // must be included before gensimcell.hpp
 #include "gensimcell.hpp"
 
@@ -311,9 +317,7 @@ using Cell_hyb_particle = gensimcell::Cell<
 	pamhd::MPI_Rank,
 	pamhd::Resistivity,
 	pamhd::Magnetic_Field,
-	pamhd::Bg_Magnetic_Field_Pos_X,
-	pamhd::Bg_Magnetic_Field_Pos_Y,
-	pamhd::Bg_Magnetic_Field_Pos_Z,
+	pamhd::Bg_Magnetic_Field,
 	pamhd::Magnetic_Field_Resistive,
 	pamhd::Magnetic_Field_Temp,
 	pamhd::Magnetic_Field_Divergence,

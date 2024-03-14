@@ -39,6 +39,7 @@ Author(s): Ilja Honkonen
 
 #include "algorithm"
 #include "initializer_list"
+#include "set"
 #include "stdexcept"
 #include "string"
 #include "type_traits"

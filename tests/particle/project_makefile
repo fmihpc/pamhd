@@ -91,7 +91,11 @@ TEST_PARTICLE_COMMON_COMPILE = \
   $(BOOST_CPPFLAGS) \
   $(EIGEN_CPPFLAGS) \
   $(GENSIMCELL_CPPFLAGS) \
-  $(PRETTYPRINT_CPPFLAGS)
+  $(MUPARSERX_CPPFLAGS) \
+  $(MUPARSERX_LDFLAGS) \
+  $(MUPARSERX_LIBS) \
+  $(PRETTYPRINT_CPPFLAGS) \
+  $(RAPIDJSON_CPPFLAGS)
 
 TEST_PARTICLE_SOLVE_COMPILE = \
 	$(TEST_PARTICLE_COMMON_COMPILE) \
@@ -110,17 +114,17 @@ tests/particle/solve1.exe: \
   tests/particle/solve1.cpp \
   $(TEST_PARTICLE_COMMON_DEPS) \
   source/particle/solve.hpp
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_PARTICLE_COMMON_COMPILE)
+	@printf "MPICXX $<\n" && $(MPICXX) -DDONT_USE_MPI $(TEST_PARTICLE_COMMON_COMPILE)
 
 tests/particle/common.exe: \
   tests/particle/common.cpp \
   $(TEST_PARTICLE_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_PARTICLE_COMMON_COMPILE)
+	@printf "MPICXX $<\n" && $(MPICXX) -DDONT_USE_MPI $(TEST_PARTICLE_COMMON_COMPILE)
 
 tests/particle/odeint.exe: \
   tests/particle/odeint.cpp \
   $(TEST_PARTICLE_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_PARTICLE_COMMON_COMPILE) \
+	@printf "MPICXX $<\n" && $(MPICXX) -DDONT_USE_MPI $(TEST_PARTICLE_COMMON_COMPILE) \
 	  $(BOOST_LDFLAGS) \
 	  $(BOOST_LIBS) \
 	  -Wno-unused-variable \
@@ -145,22 +149,22 @@ tests/particle/dipole_odeint.exe: \
 tests/particle/create_particles.exe: \
   tests/particle/create_particles.cpp \
   $(TEST_PARTICLE_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_PARTICLE_COMMON_COMPILE)
+	@printf "MPICXX $<\n" && $(MPICXX) -DDONT_USE_MPI $(TEST_PARTICLE_COMMON_COMPILE)
 
 tests/particle/calculate_moments.exe: \
   tests/particle/calculate_moments.cpp \
   $(TEST_PARTICLE_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_PARTICLE_COMMON_COMPILE)
+	@printf "MPICXX $<\n" && $(MPICXX) -DDONT_USE_MPI $(TEST_PARTICLE_COMMON_COMPILE)
 
 tests/particle/temperature.exe: \
   tests/particle/temperature.cpp \
   $(TEST_PARTICLE_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_PARTICLE_COMMON_COMPILE)
+	@printf "MPICXX $<\n" && $(MPICXX) -DDONT_USE_MPI $(TEST_PARTICLE_COMMON_COMPILE)
 
 tests/particle/velocity.exe: \
   tests/particle/velocity.cpp \
   $(TEST_PARTICLE_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_PARTICLE_COMMON_COMPILE)
+	@printf "MPICXX $<\n" && $(MPICXX) -DDONT_USE_MPI $(TEST_PARTICLE_COMMON_COMPILE)
 
 tests/particle/accumulate.exe: \
   tests/particle/accumulate.cpp \
@@ -172,7 +176,7 @@ tests/particle/pressure_accumulation.exe: \
   tests/particle/pressure_accumulation.cpp \
   $(TEST_PARTICLE_COMMON_DEPS) \
   source/particle/accumulate.hpp
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_PARTICLE_COMMON_COMPILE)
+	@printf "MPICXX $<\n" && $(MPICXX) -DDONT_USE_MPI $(TEST_PARTICLE_COMMON_COMPILE)
 
 tests/particle/reference.exe: \
   tests/particle/reference.cpp \
