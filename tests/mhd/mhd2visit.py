@@ -133,7 +133,8 @@ plot_vars = {
 	'V', 'Vx', 'Vy', 'Vz',
 	'B', 'Bx', 'By', 'Bz',
 	'B0', 'B0x', 'B0y', 'B0z',
-	'B1', 'B1x', 'B1y', 'B1z'
+	'B1', 'B1x', 'B1y', 'B1z',
+	'target_ref_lvl_min', 'target_ref_lvl_max'
 }
 plot_vars_str = ''
 for v in sorted(plot_vars):

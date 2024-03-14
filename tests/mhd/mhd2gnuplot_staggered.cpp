@@ -2,7 +2,7 @@
 Program for plotting MHD output of PAMHD with gnuplot.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2022 Finnish Meteorological Institute
+Copyright 2022, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #include "array"
@@ -217,9 +220,12 @@ std::optional<std::array<double, 4>> read_data(
 		pamhd::mhd::Solver_Info(),
 		pamhd::MPI_Rank(),
 		pamhd::Face_Magnetic_Field(),
+		pamhd::Face_Magnetic_Field_Neg(),
 		pamhd::Edge_Electric_Field(),
 		pamhd::Bg_Magnetic_Field(),
-		pamhd::Magnetic_Field_Divergence()
+		pamhd::Magnetic_Field_Divergence(),
+		pamhd::grid::Target_Refinement_Level_Min(),
+		pamhd::grid::Target_Refinement_Level_Max()
 	);
 	for (const auto& item: cells_offsets) {
 		const uint64_t
@@ -644,6 +650,30 @@ int plot_1d(
 		gnuplot_file << x << " " << E(2,1,1) << "\n";
 	}
 	gnuplot_file << "end\nreset\n";
+
+	// target refinement levels
+	gnuplot_file
+		<< common_cmd
+		<< "\nset output '"
+		<< output_file_name_prefix + "_ref.png"
+		<< "'\nset title 'Target refinement levels'"
+		<< "\nset key horizontal bottom outside\nplot "
+		     "'-' u 1:2 lw 2 t 'Min', "
+		     "'-' u 1:2 lw 2 t 'Max'\n";
+
+	for (const auto& cell_id: cells) {
+		const auto& ref = simulation_data.at(cell_id)[pamhd::grid::Target_Refinement_Level_Min()];
+		const double x = geometry.get_center(cell_id)[tube_dim];
+		gnuplot_file << x << " " << ref << "\n";
+	}
+	gnuplot_file << "end\n";
+
+	for (const auto& cell_id: cells) {
+		const auto& ref = simulation_data.at(cell_id)[pamhd::grid::Target_Refinement_Level_Max()];
+		const double x = geometry.get_center(cell_id)[tube_dim];
+		gnuplot_file << x << " " << ref << "\n";
+	}
+	gnuplot_file << "end\n";
 
 
 	gnuplot_file.close();

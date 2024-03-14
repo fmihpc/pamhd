@@ -2,7 +2,7 @@
 Program for converting MHD output of PAMHD to vtk format.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2022, 2023 Finnish Meteorological Institute
+Copyright 2022, 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #include "array"
@@ -220,7 +223,8 @@ std::optional<std::array<double, 4>> read_data(
 		pamhd::Edge_Electric_Field(),
 		pamhd::Bg_Magnetic_Field(),
 		pamhd::Magnetic_Field_Divergence(),
-		pamhd::grid::Target_Refinement_Level()
+		pamhd::grid::Target_Refinement_Level_Min(),
+		pamhd::grid::Target_Refinement_Level_Max()
 	);
 	for (const auto& item: cells_offsets) {
 		const uint64_t
@@ -506,9 +510,14 @@ void convert(
 			<< magnetic_field[2] << "\n";
 	}
 
-	vtk_file << "SCALARS target_ref_lvl int 1\nlookup_table default\n";
+	vtk_file << "SCALARS target_ref_lvl_min int 1\nlookup_table default\n";
 	for (const auto& cell: cells) {
-		vtk_file << simulation_data.at(cell)[pamhd::grid::Target_Refinement_Level()] << "\n";
+		vtk_file << simulation_data.at(cell)[pamhd::grid::Target_Refinement_Level_Min()] << "\n";
+	}
+
+	vtk_file << "SCALARS target_ref_lvl_max int 1\nlookup_table default\n";
+	for (const auto& cell: cells) {
+		vtk_file << simulation_data.at(cell)[pamhd::grid::Target_Refinement_Level_Max()] << "\n";
 	}
 }
 

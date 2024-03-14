@@ -74,6 +74,6 @@ Returns data of one cell from given byte offset in infile.
 '''
 def get_cell_data(infile, offset):
 	from numpy import dtype, fromfile
-	cell_data_t = 'double, 3double, double, 3double, intc, intc, 3double, 3double, 12double, 3double, 3double, 3double, 3double, 3double, 3double, double, intc'
+	cell_data_t = 'double, 3double, double, 3double, intc, intc, 3double, 3double, 12double, 3double, 3double, 3double, 3double, 3double, 3double, double, intc, intc'
 	infile.seek(offset, 0)
 	return fromfile(infile, dtype = cell_data_t, count = 1)

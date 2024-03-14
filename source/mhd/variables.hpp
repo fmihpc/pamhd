@@ -2,7 +2,7 @@
 MHD variables and cell class of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2023 Finnish Meteorological Institute
+Copyright 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_MHD_VARIABLES_HPP
@@ -330,7 +333,6 @@ struct Edge_Boundary_Type {
 using Cell_Staggered = gensimcell::Cell<
 	gensimcell::Optional_Transfer,
 	pamhd::mhd::MHD_State_Conservative,
-	//pamhd::Electric_Current_Density,
 	pamhd::mhd::Solver_Info,
 	pamhd::MPI_Rank,
 	//pamhd::Resistivity,
@@ -338,14 +340,14 @@ using Cell_Staggered = gensimcell::Cell<
 	/*pamhd::Magnetic_Field_Resistive,
 	pamhd::Magnetic_Field_Temp,*/
 	pamhd::Magnetic_Field_Divergence,
-	//pamhd::Scalar_Potential_Gradient,
 	pamhd::mhd::MHD_Flux,
 	pamhd::Face_Magnetic_Field,
 	pamhd::Face_Magnetic_Field_Neg,
 	pamhd::Edge_Electric_Field,
 	pamhd::grid::Is_Primary_Face,
 	pamhd::grid::Is_Primary_Edge,
-	pamhd::grid::Target_Refinement_Level,
+	pamhd::grid::Target_Refinement_Level_Max,
+	pamhd::grid::Target_Refinement_Level_Min,
 	pamhd::mhd::Face_Boundary_Type,
 	pamhd::mhd::Edge_Boundary_Type
 >;

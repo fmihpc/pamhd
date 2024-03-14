@@ -299,7 +299,7 @@ public:
 			if (this->max_ref_lvl < 0) {
 				throw std::invalid_argument(
 					std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
-					+ "JSON item max-ref-lvl cannot be negative."
+					+ "JSON item max-ref-lvl must not be negative."
 				);
 			}
 		} else if (
@@ -337,7 +337,7 @@ public:
 				if (this->min_ref_lvl_i > this->max_ref_lvl) {
 					throw invalid_argument(
 						__FILE__ "(" + to_string(__LINE__) + "): "
-						+ "JSON item ref-lvl-at-least cannot be larger than max-ref-lvl."
+						+ "JSON item ref-lvl-at-least must not be larger than max-ref-lvl."
 					);
 				}
 			} else if (min_ref_lvl_json.IsString()) {
@@ -370,7 +370,7 @@ public:
 				if (this->max_ref_lvl_i > this->max_ref_lvl) {
 					throw invalid_argument(
 						__FILE__ "(" + to_string(__LINE__) + "): "
-						+ "JSON item ref-lvl-at-most cannot be larger than max-ref-lvl."
+						+ "JSON item ref-lvl-at-most must not be larger than max-ref-lvl."
 					);
 				}
 				if (this->min_ref_lvl_i >=0 and this->max_ref_lvl_i < this->min_ref_lvl_i) {

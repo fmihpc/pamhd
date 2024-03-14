@@ -1,7 +1,7 @@
 /*
 Grid stuff related to adaptive mesh refinement of PAMHD.
 
-Copyright 2023 Finnish Meteorological Institute
+Copyright 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +28,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_GRID_AMR_HPP
@@ -47,13 +50,20 @@ namespace pamhd {
 namespace grid {
 
 
-/*! Variable indicating refinement level towards which grid cells should be refined.
+/*! Variable indicating minimum refinement level towards which grid cells should be refined.
 */
-struct Target_Refinement_Level {
+struct Target_Refinement_Level_Min {
 	using data_type = int;
-	static const std::string get_name() { return {"target refinement level"}; }
-	static const std::string get_option_name() { return {"target-ref-lvl"}; }
-	static const std::string get_option_help() { return {"Target refinement level of cell"}; }
+	static const std::string get_name() { return {"target minimum refinement level"}; }
+	static const std::string get_option_name() { return {"target-min-ref-lvl"}; }
+	static const std::string get_option_help() { return {"Target minimum refinement level of cell"}; }
+};
+
+struct Target_Refinement_Level_Max {
+	using data_type = int;
+	static const std::string get_name() { return {"target maximum refinement level"}; }
+	static const std::string get_option_name() { return {"target-max-ref-lvl"}; }
+	static const std::string get_option_help() { return {"Target maximum refinement level of cell"}; }
 };
 
 
@@ -476,14 +486,102 @@ std::array<int, 2> get_target_refinement_level(
 	return ret_val;
 }
 
-// for adapt_grid() below
-struct Default_Cells_Handler {
-	template <class Grid, class Cells> void operator()(const Grid&, const Cells&) const {
-		return;
+// Handlers that only handle target refinement levels.
+template<
+	class Target_Refinement_Level_Min_Getter,
+	class Target_Refinement_Level_Max_Getter
+> struct New_Cells_Handler {
+	const Target_Refinement_Level_Min_Getter& RLMin;
+	const Target_Refinement_Level_Max_Getter& RLMax;
+
+	New_Cells_Handler(
+		const Target_Refinement_Level_Min_Getter& RLMin_,
+		const Target_Refinement_Level_Max_Getter& RLMax_
+	) :
+		RLMin(RLMin_), RLMax(RLMax_)
+	{};
+
+	template <
+		class Grid, class Cells
+	> void operator()(
+		const Grid& grid, const Cells& new_cells
+	) const {
+		using std::runtime_error;
+		using std::to_string;
+		for (const auto& new_cell_id: new_cells) {
+			auto* const cell_data = grid[new_cell_id];
+			if (cell_data == nullptr) {
+				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
+			}
+			const auto parent_id = grid.mapping.get_parent(new_cell_id);
+			auto* const parent_data = grid[parent_id];
+			if (parent_data == nullptr) {
+				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
+			}
+			RLMin(*cell_data) = RLMin(*parent_data);
+			RLMax(*cell_data) = RLMax(*parent_data);
+		}
 	}
 };
 
-/*! Adapts given grid based on given geometrical options
+template<
+	class Target_Refinement_Level_Min_Getter,
+	class Target_Refinement_Level_Max_Getter
+> struct Removed_Cells_Handler {
+	const Target_Refinement_Level_Min_Getter& RLMin;
+	const Target_Refinement_Level_Max_Getter& RLMax;
+
+	Removed_Cells_Handler(
+		const Target_Refinement_Level_Min_Getter& RLMin_,
+		const Target_Refinement_Level_Max_Getter& RLMax_
+	) :
+		RLMin(RLMin_), RLMax(RLMax_)
+	{};
+
+	template <
+		class Grid, class Cells
+	> void operator()(
+		const Grid& grid, const Cells& removed_cells
+	) const {
+		using std::runtime_error;
+		using std::to_string;
+
+		// process each parent of removed cells only once
+		std::set<uint64_t> parents;
+		for (const auto& removed_cell: removed_cells) {
+			parents.insert(grid.mapping.get_parent(removed_cell));
+		}
+
+		// initialize data of parents of removed cells
+		for (const auto& parent: parents) {
+			auto* const parent_data = grid[parent];
+			if (parent_data == nullptr) {
+				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
+			}
+			RLMin(*parent_data) = 999;
+			RLMax(*parent_data) = 0;
+		}
+
+		// parent's refinement range spans all of childrens'
+		for (const auto& removed_cell_id: removed_cells) {
+			auto* const removed_cell_data = grid[removed_cell_id];
+			if (removed_cell_data == nullptr) {
+				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
+			}
+			const auto parent_id = grid.mapping.get_parent(removed_cell_id);
+			auto* const parent_data = grid[parent_id];
+			if (parent_data == nullptr) {
+				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
+			}
+			RLMin(*parent_data) = std::min(RLMin(*removed_cell_data), RLMin(*parent_data));
+			RLMax(*parent_data) = std::max(RLMax(*removed_cell_data), RLMax(*parent_data));
+		}
+	}
+};
+
+/*! Adapts given grid based on target min and max refinement level.
+
+Grid is adapted at most grid.get_maximum_refinement_level() times.
 
 Handlers must have following operator() signature:
 nch(grid, new_cells);
@@ -494,28 +592,28 @@ const auto removed_cells = grid.get_removed_cells();
 */
 template <
 	class Grid,
-	class New_Cells_Handler = Default_Cells_Handler,
-	class Removed_Cells_Handler = Default_Cells_Handler
+	class Target_Refinement_Level_Min_Getter,
+	class Target_Refinement_Level_Max_Getter,
+	class New_Cells_Handler,
+	class Removed_Cells_Handler
 > void adapt_grid(
 	Grid& grid,
-	Options& options,
-	const double& sim_time,
-	const New_Cells_Handler& nch = Default_Cells_Handler(),
-	const Removed_Cells_Handler& rch = Default_Cells_Handler()
+	const Target_Refinement_Level_Min_Getter& RLMin,
+	const Target_Refinement_Level_Max_Getter& RLMax,
+	const New_Cells_Handler& nch,
+	const Removed_Cells_Handler& rch
 ) {
 	#ifdef MPI_VERSION
 	MPI_Comm comm = grid.get_communicator();
 	#endif
 	for (int i = 0; i < grid.get_maximum_refinement_level(); i++) {
 		for (const auto& cell: grid.local_cells()) {
-			const auto c = grid.geometry.get_center(cell.id);
 			const auto ref_lvl = grid.get_refinement_level(cell.id);
-			const auto tgt_ref_lvl = get_target_refinement_level(options, sim_time, c);
-			if (ref_lvl < tgt_ref_lvl[0]) {
+			if (ref_lvl < RLMin(*cell.data)) {
 				grid.refine_completely(cell.id);
-			} else if (ref_lvl == tgt_ref_lvl[0]) {
+			} else if (ref_lvl == RLMin(*cell.data)) {
 				grid.dont_unrefine(cell.id);
-			} else if (ref_lvl > tgt_ref_lvl[1]) {
+			} else if (ref_lvl > RLMax(*cell.data)) {
 				grid.unrefine_completely(cell.id);
 			}
 		}
@@ -539,6 +637,29 @@ template <
 	#ifdef MPI_VERSION
 	MPI_Comm_free(&comm);
 	#endif
+}
+
+
+//! Sets min,max refinement levels based on geometry.
+template <
+	class Cells,
+	class Grid,
+	class Target_Refinement_Level_Min_Getter,
+	class Target_Refinement_Level_Max_Getter
+> void get_minmax_refinement_level(
+	const Cells& cells,
+	Grid& grid,
+	Options& options,
+	const double& sim_time,
+	const Target_Refinement_Level_Min_Getter& RLMin,
+	const Target_Refinement_Level_Max_Getter& RLMax
+) {
+	for (const auto& cell: cells) {
+		const auto c = grid.geometry.get_center(cell.id);
+		const auto [rlmin, rlmax] = get_target_refinement_level(options, sim_time, c);
+		RLMin(*cell.data) = rlmin;
+		RLMax(*cell.data) = rlmax;
+	}
 }
 
 }} // namespaces

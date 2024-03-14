@@ -1,7 +1,7 @@
 /*
 Adaptive mesh refinement logic of MHD part of PAMHD
 
-Copyright 2023 Finnish Meteorological Institute
+Copyright 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +28,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_MHD_AMR_HPP
@@ -48,6 +51,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "grid/variables.hpp"
 #include "mhd/common.hpp"
+#include "mhd/options.hpp"
 #include "mhd/variables.hpp"
 
 
@@ -206,50 +210,140 @@ template <
 }
 
 
-/*! Refines/unrefines given cells.
+/*! Constrains min,max refinement levels based on physics.
+
+Dont_solve, boundary cells and their normal face neighbors
+are kept at current refinement level.
 */
 template <
-	class Solver_Info,
-	class Cell_Iter,
+	class Cells,
 	class Grid,
-	class Target_Refinement_Level_Getter,
-	class Solver_Info_Getter
-> std::vector<uint64_t> adapt_grid(
-	const Cell_Iter& cells,
+	class Mass_Density_Getter,
+	class Momentum_Density_Getter,
+	class Total_Energy_Density_Getter,
+	class Volume_Magnetic_Field_Getter,
+	class Solver_Info_Getter,
+	class Target_Refinement_Level_Min_Getter,
+	class Target_Refinement_Level_Max_Getter
+> void get_minmax_refinement_level(
+	const Cells& cells,
 	Grid& grid,
-	const Target_Refinement_Level_Getter Ref,
-	const Solver_Info_Getter Sol_Info
+	Options& options_mhd,
+	const Mass_Density_Getter& Mas,
+	const Momentum_Density_Getter& Mom,
+	const Total_Energy_Density_Getter& Nrj,
+	const Volume_Magnetic_Field_Getter& Mag,
+	const Solver_Info_Getter& Solver_Info,
+	const Target_Refinement_Level_Min_Getter& RLMin,
+	const Target_Refinement_Level_Max_Getter& RLMax,
+	const double& adiabatic_index,
+	const double& vacuum_permeability
 ) {
+	using std::abs;
+	using std::clamp;
+	using std::max;
+	using std::min;
+	using std::round;
 	using std::to_string;
 
+	const auto max_ref_lvl = grid.get_maximum_refinement_level();
+	if (max_ref_lvl == 0) return;
+
 	for (const auto& cell: cells) {
-		if ((Sol_Info(*cell.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
+
+		bool skip = false;
+		if (Solver_Info(*cell.data) <= 0) {
+			skip = true;
+		} else {
+			for (const auto& neighbor: cell.neighbors_of) {
+				if (Solver_Info(*neighbor.data) <= 0) {
+					skip = true;
+					break;
+				}
+			}
+		}
+		if (skip) {
+			RLMin(*cell.data) =
+			RLMax(*cell.data) = grid.get_refinement_level(cell.id);
 			continue;
 		}
 
-		const auto cref_lvl = grid.mapping.get_refinement_level(cell.id);
-		const auto tgt_lvl = Ref(*cell.data);
-		if (tgt_lvl < cref_lvl) {
-			grid.unrefine_completely(cell.id);
-		} else if (tgt_lvl > cref_lvl) {
-			grid.refine_completely(cell.id);
-		} else {
-			grid.dont_unrefine(cell.id);
-		}
-	}
+		const auto [cdx, cdy, cdz] = grid.geometry.get_length(cell.id);
+		const auto
+			cpre = max(options_mhd.pressure_min_mrg, get_pressure(
+				Mas(*cell.data), Mom(*cell.data), Nrj(*cell.data),
+				Mag(*cell.data), adiabatic_index, vacuum_permeability)),
+			cmas = max(Mas(*cell.data), options_mhd.number_density_min_mrg),
+			cvel = max((Mom(*cell.data) / Mas(*cell.data)).norm(), options_mhd.vel_min_mrg),
+			cmag = max(Mag(*cell.data).norm(), options_mhd.mag_min_mrg);
 
-	return grid.stop_refining();
+		// maximum relative gradients w.r.t. neighbors
+		double
+			mrg_mas = 0,
+			mrg_vel = 0,
+			mrg_pre = 0,
+			mrg_mag = 0;
+		for (const auto& neighbor: cell.neighbors_of) {
+			if (Solver_Info(*neighbor.data) <= 0) {
+				continue;
+			}
+
+			if (neighbor.face_neighbor == 0) {
+				continue;
+			}
+
+			const auto [ndx, ndy, ndz] = grid.geometry.get_length(neighbor.id);
+			const auto
+				npre = max(options_mhd.pressure_min_mrg, get_pressure(
+					Mas(*neighbor.data), Mom(*neighbor.data), Nrj(*neighbor.data),
+					Mag(*neighbor.data), adiabatic_index, vacuum_permeability)),
+				nmas = max(Mas(*neighbor.data), options_mhd.number_density_min_mrg),
+				nvel = max((Mom(*neighbor.data) / Mas(*neighbor.data)).norm(), options_mhd.vel_min_mrg),
+				nmag = max(Mag(*neighbor.data).norm(), options_mhd.mag_min_mrg);
+
+			const auto len = [&](){
+				switch (neighbor.face_neighbor) {
+				case -1:
+				case +1:
+					return 0.5 * (cdx + ndx);
+					break;
+				case -2:
+				case +2:
+					return 0.5 * (cdy + ndy);
+					break;
+				case -3:
+				case +3:
+					return 0.5 * (cdz + ndz);
+					break;
+				default:
+					throw std::runtime_error(__FILE__ ":" + to_string(__LINE__));
+					break;
+				}
+				return -1.0;
+			}();
+
+			mrg_mas = max(mrg_mas, abs(cmas-nmas) / max(cmas, nmas) / len);
+			mrg_vel = max(mrg_vel, abs(cvel-nvel) / max(cvel, nvel) / len);
+			mrg_pre = max(mrg_pre, abs(cpre-npre) / max(cpre, npre) / len);
+			mrg_mag = max(mrg_mag, abs(cmag-nmag) / max(cmag, nmag) / len);
+		}
+
+		const double tgt_ref_lvl = max_ref_lvl * max(max(max(
+			mrg_mas / options_mhd.number_density_mrl_at,
+			mrg_vel / options_mhd.vel_mrl_at),
+			mrg_pre / options_mhd.pressure_mrl_at),
+			mrg_mag / options_mhd.mag_mrl_at);
+		RLMin(*cell.data) = clamp(
+			max(int(round(tgt_ref_lvl-0.25)), RLMin(*cell.data)),
+			0, max_ref_lvl);
+		RLMax(*cell.data) = clamp(
+			min(int(round(tgt_ref_lvl+0.25)), RLMax(*cell.data)),
+			RLMin(*cell.data), max_ref_lvl);
+	}
 }
 
 
-/*! Initializes new cells from adaptation.
-
-Sets data of new cells based on their parent if parent
-was refined or their children if some were unrefined.
-
--Magnetic fields should be consistent before calling adapt_grid().
--Should be called soon after adapt_grid().
-*/
+// Handlers that handle all parameters required by MHD test program.
 template <
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
@@ -258,7 +352,9 @@ template <
 	class Face_Magnetic_Field_Getter_Neg,
 	class Volume_Magnetic_Field_Getter,
 	class Background_Magnetic_Field_Getter,
-	class Background_Magnetic_Field
+	class Background_Magnetic_Field,
+	class Target_Refinement_Level_Min_Getter,
+	class Target_Refinement_Level_Max_Getter
 > struct New_Cells_Handler {
 	const Mass_Density_Getter& Mas;
 	const Momentum_Density_Getter& Mom;
@@ -268,6 +364,8 @@ template <
 	const Volume_Magnetic_Field_Getter& Vol_B;
 	const Background_Magnetic_Field_Getter& Bg_B;
 	const Background_Magnetic_Field& bg_B;
+	const Target_Refinement_Level_Min_Getter& RLMin;
+	const Target_Refinement_Level_Max_Getter& RLMax;
 	const double& adiabatic_index;
 	const double& vacuum_permeability;
 
@@ -280,12 +378,15 @@ template <
 		const Volume_Magnetic_Field_Getter& Vol_B_,
 		const Background_Magnetic_Field_Getter& Bg_B_,
 		const Background_Magnetic_Field& bg_B_,
+		const Target_Refinement_Level_Min_Getter& RLMin_,
+		const Target_Refinement_Level_Max_Getter& RLMax_,
 		const double& adiabatic_index_,
 		const double& vacuum_permeability_
 	) :
 		Mas(Mas_), Mom(Mom_), Nrj(Nrj_),
 		Face_Bp(Face_Bp_), Face_Bn(Face_Bn_),
 		Vol_B(Vol_B_), Bg_B(Bg_B_), bg_B(bg_B_),
+		RLMin(RLMin_), RLMax(RLMax_),
 		adiabatic_index(adiabatic_index_),
 		vacuum_permeability(vacuum_permeability_)
 	{};
@@ -314,6 +415,8 @@ template <
 			}
 			Mas(*cell_data) = Mas(*parent_data);
 			Mom(*cell_data) = Mom(*parent_data);
+			RLMin(*cell_data) = RLMin(*parent_data);
+			RLMax(*cell_data) = RLMax(*parent_data);
 
 			// inherit thermal pressure
 			const double parent_pressure = get_pressure(
@@ -388,7 +491,9 @@ template <
 	class Face_Magnetic_Field_Getter_Neg,
 	class Volume_Magnetic_Field_Getter,
 	class Background_Magnetic_Field_Getter,
-	class Background_Magnetic_Field
+	class Background_Magnetic_Field,
+	class Target_Refinement_Level_Min_Getter,
+	class Target_Refinement_Level_Max_Getter
 > struct Removed_Cells_Handler {
 	const Mass_Density_Getter& Mas;
 	const Momentum_Density_Getter& Mom;
@@ -398,6 +503,8 @@ template <
 	const Volume_Magnetic_Field_Getter& Vol_B;
 	const Background_Magnetic_Field_Getter& Bg_B;
 	const Background_Magnetic_Field& bg_B;
+	const Target_Refinement_Level_Min_Getter& RLMin;
+	const Target_Refinement_Level_Max_Getter& RLMax;
 	const double& adiabatic_index;
 	const double& vacuum_permeability;
 
@@ -410,12 +517,15 @@ template <
 		const Volume_Magnetic_Field_Getter& Vol_B_,
 		const Background_Magnetic_Field_Getter& Bg_B_,
 		const Background_Magnetic_Field& bg_B_,
+		const Target_Refinement_Level_Min_Getter& RLMin_,
+		const Target_Refinement_Level_Max_Getter& RLMax_,
 		const double& adiabatic_index_,
 		const double& vacuum_permeability_
 	) :
 		Mas(Mas_), Mom(Mom_), Nrj(Nrj_),
 		Face_Bp(Face_Bp_), Face_Bn(Face_Bn_),
 		Vol_B(Vol_B_), Bg_B(Bg_B_), bg_B(bg_B_),
+		RLMin(RLMin_), RLMax(RLMax_),
 		adiabatic_index(adiabatic_index_),
 		vacuum_permeability(vacuum_permeability_)
 	{};
@@ -442,6 +552,8 @@ template <
 			if (parent_data == nullptr) {
 				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
 			}
+			RLMin(*parent_data) = 999;
+			RLMax(*parent_data) = 0;
 			Mas(*parent_data) =
 			Nrj(*parent_data) = 0;
 			Mom(*parent_data)     =
@@ -463,6 +575,8 @@ template <
 			}
 
 			// all children included
+			RLMin(*parent_data) = std::min(RLMin(*removed_cell_data), RLMin(*parent_data));
+			RLMax(*parent_data) = std::max(RLMax(*removed_cell_data), RLMax(*parent_data));
 			Mas(*parent_data) += Mas(*removed_cell_data) / 8;
 			Mom(*parent_data) += Mom(*removed_cell_data) / 8;
 			// temporarily store pressure in energy density variable

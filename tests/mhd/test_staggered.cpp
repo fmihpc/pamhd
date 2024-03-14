@@ -17,6 +17,9 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+
+Author(s): Ilja Honkonen
 */
 
 
@@ -224,9 +227,12 @@ const auto FInfo = [](Cell& cell_data)->auto& {
 const auto EInfo = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::mhd::Edge_Boundary_Type()];
 };
-const auto Ref = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::grid::Target_Refinement_Level()];
-	};
+const auto Ref_min = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::grid::Target_Refinement_Level_Min()];
+};
+const auto Ref_max = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::grid::Target_Refinement_Level_Max()];
+};
 
 int main(int argc, char* argv[])
 {
@@ -247,7 +253,7 @@ int main(int argc, char* argv[])
 	*/
 
 	if (MPI_Init(&argc, &argv) != MPI_SUCCESS) {
-		std::cerr << "Couldn't initialize MPI." << std::endl;
+		cerr << "Couldn't initialize MPI." << endl;
 		abort();
 	}
 
@@ -255,18 +261,18 @@ int main(int argc, char* argv[])
 
 	int rank = 0, comm_size = 0;
 	if (MPI_Comm_rank(comm, &rank) != MPI_SUCCESS) {
-		std::cerr << "Couldn't obtain MPI rank." << std::endl;
+		cerr << "Couldn't obtain MPI rank." << endl;
 		abort();
 	}
 	if (MPI_Comm_size(comm, &comm_size) != MPI_SUCCESS) {
-		std::cerr << "Couldn't obtain size of MPI communicator." << std::endl;
+		cerr << "Couldn't obtain size of MPI communicator." << endl;
 		abort();
 	}
 
 	// intialize Zoltan
 	float zoltan_version;
 	if (Zoltan_Initialize(argc, argv, &zoltan_version) != ZOLTAN_OK) {
-		std::cerr << "Zoltan_Initialize failed." << std::endl;
+		cerr << "Zoltan_Initialize failed." << endl;
 		abort();
 	}
 
@@ -276,15 +282,15 @@ int main(int argc, char* argv[])
 
 	if (argc != 2) {
 		if (argc < 2 and rank == 0) {
-			std::cerr
+			cerr
 				<< "Name of configuration file required."
-				<< std::endl;
+				<< endl;
 		}
 		if (argc > 2 and rank == 0) {
-			std::cerr
+			cerr
 				<< "Too many arguments given to " << argv[0]
 				<< ": " << argc - 1 << ", should be 1"
-				<< std::endl;
+				<< endl;
 		}
 		MPI_Finalize();
 		return EXIT_FAILURE;
@@ -293,7 +299,7 @@ int main(int argc, char* argv[])
 	std::ifstream json_file(argv[1]);
 	if (not json_file.good()) {
 		if (rank == 0) {
-			std::cerr << "Couldn't open configuration file " << argv[1] << std::endl;
+			cerr << "Couldn't open configuration file " << argv[1] << endl;
 		}
 		MPI_Finalize();
 		return EXIT_FAILURE;
@@ -307,10 +313,10 @@ int main(int argc, char* argv[])
 	rapidjson::Document document;
 	document.Parse(json.c_str());
 	if (document.HasParseError()) {
-		std::cerr << "Couldn't parse json data in file " << argv[1]
+		cerr << "Couldn't parse json data in file " << argv[1]
 			<< " at character position " << document.GetErrorOffset()
 			<< ": " << rapidjson::GetParseError_En(document.GetParseError())
-			<< std::endl;
+			<< endl;
 		MPI_Finalize();
 		return EXIT_FAILURE;
 	}
@@ -320,15 +326,15 @@ int main(int argc, char* argv[])
 	pamhd::mhd::Options options_mhd{document};
 
 	if (rank == 0 and options_sim.output_directory != "") {
-		cout << "Saving results into directory " << options_sim.output_directory << std::endl;
+		cout << "Saving results into directory " << options_sim.output_directory << endl;
 		try {
 			boost::filesystem::create_directories(options_sim.output_directory);
 		} catch (const boost::filesystem::filesystem_error& e) {
-			std::cerr <<  __FILE__ << "(" << __LINE__ << ") "
+			cerr <<  __FILE__ << "(" << __LINE__ << ") "
 				"Couldn't create output directory "
 				<< options_sim.output_directory << ": "
 				<< e.what()
-				<< std::endl;
+				<< endl;
 			abort();
 		}
 	}
@@ -424,14 +430,27 @@ int main(int argc, char* argv[])
 	try {
 		grid.set_geometry(geom_params);
 	} catch (...) {
-		std::cerr << __FILE__ << ":" << __LINE__
+		cerr << __FILE__ << ":" << __LINE__
 			<< ": Couldn't set grid geometry."
-			<< std::endl;
+			<< endl;
 		abort();
 	}
 
-	pamhd::grid::adapt_grid(grid, options_grid, options_sim.time_start);
+	if (rank == 0) {
+		cout << "Adapting and balancing grid at time "
+			<< options_sim.time_start << "...  " << flush;
+	}
+	pamhd::grid::get_minmax_refinement_level(
+		grid.local_cells(), grid, options_grid,
+		options_sim.time_start, Ref_min, Ref_max);
+	pamhd::grid::adapt_grid(
+		grid, Ref_min, Ref_max,
+		pamhd::grid::New_Cells_Handler(Ref_min, Ref_max),
+		pamhd::grid::Removed_Cells_Handler(Ref_min, Ref_max));
 	grid.balance_load();
+	if (rank == 0) {
+		cout << "done" << endl;
+	}
 	for (const auto& cell: grid.local_cells()) {
 		(*cell.data)[pamhd::MPI_Rank()] = rank;
 	}
@@ -628,9 +647,9 @@ int main(int argc, char* argv[])
 				comm
 			) != MPI_SUCCESS
 		) {
-			std::cerr << __FILE__ << ":" << __LINE__
+			cerr << __FILE__ << ":" << __LINE__
 				<< ": Couldn't set reduce time step."
-				<< std::endl;
+				<< endl;
 			abort();
 		}
 
@@ -754,18 +773,28 @@ int main(int argc, char* argv[])
 			if (rank == 0) {
 				cout << "...\nAdapting grid at time " << simulation_time << "..." << flush;
 			}
-			const pamhd::mhd::New_Cells_Handler nch(
-				Mas, Mom, Nrj, Face_B, Face_B_neg, Mag, Bg_B, background_B,
+			pamhd::grid::get_minmax_refinement_level(
+				grid.local_cells(), grid, options_grid,
+				simulation_time, Ref_min, Ref_max);
+			pamhd::mhd::get_minmax_refinement_level(
+				grid.local_cells(), grid, options_mhd,
+				Mas, Mom, Nrj, Mag, Sol_Info2, Ref_min, Ref_max,
 				options_sim.adiabatic_index, options_sim.vacuum_permeability);
-			const pamhd::mhd::Removed_Cells_Handler rch(
-				Mas, Mom, Nrj, Face_B, Face_B_neg, Mag, Bg_B, background_B,
-				options_sim.adiabatic_index, options_sim.vacuum_permeability);
+			pamhd::grid::adapt_grid(
+				grid, Ref_min, Ref_max,
+				pamhd::mhd::New_Cells_Handler(
+					Mas, Mom, Nrj, Face_B, Face_B_neg, Mag, Bg_B,
+					background_B, Ref_min, Ref_max,
+					options_sim.adiabatic_index, options_sim.vacuum_permeability),
+				pamhd::mhd::Removed_Cells_Handler(
+					Mas, Mom, Nrj, Face_B, Face_B_neg, Mag, Bg_B,
+					background_B, Ref_min, Ref_max,
+					options_sim.adiabatic_index, options_sim.vacuum_permeability));
 			Cell::set_transfer_all(true,
 				pamhd::Face_Magnetic_Field(),
 				pamhd::Face_Magnetic_Field_Neg(),
 				pamhd::mhd::MHD_State_Conservative()
 			);
-			pamhd::grid::adapt_grid(grid, options_grid, simulation_time, nch, rch);
 			grid.update_copies_of_remote_neighbors();
 			Cell::set_transfer_all(false,
 				pamhd::Face_Magnetic_Field(),
@@ -974,12 +1003,13 @@ int main(int argc, char* argv[])
 					pamhd::Edge_Electric_Field(),
 					pamhd::Bg_Magnetic_Field(),
 					pamhd::Magnetic_Field_Divergence(),
-					pamhd::grid::Target_Refinement_Level()
+					pamhd::grid::Target_Refinement_Level_Min(),
+					pamhd::grid::Target_Refinement_Level_Max()
 				)
 			) {
-				std::cerr <<  __FILE__ << "(" << __LINE__ << "): "
+				cerr <<  __FILE__ << "(" << __LINE__ << "): "
 					"Couldn't save mhd result."
-					<< std::endl;
+					<< endl;
 				abort();
 			}
 		}
