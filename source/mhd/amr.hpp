@@ -132,15 +132,15 @@ template <
 			const auto bg_face_mag = [&]{
 				if (n < 0) {
 					if (cpface[2*dim]) {
-						return Bg_Face_Mag(*cell.data)(dim, 0);
+						return Bg_Face_Mag(*cell.data)(dim, -1);
 					} else {
-						return Bg_Face_Mag(*neighbor.data)(dim, 1);
+						return Bg_Face_Mag(*neighbor.data)(dim, +1);
 					}
 				} else {
 					if (cpface[1 + 2*dim]) {
-						return Bg_Face_Mag(*cell.data)(dim, 1);
+						return Bg_Face_Mag(*cell.data)(dim, +1);
 					} else {
-						return Bg_Face_Mag(*neighbor.data)(dim, 0);
+						return Bg_Face_Mag(*neighbor.data)(dim, -1);
 					}
 				}
 			}();
@@ -454,27 +454,27 @@ template <
 			const auto [rx, ry, rz] = grid.geometry.get_center(new_cell_id);
 			const auto [sx, sy, sz] = grid.geometry.get_min(new_cell_id);
 			const auto [ex, ey, ez] = grid.geometry.get_max(new_cell_id);
-			Bg_B(*cell_data)(0, 0) = bg_B.get_background_field(
+			Bg_B(*cell_data)(0, -1) = bg_B.get_background_field(
 				{sx, ry, rz},
 				vacuum_permeability
 			);
-			Bg_B(*cell_data)(0, 1) = bg_B.get_background_field(
+			Bg_B(*cell_data)(0, +1) = bg_B.get_background_field(
 				{ex, ry, rz},
 				vacuum_permeability
 			);
-			Bg_B(*cell_data)(1, 0) = bg_B.get_background_field(
+			Bg_B(*cell_data)(1, -1) = bg_B.get_background_field(
 				{rx, sy, rz},
 				vacuum_permeability
 			);
-			Bg_B(*cell_data)(1, 1) = bg_B.get_background_field(
+			Bg_B(*cell_data)(1, +1) = bg_B.get_background_field(
 				{rx, ey, rz},
 				vacuum_permeability
 			);
-			Bg_B(*cell_data)(2, 0) = bg_B.get_background_field(
+			Bg_B(*cell_data)(2, -1) = bg_B.get_background_field(
 				{rx, ry, sz},
 				vacuum_permeability
 			);
-			Bg_B(*cell_data)(2, 1) = bg_B.get_background_field(
+			Bg_B(*cell_data)(2, +1) = bg_B.get_background_field(
 				{rx, ry, ez},
 				vacuum_permeability
 			);
@@ -604,27 +604,27 @@ template <
 			const auto [rx, ry, rz] = grid.geometry.get_center(parent_id);
 			const auto [sx, sy, sz] = grid.geometry.get_min(parent_id);
 			const auto [ex, ey, ez] = grid.geometry.get_max(parent_id);
-			Bg_B(*parent_data)(0, 0) = bg_B.get_background_field(
+			Bg_B(*parent_data)(0, -1) = bg_B.get_background_field(
 				{sx, ry, rz},
 				vacuum_permeability
 			);
-			Bg_B(*parent_data)(0, 1) = bg_B.get_background_field(
+			Bg_B(*parent_data)(0, +1) = bg_B.get_background_field(
 				{ex, ry, rz},
 				vacuum_permeability
 			);
-			Bg_B(*parent_data)(1, 0) = bg_B.get_background_field(
+			Bg_B(*parent_data)(1, -1) = bg_B.get_background_field(
 				{rx, sy, rz},
 				vacuum_permeability
 			);
-			Bg_B(*parent_data)(1, 1) = bg_B.get_background_field(
+			Bg_B(*parent_data)(1, +1) = bg_B.get_background_field(
 				{rx, ey, rz},
 				vacuum_permeability
 			);
-			Bg_B(*parent_data)(2, 0) = bg_B.get_background_field(
+			Bg_B(*parent_data)(2, -1) = bg_B.get_background_field(
 				{rx, ry, sz},
 				vacuum_permeability
 			);
-			Bg_B(*parent_data)(2, 1) = bg_B.get_background_field(
+			Bg_B(*parent_data)(2, +1) = bg_B.get_background_field(
 				{rx, ry, ez},
 				vacuum_permeability
 			);

@@ -84,25 +84,28 @@ struct Bg_Magnetic_Field {
 
 		/*
 		dim_i = dimension of face, 0 = x, 1 = y, 2 = z
-		side_i = side of face w.r.t. cell center, 0 = negative side
+		side_i = side of face w.r.t. cell center
 		*/
 		const Eigen::Vector3d& operator()(
 			const size_t dim_i,
-			const size_t side_i
+			const int side_i
 		) const {
 			if (dim_i > 2) {
 				throw std::domain_error("Dimension > 2");
 			}
-			if (side_i > 1) {
-				throw std::domain_error("Side > 1");
+			if (side_i == -1) {
+				return this->bg_b[dim_i*2 + 0];
+			} else if (side_i == +1) {
+				return this->bg_b[dim_i*2 + 1];
+			} else {
+				throw std::domain_error("Side != +-1");
 			}
-			return this->bg_b[dim_i*2 + side_i];
 		}
 
 		// https://stackoverflow.com/a/123995
 		Eigen::Vector3d& operator()(
 			const size_t dim_i,
-			const size_t side_i
+			const int side_i
 		) {
 			return const_cast<Eigen::Vector3d&>(static_cast<const Bg_B_type&>(*this).operator()(dim_i, side_i));
 		}

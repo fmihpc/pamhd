@@ -869,27 +869,27 @@ int main(int argc, char* argv[])
 				const auto [rx, ry, rz] = grid.geometry.get_center(cell.id);
 				const auto [sx, sy, sz] = grid.geometry.get_min(cell.id);
 				const auto [ex, ey, ez] = grid.geometry.get_max(cell.id);
-				Bg_B(*cell.data)(0, 0) = background_B.get_background_field(
+				Bg_B(*cell.data)(0, -1) = background_B.get_background_field(
 					{sx, ry, rz},
 					options_sim.vacuum_permeability
 				);
-				Bg_B(*cell.data)(0, 1) = background_B.get_background_field(
+				Bg_B(*cell.data)(0, +1) = background_B.get_background_field(
 					{ex, ry, rz},
 					options_sim.vacuum_permeability
 				);
-				Bg_B(*cell.data)(1, 0) = background_B.get_background_field(
+				Bg_B(*cell.data)(1, -1) = background_B.get_background_field(
 					{rx, sy, rz},
 					options_sim.vacuum_permeability
 				);
-				Bg_B(*cell.data)(1, 1) = background_B.get_background_field(
+				Bg_B(*cell.data)(1, +1) = background_B.get_background_field(
 					{rx, ey, rz},
 					options_sim.vacuum_permeability
 				);
-				Bg_B(*cell.data)(2, 0) = background_B.get_background_field(
+				Bg_B(*cell.data)(2, -1) = background_B.get_background_field(
 					{rx, ry, sz},
 					options_sim.vacuum_permeability
 				);
-				Bg_B(*cell.data)(2, 1) = background_B.get_background_field(
+				Bg_B(*cell.data)(2, +1) = background_B.get_background_field(
 					{rx, ry, ez},
 					options_sim.vacuum_permeability
 				);

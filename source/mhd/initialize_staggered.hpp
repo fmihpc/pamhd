@@ -89,27 +89,27 @@ template <
 		const auto [sx, sy, sz] = grid.geometry.get_min(cell.id);
 		const auto [ex, ey, ez] = grid.geometry.get_max(cell.id);
 
-		Bg_B(*cell.data)(0, 0) = bg_B.get_background_field(
+		Bg_B(*cell.data)(0, -1) = bg_B.get_background_field(
 			{sx, ry, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(0, 1) = bg_B.get_background_field(
+		Bg_B(*cell.data)(0, +1) = bg_B.get_background_field(
 			{ex, ry, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(1, 0) = bg_B.get_background_field(
+		Bg_B(*cell.data)(1, -1) = bg_B.get_background_field(
 			{rx, sy, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(1, 1) = bg_B.get_background_field(
+		Bg_B(*cell.data)(1, +1) = bg_B.get_background_field(
 			{rx, ey, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(2, 0) = bg_B.get_background_field(
+		Bg_B(*cell.data)(2, -1) = bg_B.get_background_field(
 			{rx, ry, sz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(2, 1) = bg_B.get_background_field(
+		Bg_B(*cell.data)(2, +1) = bg_B.get_background_field(
 			{rx, ry, ez},
 			vacuum_permeability
 		);
@@ -128,27 +128,27 @@ template <
 		const auto [sx, sy, sz] = grid.geometry.get_min(cell.id);
 		const auto [ex, ey, ez] = grid.geometry.get_max(cell.id);
 
-		Bg_B(*cell.data)(0, 0) = bg_B.get_background_field(
+		Bg_B(*cell.data)(0, -1) = bg_B.get_background_field(
 			{sx, ry, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(0, 1) = bg_B.get_background_field(
+		Bg_B(*cell.data)(0, +1) = bg_B.get_background_field(
 			{ex, ry, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(1, 0) = bg_B.get_background_field(
+		Bg_B(*cell.data)(1, -1) = bg_B.get_background_field(
 			{rx, sy, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(1, 1) = bg_B.get_background_field(
+		Bg_B(*cell.data)(1, +1) = bg_B.get_background_field(
 			{rx, ey, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(2, 0) = bg_B.get_background_field(
+		Bg_B(*cell.data)(2, -1) = bg_B.get_background_field(
 			{rx, ry, sz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(2, 1) = bg_B.get_background_field(
+		Bg_B(*cell.data)(2, +1) = bg_B.get_background_field(
 			{rx, ry, ez},
 			vacuum_permeability
 		);
