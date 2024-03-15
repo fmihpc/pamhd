@@ -77,8 +77,10 @@ template<class Data_Type> struct Face_Type {
 	dir: -1 == -x, +1 == +x, -2 == -y, ..., +3 == +z face
 	*/
 	const Data_Type& operator()(const int dir) const {
+		using std::to_string;
+
 		if (dir == 0 or dir < -3 or dir > +3) {
-			throw std::domain_error(__FILE__ "(" + std::to_string(__LINE__) + "): Invalid direction, must be -3,-2,-1,1,2,3 but is " + std::to_string(dir));
+			throw std::domain_error(__FILE__ "(" + to_string(__LINE__) + "): Invalid direction, must be -3,-2,-1,1,2,3 but is " + to_string(dir));
 		}
 		if        (dir == -1) {
 			return this->face[0];
@@ -108,11 +110,14 @@ template<class Data_Type> struct Face_Type {
 		const size_t dim,
 		const int side
 	) const {
+		using std::domain_error;
+		using std::to_string;
+
 		if (dim > 2) {
-			throw std::domain_error("Invalid dimension, must be 0..2 but is " + std::to_string(dim));
+			throw domain_error("Invalid dimension, must be 0..2 but is " + to_string(dim));
 		}
 		if (side != -1 and side != +1) {
-			throw std::domain_error("Invalid side, must be -1,1 but is " + std::to_string(side));
+			throw domain_error("Invalid side, must be -1,1 but is " + to_string(side));
 		}
 		if        (dim == 0) {
 			if (side < 0) return this->face[0];
@@ -153,42 +158,45 @@ template<class Data_Type> struct Face_Type {
 
 	#ifdef MPI_VERSION
 	std::tuple<void*, int, MPI_Datatype> get_mpi_datatype() const {
-		if constexpr (std::is_same_v<Data_Type, double>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_DOUBLE);
-		} else if constexpr (std::is_same_v<Data_Type, float>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_FLOAT);
-		} else if constexpr (std::is_same_v<Data_Type, uint64_t>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_UINT64_T);
-		} else if constexpr (std::is_same_v<Data_Type, uint32_t>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_UINT32_T);
-		} else if constexpr (std::is_same_v<Data_Type, uint16_t>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_UINT16_T);
-		} else if constexpr (std::is_same_v<Data_Type, uint8_t>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_UINT8_T);
-		} else if constexpr (std::is_same_v<Data_Type, int64_t>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_INT64_T);
-		} else if constexpr (std::is_same_v<Data_Type, int32_t>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_INT32_T);
-		} else if constexpr (std::is_same_v<Data_Type, int16_t>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_INT16_T);
-		} else if constexpr (std::is_same_v<Data_Type, int8_t>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_INT8_T);
-		} else if constexpr (std::is_same_v<Data_Type, long long>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_LONG_LONG);
-		} else if constexpr (std::is_same_v<Data_Type, long>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_LONG);
-		} else if constexpr (std::is_same_v<Data_Type, int>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_INT);
-		} else if constexpr (std::is_same_v<Data_Type, short>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_SHORT);
-		} else if constexpr (std::is_same_v<Data_Type, char>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_CHAR);
-		} else if constexpr (std::is_same_v<Data_Type, signed char>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_SIGNED_CHAR);
-		} else if constexpr (std::is_same_v<Data_Type, unsigned char>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_UNSIGNED_CHAR);
-		} else if constexpr (std::is_same_v<Data_Type, bool>) {
-			return std::make_tuple((void*) this->face.data(), this->face.size(), MPI_CXX_BOOL);
+		using std::is_same_v;
+		using std::make_tuple;
+
+		if constexpr (is_same_v<Data_Type, double>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_DOUBLE);
+		} else if constexpr (is_same_v<Data_Type, float>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_FLOAT);
+		} else if constexpr (is_same_v<Data_Type, uint64_t>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_UINT64_T);
+		} else if constexpr (is_same_v<Data_Type, uint32_t>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_UINT32_T);
+		} else if constexpr (is_same_v<Data_Type, uint16_t>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_UINT16_T);
+		} else if constexpr (is_same_v<Data_Type, uint8_t>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_UINT8_T);
+		} else if constexpr (is_same_v<Data_Type, int64_t>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_INT64_T);
+		} else if constexpr (is_same_v<Data_Type, int32_t>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_INT32_T);
+		} else if constexpr (is_same_v<Data_Type, int16_t>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_INT16_T);
+		} else if constexpr (is_same_v<Data_Type, int8_t>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_INT8_T);
+		} else if constexpr (is_same_v<Data_Type, long long>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_LONG_LONG);
+		} else if constexpr (is_same_v<Data_Type, long>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_LONG);
+		} else if constexpr (is_same_v<Data_Type, int>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_INT);
+		} else if constexpr (is_same_v<Data_Type, short>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_SHORT);
+		} else if constexpr (is_same_v<Data_Type, char>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_CHAR);
+		} else if constexpr (is_same_v<Data_Type, signed char>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_SIGNED_CHAR);
+		} else if constexpr (is_same_v<Data_Type, unsigned char>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_UNSIGNED_CHAR);
+		} else if constexpr (is_same_v<Data_Type, bool>) {
+			return make_tuple((void*) this->face.data(), this->face.size(), MPI_CXX_BOOL);
 		} else {
 			static_assert(false, "Unsupported face item type for MPI");
 		}
@@ -269,14 +277,16 @@ template<class Data_Type> struct Edge_Type {
 		const size_t first_perp_dim_i,
 		const size_t second_perp_dim_i
 	) const {
+		using std::domain_error;
+
 		if (par_dim_i > 2) {
-			throw std::domain_error("Parallel dimension > 2");
+			throw domain_error("Parallel dimension > 2");
 		}
 		if (first_perp_dim_i > 1) {
-			throw std::domain_error("First perpendicular dimension > 1");
+			throw domain_error("First perpendicular dimension > 1");
 		}
 		if (second_perp_dim_i > 1) {
-			throw std::domain_error("Second perpendicular dimension > 1");
+			throw domain_error("Second perpendicular dimension > 1");
 		}
 		return this->edge[par_dim_i*2*2 + first_perp_dim_i*2 + second_perp_dim_i];
 	}
@@ -313,42 +323,45 @@ template<class Data_Type> struct Edge_Type {
 
 	#ifdef MPI_VERSION
 	std::tuple<void*, int, MPI_Datatype> get_mpi_datatype() const {
-		if constexpr (std::is_same_v<Data_Type, double>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_DOUBLE);
-		} else if constexpr (std::is_same_v<Data_Type, float>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_FLOAT);
-		} else if constexpr (std::is_same_v<Data_Type, uint64_t>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_UINT64_T);
-		} else if constexpr (std::is_same_v<Data_Type, uint32_t>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_UINT32_T);
-		} else if constexpr (std::is_same_v<Data_Type, uint16_t>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_UINT16_T);
-		} else if constexpr (std::is_same_v<Data_Type, uint8_t>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_UINT8_T);
-		} else if constexpr (std::is_same_v<Data_Type, int64_t>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_INT64_T);
-		} else if constexpr (std::is_same_v<Data_Type, int32_t>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_INT32_T);
-		} else if constexpr (std::is_same_v<Data_Type, int16_t>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_INT16_T);
-		} else if constexpr (std::is_same_v<Data_Type, int8_t>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_INT8_T);
-		} else if constexpr (std::is_same_v<Data_Type, long long>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_LONG_LONG);
-		} else if constexpr (std::is_same_v<Data_Type, long>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_LONG);
-		} else if constexpr (std::is_same_v<Data_Type, int>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_INT);
-		} else if constexpr (std::is_same_v<Data_Type, short>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_SHORT);
-		} else if constexpr (std::is_same_v<Data_Type, char>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_CHAR);
-		} else if constexpr (std::is_same_v<Data_Type, signed char>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_SIGNED_CHAR);
-		} else if constexpr (std::is_same_v<Data_Type, unsigned char>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_UNSIGNED_CHAR);
-		} else if constexpr (std::is_same_v<Data_Type, bool>) {
-			return std::make_tuple((void*) this->edge.data(), this->edge.size(), MPI_CXX_BOOL);
+		using std::is_same_v;
+		using std::make_tuple;
+
+		if constexpr (is_same_v<Data_Type, double>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_DOUBLE);
+		} else if constexpr (is_same_v<Data_Type, float>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_FLOAT);
+		} else if constexpr (is_same_v<Data_Type, uint64_t>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_UINT64_T);
+		} else if constexpr (is_same_v<Data_Type, uint32_t>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_UINT32_T);
+		} else if constexpr (is_same_v<Data_Type, uint16_t>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_UINT16_T);
+		} else if constexpr (is_same_v<Data_Type, uint8_t>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_UINT8_T);
+		} else if constexpr (is_same_v<Data_Type, int64_t>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_INT64_T);
+		} else if constexpr (is_same_v<Data_Type, int32_t>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_INT32_T);
+		} else if constexpr (is_same_v<Data_Type, int16_t>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_INT16_T);
+		} else if constexpr (is_same_v<Data_Type, int8_t>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_INT8_T);
+		} else if constexpr (is_same_v<Data_Type, long long>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_LONG_LONG);
+		} else if constexpr (is_same_v<Data_Type, long>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_LONG);
+		} else if constexpr (is_same_v<Data_Type, int>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_INT);
+		} else if constexpr (is_same_v<Data_Type, short>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_SHORT);
+		} else if constexpr (is_same_v<Data_Type, char>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_CHAR);
+		} else if constexpr (is_same_v<Data_Type, signed char>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_SIGNED_CHAR);
+		} else if constexpr (is_same_v<Data_Type, unsigned char>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_UNSIGNED_CHAR);
+		} else if constexpr (is_same_v<Data_Type, bool>) {
+			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_CXX_BOOL);
 		} else {
 			static_assert(false, "Unsupported edge item type for MPI");
 		}
@@ -462,6 +475,9 @@ std::array<int, 2> get_target_refinement_level(
 	const double& t,
 	const std::array<double, 3>& cell_center
 ) {
+	using std::runtime_error;
+	using std::to_string;
+
 	const auto& c = cell_center;
 	const auto
 		r = std::sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]),
@@ -471,16 +487,16 @@ std::array<int, 2> get_target_refinement_level(
 	const auto min_ref_lvl = options.get_ref_lvl_at_least(
 		t, c[0], c[1], c[2], r, lat, lon);
 	if (min_ref_lvl < 0) {
-		throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): options returned min_ref_lvl < 0");
+		throw runtime_error(__FILE__ "(" + to_string(__LINE__) + "): options returned min_ref_lvl < 0");
 	}
 
 	const auto max_ref_lvl = options.get_ref_lvl_at_most(
 		t, c[0], c[1], c[2], r, lat, lon);
 	if (max_ref_lvl < 0) {
-		throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): options returned min_ref_lvl < 0");
+		throw runtime_error(__FILE__ "(" + to_string(__LINE__) + "): options returned min_ref_lvl < 0");
 	}
 	if (max_ref_lvl < min_ref_lvl) {
-		throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): options returned max_ref_lvl < min_ref_lvl");
+		throw runtime_error(__FILE__ "(" + to_string(__LINE__) + "): options returned max_ref_lvl < min_ref_lvl");
 	}
 
 	std::array<int, 2> ret_val{min_ref_lvl, max_ref_lvl};
