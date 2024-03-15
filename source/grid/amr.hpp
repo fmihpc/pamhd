@@ -197,6 +197,10 @@ template<class Data_Type> struct Face_Type {
 			return make_tuple((void*) this->face.data(), this->face.size(), MPI_UNSIGNED_CHAR);
 		} else if constexpr (is_same_v<Data_Type, bool>) {
 			return make_tuple((void*) this->face.data(), this->face.size(), MPI_CXX_BOOL);
+		#ifdef EIGEN_WORLD_VERSION
+		} else if constexpr (is_same_v<Data_Type, Eigen::Vector3d>) {
+			return make_tuple((void*) this->face.data(), 3*this->face.size(), MPI_DOUBLE);
+		#endif
 		} else {
 			static_assert(false, "Unsupported face item type for MPI");
 		}

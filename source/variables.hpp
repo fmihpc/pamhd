@@ -79,48 +79,7 @@ struct Magnetic_Field_Resistive {
 
 //! Background magnetic field vector at cell faces
 struct Bg_Magnetic_Field {
-	struct Bg_B_type {
-		std::array<Eigen::Vector3d, 6> bg_b;
-
-		/*
-		dim_i = dimension of face, 0 = x, 1 = y, 2 = z
-		side_i = side of face w.r.t. cell center
-		*/
-		const Eigen::Vector3d& operator()(
-			const size_t dim_i,
-			const int side_i
-		) const {
-			if (dim_i > 2) {
-				throw std::domain_error("Dimension > 2");
-			}
-			if (side_i == -1) {
-				return this->bg_b[dim_i*2 + 0];
-			} else if (side_i == +1) {
-				return this->bg_b[dim_i*2 + 1];
-			} else {
-				throw std::domain_error("Side != +-1");
-			}
-		}
-
-		// https://stackoverflow.com/a/123995
-		Eigen::Vector3d& operator()(
-			const size_t dim_i,
-			const int side_i
-		) {
-			return const_cast<Eigen::Vector3d&>(static_cast<const Bg_B_type&>(*this).operator()(dim_i, side_i));
-		}
-
-		#ifdef MPI_VERSION
-		std::tuple<void*, int, MPI_Datatype> get_mpi_datatype() const {
-			return std::make_tuple(
-				(void*) this->bg_b.data(),
-				3*this->bg_b.size(),
-				MPI_DOUBLE
-			);
-		}
-		#endif
-	};
-	using data_type = Bg_B_type;
+	using data_type = pamhd::grid::Face_Type<Eigen::Vector3d>;
 	static const std::string get_name() { return {"face background magnetic fields"}; }
 	static const std::string get_option_name() { return {"bg-b"}; }
 	static const std::string get_option_help() { return {"background magnetic field vector on cell faces"}; }

@@ -505,12 +505,14 @@ int main(int argc, char* argv[])
 	);
 	Cell::set_transfer_all(true,
 		pamhd::Face_Magnetic_Field(),
-		pamhd::Face_Magnetic_Field_Neg()
+		pamhd::Face_Magnetic_Field_Neg(),
+		pamhd::Bg_Magnetic_Field()
 	);
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(false,
 		pamhd::Face_Magnetic_Field(),
-		pamhd::Face_Magnetic_Field_Neg()
+		pamhd::Face_Magnetic_Field_Neg(),
+		pamhd::Bg_Magnetic_Field()
 	);
 
 	pamhd::mhd::update_B_consistency(
@@ -793,13 +795,15 @@ int main(int argc, char* argv[])
 			Cell::set_transfer_all(true,
 				pamhd::Face_Magnetic_Field(),
 				pamhd::Face_Magnetic_Field_Neg(),
-				pamhd::mhd::MHD_State_Conservative()
+				pamhd::mhd::MHD_State_Conservative(),
+				pamhd::Bg_Magnetic_Field()
 			);
 			grid.update_copies_of_remote_neighbors();
 			Cell::set_transfer_all(false,
 				pamhd::Face_Magnetic_Field(),
 				pamhd::Face_Magnetic_Field_Neg(),
-				pamhd::mhd::MHD_State_Conservative()
+				pamhd::mhd::MHD_State_Conservative(),
+				pamhd::Bg_Magnetic_Field()
 			);
 
 			for (const auto& cell: grid.local_cells()) {
@@ -864,36 +868,6 @@ int main(int argc, char* argv[])
 				pamhd::Face_Magnetic_Field_Neg(),
 				pamhd::mhd::MHD_State_Conservative()
 			);
-			// background B isn't updated between processes
-			for (const auto& cell: grid.remote_cells()) {
-				const auto [rx, ry, rz] = grid.geometry.get_center(cell.id);
-				const auto [sx, sy, sz] = grid.geometry.get_min(cell.id);
-				const auto [ex, ey, ez] = grid.geometry.get_max(cell.id);
-				Bg_B(*cell.data)(0, -1) = background_B.get_background_field(
-					{sx, ry, rz},
-					options_sim.vacuum_permeability
-				);
-				Bg_B(*cell.data)(0, +1) = background_B.get_background_field(
-					{ex, ry, rz},
-					options_sim.vacuum_permeability
-				);
-				Bg_B(*cell.data)(1, -1) = background_B.get_background_field(
-					{rx, sy, rz},
-					options_sim.vacuum_permeability
-				);
-				Bg_B(*cell.data)(1, +1) = background_B.get_background_field(
-					{rx, ey, rz},
-					options_sim.vacuum_permeability
-				);
-				Bg_B(*cell.data)(2, -1) = background_B.get_background_field(
-					{rx, ry, sz},
-					options_sim.vacuum_permeability
-				);
-				Bg_B(*cell.data)(2, +1) = background_B.get_background_field(
-					{rx, ry, ez},
-					options_sim.vacuum_permeability
-				);
-			}
 		}
 
 		/*
