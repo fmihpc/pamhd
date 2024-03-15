@@ -2,7 +2,7 @@
 Functions for working with divergence of vector field.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2019, 2022, 2023 Finnish Meteorological Institute
+Copyright 2018, 2019, 2022, 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_MATH_STAGGERED_HPP
@@ -47,29 +50,27 @@ namespace math {
 /*!
 Same as get_divergence() but for vector variable that's stored on cell faces.
 
-Vector_Pos returns vector whose components are at cell faces on positive
-side from cell center and are normal to said faces, Vector_Neg returns
-components on negative side faces pointing in positive direction.
+Face_Var must have same () operator as provided by grid::Face_Type.
 
 Returns average absolute divergence in cells of all processes.
 */
 template <
 	class Cell_Iterator,
 	class Grid,
-	class Vector_Pos_Getter,
-	class Vector_Neg_Getter,
+	class Face_Var_Getter,
 	class Divergence_Getter,
 	class Is_Primary_Face_Getter,
 	class Cell_Type_Getter
 > double get_divergence_staggered(
 	const Cell_Iterator& cells,
 	Grid& grid,
-	const Vector_Pos_Getter Vector_Pos,
-	const Vector_Neg_Getter Vector_Neg,
-	const Divergence_Getter Divergence,
-	const Is_Primary_Face_Getter PFace,
-	const Cell_Type_Getter Cell_Type
+	const Face_Var_Getter& Face_Var,
+	const Divergence_Getter& Divergence,
+	const Is_Primary_Face_Getter& PFace,
+	const Cell_Type_Getter& Cell_Type
 ) {
+	using std::abs;
+
 	double local_divergence = 0, global_divergence = 0;
 	uint64_t local_calculated_cells = 0, global_calculated_cells = 0;
 	for (const auto& cell: cells) {
@@ -82,34 +83,31 @@ template <
 		auto& div = Divergence(*cell.data);
 		div = 0.0;
 
-		for (size_t d = 0; d < 3; d++) {
-			if (PFace(*cell.data)(d, -1)) div -= Vector_Neg(*cell.data)[d] / cell_length[d];
-			if (PFace(*cell.data)(d, +1)) div += Vector_Pos(*cell.data)[d] / cell_length[d];
+		for (auto dim: {0, 1, 2})
+		for (auto side: {-1, +1}) {
+			if (PFace(*cell.data)(dim, side)) div += side * Face_Var(*cell.data)(dim, side) / cell_length[dim];
 		}
 
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& n = neighbor.face_neighbor;
 			if (n == 0 or PFace(*cell.data)(n)) continue;
-
 			if (Cell_Type(*neighbor.data) < 0) {
 				continue;
 			}
 
-			const size_t dim = std::abs(n) - 1;
 			const double factor = [&]{
+				double ret_val = 1.0 / cell_length[abs(n) - 1];
 				if (neighbor.relative_size > 0) {
-					return 0.25 / cell_length[dim];
-				} else {
-					return 1.0 / cell_length[dim];
+					ret_val *= 0.25;
 				}
+				if (n < 0) {
+					ret_val *= -1;
+				}
+				return ret_val;
 			}();
-			if (neighbor.face_neighbor < 0) {
-				div -= Vector_Pos(*neighbor.data)[dim] * factor;
-			} else {
-				div += Vector_Neg(*neighbor.data)[dim] * factor;
-			}
+			div += factor * Face_Var(*neighbor.data)(-n);
 		}
-		local_divergence += std::abs(div);
+		local_divergence += abs(div);
 	}
 
 	MPI_Comm comm = grid.get_communicator();

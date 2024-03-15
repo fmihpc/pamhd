@@ -2,7 +2,7 @@
 Initializes staggered MHD solution of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019, 2023 Finnish Meteorological Institute
+Copyright 2019, 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_MHD_INITIALIZE_STAGGERED_HPP
@@ -57,8 +60,7 @@ template <
 	class Init_Cond,
 	class Background_Magnetic_Field,
 	class Grid,
-	class Face_Magnetic_Field_Pos_Getter,
-	class Face_Magnetic_Field_Neg_Getter,
+	class Face_Magnetic_Field_Getter,
 	class Magnetic_Field_Flux_Getters,
 	class Background_Magnetic_Field_Getter,
 	class Primary_Face_Getter
@@ -69,8 +71,7 @@ template <
 	Grid& grid,
 	const double time,
 	const double vacuum_permeability,
-	const Face_Magnetic_Field_Pos_Getter Face_B_pos,
-	const Face_Magnetic_Field_Neg_Getter Face_B_neg,
+	const Face_Magnetic_Field_Getter Face_B,
 	const Magnetic_Field_Flux_Getters Mag_f,
 	const Background_Magnetic_Field_Getter Bg_B,
 	const Primary_Face_Getter PFace
@@ -166,11 +167,7 @@ template <
 				);
 
 			const size_t dim = std::abs(dir) - 1;
-			if (dir < 0) {
-				Face_B_neg(*cell.data)[dim] = magnetic_field[dim];
-			} else {
-				Face_B_pos(*cell.data)[dim] = magnetic_field[dim];
-			}
+			Face_B(*cell.data)(dir) = magnetic_field[dim];
 		}
 	}
 
@@ -239,11 +236,7 @@ template <
 					);
 
 				const size_t dim = std::abs(dir) - 1;
-				if (dir < 0) {
-					Face_B_neg(*cell_data)[dim] = magnetic_field[dim];
-				} else {
-					Face_B_pos(*cell_data)[dim] = magnetic_field[dim];
-				}
+				Face_B(*cell_data)(dir) = magnetic_field[dim];
 			}
 		}
 	}

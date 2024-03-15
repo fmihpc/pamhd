@@ -2,7 +2,7 @@
 Staggered version of get1d_div_amr.cpp.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2022, 2023 Finnish Meteorological Institute
+Copyright 2018, 2022, 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 
@@ -203,21 +206,14 @@ int main(int argc, char* argv[])
 		for (size_t dim = 0; dim < 3; dim++) {
 			pamhd::grid::update_primary_faces(grids[dim].local_cells(), PFace);
 			for (const auto& cell: grids[dim].local_cells()) {
-				auto
-					&vec_pos = (*cell.data)[Vector_Pos()],
-					&vec_neg = (*cell.data)[Vector_Neg()];
-				vec_pos[0] =
-				vec_pos[1] =
-				vec_pos[2] =
-				vec_neg[0] =
-				vec_neg[1] =
-				vec_neg[2] = 0;
+				auto& vec = (*cell.data)[Vector()];
+				vec = {0, 0, 0, 0, 0, 0};
 
 				const auto
 					center = grids[dim].geometry.get_center(cell.id)[dim],
 					length = grids[dim].geometry.get_length(cell.id)[dim];
-				vec_pos[dim] = function(center + length/2);
-				vec_neg[dim] = function(center - length/2);
+				vec(dim, +1) = function(center + length/2);
+				vec(dim, -1) = function(center - length/2);
 			}
 			grids[dim].update_copies_of_remote_neighbors();
 		}
@@ -234,11 +230,8 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		auto Vector_Pos_Getter = [](Cell& cell_data)->auto& {
-			return cell_data[Vector_Pos()];
-		};
-		auto Vector_Neg_Getter = [](Cell& cell_data)->auto& {
-			return cell_data[Vector_Neg()];
+		auto Vector_Getter = [](Cell& cell_data)->auto& {
+			return cell_data[Vector()];
 		};
 		auto Divergence_Getter = [](Cell& cell_data)->auto& {
 			return cell_data[Divergence()];
@@ -251,8 +244,7 @@ int main(int argc, char* argv[])
 			pamhd::math::get_divergence_staggered(
 				grids[dim].local_cells(),
 				grids[dim],
-				Vector_Pos_Getter,
-				Vector_Neg_Getter,
+				Vector_Getter,
 				Divergence_Getter,
 				PFace,
 				Type_Getter

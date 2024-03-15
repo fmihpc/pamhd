@@ -1,7 +1,7 @@
 /*
 Common definitions for tests in this directory.
 
-Copyright 2023 Finnish Meteorological Institute
+Copyright 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +28,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef TESTS_MATH_COMMON_HPP
@@ -39,14 +42,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "grid/amr.hpp"
 
-//! each component is normal to and at corresponding + dir face
-struct Vector_Pos {
-	using data_type = std::array<double, 3>;
-};
-
-//! component at - dir face
-struct Vector_Neg {
-	using data_type = std::array<double, 3>;
+struct Vector {
+	using data_type = pamhd::grid::Face_Type<double>;
 };
 
 struct Divergence {
@@ -63,8 +60,7 @@ struct Type {
 
 using Cell = gensimcell::Cell<
 	gensimcell::Always_Transfer,
-	Vector_Pos,
-	Vector_Neg,
+	Vector,
 	Divergence,
 	Is_Primary_Face,
 	Type

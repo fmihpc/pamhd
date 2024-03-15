@@ -2,7 +2,7 @@
 Variables of PAMHD common to several test programs.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2023 Finnish Meteorological Institute
+Copyright 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_VARIABLES_HPP
@@ -87,23 +90,14 @@ struct Bg_Magnetic_Field {
 
 /*! Magnetic field component at cell faces
 
-Magnetic field stored on cell's faces on positive side from cell's center.
-Component of magnetic field normal to the face is stored for each face,
-e.g. Bx is located on the yz face, By on xz face and Bz on xy face.
+Magnetic field stored on cell's faces.
+Component of magnetic field normal to the face is stored for each face.
 */
 struct Face_Magnetic_Field {
-	using data_type = Eigen::Vector3d;
-	static const std::string get_name() { return {"magnetic field on positive faces"}; }
+	using data_type = pamhd::grid::Face_Type<double>;
+	static const std::string get_name() { return {"magnetic field on faces"}; }
 	static const std::string get_option_name() { return {"face-b"}; }
-	static const std::string get_option_help() { return {"magnetic field normal component at cell faces on positive sides of cell"}; }
-};
-
-//! Magnetic field on negative cell faces
-struct Face_Magnetic_Field_Neg {
-	using data_type = Eigen::Vector3d;
-	static const std::string get_name() { return {"magnetic field on negative faces"}; }
-	static const std::string get_option_name() { return {"face-b-neg"}; }
-	static const std::string get_option_help() { return {"magnetic field normal component at cell faces on negative sides of cell"}; }
+	static const std::string get_option_help() { return {"magnetic field on cell faces normal to cell faces"}; }
 };
 
 //! Electric field along each cell edge

@@ -2,7 +2,7 @@
 Staggered version of get1d_div.cpp.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2022, 2023 Finnish Meteorological Institute
+Copyright 2018, 2022, 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 
@@ -105,7 +108,7 @@ template<class Grid> double get_diff_lp_norm(
 
 
 template<
-	class Vectors,
+	class Vector,
 	class Type,
 	class Grid,
 	class PFace_Getter
@@ -157,17 +160,10 @@ template<
 			center = grid.geometry.get_center(cell.id),
 			length = grid.geometry.get_length(cell.id);
 
-		auto
-			&vec_pos = (*cell.data)[Vectors().first],
-			&vec_neg = (*cell.data)[Vectors().second];
-		vec_pos[0] =
-		vec_pos[1] =
-		vec_pos[2] =
-		vec_neg[0] =
-		vec_neg[1] =
-		vec_neg[2] = 0;
-		vec_pos[dimension] = function(center[dimension] + length[dimension]/2);
-		vec_neg[dimension] = function(center[dimension] - length[dimension]/2);
+		auto& vec = (*cell.data)[Vector()];
+		vec = {0, 0, 0, 0, 0, 0};
+		vec(dimension, +1) = function(center[dimension] + length[dimension]/2);
+		vec(dimension, -1) = function(center[dimension] - length[dimension]/2);
 
 		// exclude one layer of boundary cells
 		const auto index = grid.mapping.get_indices(cell.id);
@@ -228,15 +224,12 @@ int main(int argc, char* argv[])
 		auto Is_Primary_Face_Getter = [](Cell& cell_data)->auto& {
 			return cell_data[Is_Primary_Face()];
 		};
-		initialize<std::pair<Vector_Pos, Vector_Neg>, Type>(grid_x, comm, nr_of_cells, 0, Is_Primary_Face_Getter);
-		initialize<std::pair<Vector_Pos, Vector_Neg>, Type>(grid_y, comm, nr_of_cells, 1, Is_Primary_Face_Getter);
-		initialize<std::pair<Vector_Pos, Vector_Neg>, Type>(grid_z, comm, nr_of_cells, 2, Is_Primary_Face_Getter);
+		initialize<Vector, Type>(grid_x, comm, nr_of_cells, 0, Is_Primary_Face_Getter);
+		initialize<Vector, Type>(grid_y, comm, nr_of_cells, 1, Is_Primary_Face_Getter);
+		initialize<Vector, Type>(grid_z, comm, nr_of_cells, 2, Is_Primary_Face_Getter);
 
-		auto Vector_Pos_Getter = [](Cell& cell_data)->auto& {
-			return cell_data[Vector_Pos()];
-		};
-		auto Vector_Neg_Getter = [](Cell& cell_data)->auto& {
-			return cell_data[Vector_Neg()];
+		auto Vector_Getter = [](Cell& cell_data)->auto& {
+			return cell_data[Vector()];
 		};
 		auto Divergence_Getter = [](Cell& cell_data)->auto& {
 			return cell_data[Divergence()];
@@ -247,8 +240,7 @@ int main(int argc, char* argv[])
 		pamhd::math::get_divergence_staggered(
 			grid_x.local_cells(),
 			grid_x,
-			Vector_Pos_Getter,
-			Vector_Neg_Getter,
+			Vector_Getter,
 			Divergence_Getter,
 			Is_Primary_Face_Getter,
 			Type_Getter
@@ -256,8 +248,7 @@ int main(int argc, char* argv[])
 		pamhd::math::get_divergence_staggered(
 			grid_y.local_cells(),
 			grid_y,
-			Vector_Pos_Getter,
-			Vector_Neg_Getter,
+			Vector_Getter,
 			Divergence_Getter,
 			Is_Primary_Face_Getter,
 			Type_Getter
@@ -265,8 +256,7 @@ int main(int argc, char* argv[])
 		pamhd::math::get_divergence_staggered(
 			grid_z.local_cells(),
 			grid_z,
-			Vector_Pos_Getter,
-			Vector_Neg_Getter,
+			Vector_Getter,
 			Divergence_Getter,
 			Is_Primary_Face_Getter,
 			Type_Getter

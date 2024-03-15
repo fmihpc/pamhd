@@ -101,9 +101,6 @@ const auto Mag = [](Cell& cell_data)->auto& {
 const auto Face_B = [](Cell& cell_data)->auto& {
 		return cell_data[pamhd::Face_Magnetic_Field()];
 	};
-const auto Face_B_neg = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::Face_Magnetic_Field_Neg()];
-	};
 // divergence of magnetic field
 const auto Mag_div = [](Cell& cell_data)->auto&{
 		return cell_data[pamhd::Magnetic_Field_Divergence()];
@@ -500,24 +497,21 @@ int main(int argc, char* argv[])
 		grid,
 		simulation_time,
 		options_sim.vacuum_permeability,
-		Face_B, Face_B_neg,
-		Mag_fs, Bg_B, PFace
+		Face_B, Mag_fs, Bg_B, PFace
 	);
 	Cell::set_transfer_all(true,
 		pamhd::Face_Magnetic_Field(),
-		pamhd::Face_Magnetic_Field_Neg(),
 		pamhd::Bg_Magnetic_Field()
 	);
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(false,
 		pamhd::Face_Magnetic_Field(),
-		pamhd::Face_Magnetic_Field_Neg(),
 		pamhd::Bg_Magnetic_Field()
 	);
 
 	pamhd::mhd::update_B_consistency(
 		grid.local_cells(),
-		Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
+		Mas, Mom, Nrj, Mag, Face_B,
 		PFace, FInfo,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
@@ -525,14 +519,10 @@ int main(int argc, char* argv[])
 	);
 	Cell::set_transfer_all(true,
 		pamhd::Face_Magnetic_Field(),
-		pamhd::Face_Magnetic_Field_Neg(),
 		pamhd::mhd::MHD_State_Conservative()
 	);
 	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::Face_Magnetic_Field_Neg()
-	);
+	Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
 	pamhd::mhd::initialize_fluid(
 		geometries,
@@ -589,22 +579,15 @@ int main(int argc, char* argv[])
 		boundaries,
 		geometries,
 		simulation_time,
-		Face_B, Face_B_neg,
-		PFace, FInfo
+		Face_B, PFace, FInfo
 	);
-	Cell::set_transfer_all(true,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::Face_Magnetic_Field_Neg()
-	);
+	Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
 	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::Face_Magnetic_Field_Neg()
-	);
+	Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
 	pamhd::mhd::update_B_consistency(
 		grid.local_cells(),
-		Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
+		Mas, Mom, Nrj, Mag, Face_B,
 		PFace, FInfo,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
@@ -612,13 +595,11 @@ int main(int argc, char* argv[])
 	);
 	Cell::set_transfer_all(true,
 		pamhd::Face_Magnetic_Field(),
-		pamhd::Face_Magnetic_Field_Neg(),
 		pamhd::mhd::MHD_State_Conservative()
 	);
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(false,
 		pamhd::Face_Magnetic_Field(),
-		pamhd::Face_Magnetic_Field_Neg(),
 		pamhd::mhd::MHD_State_Conservative()
 	);
 
@@ -728,23 +709,17 @@ int main(int argc, char* argv[])
 			grid.local_cells(),
 			grid,
 			time_step,
-			Face_B, Face_B_neg, Edge_E,
+			Face_B, Edge_E,
 			PFace, PEdge, FInfo
 		);
-		Cell::set_transfer_all(true,
-			pamhd::Face_Magnetic_Field(),
-			pamhd::Face_Magnetic_Field_Neg()
-		);
+		Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
 		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false,
-			pamhd::Face_Magnetic_Field(),
-			pamhd::Face_Magnetic_Field_Neg()
-		);
+		Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
 		// constant thermal pressure when updating vol B after solution
 		pamhd::mhd::update_B_consistency(
 			grid.local_cells(),
-			Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
+			Mas, Mom, Nrj, Mag, Face_B,
 			PFace, FInfo,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
@@ -752,13 +727,11 @@ int main(int argc, char* argv[])
 		);
 		Cell::set_transfer_all(true,
 			pamhd::Face_Magnetic_Field(),
-			pamhd::Face_Magnetic_Field_Neg(),
 			pamhd::mhd::MHD_State_Conservative()
 		);
 		grid.update_copies_of_remote_neighbors();
 		Cell::set_transfer_all(false,
 			pamhd::Face_Magnetic_Field(),
-			pamhd::Face_Magnetic_Field_Neg(),
 			pamhd::mhd::MHD_State_Conservative()
 		);
 
@@ -785,23 +758,21 @@ int main(int argc, char* argv[])
 			pamhd::grid::adapt_grid(
 				grid, Ref_min, Ref_max,
 				pamhd::mhd::New_Cells_Handler(
-					Mas, Mom, Nrj, Face_B, Face_B_neg, Mag, Bg_B,
+					Mas, Mom, Nrj, Face_B, Mag, Bg_B,
 					background_B, Ref_min, Ref_max,
 					options_sim.adiabatic_index, options_sim.vacuum_permeability),
 				pamhd::mhd::Removed_Cells_Handler(
-					Mas, Mom, Nrj, Face_B, Face_B_neg, Mag, Bg_B,
+					Mas, Mom, Nrj, Face_B, Mag, Bg_B,
 					background_B, Ref_min, Ref_max,
 					options_sim.adiabatic_index, options_sim.vacuum_permeability));
 			Cell::set_transfer_all(true,
 				pamhd::Face_Magnetic_Field(),
-				pamhd::Face_Magnetic_Field_Neg(),
 				pamhd::mhd::MHD_State_Conservative(),
 				pamhd::Bg_Magnetic_Field()
 			);
 			grid.update_copies_of_remote_neighbors();
 			Cell::set_transfer_all(false,
 				pamhd::Face_Magnetic_Field(),
-				pamhd::Face_Magnetic_Field_Neg(),
 				pamhd::mhd::MHD_State_Conservative(),
 				pamhd::Bg_Magnetic_Field()
 			);
@@ -851,7 +822,7 @@ int main(int argc, char* argv[])
 
 			pamhd::mhd::update_B_consistency(
 				grid.local_cells(),
-				Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
+				Mas, Mom, Nrj, Mag, Face_B,
 				PFace, FInfo,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
@@ -859,13 +830,11 @@ int main(int argc, char* argv[])
 			);
 			Cell::set_transfer_all(true,
 				pamhd::Face_Magnetic_Field(),
-				pamhd::Face_Magnetic_Field_Neg(),
 				pamhd::mhd::MHD_State_Conservative()
 			);
 			grid.update_copies_of_remote_neighbors();
 			Cell::set_transfer_all(false,
 				pamhd::Face_Magnetic_Field(),
-				pamhd::Face_Magnetic_Field_Neg(),
 				pamhd::mhd::MHD_State_Conservative()
 			);
 		}
@@ -893,22 +862,16 @@ int main(int argc, char* argv[])
 			boundaries,
 			geometries,
 			simulation_time,
-			Face_B, Face_B_neg,
+			Face_B,
 			PFace, FInfo
 		);
-		Cell::set_transfer_all(true,
-			pamhd::Face_Magnetic_Field(),
-			pamhd::Face_Magnetic_Field_Neg()
-		);
+		Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
 		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false,
-			pamhd::Face_Magnetic_Field(),
-			pamhd::Face_Magnetic_Field_Neg()
-		);
+		Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
 		pamhd::mhd::update_B_consistency(
 			grid.local_cells(),
-			Mas, Mom, Nrj, Mag, Face_B, Face_B_neg,
+			Mas, Mom, Nrj, Mag, Face_B,
 			PFace, FInfo,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
@@ -916,19 +879,17 @@ int main(int argc, char* argv[])
 		);
 		Cell::set_transfer_all(true,
 			pamhd::Face_Magnetic_Field(),
-			pamhd::Face_Magnetic_Field_Neg(),
 			pamhd::mhd::MHD_State_Conservative()
 		);
 		grid.update_copies_of_remote_neighbors();
 		Cell::set_transfer_all(false,
 			pamhd::Face_Magnetic_Field(),
-			pamhd::Face_Magnetic_Field_Neg(),
 			pamhd::mhd::MHD_State_Conservative()
 		);
 
 		const auto avg_div = pamhd::math::get_divergence_staggered(
 			grid.local_cells(), grid,
-			Face_B, Face_B_neg, Mag_div,
+			Face_B, Mag_div,
 			PFace, Sol_Info2
 		);
 		if (rank == 0) {
@@ -973,7 +934,6 @@ int main(int argc, char* argv[])
 					pamhd::mhd::Solver_Info(),
 					pamhd::MPI_Rank(),
 					pamhd::Face_Magnetic_Field(),
-					pamhd::Face_Magnetic_Field_Neg(),
 					pamhd::Edge_Electric_Field(),
 					pamhd::Bg_Magnetic_Field(),
 					pamhd::Magnetic_Field_Divergence(),

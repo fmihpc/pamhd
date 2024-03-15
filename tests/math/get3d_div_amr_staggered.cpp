@@ -2,7 +2,7 @@
 Tests vector field divergence calculation of PAMHD in 3d.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2022, 2023 Finnish Meteorological Institute
+Copyright 2018, 2022, 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 
@@ -190,16 +193,21 @@ int main(int argc, char* argv[])
 			const auto
 				center = grid.geometry.get_center(cell.id),
 				length = grid.geometry.get_length(cell.id);
-			(*cell.data)[Vector_Pos()] = function({
-				center[0] + length[0]/2,
-				center[1] + length[1]/2,
-				center[2] + length[2]/2
-			});
-			(*cell.data)[Vector_Neg()] = function({
-				center[0] - length[0]/2,
-				center[1] - length[1]/2,
-				center[2] - length[2]/2
-			});
+			const auto
+				pos = function({
+					center[0] + length[0]/2,
+					center[1] + length[1]/2,
+					center[2] + length[2]/2
+				}),
+				neg = function({
+					center[0] - length[0]/2,
+					center[1] - length[1]/2,
+					center[2] - length[2]/2
+				});
+			for (auto dim: {0, 1, 2}) {
+				(*cell.data)[Vector()](dim, -1) = neg[dim];
+				(*cell.data)[Vector()](dim, +1) = pos[dim];
+			}
 		}
 		grid.update_copies_of_remote_neighbors();
 
@@ -235,10 +243,7 @@ int main(int argc, char* argv[])
 			grid.local_cells(),
 			grid,
 			[](Cell& cell_data)->auto& {
-				return cell_data[Vector_Pos()];
-			},
-			[](Cell& cell_data)->auto& {
-				return cell_data[Vector_Neg()];
+				return cell_data[Vector()];
 			},
 			[](Cell& cell_data)->auto& {
 				return cell_data[Divergence()];

@@ -199,7 +199,6 @@ using Cell = gensimcell::Cell<
 	pamhd::mhd::HD_Flux_Conservative,
 	pamhd::Magnetic_Field_Flux,
 	pamhd::Face_Magnetic_Field,
-	pamhd::Face_Magnetic_Field_Neg,
 	pamhd::Edge_Electric_Field
 >;
 
@@ -335,14 +334,10 @@ using Cell_Staggered = gensimcell::Cell<
 	pamhd::mhd::MHD_State_Conservative,
 	pamhd::mhd::Solver_Info,
 	pamhd::MPI_Rank,
-	//pamhd::Resistivity,
 	pamhd::Bg_Magnetic_Field,
-	/*pamhd::Magnetic_Field_Resistive,
-	pamhd::Magnetic_Field_Temp,*/
 	pamhd::Magnetic_Field_Divergence,
 	pamhd::mhd::MHD_Flux,
 	pamhd::Face_Magnetic_Field,
-	pamhd::Face_Magnetic_Field_Neg,
 	pamhd::Edge_Electric_Field,
 	pamhd::grid::Is_Primary_Face,
 	pamhd::grid::Is_Primary_Edge,

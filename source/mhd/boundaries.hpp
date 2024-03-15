@@ -2,7 +2,7 @@
 Handles boundary logic of MHD part of PAMHD.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2023 Finnish Meteorological Institute
+Copyright 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_MHD_BOUNDARIES_HPP
@@ -278,8 +281,7 @@ template<
 	class Grid,
 	class Boundaries,
 	class Boundary_Geometries,
-	class Magnetic_Field_Pos_Getter,
-	class Magnetic_Field_Neg_Getter,
+	class Magnetic_Field_Getter,
 	class Primary_Face_Getter,
 	class Face_Info_Getter
 > void apply_magnetic_field_boundaries_staggered(
@@ -287,8 +289,7 @@ template<
 	Boundaries& boundaries,
 	const Boundary_Geometries& bdy_geoms,
 	const double t,
-	const Magnetic_Field_Pos_Getter& Face_B_pos,
-	const Magnetic_Field_Neg_Getter& Face_B_neg,
+	const Magnetic_Field_Getter& Face_B,
 	const Primary_Face_Getter& PFace,
 	const Face_Info_Getter& FInfo
 ) try {
@@ -328,16 +329,12 @@ template<
 
 			const auto& pface = PFace(*cell_data);
 			const auto& finfo = FInfo(*cell_data);
-			for (const size_t dim: {0, 1, 2}) {
-				if (pface(dim, -1) and finfo(dim, -1) == 0) {
+			for (auto dim: {0, 1, 2})
+			for (auto side: {-1, +1}) {
+				if (pface(dim, side) and finfo(dim, side) == 0) {
 					auto r = c;
-					r[dim] -= len[dim]/2;
-					Face_B_neg(*cell_data)[dim] = get_B(r)[dim];
-				}
-				if (pface(dim, +1) and finfo(dim, +1) == 0) {
-					auto r = c;
-					r[dim] += len[dim]/2;
-					Face_B_pos(*cell_data)[dim] = get_B(r)[dim];
+					r[dim] += side * len[dim]/2;
+					Face_B(*cell_data)(dim, side) = get_B(r)[dim];
 				}
 			}
 		}
@@ -352,27 +349,26 @@ template<
 	for (const auto& cell: grid.local_cells()) {
 		if (cp_bdy_cells.count(cell.id) == 0) continue;
 
-		auto
-			&c_face_b_neg = Face_B_neg(*cell.data),
-			&c_face_b_pos = Face_B_pos(*cell.data);
+		auto& c_face_b = Face_B(*cell.data);
 		const auto& cpface = PFace(*cell.data);
 		const auto& cfinfo = FInfo(*cell.data);
 
 		pamhd::grid::Face_Type<int> nr_values{0, 0, 0, 0, 0, 0};
-		for (const size_t dim: {0, 1, 2}) {
-			if (cpface(dim, -1) and cfinfo(dim, -1) < 1) c_face_b_neg[dim] = 0;
-			if (cpface(dim, +1) and cfinfo(dim, +1) < 1) c_face_b_pos[dim] = 0;
+		for (auto dim: {0, 1, 2}) {
+			for (auto side: {-1, +1}) {
+				if (cpface(dim, side) and cfinfo(dim, side) < 1) c_face_b(dim, side) = 0;
+			}
 
 			if (cpface(dim, -1) and cpface(dim, +1)) {
 				if (cfinfo(dim, -1) == 0 and cfinfo(dim, +1) == 0) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 				if (cfinfo(dim, -1) == -1 and cfinfo(dim, +1) == -1) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 
 				if (cfinfo(dim, -1) == 0 and cfinfo(dim, +1) == 1) {
-					c_face_b_neg[dim] += c_face_b_pos[dim];
+					c_face_b(dim, -1) += c_face_b(dim, +1);
 					nr_values(dim, -1)++;
 				}
 				if (cfinfo(dim, -1) == 1 and cfinfo(dim, +1) == 0) {
-					c_face_b_pos[dim] += c_face_b_neg[dim];
+					c_face_b(dim, +1) += c_face_b(dim, -1);
 					nr_values(dim, +1)++;
 				}
 			}
@@ -405,9 +401,7 @@ template<
 		}
 
 		for (const auto& neighbor: cell.neighbors_of) {
-			auto
-				&n_face_b_neg = Face_B_neg(*neighbor.data),
-				&n_face_b_pos = Face_B_pos(*neighbor.data);
+			auto& n_face_b = Face_B(*neighbor.data);
 
 			const auto& fn = neighbor.face_neighbor;
 			const auto& en = neighbor.edge_neighbor;
@@ -417,60 +411,48 @@ template<
 			const auto& nfinfo = FInfo(*neighbor.data);
 
 			if (fn != 0) {
-				for (const size_t dim: {0, 1, 2})
-				for (const int side: {-1, +1}) {
+				for (auto dir: {-3,-2,-1,+1,+2,+3}) {
 					if (
-						    cpface(dim, side)
-						and cfinfo(dim, side) == 0
-						and npface(dim, side)
-						and nfinfo(dim, side) == 1
+						cpface(dir) and cfinfo(dir) == 0 and
+						npface(dir) and nfinfo(dir) == 1
 					) {
-						if (side < 0) {
-							c_face_b_neg[dim] += n_face_b_neg[dim];
-						} else {
-							c_face_b_pos[dim] += n_face_b_pos[dim];
-						}
-						nr_values(dim, side)++;
+						c_face_b(dir) += n_face_b(dir);
+						nr_values(dir)++;
 					}
 				}
 			}
 
 			if (en[0] == 0 and en[1] == 0 and en[2] == 0) {
-				if (const int dir = -2;
-					npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-				) {
-					c_face_b_neg[1] += n_face_b_pos[1];
-					nr_values(dir)++;
-				}
-				if (const int dir = -3;
-					npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-				) {
-					c_face_b_neg[2] += n_face_b_pos[2];
-					nr_values(dir)++;
+				for (auto dir: {-2, -3}) {
+					if (
+						cpface(+dir) and cfinfo(+dir) == 0 and
+						npface(-dir) and nfinfo(-dir) == 1
+					) {
+						c_face_b(+dir) += n_face_b(-dir);
+						nr_values(+dir)++;
+					}
 				}
 			}
 
 			if (en[0] == 0 and en[1] == 0) {
 				const size_t d3 = 1;
 				if (en[2] == d3) {
-					if (const int dir = -2;
-						npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_neg[1] += n_face_b_pos[2];
-						nr_values(dir)++;
-					}
-					if (const int dir = +3;
-						npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_pos[2] += n_face_b_neg[2];
-						nr_values(dir)++;
+					for (auto dir: {-2, +3}) {
+						if (
+							cpface(+dir) and cfinfo(+dir) == 0 and
+							npface(-dir) and nfinfo(-dir) == 1
+						) {
+							c_face_b(+dir) += n_face_b(-dir);
+							nr_values(+dir)++;
+						}
 					}
 				}
 				if (en[2] != d3 and nys < 0) {
 					if (const int dir = +3;
-						npface(dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(dir) == 1
+						cpface(dir) and cfinfo(dir) == 0 and
+						npface(dir) and nfinfo(dir) == 1
 					) {
-						c_face_b_pos[2] += n_face_b_pos[2];
+						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
 					}
 				}
@@ -479,24 +461,22 @@ template<
 			if (en[0] == 0 and en[2] == 0) {
 				const size_t d2 = 1;
 				if (en[1] == d2) {
-					if (const int dir = +2;
-						npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_pos[1] += n_face_b_neg[1];
-						nr_values(dir)++;
-					}
-					if (const int dir = -3;
-						npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_neg[2] += n_face_b_pos[2];
-						nr_values(dir)++;
+					for (auto dir: {+2, -3}) {
+						if (
+							cpface(+dir) and cfinfo(+dir) == 0 and
+							npface(-dir) and nfinfo(-dir) == 1
+						) {
+							c_face_b(+dir) += n_face_b(-dir);
+							nr_values(+dir)++;
+						}
 					}
 				}
 				if (en[1] != d2 and nzs < 0) {
 					if (const int dir = +2;
-						npface(dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(dir) == 1
+						cpface(dir) and cfinfo(dir) == 0 and
+						npface(dir) and nfinfo(dir) == 1
 					) {
-						c_face_b_pos[1] += n_face_b_pos[1];
+						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
 					}
 				}
@@ -505,73 +485,67 @@ template<
 			if (en[0] == 0) {
 				const size_t d2 = 1, d3 = 1;
 				if (en[1] == d2 and en[2] == d3) {
-					if (const int dir = +2;
-						npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_pos[1] += n_face_b_neg[1];
-						nr_values(dir)++;
-					}
-					if (const int dir = +3;
-						npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_pos[2] += n_face_b_neg[2];
-						nr_values(dir)++;
+					for (auto dir: {+2, -3}) {
+						if (
+							cpface(+dir) and cfinfo(+dir) == 0 and
+							npface(-dir) and nfinfo(-dir) == 1
+						) {
+							c_face_b(+dir) += n_face_b(-dir);
+							nr_values(+dir)++;
+						}
 					}
 				}
 				if (en[1] != d2 and en[2] == d3 and pzs < 0) {
 					if (const int dir = +2;
-						npface(dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(dir) == 1
+						cpface(dir) and cfinfo(dir) == 0 and
+						npface(dir) and nfinfo(dir) == 1
 					) {
-						c_face_b_pos[1] += n_face_b_pos[1];
+						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
 					}
 				}
 				if (en[1] == d2 and en[2] != d3 and pys < 0) {
 					if (const int dir = +3;
-						npface(dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(dir) == 1
+						cpface(dir) and cfinfo(dir) == 0 and
+						npface(dir) and nfinfo(dir) == 1
 					) {
-						c_face_b_pos[2] += n_face_b_pos[2];
+						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
 					}
 				}
 			}
 
 			if (en[0] == 1 and en[1] == 0 and en[2] == 0) {
-				if (const int dir = -1;
-					npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-				) {
-					c_face_b_neg[0] += n_face_b_pos[0];
-					nr_values(dir)++;
-				}
-				if (const int dir = -3;
-					npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-				) {
-					c_face_b_neg[2] += n_face_b_pos[2];
-					nr_values(dir)++;
+				for (auto dir: {-1, -3}) {
+					if (
+						cpface(+dir) and cfinfo(+dir) == 0 and
+						npface(-dir) and nfinfo(-dir) == 1
+					) {
+						c_face_b(+dir) += n_face_b(-dir);
+						nr_values(+dir)++;
+					}
 				}
 			}
 
 			if (en[0] == 1 and en[1] == 0) {
 				const size_t d3 = 1;
 				if (en[2] == d3) {
-					if (const int dir = -1;
-						npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_neg[0] += n_face_b_pos[0];
-						nr_values(dir)++;
-					}
-					if (const int dir = +3;
-						npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_pos[2] += n_face_b_neg[2];
-						nr_values(dir)++;
+					for (auto dir: {-1, +3}) {
+						if (
+							cpface(+dir) and cfinfo(+dir) == 0 and
+							npface(-dir) and nfinfo(-dir) == 1
+						) {
+							c_face_b(+dir) += n_face_b(-dir);
+							nr_values(+dir)++;
+						}
 					}
 				}
 				if (en[2] != d3 and nxs < 0) {
 					if (const int dir = +3;
-						npface(dir)and cpface(dir) and cfinfo(dir) == 0 and nfinfo(dir) == 1
+						cpface(dir) and cfinfo(dir) == 0 and
+						npface(dir) and nfinfo(dir) == 1
 					) {
-						c_face_b_pos[2] += n_face_b_pos[2];
+						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
 					}
 				}
@@ -580,24 +554,22 @@ template<
 			if (en[0] == 1 and en[2] == 0) {
 				const size_t d2 = 1;
 				if (en[1] == d2) {
-					if (const int dir = +1;
-						npface(-dir)and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_pos[0] += n_face_b_neg[0];
-						nr_values(dir)++;
-					}
-					if (const int dir = -3;
-						npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_neg[2] += n_face_b_pos[2];
-						nr_values(dir)++;
+					for (auto dir: {+1, -3}) {
+						if (
+							cpface(+dir) and cfinfo(+dir) == 0 and
+							npface(-dir) and nfinfo(-dir) == 1
+						) {
+							c_face_b(+dir) += n_face_b(-dir);
+							nr_values(+dir)++;
+						}
 					}
 				}
 				if (en[1] != d2 and nzs < 0) {
 					if (const int dir = +1;
-						npface(dir)and cpface(dir) and cfinfo(dir) == 0 and nfinfo(dir) == 1
+						cpface(dir) and cfinfo(dir) == 0 and
+						npface(dir) and nfinfo(dir) == 1
 					) {
-						c_face_b_pos[0] += n_face_b_pos[0];
+						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
 					}
 				}
@@ -606,73 +578,67 @@ template<
 			if (en[0] == 1) {
 				const size_t d2 = 1, d3 = 1;
 				if (en[1] == d2 and en[2] == d3) {
-					if (const int dir = +1;
-						npface(-dir)and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_pos[0] += n_face_b_neg[0];
-						nr_values(dir)++;
-					}
-					if (const int dir = +3;
-						npface(-dir)and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_pos[2] += n_face_b_neg[2];
-						nr_values(dir)++;
+					for (auto dir: {+1, +3}) {
+						if (
+							cpface(+dir) and cfinfo(+dir) == 0 and
+							npface(-dir) and nfinfo(-dir) == 1
+						) {
+							c_face_b(+dir) += n_face_b(-dir);
+							nr_values(+dir)++;
+						}
 					}
 				}
 				if (en[1] != d2 and en[2] == d3 and pzs < 0) {
 					if (const int dir = +1;
-						npface(dir)and cpface(dir) and cfinfo(dir) == 0 and nfinfo(dir) == 1
+						cpface(dir) and cfinfo(dir) == 0 and
+						npface(dir) and nfinfo(dir) == 1
 					) {
-						c_face_b_pos[0] += n_face_b_pos[0];
+						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
 					}
 				}
 				if (en[1] == d2 and en[2] != d3 and pxs < 0) {
 					if (const int dir = +3;
-						npface(dir)and cpface(dir) and cfinfo(dir) == 0 and nfinfo(dir) == 1
+						cpface(dir) and cfinfo(dir) == 0 and
+						npface(dir) and nfinfo(dir) == 1
 					) {
-						c_face_b_pos[2] += n_face_b_pos[2];
+						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
 					}
 				}
 			}
 
 			if (en[0] == 2 and en[1] == 0 and en[2] == 0) {
-				if (const int dir = -1;
-					npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-				) {
-					c_face_b_neg[0] += n_face_b_pos[0];
-					nr_values(dir)++;
-				}
-				if (const int dir = -2;
-					npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-				) {
-					c_face_b_neg[1] += n_face_b_pos[1];
-					nr_values(dir)++;
+				for (auto dir: {-1, -2}) {
+					if (
+						cpface(+dir) and cfinfo(+dir) == 0 and
+						npface(-dir) and nfinfo(-dir) == 1
+					) {
+						c_face_b(+dir) += n_face_b(-dir);
+						nr_values(+dir)++;
+					}
 				}
 			}
 
 			if (en[0] == 2 and en[1] == 0) {
 				const size_t d3 = 1;
 				if (en[2] == d3) {
-					if (const int dir = -1;
-						npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_neg[0] += n_face_b_pos[0];
-						nr_values(dir)++;
-					}
-					if (const int dir = +2;
-						npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_pos[1] += n_face_b_neg[1];
-						nr_values(dir)++;
+					for (auto dir: {-1, +2}) {
+						if (
+							cpface(+dir) and cfinfo(+dir) == 0 and
+							npface(-dir) and nfinfo(-dir) == 1
+						) {
+							c_face_b(+dir) += n_face_b(-dir);
+							nr_values(+dir)++;
+						}
 					}
 				}
 				if (en[2] != d3 and nxs < 0) {
 					if (const int dir = +2;
-						npface(dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(dir) == 1
+						cpface(dir) and cfinfo(dir) == 0 and
+						npface(dir) and nfinfo(dir) == 1
 					) {
-						c_face_b_pos[1] += n_face_b_pos[1];
+						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
 					}
 				}
@@ -681,24 +647,22 @@ template<
 			if (en[0] == 2 and en[2] == 0) {
 				const size_t d2 = 1;
 				if (en[1] == d2) {
-					if (const int dir = +1;
-						npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_pos[0] += n_face_b_neg[0];
-						nr_values(dir)++;
-					}
-					if (const int dir = -2;
-						npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_neg[1] += n_face_b_pos[1];
-						nr_values(dir)++;
+					for (auto dir: {+1, -2}) {
+						if (
+							cpface(+dir) and cfinfo(+dir) == 0 and
+							npface(-dir) and nfinfo(-dir) == 1
+						) {
+							c_face_b(+dir) += n_face_b(-dir);
+							nr_values(+dir)++;
+						}
 					}
 				}
 				if (en[1] != d2 and nys < 0) {
 					if (const int dir = +1;
-						npface(dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(dir) == 1
+						cpface(dir) and cfinfo(dir) == 0 and
+						npface(dir) and nfinfo(dir) == 1
 					) {
-						c_face_b_pos[0] += n_face_b_pos[0];
+						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
 					}
 				}
@@ -707,68 +671,48 @@ template<
 			if (en[0] == 2) {
 				const size_t d2 = 1, d3 = 1;
 				if (en[1] == d2 and en[2] == d3) {
-					if (const int dir = +1;
-						npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_pos[0] += n_face_b_neg[0];
-						nr_values(dir)++;
-					}
-					if (const int dir = +2;
-						npface(-dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(-dir) == 1
-					) {
-						c_face_b_pos[1] += n_face_b_neg[1];
-						nr_values(dir)++;
+					for (auto dir: {+1, +2}) {
+						if (
+							cpface(+dir) and cfinfo(+dir) == 0 and
+							npface(-dir) and nfinfo(-dir) == 1
+						) {
+							c_face_b(+dir) += n_face_b(-dir);
+							nr_values(+dir)++;
+						}
 					}
 				}
 				if (en[1] != d2 and en[2] == d3 and pys < 0) {
 					if (const int dir = +1;
-						npface(dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(dir) == 1
+						cpface(dir) and cfinfo(dir) == 0 and
+						npface(dir) and nfinfo(dir) == 1
 					) {
-						c_face_b_pos[0] += n_face_b_pos[0];
+						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
 					}
 				}
 				if (en[1] == d2 and en[2] != d3 and pxs < 0) {
 					if (const int dir = +2;
-						npface(dir) and cpface(dir) and cfinfo(dir) == 0 and nfinfo(dir) == 1
+						cpface(dir) and cfinfo(dir) == 0 and
+						npface(dir) and nfinfo(dir) == 1
 					) {
-						c_face_b_pos[1] += n_face_b_pos[1];
+						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
 					}
 				}
 			}
 		}
 
-		if (cpface(-1) and cfinfo(-1) == 0) {
-			if (nr_values(-1) == 0) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + "): " + to_string(cell.id));
-			c_face_b_neg[0] /= nr_values(-1);
-		}
-		if (cpface(+1) and cfinfo(+1) == 0) {
-			if (nr_values(+1) == 0) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + "): " + to_string(cell.id));
-			c_face_b_pos[0] /= nr_values(+1);
-		}
-		if (cpface(-2) and cfinfo(-2) == 0) {
-			if (nr_values(-2) == 0) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + "): " + to_string(cell.id));
-			c_face_b_neg[1] /= nr_values(-2);
-		}
-		if (cpface(+2) and cfinfo(+2) == 0) {
-			if (nr_values(+2) == 0) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + "): " + to_string(cell.id));
-			c_face_b_pos[1] /= nr_values(+2);
-		}
-		if (cpface(-3) and cfinfo(-3) == 0) {
-			if (nr_values(-3) == 0) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + "): " + to_string(cell.id));
-			c_face_b_neg[2] /= nr_values(-3);
-		}
-		if (cpface(+3) and cfinfo(+3) == 0) {
-			if (nr_values(+3) == 0) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + "): " + to_string(cell.id));
-			c_face_b_pos[2] /= nr_values(+3);
+		for (auto dir: {-3,-2,-1,+1,+2,+3}) {
+			if (cpface(dir) and cfinfo(dir) == 0) {
+				if (nr_values(dir) == 0) {
+					throw runtime_error(
+						__FILE__ "(" + to_string(__LINE__) + "): "
+						+ to_string(cell.id) + " " + to_string(dir));
+				}
+				c_face_b(dir) /= nr_values(dir);
+			}
 		}
 	}
-for (const auto& cell: grid.local_cells()) {
-	if (std::isnan(Face_B_pos(*cell.data)[0]) or std::isnan(Face_B_pos(*cell.data)[1]) or std::isnan(Face_B_pos(*cell.data)[2])) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + "): " + to_string(cell.id));
-	if (std::isnan(Face_B_neg(*cell.data)[0]) or std::isnan(Face_B_neg(*cell.data)[1]) or std::isnan(Face_B_neg(*cell.data)[2])) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + "): " + to_string(cell.id));
-}
-
 } catch (const std::exception& e) {
 	throw std::runtime_error(__func__ + std::string(": ") + e.what());
 }
@@ -1149,7 +1093,7 @@ template <
 	const Cell_Info_Getter& CInfo,
 	const Face_Info_Getter& FInfo
 ) try {
-	const std::array<int, 6> all_dirs{-1,+1,-2,+2,-3,+3};
+	const std::array<int, 6> all_dirs{-3,-2,-1,+1,+2,+3};
 	// face(s) sharing edge(s) with normal cell(s) is normal
 	for (const auto& cell: grid.local_cells()) {
 		for (const int dir: all_dirs) {
