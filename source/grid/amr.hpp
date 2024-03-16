@@ -263,43 +263,47 @@ template<class Data_Type> struct Edge_Type {
 	0 = x, 1 = y, 2 = z.
 	first_perp_dim_i = negative or positive side of cell in
 	lexically earlier dimension perpendicular to edge,
-	e.g. if par_dim_i = 0, first_perp_dim_i = 1 means positive side of
-	cell in y dimension.
+	e.g. if par_dim_i = -1, first_perp_dim_i = +1 means positive
+	side of cell in y dimension.
 	second_perp_dim = neg or pos side in lexically later dimension,
-	if par_dim_i = 2, second_perp_dim_i = 0 means negative side of
+	if par_dim_i = 2, second_perp_dim_i = -1 means negative side of
 	cell in y dimension.
 	par_dim_i | first_perp_dim_i | second..._i | edge of cell
-	    0     |         0        |      0      | x directed: -y, -z sides
-	    0     |         0        |      1      | x dir:      -y, +z
-	    0     |         1        |      1      | x dir:      +y, +z
+	    0     |        -1        |     -1      | x directed: -y, -z sides
+	    0     |        -1        |     +1      | x dir:      -y, +z
+	    0     |        +1        |     +1      | x dir:      +y, +z
 	...
-	    2     |         1        |      0      | z dir:      +x, -y
-	    2     |         1        |      1      | z dir:      +x, +y
+	    2     |        +1        |     -1      | z dir:      +x, -y
+	    2     |        +1        |     +1      | z dir:      +x, +y
 	*/
 	const Data_Type& operator()(
-		const size_t par_dim_i,
-		const size_t first_perp_dim_i,
-		const size_t second_perp_dim_i
+		const int par_dim_i,
+		const int first_perp_dim_i,
+		const int second_perp_dim_i
 	) const {
 		using std::domain_error;
+		using std::to_string;
 
-		if (par_dim_i > 2) {
-			throw domain_error("Parallel dimension > 2");
+		if (par_dim_i < 0 or par_dim_i > 2) {
+			throw domain_error("Parallel dimension != 0,1,2: " + to_string(par_dim_i));
 		}
-		if (first_perp_dim_i > 1) {
-			throw domain_error("First perpendicular dimension > 1");
+		if (first_perp_dim_i != +1 and first_perp_dim_i != -1) {
+			throw domain_error("First perpendicular dimension != +-1: " + to_string(first_perp_dim_i));
 		}
-		if (second_perp_dim_i > 1) {
-			throw domain_error("Second perpendicular dimension > 1");
+		if (second_perp_dim_i != +1 and second_perp_dim_i != -1) {
+			throw domain_error("Second perpendicular dimension != +-1: " + to_string(second_perp_dim_i));
 		}
-		return this->edge[par_dim_i*2*2 + first_perp_dim_i*2 + second_perp_dim_i];
+		const size_t
+			p1 = [&](){if (first_perp_dim_i < 0) return 0; else return 1;}(),
+			p2 = [&](){if (second_perp_dim_i < 0) return 0; else return 1;}();
+		return this->edge[size_t(par_dim_i)*2*2 + p1*2 + p2];
 	}
 
 	// https://stackoverflow.com/a/123995
 	Data_Type& operator()(
-		const size_t par_dim_i,
-		const size_t first_perp_dim_i,
-		const size_t second_perp_dim_i
+		const int par_dim_i,
+		const int first_perp_dim_i,
+		const int second_perp_dim_i
 	) {
 		return const_cast<Data_Type&>(static_cast<const Edge_Type<Data_Type>&>(*this).operator()(par_dim_i, first_perp_dim_i, second_perp_dim_i));
 	}
@@ -418,46 +422,46 @@ template <
 
 			if (fn == -1) {
 				// this or another neighbor has priority
-				Edges(*cell.data)(1, 0, 0) =
-				Edges(*cell.data)(1, 0, 1) =
-				Edges(*cell.data)(2, 0, 0) =
-				Edges(*cell.data)(2, 0, 1) = false;
+				Edges(*cell.data)(1,-1,-1) =
+				Edges(*cell.data)(1,-1,+1) =
+				Edges(*cell.data)(2,-1,-1) =
+				Edges(*cell.data)(2,-1,+1) = false;
 				continue;
 			}
 			if (fn == +1 and neighbor.relative_size > 0) {
 				// only smaller neighbors have priority
-				Edges(*cell.data)(1, 1, 0) =
-				Edges(*cell.data)(1, 1, 1) =
-				Edges(*cell.data)(2, 1, 0) =
-				Edges(*cell.data)(2, 1, 1) = false;
+				Edges(*cell.data)(1,+1,-1) =
+				Edges(*cell.data)(1,+1,+1) =
+				Edges(*cell.data)(2,+1,-1) =
+				Edges(*cell.data)(2,+1,+1) = false;
 				continue;
 			}
 			if (fn == -2) {
-				Edges(*cell.data)(0, 0, 0) =
-				Edges(*cell.data)(0, 0, 1) =
-				Edges(*cell.data)(2, 0, 0) =
-				Edges(*cell.data)(2, 1, 0) = false;
+				Edges(*cell.data)(0,-1,-1) =
+				Edges(*cell.data)(0,-1,+1) =
+				Edges(*cell.data)(2,-1,-1) =
+				Edges(*cell.data)(2,+1,-1) = false;
 				continue;
 			}
 			if (fn == +2 and neighbor.relative_size > 0) {
-				Edges(*cell.data)(0, 1, 0) =
-				Edges(*cell.data)(0, 1, 1) =
-				Edges(*cell.data)(2, 0, 1) =
-				Edges(*cell.data)(2, 1, 1) = false;
+				Edges(*cell.data)(0,+1,-1) =
+				Edges(*cell.data)(0,+1,+1) =
+				Edges(*cell.data)(2,-1,+1) =
+				Edges(*cell.data)(2,+1,+1) = false;
 				continue;
 			}
 			if (fn == -3) {
-				Edges(*cell.data)(0, 0, 0) =
-				Edges(*cell.data)(0, 1, 0) =
-				Edges(*cell.data)(1, 0, 0) =
-				Edges(*cell.data)(1, 1, 0) = false;
+				Edges(*cell.data)(0,-1,-1) =
+				Edges(*cell.data)(0,+1,-1) =
+				Edges(*cell.data)(1,-1,-1) =
+				Edges(*cell.data)(1,+1,-1) = false;
 				continue;
 			}
 			if (fn == +3 and neighbor.relative_size > 0) {
-				Edges(*cell.data)(0, 0, 1) =
-				Edges(*cell.data)(0, 1, 1) =
-				Edges(*cell.data)(1, 0, 1) =
-				Edges(*cell.data)(1, 1, 1) = false;
+				Edges(*cell.data)(0,-1,+1) =
+				Edges(*cell.data)(0,+1,+1) =
+				Edges(*cell.data)(1,-1,+1) =
+				Edges(*cell.data)(1,+1,+1) = false;
 				continue;
 			}
 
@@ -465,7 +469,7 @@ template <
 				continue;
 			}
 
-			if (neighbor.relative_size > 0 or en[1] == 0) {
+			if (neighbor.relative_size > 0 or en[1] == -1) {
 				Edges(*cell.data)(en[0], en[1], en[2]) = false;
 			}
 		}

@@ -145,16 +145,16 @@ more than one edge with cell, edge_neighbor[0] == -1.
 
 edge_neighbor[1] specifies offset of neighbor relative to cell in
 first dimension perpendicular to edge_neighbor[0], for example
-if edge_neighbor[0] == 1, edge_neighbor[1] specifies offset in x dim.
-Value of 0 means neighbor in on negative side from cell in that dimension,
-value of 1 means neighbor is on positive side.
+if edge_neighbor[0] == +1, edge_neighbor[1] specifies offset in x dim.
+Value of -1 means neighbor in on negative side from cell in that dimension,
+value of +1 means neighbor is on positive side.
 
 edge_neighbor[2] specifies offset of neighbor in second dim
 perpendicular to edge_neighbor[0], for example if edge_neighbor[0] == 2,
 edge_neighbor[2] specifies offset in y dimension.
 */
 struct Edge_Neighbor {
-	std::array<int, 3> edge_neighbor{-1, -1, -1};
+	std::array<int, 3> edge_neighbor{-1, 0, 0};
 	template<
 		class Grid, class Cell_Item, class Neighbor_Item
 	> void update(
@@ -208,19 +208,19 @@ struct Edge_Neighbor {
 
 		if (neighbor.x == -neigh_len) {
 			// 1st perp dim in any case
-			this->edge_neighbor[1] = 0;
+			this->edge_neighbor[1] = -1;
 		}
 		if (neighbor.x == cell_len) {
-			this->edge_neighbor[1] = 1;
+			this->edge_neighbor[1] = +1;
 		}
 
 		if (neighbor.y == -neigh_len) {
 			switch (this->edge_neighbor[0]) {
 			case 0:
-				this->edge_neighbor[1] = 0;
+				this->edge_neighbor[1] = -1;
 				break;
 			case 2:
-				this->edge_neighbor[2] = 0;
+				this->edge_neighbor[2] = -1;
 				break;
 			default:
 				break;
@@ -229,10 +229,10 @@ struct Edge_Neighbor {
 		if (neighbor.y == cell_len) {
 			switch (this->edge_neighbor[0]) {
 			case 0:
-				this->edge_neighbor[1] = 1;
+				this->edge_neighbor[1] = +1;
 				break;
 			case 2:
-				this->edge_neighbor[2] = 1;
+				this->edge_neighbor[2] = +1;
 				break;
 			default:
 				break;
@@ -241,13 +241,13 @@ struct Edge_Neighbor {
 
 		if (neighbor.z == -neigh_len) {
 			// 2nd perp dim in any case
-			this->edge_neighbor[2] = 0;
+			this->edge_neighbor[2] = -1;
 		}
 		if (neighbor.z == cell_len) {
-			this->edge_neighbor[2] = 1;
+			this->edge_neighbor[2] = +1;
 		}
 
-		if (this->edge_neighbor[1] < 0 or this->edge_neighbor[2] < 0) {
+		if (this->edge_neighbor[1] == 0 or this->edge_neighbor[2] == 0) {
 			// not edge neighbor
 			this->edge_neighbor[0] = -1;
 			return;

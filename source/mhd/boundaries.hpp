@@ -422,7 +422,7 @@ template<
 				}
 			}
 
-			if (en[0] == 0 and en[1] == 0 and en[2] == 0) {
+			if (en[0] == 0 and en[1] == -1 and en[2] == -1) {
 				for (auto dir: {-2, -3}) {
 					if (
 						cpface(+dir) and cfinfo(+dir) == 0 and
@@ -434,8 +434,8 @@ template<
 				}
 			}
 
-			if (en[0] == 0 and en[1] == 0) {
-				const size_t d3 = 1;
+			if (en[0] == 0 and en[1] == -1) {
+				const int d3 = +1;
 				if (en[2] == d3) {
 					for (auto dir: {-2, +3}) {
 						if (
@@ -458,8 +458,8 @@ template<
 				}
 			}
 
-			if (en[0] == 0 and en[2] == 0) {
-				const size_t d2 = 1;
+			if (en[0] == 0 and en[2] == -1) {
+				const int d2 = +1;
 				if (en[1] == d2) {
 					for (auto dir: {+2, -3}) {
 						if (
@@ -483,7 +483,7 @@ template<
 			}
 
 			if (en[0] == 0) {
-				const size_t d2 = 1, d3 = 1;
+				const int d2 = +1, d3 = +1;
 				if (en[1] == d2 and en[2] == d3) {
 					for (auto dir: {+2, -3}) {
 						if (
@@ -515,7 +515,7 @@ template<
 				}
 			}
 
-			if (en[0] == 1 and en[1] == 0 and en[2] == 0) {
+			if (en[0] == 1 and en[1] == -1 and en[2] == -1) {
 				for (auto dir: {-1, -3}) {
 					if (
 						cpface(+dir) and cfinfo(+dir) == 0 and
@@ -527,8 +527,8 @@ template<
 				}
 			}
 
-			if (en[0] == 1 and en[1] == 0) {
-				const size_t d3 = 1;
+			if (en[0] == 1 and en[1] == -1) {
+				const int d3 = +1;
 				if (en[2] == d3) {
 					for (auto dir: {-1, +3}) {
 						if (
@@ -551,8 +551,8 @@ template<
 				}
 			}
 
-			if (en[0] == 1 and en[2] == 0) {
-				const size_t d2 = 1;
+			if (en[0] == 1 and en[2] == -1) {
+				const int d2 = +1;
 				if (en[1] == d2) {
 					for (auto dir: {+1, -3}) {
 						if (
@@ -576,7 +576,7 @@ template<
 			}
 
 			if (en[0] == 1) {
-				const size_t d2 = 1, d3 = 1;
+				const int d2 = +1, d3 = +1;
 				if (en[1] == d2 and en[2] == d3) {
 					for (auto dir: {+1, +3}) {
 						if (
@@ -608,7 +608,7 @@ template<
 				}
 			}
 
-			if (en[0] == 2 and en[1] == 0 and en[2] == 0) {
+			if (en[0] == 2 and en[1] == -1 and en[2] == -1) {
 				for (auto dir: {-1, -2}) {
 					if (
 						cpface(+dir) and cfinfo(+dir) == 0 and
@@ -620,8 +620,8 @@ template<
 				}
 			}
 
-			if (en[0] == 2 and en[1] == 0) {
-				const size_t d3 = 1;
+			if (en[0] == 2 and en[1] == -1) {
+				const int d3 = +1;
 				if (en[2] == d3) {
 					for (auto dir: {-1, +2}) {
 						if (
@@ -644,8 +644,8 @@ template<
 				}
 			}
 
-			if (en[0] == 2 and en[2] == 0) {
-				const size_t d2 = 1;
+			if (en[0] == 2 and en[2] == -1) {
+				const int d2 = +1;
 				if (en[1] == d2) {
 					for (auto dir: {+1, -2}) {
 						if (
@@ -669,7 +669,7 @@ template<
 			}
 
 			if (en[0] == 2) {
-				const size_t d2 = 1, d3 = 1;
+				const int d2 = +1, d3 = +1;
 				if (en[1] == d2 and en[2] == d3) {
 					for (auto dir: {+1, +2}) {
 						if (
@@ -1161,87 +1161,88 @@ template <
 				}
 			}
 
+			int dir1 = 9, dir2 = 9;
 			if (en[0] == 0) {
-				if (en[1] == 0 and en[2] == 0) {
-					if (const int d1 = +2, d2 = +3;
-						   (npface(d1) and nfinfo(d1) == 1)
-						or (npface(d2) and nfinfo(d2) == 1)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == -1 and en[2] == -1) {
+					if (dir1 = +2, dir2 = +3;
+						   (npface(dir1) and nfinfo(dir1) == 1)
+						or (npface(dir2) and nfinfo(dir2) == 1)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 0 and en[2] == 1) {
-					if (const int d1 = +2, d2 = -3;
-						   (npface(d1) and nfinfo(d1) == 1)
-						or (npface(d2) and nfinfo(d2) == 1)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == -1 and en[2] == +1) {
+					if (dir1 = +2, dir2 = -3;
+						   (npface(dir1) and nfinfo(dir1) == 1)
+						or (npface(dir2) and nfinfo(dir2) == 1)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 1 and en[2] == 0) {
-					if (const int d1 = -2, d2 = +3;
-						   (npface(d1) and nfinfo(d1) == 1)
-						or (npface(d2) and nfinfo(d2) == 1)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == +1 and en[2] == -1) {
+					if (dir1 = -2, dir2 = +3;
+						   (npface(dir1) and nfinfo(dir1) == 1)
+						or (npface(dir2) and nfinfo(dir2) == 1)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 1 and en[2] == 1) {
-					if (const int d1 = -2, d2 = -3;
-						   (npface(d1) and nfinfo(d1) == 1)
-						or (npface(d2) and nfinfo(d2) == 1)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == +1 and en[2] == +1) {
+					if (dir1 = -2, dir2 = -3;
+						   (npface(dir1) and nfinfo(dir1) == 1)
+						or (npface(dir2) and nfinfo(dir2) == 1)
+					) dirs.insert({-dir1, -dir2});
 				}
 			}
 			if (en[0] == 1) {
-				if (en[1] == 0 and en[2] == 0) {
-					if (const int d1 = +1, d2 = +3;
-						   (npface(d1) and nfinfo(d1) == 1)
-						or (npface(d2) and nfinfo(d2) == 1)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == -1 and en[2] == -1) {
+					if (dir1 = +1, dir2 = +3;
+						   (npface(dir1) and nfinfo(dir1) == 1)
+						or (npface(dir2) and nfinfo(dir2) == 1)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 0 and en[2] == 1) {
-					if (const int d1 = +1, d2 = -3;
-						   (npface(d1) and nfinfo(d1) == 1)
-						or (npface(d2) and nfinfo(d2) == 1)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == -1 and en[2] == +1) {
+					if (dir1 = +1, dir2 = -3;
+						   (npface(dir1) and nfinfo(dir1) == 1)
+						or (npface(dir2) and nfinfo(dir2) == 1)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 1 and en[2] == 0) {
-					if (const int d1 = -1, d2 = +3;
-						   (npface(d1) and nfinfo(d1) == 1)
-						or (npface(d2) and nfinfo(d2) == 1)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == +1 and en[2] == -1) {
+					if (dir1 = -1, dir2 = +3;
+						   (npface(dir1) and nfinfo(dir1) == 1)
+						or (npface(dir2) and nfinfo(dir2) == 1)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 1 and en[2] == 1) {
-					if (const int d1 = -1, d2 = -3;
-						   (npface(d1) and nfinfo(d1) == 1)
-						or (npface(d2) and nfinfo(d2) == 1)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == +1 and en[2] == +1) {
+					if (dir1 = -1, dir2 = -3;
+						   (npface(dir1) and nfinfo(dir1) == 1)
+						or (npface(dir2) and nfinfo(dir2) == 1)
+					) dirs.insert({-dir1, -dir2});
 				}
 			}
 			if (en[0] == 2) {
-				if (en[1] == 0 and en[2] == 0) {
-					if (const int d1 = +1, d2 = +2;
-						   (npface(d1) and nfinfo(d1) == 1)
-						or (npface(d2) and nfinfo(d2) == 1)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == -1 and en[2] == -1) {
+					if (dir1 = +1, dir2 = +2;
+						   (npface(dir1) and nfinfo(dir1) == 1)
+						or (npface(dir2) and nfinfo(dir2) == 1)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 0 and en[2] == 1) {
-					if (const int d1 = +1, d2 = -2;
-						   (npface(d1) and nfinfo(d1) == 1)
-						or (npface(d2) and nfinfo(d2) == 1)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == -1 and en[2] == +1) {
+					if (dir1 = +1, dir2 = -2;
+						   (npface(dir1) and nfinfo(dir1) == 1)
+						or (npface(dir2) and nfinfo(dir2) == 1)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 1 and en[2] == 0) {
-					if (const int d1 = -1, d2 = +2;
-						   (npface(d1) and nfinfo(d1) == 1)
-						or (npface(d2) and nfinfo(d2) == 1)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == +1 and en[2] == -1) {
+					if (dir1 = -1, dir2 = +2;
+						   (npface(dir1) and nfinfo(dir1) == 1)
+						or (npface(dir2) and nfinfo(dir2) == 1)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 1 and en[2] == 1) {
-					if (const int d1 = -1, d2 = -2;
-						   (npface(d1) and nfinfo(d1) == 1)
-						or (npface(d2) and nfinfo(d2) == 1)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == +1 and en[2] == +1) {
+					if (dir1 = -1, dir2 = -2;
+						   (npface(dir1) and nfinfo(dir1) == 1)
+						or (npface(dir2) and nfinfo(dir2) == 1)
+					) dirs.insert({-dir1, -dir2});
 				}
 			}
 		}
 
-		for (const int dir: dirs) {
+		for (int dir: dirs) {
 			if (cpface(dir) and cfinfo(dir) == -99) FInfo(*cell.data)(dir) = 0;
 		}
 	}
@@ -1283,82 +1284,83 @@ template <
 				}
 			}
 
+			int dir1 = 9, dir2 = 9;
 			if (en[0] == 0) {
-				if (en[1] == 0 and en[2] == 0) {
-					if (const int d1 = +2, d2 = +3;
-						   (npface(d1) and nfinfo(d1) == 0)
-						or (npface(d2) and nfinfo(d2) == 0)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == -1 and en[2] == -1) {
+					if (dir1 = +2, dir2 = +3;
+						   (npface(dir1) and nfinfo(dir1) == 0)
+						or (npface(dir2) and nfinfo(dir2) == 0)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 0 and en[2] == 1) {
-					if (const int d1 = +2, d2 = -3;
-						   (npface(d1) and nfinfo(d1) == 0)
-						or (npface(d2) and nfinfo(d2) == 0)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == -1 and en[2] == +1) {
+					if (dir1 = +2, dir2 = -3;
+						   (npface(dir1) and nfinfo(dir1) == 0)
+						or (npface(dir2) and nfinfo(dir2) == 0)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 1 and en[2] == 0) {
-					if (const int d1 = -2, d2 = +3;
-						   (npface(d1) and nfinfo(d1) == 0)
-						or (npface(d2) and nfinfo(d2) == 0)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == +1 and en[2] == -1) {
+					if (dir1 = -2, dir2 = +3;
+						   (npface(dir1) and nfinfo(dir1) == 0)
+						or (npface(dir2) and nfinfo(dir2) == 0)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 1 and en[2] == 1) {
-					if (const int d1 = -2, d2 = -3;
-						   (npface(d1) and nfinfo(d1) == 0)
-						or (npface(d2) and nfinfo(d2) == 0)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == +1 and en[2] == +1) {
+					if (dir1 = -2, dir2 = -3;
+						   (npface(dir1) and nfinfo(dir1) == 0)
+						or (npface(dir2) and nfinfo(dir2) == 0)
+					) dirs.insert({-dir1, -dir2});
 				}
 			}
 			if (en[0] == 1) {
-				if (en[1] == 0 and en[2] == 0) {
-					if (const int d1 = +1, d2 = +3;
-						   (npface(d1) and nfinfo(d1) == 0)
-						or (npface(d2) and nfinfo(d2) == 0)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == -1 and en[2] == -1) {
+					if (dir1 = +1, dir2 = +3;
+						   (npface(dir1) and nfinfo(dir1) == 0)
+						or (npface(dir2) and nfinfo(dir2) == 0)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 0 and en[2] == 1) {
-					if (const int d1 = +1, d2 = -3;
-						   (npface(d1) and nfinfo(d1) == 0)
-						or (npface(d2) and nfinfo(d2) == 0)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == -1 and en[2] == +1) {
+					if (dir1 = +1, dir2 = -3;
+						   (npface(dir1) and nfinfo(dir1) == 0)
+						or (npface(dir2) and nfinfo(dir2) == 0)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 1 and en[2] == 0) {
-					if (const int d1 = -1, d2 = +3;
-						   (npface(d1) and nfinfo(d1) == 0)
-						or (npface(d2) and nfinfo(d2) == 0)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == +1 and en[2] == -1) {
+					if (dir1 = -1, dir2 = +3;
+						   (npface(dir1) and nfinfo(dir1) == 0)
+						or (npface(dir2) and nfinfo(dir2) == 0)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 1 and en[2] == 1) {
-					if (const int d1 = -1, d2 = -3;
-						   (npface(d1) and nfinfo(d1) == 0)
-						or (npface(d2) and nfinfo(d2) == 0)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == +1 and en[2] == +1) {
+					if (dir1 = -1, dir2 = -3;
+						   (npface(dir1) and nfinfo(dir1) == 0)
+						or (npface(dir2) and nfinfo(dir2) == 0)
+					) dirs.insert({-dir1, -dir2});
 				}
 			}
 			if (en[0] == 2) {
-				if (en[1] == 0 and en[2] == 0) {
-					if (const int d1 = +1, d2 = +2;
-						   (npface(d1) and nfinfo(d1) == 0)
-						or (npface(d2) and nfinfo(d2) == 0)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == -1 and en[2] == -1) {
+					if (dir1 = +1, dir2 = +2;
+						   (npface(dir1) and nfinfo(dir1) == 0)
+						or (npface(dir2) and nfinfo(dir2) == 0)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 0 and en[2] == 1) {
-					if (const int d1 = +1, d2 = -2;
-						   (npface(d1) and nfinfo(d1) == 0)
-						or (npface(d2) and nfinfo(d2) == 0)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == -1 and en[2] == +1) {
+					if (dir1 = +1, dir2 = -2;
+						   (npface(dir1) and nfinfo(dir1) == 0)
+						or (npface(dir2) and nfinfo(dir2) == 0)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 1 and en[2] == 0) {
-					if (const int d1 = -1, d2 = +2;
-						   (npface(d1) and nfinfo(d1) == 0)
-						or (npface(d2) and nfinfo(d2) == 0)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == +1 and en[2] == -1) {
+					if (dir1 = -1, dir2 = +2;
+						   (npface(dir1) and nfinfo(dir1) == 0)
+						or (npface(dir2) and nfinfo(dir2) == 0)
+					) dirs.insert({-dir1, -dir2});
 				}
-				if (en[1] == 1 and en[2] == 1) {
-					if (const int d1 = -1, d2 = -2;
-						   (npface(d1) and nfinfo(d1) == 0)
-						or (npface(d2) and nfinfo(d2) == 0)
-					) dirs.insert({-d1, -d2});
+				if (en[1] == +1 and en[2] == +1) {
+					if (dir1 = -1, dir2 = -2;
+						   (npface(dir1) and nfinfo(dir1) == 0)
+						or (npface(dir2) and nfinfo(dir2) == 0)
+					) dirs.insert({-dir1, -dir2});
 				}
 			}
 		}
@@ -1398,9 +1400,9 @@ template <
 
 	for (const auto& cell: cells) {
 		auto& ceinfo = EInfo(*cell.data);
-		for (size_t d1: {0, 1, 2})
-		for (size_t d2: {0, 1})
-		for (size_t d3: {0, 1}) {
+		for (int d1: {0, 1, 2})
+		for (int d2: {-1, +1})
+		for (int d3: {-1, +1}) {
 			ceinfo(d1,d2,d3) = -2;
 		}
 
@@ -1409,157 +1411,102 @@ template <
 		const auto& cfinfo = FInfo(*cell.data);
 
 		if (cpface(-1)) {
-			{const size_t d1 = 1, d2 = 0;//, Bd = 2;
-			if (const size_t d3 = 0;
-				cpedge(d1,d2,d3)
-			) {
-				ceinfo(d1,d2,d3) = max(cfinfo(-1), ceinfo(d1,d2,d3));
+			for (int d1: {1, 2})
+			for (int d3: {-1, +1}) {
+				if (constexpr int d2 = -1; cpedge(d1,d2,d3)) {
+					ceinfo(d1,d2,d3) = max(cfinfo(d2), ceinfo(d1,d2,d3));
+				}
 			}
-			if (const size_t d3 = 1;
-				cpedge(d1,d2,d3)
-			) {
-				ceinfo(d1,d2,d3) = max(cfinfo(-1), ceinfo(d1,d2,d3));
-			}}
-
-			{const size_t d1 = 2, d2 = 0;//, Bd = 1;
-			if (const size_t d3 = 0;
-				cpedge(d1,d2,d3)
-			) {
-				ceinfo(d1,d2,d3) = max(cfinfo(-1), ceinfo(d1,d2,d3));
-			}
-			if (const size_t d3 = 1;
-				cpedge(d1,d2,d3)
-			) {
-				ceinfo(d1,d2,d3) = max(cfinfo(-1), ceinfo(d1,d2,d3));
-			}}
 		}
 
+		size_t d1 = 9;
+		int d2 = 9, d3 = 9;
 		if (cpface(+1)) {
-			{const size_t d1 = 1, d2 = 1;//, Bd = 2;
-			if (const size_t d3 = 0;
-				cpedge(d1,d2,d3)
-			) {
+			{d1 = 1, d2 = +1;
+			if (d3 = -1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(+1), ceinfo(d1,d2,d3));
 			}
-			if (const size_t d3 = 1;
-				cpedge(d1,d2,d3)
-			) {
+			if (d3 = +1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(+1), ceinfo(d1,d2,d3));
 			}}
 
-			{const size_t d1 = 2, d2 = 1;//, Bd = 1;
-			if (const size_t d3 = 0;
-				cpedge(d1,d2,d3)
-			) {
+			{d1 = 2, d2 = +1;
+			if (d3 = -1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(+1), ceinfo(d1,d2,d3));
 			}
-			if (const size_t d3 = 1;
-				cpedge(d1,d2,d3)
-			) {
+			if (d3 = +1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(+1), ceinfo(d1,d2,d3));
 			}}
 		}
 
 		if (cpface(-2)) {
-			{const size_t d1 = 0, d2 = 0;//, Bd = 2;
-			if (const size_t d3 = 0;
-				cpedge(d1,d2,d3)
-			) {
+			{d1 = 0, d2 = -1;
+			if (d3 = -1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(-2), ceinfo(d1,d2,d3));
 			}
-			if (const size_t d3 = 1;
-				cpedge(d1,d2,d3)
-			) {
+			if (d3 = +1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(-2), ceinfo(d1,d2,d3));
 			}}
 
-			{const size_t d1 = 2, d3 = 0;//, Bd = 0;
-			if (const size_t d2 = 0;
-				cpedge(d1,d2,d3)
-			) {
+			{d1 = 2, d3 = -1;
+			if (d2 = -1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(-2), ceinfo(d1,d2,d3));
 			}
-			if (const size_t d2 = 1;
-				cpedge(d1,d2,d3)
-			) {
+			if (d2 = +1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(-2), ceinfo(d1,d2,d3));
 			}}
 		}
 
 		if (cpface(+2)) {
-			{const size_t d1 = 0, d2 = 1;//, Bd = 2;
-			if (const size_t d3 = 0;
-				cpedge(d1,d2,d3)
-			) {
+			{d1 = 0, d2 = +1;
+			if (d3 = -1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(+2), ceinfo(d1,d2,d3));
 			}
-			if (const size_t d3 = 1;
-				cpedge(d1,d2,d3)
-			) {
+			if (d3 = +1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(+2), ceinfo(d1,d2,d3));
 			}}
 
-			{const size_t d1 = 2, d3 = 1;//, Bd = 0;
-			if (const size_t d2 = 0;
-				cpedge(d1,d2,d3)
-			) {
+			{d1 = 2, d3 = +1;
+			if (d2 = -1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(+2), ceinfo(d1,d2,d3));
 			}
-			if (const size_t d2 = 1;
-				cpedge(d1,d2,d3)
-			) {
+			if (d2 = +1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(+2), ceinfo(d1,d2,d3));
 			}}
 		}
 
 		if (cpface(-3)) {
-			{const size_t d1 = 0, d3 = 0;//, Bd = 1;
-			if (const size_t d2 = 0;
-				cpedge(d1,d2,d3)
-			) {
+			{d1 = 0, d3 = -1;
+			if (d2 = -1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(-3), ceinfo(d1,d2,d3));
 			}
-			if (const size_t d2 = 1;
-				cpedge(d1,d2,d3)
-			) {
+			if (d2 = +1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(-3), ceinfo(d1,d2,d3));
 			}}
 
-			{const size_t d1 = 1, d3 = 0;//, Bd = 0;
-			if (const size_t d2 = 0;
-				cpedge(d1,d2,d3)
-			) {
+			{d1 = 1, d3 = -1;
+			if (d2 = -1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(-3), ceinfo(d1,d2,d3));
 			}
-			if (const size_t d2 = 1;
-				cpedge(d1,d2,d3)
-			) {
+			if (d2 = +1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(-3), ceinfo(d1,d2,d3));
 			}}
 		}
 
 		if (cpface(+3)) {
-			{const size_t d1 = 0, d3 = 1;//, Bd = 1;
-			if (const size_t d2 = 0;
-				cpedge(d1,d2,d3)
-			) {
+			{d1 = 0, d3 = +1;
+			if (d2 = -1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(+3), ceinfo(d1,d2,d3));
 			}
-			if (const size_t d2 = 1;
-				cpedge(d1,d2,d3)
-			) {
+			if (d2 = +1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(+3), ceinfo(d1,d2,d3));
 			}}
 
-			{const size_t d1 = 1, d3 = 1;//, Bd = 0;
-			if (const size_t d2 = 0;
-				cpedge(d1,d2,d3)
-			) {
+			{d1 = 1, d3 = +1;
+			if (d2 = -1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(+3), ceinfo(d1,d2,d3));
 			}
-			if (const size_t d2 = 1;
-				cpedge(d1,d2,d3)
-			) {
+			if (d2 = +1; cpedge(d1,d2,d3)) {
 				ceinfo(d1,d2,d3) = max(cfinfo(+3), ceinfo(d1,d2,d3));
 			}}
 		}
@@ -1574,27 +1521,28 @@ template <
 			const auto& npface = PFace(*neighbor.data);
 			const auto& nfinfo = FInfo(*neighbor.data);
 
+			int d1 = 9, d2 = 9, d3 = 9;
 			if (fn == -1) {
-				constexpr size_t d2 = 0;//, Bd = 0;
-				if (constexpr size_t d1 = 1, d3 = 0;
+				d2 = -1;
+				if (d1 = 1, d3 = -1;
 					cpedge(d1,d2,d3) and npface(-3)// and neighbor.z == 0
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 1, d3 = 1;
+				if (d1 = 1, d3 = +1;
 					cpedge(d1,d2,d3) and npface(+3)// and cleni == neighbor.z + nleni
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(+3), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 2, d3 = 0;
+				if (d1 = 2, d3 = -1;
 					cpedge(d1,d2,d3) and npface(-2)// and neighbor.y == 0
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 2, d3 = 1;
+				if (d1 = 2, d3 = +1;
 					cpedge(d1,d2,d3) and npface(+2)// and cleni == neighbor.y + nleni
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
@@ -1602,26 +1550,26 @@ template <
 			}
 
 			if (fn == +1) {
-				constexpr size_t d2 = 1;//, Bd = 0;
-				if (constexpr size_t d1 = 2, d3 = 0;
+				d2 = +1;
+				if (d1 = 2, d3 = -1;
 					cpedge(d1,d2,d3) and npface(-2)// and neighbor.y == 0
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 2, d3 = 1;
+				if (d1 = 2, d3 = +1;
 					cpedge(d1,d2,d3) and npface(+2)// and cleni == neighbor.y + nleni
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 1, d3 = 0;
+				if (d1 = 1, d3 = -1;
 					cpedge(d1,d2,d3) and npface(-3)// and neighbor.z == 0
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 1, d3 = 1;
+				if (d1 = 1, d3 = +1;
 					cpedge(d1,d2,d3) and npface(+3)// and cleni == neighbor.z + nleni
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(+3), ceinfo(d1,d2,d3));
@@ -1629,26 +1577,25 @@ template <
 			}
 
 			if (fn == -2) {
-				//constexpr size_t Bd = 1;
-				if (constexpr size_t d1 = 2, d2 = 0, d3 = 0;
+				if (d1 = 2, d2 = -1, d3 = -1;
 					cpedge(d1,d2,d3) and npface(-1)// and neighbor.x == 0
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 2, d2 = 1, d3 = 0;
+				if (d1 = 2, d2 = +1, d3 = -1;
 					cpedge(d1,d2,d3) and npface(+1)// and cleni == neighbor.x + nleni
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 0, d2 = 0, d3 = 0;
+				if (d1 = 0, d2 = -1, d3 = -1;
 					cpedge(d1,d2,d3) and npface(-3)// and neighbor.z == 0
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 0, d2 = 0, d3 = 1;
+				if (d1 = 0, d2 = -1, d3 = +1;
 					cpedge(d1,d2,d3) and npface(+3)// and cleni == neighbor.z + nleni
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(+3), ceinfo(d1,d2,d3));
@@ -1656,26 +1603,25 @@ template <
 			}
 
 			if (fn == +2) {
-				//constexpr size_t Bd = 1;
-				if (constexpr size_t d1 = 2, d2 = 0, d3 = 1;
+				if (d1 = 2, d2 = -1, d3 = +1;
 					cpedge(d1,d2,d3) and npface(-1)// and neighbor.x == 0
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 2, d2 = 1, d3 = 1;
+				if (d1 = 2, d2 = +1, d3 = +1;
 					cpedge(d1,d2,d3) and npface(+1)// and cleni == neighbor.x + nleni
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 0, d2 = 1, d3 = 0;
+				if (d1 = 0, d2 = +1, d3 = -1;
 					cpedge(d1,d2,d3) and npface(-3)// and neighbor.z == 0
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 0, d2 = 1, d3 = 1;
+				if (d1 = 0, d2 = +1, d3 = +1;
 					cpedge(d1,d2,d3) and npface(+3)// and cleni == neighbor.z + nleni
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(+3), ceinfo(d1,d2,d3));
@@ -1683,26 +1629,26 @@ template <
 			}
 
 			if (fn == -3) {
-				constexpr size_t d3 = 0;//, Bd = 2;
-				if (constexpr size_t d1 = 1, d2 = 0;
+				d3 = -1;
+				if (d1 = 1, d2 = -1;
 					cpedge(d1,d2,d3) and npface(-1)// and neighbor.x == 0
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 1, d2 = 1;
+				if (d1 = 1, d2 = +1;
 					cpedge(d1,d2,d3) and npface(+1) //and cleni == neighbor.x + nleni
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 0, d2 = 0;
+				if (d1 = 0, d2 = -1;
 					cpedge(d1,d2,d3) and npface(-2) //and neighbor.y == 0
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 0, d2 = 1;
+				if (d1 = 0, d2 = +1;
 					cpedge(d1,d2,d3) and npface(+2) //and cleni == neighbor.y + nleni
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
@@ -1710,34 +1656,34 @@ template <
 			}
 
 			if (fn == +3) {
-				constexpr size_t d3 = 1;//, Bd = 2;
-				if (constexpr size_t d1 = 1, d2 = 0;
+				d3 = +1;
+				if (d1 = 1, d2 = -1;
 					cpedge(d1,d2,d3) and npface(-1) //and neighbor.x == 0
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 1, d2 = 1;
+				if (d1 = 1, d2 = +1;
 					cpedge(d1,d2,d3) and npface(+1) //and cleni == neighbor.x + nleni
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 0, d2 = 0;
+				if (d1 = 0, d2 = -1;
 					cpedge(d1,d2,d3) and npface(-2) //and neighbor.y == 0
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
 				}
 
-				if (constexpr size_t d1 = 0, d2 = 1;
+				if (d1 = 0, d2 = +1;
 					cpedge(d1,d2,d3) and npface(+2) //and cleni == neighbor.y + nleni
 				) {
 					ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
 				}
 			}
 
-			if (constexpr size_t d1 = 0, d2 = 0, d3 = 0;
-				cpedge(d1,d2,d3) and en[0] == d1 and en[1] == d2 and en[2] == d3
+			if (d1 = 0, d2 = -1, d3 = -1; cpedge(d1,d2,d3) and
+				en[0] == d1 and en[1] == d2 and en[2] == d3
 			) {
 				if (npface(+2)) {
 					ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
@@ -1747,47 +1693,41 @@ template <
 				}
 			}
 
-			if (constexpr size_t d1 = 0, d2 = 0, d3 = 1;
-				cpedge(d1,d2,d3) and en[0] == d1 and en[1] == d2
+			if (d1 = 0, d2 = -1, d3 = +1; cpedge(d1,d2,d3) and
+				en[0] == d1 and en[1] == d2 and en[2] == d3
 			) {
-				if (en[2] == d3) {
-					if (npface(+2)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
-					}
-					if (npface(-3)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
-					}
+				if (npface(+2)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
+				}
+				if (npface(-3)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
 				}
 			}
 
-			if (constexpr size_t d1 = 0, d2 = 1, d3 = 0;
-				cpedge(d1,d2,d3) and en[0] == d1 and en[2] == d3
+			if (d1 = 0, d2 = +1, d3 = -1; cpedge(d1,d2,d3) and
+				en[0] == d1 and en[1] == d2 and en[2] == d3
 			) {
-				if (en[1] == d2) {
-					if (npface(-2)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
-					}
-					if (npface(+3)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(+3), ceinfo(d1,d2,d3));
-					}
+				if (npface(-2)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
+				}
+				if (npface(+3)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(+3), ceinfo(d1,d2,d3));
 				}
 			}
 
-			if (constexpr size_t d1 = 0, d2 = 1, d3 = 1;
-				cpedge(d1,d2,d3) and en[0] == d1
+			if (d1 = 0, d2 = +1, d3 = +1; cpedge(d1,d2,d3) and
+				en[0] == d1 and en[1] == d2 and en[2] == d3
 			) {
-				if (en[1] == d2 and en[2] == d3) {
-					if (npface(-2)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
-					}
-					if (npface(-3)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
-					}
+				if (npface(-2)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
+				}
+				if (npface(-3)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
 				}
 			}
 
-			if (constexpr size_t d1 = 1, d2 = 0, d3 = 0;
-				cpedge(d1,d2,d3) and en[0] == d1 and en[1] == d2 and en[2] == d3
+			if (d1 = 1, d2 = -1, d3 = -1; cpedge(d1,d2,d3) and
+				en[0] == d1 and en[1] == d2 and en[2] == d3
 			) {
 				if (npface(+1)) {
 					ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
@@ -1797,46 +1737,40 @@ template <
 				}
 			}
 
-			if (constexpr size_t d1 = 1, d2 = 0, d3 = 1;
-				cpedge(d1,d2,d3) and en[0] == d1 and en[1] == d2
+			if (d1 = 1, d2 = -1, d3 = +1; cpedge(d1,d2,d3) and
+				en[0] == d1 and en[1] == d2 and en[2] == d3
 			) {
-				if (en[2] == d3) {
-					if (npface(+1)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
-					}
-					if (npface(-3)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
-					}
+				if (npface(+1)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
+				}
+				if (npface(-3)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
 				}
 			}
 
-			if (constexpr size_t d1 = 1, d2 = 1, d3 = 0;
-				cpedge(d1,d2,d3) and en[0] == d1 and en[2] == d3
+			if (d1 = 1, d2 = +1, d3 = -1; cpedge(d1,d2,d3) and
+				en[0] == d1 and en[1] == d2 and en[2] == d3
 			) {
-				if (en[1] == d2) {
-					if (npface(-1)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
-					}
-					if (npface(+3)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(+3), ceinfo(d1,d2,d3));
-					}
+				if (npface(-1)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
+				}
+				if (npface(+3)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(+3), ceinfo(d1,d2,d3));
 				}
 			}
 
-			if (constexpr size_t d1 = 1, d2 = 1, d3 = 1;
-				cpedge(d1,d2,d3) and en[0] == d1
+			if (d1 = 1, d2 = +1, d3 = +1; cpedge(d1,d2,d3) and
+				en[0] == d1 and en[1] == d2 and en[2] == d3
 			) {
-				if (en[1] == d2 and en[2] == d3) {
-					if (npface(-1)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
-					}
-					if (npface(-3)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
-					}
+				if (npface(-1)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
+				}
+				if (npface(-3)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
 				}
 			}
 
-			if (constexpr size_t d1 = 2, d2 = 0, d3 = 0;
+			if (d1 = 2, d2 = -1, d3 = -1;
 				cpedge(d1,d2,d3) and en[0] == d1 and en[1] == d2 and en[2] == d3
 			) {
 				if (npface(+1)) {
@@ -1847,42 +1781,36 @@ template <
 				}
 			}
 
-			if (constexpr size_t d1 = 2, d2 = 0, d3 = 1;
-				cpedge(d1,d2,d3) and en[0] == d1 and en[1] == d2
+			if (d1 = 2, d2 = -1, d3 = +1; cpedge(d1,d2,d3) and
+				en[0] == d1 and en[1] == d2 and en[2] == d3
 			) {
-				if (en[2] == d3) {
-					if (npface(+1)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
-					}
-					if (npface(-2)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
-					}
+				if (npface(+1)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
+				}
+				if (npface(-2)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
 				}
 			}
 
-			if (constexpr size_t d1 = 2, d2 = 1, d3 = 0;
-				cpedge(d1,d2,d3) and en[0] == d1 and en[2] == d3
+			if (d1 = 2, d2 = +1, d3 = -1; cpedge(d1,d2,d3) and
+				en[0] == d1 and en[1] == d2 and en[2] == d3
 			) {
-				if (en[1] == d2) {
-					if (npface(-1)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
-					}
-					if (npface(+2)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
-					}
+				if (npface(-1)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
+				}
+				if (npface(+2)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
 				}
 			}
 
-			if (constexpr size_t d1 = 2, d2 = 1, d3 = 1;
-				cpedge(d1,d2,d3) and en[0] == d1
+			if (d1 = 2, d2 = +1, d3 = +1; cpedge(d1,d2,d3) and
+				en[0] == d1 and en[1] == d2 and en[2] == d3
 			) {
-				if (en[1] == d2 and en[2] == d3) {
-					if (npface(-1)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
-					}
-					if (npface(-2)) {
-						ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
-					}
+				if (npface(-1)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
+				}
+				if (npface(-2)) {
+					ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
 				}
 			}
 		}

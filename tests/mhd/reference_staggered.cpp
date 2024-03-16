@@ -98,7 +98,7 @@ const auto Ele = [](Cell& cell_data)->auto& {
 };
 
 const auto Bg_Mag = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::Bg_Magnetic_Field()](0,1);
+	return cell_data[pamhd::Bg_Magnetic_Field()](+1);
 };
 
 // fluxes of conservative MHD variables
@@ -219,9 +219,9 @@ template <
 		Mag(cell_data)[0]     =
 		Mag(cell_data)[1]     =
 		Mag(cell_data)[2]     =
-		Ele(cell_data)(0,0,0) =
-		Ele(cell_data)(1,0,0) =
-		Ele(cell_data)(2,0,0) =
+		Ele(cell_data)(0,-1,-1) =
+		Ele(cell_data)(1,-1,-1) =
+		Ele(cell_data)(2,-1,-1) =
 		Bg_Mag(cell_data)[0]  =
 		Bg_Mag(cell_data)[1]  =
 		Bg_Mag(cell_data)[2]  = 0;
@@ -389,21 +389,21 @@ template <
 		const auto
 			v_c = (Mom(cell) / Mas(cell)).eval(),
 			v_n = (Mom(neighbor) / Mas(neighbor)).eval();
-		Ele(cell)(0,0,0) = 0;
+		Ele(cell)(0,-1,-1) = 0;
 		if (v_c[0] + v_n[0] > 0) {
-			Ele(cell)(1,0,0) = v_c[0]*Mag(cell)[2] - v_c[2]*Mag(cell)[0];
-			Ele(cell)(2,0,0) = v_c[1]*Mag(cell)[0] - v_c[0]*Mag(cell)[1];
+			Ele(cell)(1,-1,-1) = v_c[0]*Mag(cell)[2] - v_c[2]*Mag(cell)[0];
+			Ele(cell)(2,-1,-1) = v_c[1]*Mag(cell)[0] - v_c[0]*Mag(cell)[1];
 		} else {
-			Ele(cell)(1,0,0) = v_n[0]*Mag(neighbor)[2] - v_n[2]*Mag(cell)[0];
-			Ele(cell)(2,0,0) = v_n[1]*Mag(cell)[0] - v_n[0]*Mag(neighbor)[1];
+			Ele(cell)(1,-1,-1) = v_n[0]*Mag(neighbor)[2] - v_n[2]*Mag(cell)[0];
+			Ele(cell)(2,-1,-1) = v_n[1]*Mag(cell)[0] - v_n[0]*Mag(neighbor)[1];
 		}
 
 		Mag_f(cell)[0] = 0;
-		Mag_f(cell)[1] = Ele(cell)(2,0,0);
-		Mag_f(cell)[2] = -Ele(cell)(1,0,0);
+		Mag_f(cell)[1] = Ele(cell)(2,-1,-1);
+		Mag_f(cell)[2] = -Ele(cell)(1,-1,-1);
 		if (cell_i > 0) {
-			Mag_f(cell)[1] -= Ele(grid[cell_i-1])(2,0,0);
-			Mag_f(cell)[2] += Ele(grid[cell_i-1])(1,0,0);
+			Mag_f(cell)[1] -= Ele(grid[cell_i-1])(2,-1,-1);
+			Mag_f(cell)[2] += Ele(grid[cell_i-1])(1,-1,-1);
 		}
 		Mag_f(cell) *= dt;
 	}
