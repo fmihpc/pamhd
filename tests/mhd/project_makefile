@@ -23,93 +23,49 @@ TESTS_MHD_TESTS = \
   tests/mhd/reference_staggered.tst_rusanov \
   tests/mhd/two_reference.tst_rusanov \
   tests/mhd/two_reference.tst_hll_athena \
-  tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered/mhd_staggered_000001147.dc \
   tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered.ok \
-  tests/mhd/results/hydrodynamic/density_advection/1d/-x/rusanov_staggered/mhd_staggered_000001147.dc \
   tests/mhd/results/hydrodynamic/density_advection/1d/-x/rusanov_staggered.ok \
-  tests/mhd/results/hydrodynamic/density_advection/1d/+y/rusanov_staggered/mhd_staggered_000001147.dc \
   tests/mhd/results/hydrodynamic/density_advection/1d/+y/rusanov_staggered.ok \
-  tests/mhd/results/hydrodynamic/density_advection/1d/-y/rusanov_staggered/mhd_staggered_000001147.dc \
   tests/mhd/results/hydrodynamic/density_advection/1d/-y/rusanov_staggered.ok \
-  tests/mhd/results/hydrodynamic/density_advection/1d/+z/rusanov_staggered/mhd_staggered_000001147.dc \
   tests/mhd/results/hydrodynamic/density_advection/1d/+z/rusanov_staggered.ok \
-  tests/mhd/results/hydrodynamic/density_advection/1d/-z/rusanov_staggered/mhd_staggered_000001147.dc \
   tests/mhd/results/hydrodynamic/density_advection/1d/-z/rusanov_staggered.ok \
-  tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered_amr1/mhd_staggered_000000222.dc \
   tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered_amr1.ok \
-  tests/mhd/results/hydrodynamic/density_advection/1d/-x/rusanov_staggered_amr1/mhd_staggered_000000222.dc \
   tests/mhd/results/hydrodynamic/density_advection/1d/-x/rusanov_staggered_amr1.ok \
-  tests/mhd/results/hydrodynamic/density_advection/1d/+y/rusanov_staggered_amr1/mhd_staggered_000000222.dc \
   tests/mhd/results/hydrodynamic/density_advection/1d/+y/rusanov_staggered_amr1.ok \
-  tests/mhd/results/hydrodynamic/density_advection/1d/-y/rusanov_staggered_amr1/mhd_staggered_000000222.dc \
   tests/mhd/results/hydrodynamic/density_advection/1d/-y/rusanov_staggered_amr1.ok \
-  tests/mhd/results/hydrodynamic/density_advection/1d/+z/rusanov_staggered_amr1/mhd_staggered_000000222.dc \
   tests/mhd/results/hydrodynamic/density_advection/1d/+z/rusanov_staggered_amr1.ok \
-  tests/mhd/results/hydrodynamic/density_advection/1d/-z/rusanov_staggered_amr1/mhd_staggered_000000222.dc \
   tests/mhd/results/hydrodynamic/density_advection/1d/-z/rusanov_staggered_amr1.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/+x/small_staggered_rusanov/mhd_staggered_000000203.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/+x/small_staggered_rusanov.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/-x/small_staggered_rusanov/mhd_staggered_000000203.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/-x/small_staggered_rusanov.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/+y/small_staggered_rusanov/mhd_staggered_000000203.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/+y/small_staggered_rusanov.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/-y/small_staggered_rusanov/mhd_staggered_000000203.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/-y/small_staggered_rusanov.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/+z/small_staggered_rusanov/mhd_staggered_000000203.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/+z/small_staggered_rusanov.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/-z/small_staggered_rusanov/mhd_staggered_000000203.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/-z/small_staggered_rusanov.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov1/mhd_staggered_000000019.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov1.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov_bgB1/mhd_staggered_000000019.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov_bgB1.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov2/mhd_staggered_000000034.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov2.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov_bgB2/mhd_staggered_000000034.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov_bgB2.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov3/mhd_staggered_000000037.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov3.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov_bgB3/mhd_staggered_000000037.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov_bgB3.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov4/mhd_staggered_000000072.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov4.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov_bgB4/mhd_staggered_000000072.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov_bgB4.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov5/mhd_staggered_000000072.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov5.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov_bgB5/mhd_staggered_000000072.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov_bgB5.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov6/mhd_staggered_000000072.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov6.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov_bgB6/mhd_staggered_000000072.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_staggered_rusanov_bgB6.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov1/mhd_staggered_000000019.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov1.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov2/mhd_staggered_000000034.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov2.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov3/mhd_staggered_000000037.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov3.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov4/mhd_staggered_000000072.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov4.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov_bgB4/mhd_staggered_000000072.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov_bgB4.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov5/mhd_staggered_000000072.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov5.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov6/mhd_staggered_000000072.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_staggered_rusanov6.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov1/mhd_staggered_000000019.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov1.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov2/mhd_staggered_000000034.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov2.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov3/mhd_staggered_000000037.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov3.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov4/mhd_staggered_000000072.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov4.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov_bgB4/mhd_staggered_000000072.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov_bgB4.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov5/mhd_staggered_000000072.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov5.ok \
-  tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov6/mhd_staggered_000000072.dc \
   tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/z/small_staggered_rusanov6.ok
 
 tests/mhd_executables: $(TESTS_MHD_EXECUTABLES)
