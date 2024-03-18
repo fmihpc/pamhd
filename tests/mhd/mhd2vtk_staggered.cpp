@@ -219,7 +219,6 @@ std::optional<std::array<double, 4>> read_data(
 		pamhd::mhd::Solver_Info(),
 		pamhd::MPI_Rank(),
 		pamhd::Face_Magnetic_Field(),
-		pamhd::Face_Magnetic_Field_Neg(),
 		pamhd::Edge_Electric_Field(),
 		pamhd::Bg_Magnetic_Field(),
 		pamhd::Magnetic_Field_Divergence(),
@@ -439,9 +438,9 @@ void convert(
 	vtk_file << "VECTORS total_face_magnetic_field double\n";
 	for (const auto& cell: cells) {
 		const auto
-			b0x = simulation_data.at(cell)[pamhd::Bg_Magnetic_Field()](0, +1)[0],
-			b0y = simulation_data.at(cell)[pamhd::Bg_Magnetic_Field()](1, +1)[1],
-			b0z = simulation_data.at(cell)[pamhd::Bg_Magnetic_Field()](2, +1)[2];
+			b0x = simulation_data.at(cell)[pamhd::Bg_Magnetic_Field()](+1)[0],
+			b0y = simulation_data.at(cell)[pamhd::Bg_Magnetic_Field()](+2)[1],
+			b0z = simulation_data.at(cell)[pamhd::Bg_Magnetic_Field()](+3)[2];
 		const auto b1 = simulation_data.at(cell)[MHD][MagCell];
 		vtk_file
 			<< b1[0] + b0x << " "
@@ -453,9 +452,9 @@ void convert(
 	for (const auto& cell: cells) {
 		const auto& magnetic_field_face = simulation_data.at(cell)[MagFace];
 		vtk_file
-			<< magnetic_field_face[0] << " "
-			<< magnetic_field_face[1] << " "
-			<< magnetic_field_face[2] << "\n";
+			<< magnetic_field_face(+1) << " "
+			<< magnetic_field_face(+2) << " "
+			<< magnetic_field_face(+3) << "\n";
 	}
 
 	/*constexpr pamhd::Electric_Current_Density Cur{};
