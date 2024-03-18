@@ -86,7 +86,8 @@ template <
 	const Target_Refinement_Level_Min_Getter& RLMin,
 	const Target_Refinement_Level_Max_Getter& RLMax,
 	const double& adiabatic_index,
-	const double& vacuum_permeability
+	const double& vacuum_permeability,
+	const double& proton_mass
 ) {
 	using std::abs;
 	using std::clamp;
@@ -122,7 +123,7 @@ template <
 			cpre = max(options_mhd.pressure_min_mrg, get_pressure(
 				Mas(*cell.data), Mom(*cell.data), Nrj(*cell.data),
 				Mag(*cell.data), adiabatic_index, vacuum_permeability)),
-			cmas = max(Mas(*cell.data), options_mhd.number_density_min_mrg),
+			cmas = max(Mas(*cell.data) / proton_mass, options_mhd.number_density_min_mrg),
 			cvel = max((Mom(*cell.data) / Mas(*cell.data)).norm(), options_mhd.vel_min_mrg),
 			cmag = max(Mag(*cell.data).norm(), options_mhd.mag_min_mrg);
 
@@ -146,7 +147,7 @@ template <
 				npre = max(options_mhd.pressure_min_mrg, get_pressure(
 					Mas(*neighbor.data), Mom(*neighbor.data), Nrj(*neighbor.data),
 					Mag(*neighbor.data), adiabatic_index, vacuum_permeability)),
-				nmas = max(Mas(*neighbor.data), options_mhd.number_density_min_mrg),
+				nmas = max(Mas(*neighbor.data) / proton_mass, options_mhd.number_density_min_mrg),
 				nvel = max((Mom(*neighbor.data) / Mas(*neighbor.data)).norm(), options_mhd.vel_min_mrg),
 				nmag = max(Mag(*neighbor.data).norm(), options_mhd.mag_min_mrg);
 
@@ -182,6 +183,7 @@ template <
 			mrg_vel / options_mhd.vel_mrl_at),
 			mrg_pre / options_mhd.pressure_mrl_at),
 			mrg_mag / options_mhd.mag_mrl_at);
+
 		RLMin(*cell.data) = clamp(
 			max(int(round(tgt_ref_lvl-0.25)), RLMin(*cell.data)),
 			0, max_ref_lvl);

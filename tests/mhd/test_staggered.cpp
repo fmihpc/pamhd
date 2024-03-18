@@ -754,7 +754,8 @@ int main(int argc, char* argv[])
 			pamhd::mhd::get_minmax_refinement_level(
 				grid.local_cells(), grid, options_mhd,
 				Mas, Mom, Nrj, Mag, Sol_Info2, Ref_min, Ref_max,
-				options_sim.adiabatic_index, options_sim.vacuum_permeability);
+				options_sim.adiabatic_index, options_sim.vacuum_permeability,
+				options_sim.proton_mass);
 			pamhd::grid::adapt_grid(
 				grid, Ref_min, Ref_max,
 				pamhd::mhd::New_Cells_Handler(
