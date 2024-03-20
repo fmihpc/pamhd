@@ -193,7 +193,7 @@ template <
 			}
 
 			const Magnetic_Field::data_type bg_face_b
-				= get_rotated_vector(Bg_B(*neighbor.data)(-n), abs(n));
+				= get_rotated_vector(Bg_B(*cell.data)(n), abs(n));
 			detail::MHD flux;
 			double max_vel;
 			try {
