@@ -85,7 +85,8 @@ template <
 	class Total_Energy_Density_Flux_Getters,
 	class Magnetic_Field_Flux_Getters,
 	class Primary_Face_Getter,
-	class Solver_Info_Getter
+	class Solver_Info_Getter,
+	class Substepping_Period_Getter
 > double get_fluxes(
 	const Solver solver,
 	const Cell_Iter& cells,
@@ -102,7 +103,8 @@ template <
 	const Total_Energy_Density_Flux_Getters Nrj_f,
 	const Magnetic_Field_Flux_Getters Mag_f,
 	const Primary_Face_Getter PFace,
-	const Solver_Info_Getter SInfo
+	const Solver_Info_Getter SInfo,
+	const Substepping_Period_Getter Substep
 ) try {
 	using std::abs;
 	using std::get;
@@ -132,6 +134,10 @@ template <
 	double max_dt = std::numeric_limits<double>::max();
 
 	for (const auto& cell: cells) {
+		if (Substep(*cell.data) != 1) {
+			throw std::runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+		}
+
 		Mas_fnx(*cell.data) =
 		Mas_fny(*cell.data) =
 		Mas_fnz(*cell.data) =
@@ -326,7 +332,8 @@ template <
 	class Magnetic_Field_Flux_Getters,
 	class Primary_Face_Getter,
 	class Primary_Edge_Getter,
-	class Face_Info_Getter
+	class Face_Info_Getter,
+	class Substepping_Period_Getter
 > void get_edge_electric_field(
 	Grid& grid,
 	const double dt,
@@ -341,7 +348,8 @@ template <
 	const Magnetic_Field_Flux_Getters Mag_f,
 	const Primary_Face_Getter PFace,
 	const Primary_Edge_Getter PEdge,
-	const Face_Info_Getter FInfo
+	const Face_Info_Getter FInfo,
+	const Substepping_Period_Getter Substep
 ) try {
 	using std::array;
 	using std::get;
@@ -365,6 +373,10 @@ template <
 		Mag_fnz = get<4>(Mag_f), Mag_fpz = get<5>(Mag_f);
 
 	for (const auto& cell: grid.local_cells()) {
+		if (Substep(*cell.data) != 1) {
+			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+		}
+
 		auto& edge_e = Edge_E(*cell.data);
 		// track number of contributions to edge_e()s
 		grid::Edge_Type<int> e_items;
@@ -1312,7 +1324,8 @@ template <
 	class Edge_Electric_Field_Getter,
 	class Primary_Face_Getter,
 	class Primary_Edge_Getter,
-	class Face_Info_Getter
+	class Face_Info_Getter,
+	class Substepping_Period_Getter
 > void get_face_magnetic_field(
 	const Cells& cells,
 	Grid& grid,
@@ -1321,12 +1334,17 @@ template <
 	const Edge_Electric_Field_Getter Edge_E,
 	const Primary_Face_Getter PFace,
 	const Primary_Edge_Getter PEdge,
-	const Face_Info_Getter FInfo
+	const Face_Info_Getter FInfo,
+	const Substepping_Period_Getter Substep
 ) try {
 	using std::runtime_error;
 	using std::to_string;
 
 	for (const auto& cell: cells) {
+		if (Substep(*cell.data) != 1) {
+			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+		}
+
 		const auto cell_length = grid.geometry.get_length(cell.id);
 
 		typename std::remove_reference<decltype(Face_B(*cell.data))>::type face_db{0, 0, 0, 0, 0, 0};
@@ -1646,7 +1664,8 @@ template <
 	class Volume_Magnetic_Field_Getter,
 	class Face_Magnetic_Field_Getter,
 	class Primary_Face_Getter,
-	class Face_Type_Getter
+	class Face_Type_Getter,
+	class Substepping_Period_Getter
 > void update_B_consistency(
 	const Cell_Iter& cells,
 	const Mass_Density_Getter Mas,
@@ -1656,6 +1675,7 @@ template <
 	const Face_Magnetic_Field_Getter Face_B,
 	const Primary_Face_Getter PFace,
 	const Face_Type_Getter FInfo,
+	const Substepping_Period_Getter Substep,
 	const double adiabatic_index,
 	const double vacuum_permeability,
 	const bool constant_thermal_pressure
@@ -1664,6 +1684,10 @@ template <
 	using std::to_string;
 
 	for (const auto& cell: cells) {
+		if (Substep(*cell.data) != 1) {
+			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+		}
+
 		if (constant_thermal_pressure and Mas(*cell.data) <= 0) {
 			continue;
 		}

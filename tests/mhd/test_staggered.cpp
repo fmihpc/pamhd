@@ -124,6 +124,11 @@ const auto Sol_Info2 = [](Cell& cell_data)->int {
 		}
 		return 0;
 	};
+
+const auto Substep = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::Substepping_Period()];
+};
+
 // flux of mass density through positive x face of cell
 const auto Mas_pfx = [](Cell& cell_data)->auto& {
 		return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::mhd::Mass_Density()];
@@ -450,6 +455,7 @@ int main(int argc, char* argv[])
 	}
 	for (const auto& cell: grid.local_cells()) {
 		(*cell.data)[pamhd::MPI_Rank()] = rank;
+		Substep(*cell.data) = 1;
 	}
 	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
 	pamhd::grid::update_primary_edges(grid.local_cells(), grid, PEdge);
@@ -512,7 +518,7 @@ int main(int argc, char* argv[])
 	pamhd::mhd::update_B_consistency(
 		grid.local_cells(),
 		Mas, Mom, Nrj, Mag, Face_B,
-		PFace, FInfo,
+		PFace, FInfo, Substep,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		false // fluid not initialized yet
@@ -588,7 +594,7 @@ int main(int argc, char* argv[])
 	pamhd::mhd::update_B_consistency(
 		grid.local_cells(),
 		Mas, Mom, Nrj, Mag, Face_B,
-		PFace, FInfo,
+		PFace, FInfo, Substep,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		true
@@ -659,7 +665,7 @@ int main(int argc, char* argv[])
 			Mas, Mom, Nrj, Mag,
 			Bg_B,
 			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-			PFace, Sol_Info2
+			PFace, Sol_Info2, Substep
 		);
 		max_dt_mhd = min(solve_max_dt, max_dt_mhd);
 
@@ -674,7 +680,7 @@ int main(int argc, char* argv[])
 			Mas, Mom, Nrj, Mag,
 			Bg_B,
 			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-			PFace, Sol_Info2
+			PFace, Sol_Info2, Substep
 		);
 		max_dt_mhd = min(solve_max_dt, max_dt_mhd);
 
@@ -691,7 +697,7 @@ int main(int argc, char* argv[])
 			grid, time_step,
 			Mas, Mom, Nrj, Mag, Edge_E,
 			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-			PFace, PEdge, FInfo
+			PFace, PEdge, FInfo, Substep
 		);
 
 		Cell::set_transfer_all(true,
@@ -710,7 +716,7 @@ int main(int argc, char* argv[])
 			grid,
 			time_step,
 			Face_B, Edge_E,
-			PFace, PEdge, FInfo
+			PFace, PEdge, FInfo, Substep
 		);
 		Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
 		grid.update_copies_of_remote_neighbors();
@@ -720,7 +726,7 @@ int main(int argc, char* argv[])
 		pamhd::mhd::update_B_consistency(
 			grid.local_cells(),
 			Mas, Mom, Nrj, Mag, Face_B,
-			PFace, FInfo,
+			PFace, FInfo, Substep,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			true
@@ -824,7 +830,7 @@ int main(int argc, char* argv[])
 			pamhd::mhd::update_B_consistency(
 				grid.local_cells(),
 				Mas, Mom, Nrj, Mag, Face_B,
-				PFace, FInfo,
+				PFace, FInfo, Substep,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
 				true
@@ -873,7 +879,7 @@ int main(int argc, char* argv[])
 		pamhd::mhd::update_B_consistency(
 			grid.local_cells(),
 			Mas, Mom, Nrj, Mag, Face_B,
-			PFace, FInfo,
+			PFace, FInfo, Substep,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			true

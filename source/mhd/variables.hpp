@@ -181,6 +181,14 @@ struct HD_Flux_Conservative {
 	}
 };
 
+/*! Determines how often cell is solved during time substepping.
+
+N == solved every Nth substep
+*/
+struct Substepping_Period {
+	using data_type = int;
+};
+
 // cell type for MHD test program
 using Cell = gensimcell::Cell<
 	gensimcell::Optional_Transfer,
@@ -344,7 +352,8 @@ using Cell_Staggered = gensimcell::Cell<
 	pamhd::grid::Target_Refinement_Level_Max,
 	pamhd::grid::Target_Refinement_Level_Min,
 	pamhd::mhd::Face_Boundary_Type,
-	pamhd::mhd::Edge_Boundary_Type
+	pamhd::mhd::Edge_Boundary_Type,
+	pamhd::mhd::Substepping_Period
 >;
 
 
