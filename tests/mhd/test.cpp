@@ -2,7 +2,7 @@
 MHD test program of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2019, 2023 Finnish Meteorological Institute
+Copyright 2018, 2019, 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -73,7 +73,15 @@ int Poisson_Cell::transfer_switch = Poisson_Cell::INIT;
 // data stored in every cell of simulation grid
 using Cell = pamhd::mhd::Cell;
 // simulation data, see doi:10.1016/j.cpc.2012.12.017 or arxiv.org/abs/1212.3496
-using Grid = dccrg::Dccrg<Cell, dccrg::Cartesian_Geometry>;
+using Grid = dccrg::Dccrg<
+	Cell,
+	dccrg::Cartesian_Geometry,
+	std::tuple<>,
+	std::tuple<
+		pamhd::grid::Face_Neighbor,
+		pamhd::grid::Edge_Neighbor,
+		pamhd::grid::Relative_Size>
+>;
 
 // returns reference to background magnetic field of given cell
 const auto Bg_B = [](Cell& cell_data)->auto& {
@@ -118,6 +126,18 @@ const auto Cur = [](Cell& cell_data)->auto& {
 const auto Sol_Info = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::mhd::Solver_Info()];
 };
+// returns 1 for normal cell, -1 for dont_solve and 0 otherwise
+const auto Sol_Info2 = [](Cell& cell_data)->int {
+	const auto info = cell_data[pamhd::mhd::Solver_Info()];
+	if (info == 0) {
+		return 1;
+	}
+	if ((info & pamhd::mhd::Solver_Info::dont_solve) > 0) {
+		return -1;
+	}
+	return 0;
+};
+
 // total change of mass density over one time step
 const auto Mas_f = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::mhd::HD_Flux_Conservative()][pamhd::mhd::Mass_Density()];
@@ -439,7 +459,7 @@ int main(int argc, char* argv[])
 		boundaries,
 		geometries,
 		simulation_time,
-		Mas, Mom, Nrj, Mag,
+		Mas, Mom, Nrj, Mag, Sol_Info2,
 		options_sim.proton_mass,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability
@@ -747,7 +767,7 @@ int main(int argc, char* argv[])
 			boundaries,
 			geometries,
 			simulation_time,
-			Mas, Mom, Nrj, Mag,
+			Mas, Mom, Nrj, Mag, Sol_Info2,
 			options_sim.proton_mass,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability
