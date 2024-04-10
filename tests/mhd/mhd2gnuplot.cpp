@@ -2,6 +2,7 @@
 Program for plotting MHD output of PAMHD with gnuplot.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -72,6 +73,7 @@ boost::optional<std::array<double, 4>> read_data(
 	dccrg::Grid_Topology& topology,
 	dccrg::Cartesian_Geometry& geometry,
 	unordered_map<uint64_t, pamhd::mhd::Cell>& simulation_data,
+	uint64_t& simulation_step,
 	const std::string& file_name,
 	const int mpi_rank
 ) {
@@ -110,6 +112,24 @@ boost::optional<std::array<double, 4>> read_data(
 			<< endl;
 		return boost::optional<std::array<double, 4>>();
 	}
+
+	uint64_t read_simulation_step = ~0ull;
+	MPI_File_read_at(
+		file,
+		offset,
+		&read_simulation_step,
+		1,
+		MPI_UINT64_T,
+		MPI_STATUS_IGNORE
+	);
+	offset += sizeof(uint64_t);
+	if (read_simulation_step > 999999999) {
+		cerr << "Process " << mpi_rank
+			<< " Suspicious simulation step: " << read_simulation_step
+			<< endl;
+		return boost::optional<std::array<double, 4>>();
+	}
+	simulation_step = read_simulation_step;
 
 	// read simulation parameters
 	std::array<double, 4> simulation_parameters;
@@ -436,21 +456,21 @@ int plot_1d(
 		     "'-' u 1:2 w l lw 2 t 'component 3'\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](0,0);
+		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](-1);
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		gnuplot_file << x << " " << B[0] << "\n";
 	}
 	gnuplot_file << "end\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](0,0);
+		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](-1);
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		gnuplot_file << x << " " << B[1] << "\n";
 	}
 	gnuplot_file << "end\n";
 
 	for (const auto& cell_id: cells) {
-		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](0,0);
+		const auto& B = simulation_data.at(cell_id)[pamhd::Bg_Magnetic_Field()](-1);
 		const double x = geometry.get_center(cell_id)[tube_dim];
 		gnuplot_file << x << " " << B[2] << "\n";
 	}
@@ -773,7 +793,7 @@ int plot_2d(
 			"Bx_tot",
 			"\n" + magnetic_field_cmd + " 1\"\n",
 			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Magnetic_Field()][0] + cell_data[pamhd::Bg_Magnetic_Field()](0,0)[0];
+				return cell_data[pamhd::Magnetic_Field()][0] + cell_data[pamhd::Bg_Magnetic_Field()](-1)[0];
 			}
 		);
 
@@ -781,7 +801,7 @@ int plot_2d(
 			"By_tot",
 			"\n" + magnetic_field_cmd + " 2\"\n",
 			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Magnetic_Field()][1] + cell_data[pamhd::Bg_Magnetic_Field()](0,0)[1];
+				return cell_data[pamhd::Magnetic_Field()][1] + cell_data[pamhd::Bg_Magnetic_Field()](-1)[1];
 			}
 		);
 
@@ -789,7 +809,7 @@ int plot_2d(
 			"Bz_tot",
 			"\n" + magnetic_field_cmd + " 3\"\n",
 			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Magnetic_Field()][2] + cell_data[pamhd::Bg_Magnetic_Field()](0,0)[2];
+				return cell_data[pamhd::Magnetic_Field()][2] + cell_data[pamhd::Bg_Magnetic_Field()](-1)[2];
 			}
 		);
 	}
@@ -800,7 +820,7 @@ int plot_2d(
 			"Bx_bg",
 			"\n" + magnetic_field_cmd + " 1\"\n",
 			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Bg_Magnetic_Field()](0,0)[0];
+				return cell_data[pamhd::Bg_Magnetic_Field()](-1)[0];
 			}
 		);
 
@@ -808,7 +828,7 @@ int plot_2d(
 			"By_bg",
 			"\n" + magnetic_field_cmd + " 2\"\n",
 			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Bg_Magnetic_Field()](0,0)[1];
+				return cell_data[pamhd::Bg_Magnetic_Field()](-1)[1];
 			}
 		);
 
@@ -816,7 +836,7 @@ int plot_2d(
 			"Bz_bg",
 			"\n" + magnetic_field_cmd + " 3\"\n",
 			[](const pamhd::mhd::Cell& cell_data){
-				return cell_data[pamhd::Bg_Magnetic_Field()](0,0)[2];
+				return cell_data[pamhd::Bg_Magnetic_Field()](-1)[2];
 			}
 		);
 	}
@@ -909,7 +929,7 @@ int plot_2d(
 			max_B = B;
 		}
 
-		const double B0 = simulation_data.at(cells[i])[pamhd::Bg_Magnetic_Field()](0,0).norm();
+		const double B0 = simulation_data.at(cells[i])[pamhd::Bg_Magnetic_Field()](-1).norm();
 		if (max_B0 < B0) {
 			max_B0 = B0;
 		}
@@ -1011,7 +1031,7 @@ int plot_2d(
 			continue;
 		}
 
-		const auto& B0 = simulation_data.at(cells[i])[pamhd::Bg_Magnetic_Field()](0,0);
+		const auto& B0 = simulation_data.at(cells[i])[pamhd::Bg_Magnetic_Field()](-1);
 		const auto cell_center = geometry.get_center(cells[i]);
 		gnuplot_file
 			<< cell_center[dimensions[0]] << " "
@@ -1198,12 +1218,14 @@ int main(int argc, char* argv[])
 		dccrg::Grid_Topology topology;
 		dccrg::Cartesian_Geometry geometry(cell_id_mapping.length, cell_id_mapping, topology);
 		unordered_map<uint64_t, pamhd::mhd::Cell> simulation_data;
+		uint64_t simulation_step;
 
 		boost::optional<std::array<double, 4>> header = read_data(
 			cell_id_mapping,
 			topology,
 			geometry,
 			simulation_data,
+			simulation_step,
 			input_files[i],
 			rank
 		);
