@@ -671,7 +671,7 @@ template <
 	class Grid,
 	class Target_Refinement_Level_Min_Getter,
 	class Target_Refinement_Level_Max_Getter
-> void get_minmax_refinement_level(
+> void set_minmax_refinement_level(
 	const Cells& cells,
 	Grid& grid,
 	Options& options,

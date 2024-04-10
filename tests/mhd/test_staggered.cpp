@@ -442,7 +442,7 @@ int main(int argc, char* argv[])
 		cout << "Adapting and balancing grid at time "
 			<< options_sim.time_start << "...  " << flush;
 	}
-	pamhd::grid::get_minmax_refinement_level(
+	pamhd::grid::set_minmax_refinement_level(
 		grid.local_cells(), grid, options_grid,
 		options_sim.time_start, Ref_min, Ref_max);
 	pamhd::grid::adapt_grid(
@@ -754,10 +754,10 @@ int main(int argc, char* argv[])
 			if (rank == 0) {
 				cout << "...\nAdapting grid at time " << simulation_time << "..." << flush;
 			}
-			pamhd::grid::get_minmax_refinement_level(
+			pamhd::grid::set_minmax_refinement_level(
 				grid.local_cells(), grid, options_grid,
 				simulation_time, Ref_min, Ref_max);
-			pamhd::mhd::get_minmax_refinement_level(
+			pamhd::mhd::set_minmax_refinement_level(
 				grid.local_cells(), grid, options_mhd,
 				Mas, Mom, Nrj, Mag, Sol_Info2, Ref_min, Ref_max,
 				options_sim.adiabatic_index, options_sim.vacuum_permeability,

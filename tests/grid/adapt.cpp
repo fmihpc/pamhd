@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
 		.set_load_balancing_method("RANDOM")
 		.set_maximum_refinement_level(options.get_max_ref_lvl())
 		.initialize(comm);
-	pamhd::grid::get_minmax_refinement_level(
+	pamhd::grid::set_minmax_refinement_level(
 		grid.local_cells(), grid, options,
 		0, Ref_Lvl_Min, Ref_Lvl_Max);
 	pamhd::grid::adapt_grid(
@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
 		.initialize(comm);
 	grid.refine_completely(1);
 	grid.stop_refining();
-	pamhd::grid::get_minmax_refinement_level(
+	pamhd::grid::set_minmax_refinement_level(
 		grid.local_cells(), grid, options,
 		0, Ref_Lvl_Min, Ref_Lvl_Max);
 	pamhd::grid::adapt_grid(
@@ -163,7 +163,7 @@ int main(int argc, char* argv[])
 		.set_load_balancing_method("RANDOM")
 		.set_maximum_refinement_level(options.get_max_ref_lvl())
 		.initialize(comm);
-	pamhd::grid::get_minmax_refinement_level(
+	pamhd::grid::set_minmax_refinement_level(
 		grid.local_cells(), grid, options,
 		0, Ref_Lvl_Min, Ref_Lvl_Max);
 	pamhd::grid::adapt_grid(
@@ -200,7 +200,7 @@ int main(int argc, char* argv[])
 		.set_load_balancing_method("RANDOM")
 		.set_maximum_refinement_level(options.get_max_ref_lvl())
 		.initialize(comm);
-	pamhd::grid::get_minmax_refinement_level(
+	pamhd::grid::set_minmax_refinement_level(
 		grid.local_cells(), grid, options,
 		0, Ref_Lvl_Min, Ref_Lvl_Max);
 	pamhd::grid::adapt_grid(
