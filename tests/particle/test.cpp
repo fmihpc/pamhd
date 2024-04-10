@@ -2,7 +2,7 @@
 Hybrid PIC program of PAMHD.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019 Finnish Meteorological Institute
+Copyright 2019, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -52,7 +52,8 @@ for explanation of items identical to ones in those files
 #include "boundaries/multivariable_initial_conditions.hpp"
 #include "divergence/options.hpp"
 #include "divergence/remove.hpp"
-#include "grid_options.hpp"
+#include "grid/options.hpp"
+#include "math/expression.hpp"
 #include "mhd/boundaries.hpp"
 #include "mhd/common.hpp"
 #include "mhd/hll_athena.hpp"
@@ -99,21 +100,10 @@ using Grid = dccrg::Dccrg<
 	std::tuple<pamhd::particle::Is_Local>
 >;
 
-// returns reference to background magnetic field at +X face of given cell
-const auto Bg_B_Pos_X
-	= [](Cell& cell_data)->typename pamhd::Bg_Magnetic_Field_Pos_X::data_type&{
-		return cell_data[pamhd::Bg_Magnetic_Field_Pos_X()];
-	};
-// reference to +Y face background magnetic field
-const auto Bg_B_Pos_Y
-	= [](Cell& cell_data)->typename pamhd::Bg_Magnetic_Field_Pos_Y::data_type&{
-		return cell_data[pamhd::Bg_Magnetic_Field_Pos_Y()];
-	};
-// ref to +Z face bg B
-const auto Bg_B_Pos_Z
-	= [](Cell& cell_data)->typename pamhd::Bg_Magnetic_Field_Pos_Z::data_type&{
-		return cell_data[pamhd::Bg_Magnetic_Field_Pos_Z()];
-	};
+// returns reference to background magnetic field of given cell
+const auto Bg_B = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::Bg_Magnetic_Field()];
+};
 
 // returns reference to total mass density in given cell
 const auto Mas
@@ -617,7 +607,7 @@ int main(int argc, char* argv[])
 	Prepare resistivity
 	*/
 
-	pamhd::boundaries::Math_Expression<pamhd::Resistivity> resistivity;
+	pamhd::math::Expression<pamhd::Resistivity> resistivity;
 	mup::Value J_val;
 	mup::Variable J_var(&J_val);
 	resistivity.add_expression_variable("J", J_var);
@@ -718,24 +708,13 @@ int main(int argc, char* argv[])
 		grid,
 		simulation_time,
 		options_sim.vacuum_permeability,
-		Mag, Mag_f,
-		Bg_B_Pos_X, Bg_B_Pos_Y, Bg_B_Pos_Z
+		Mag, Mag_f, Bg_B
 	);
 
 	// update background field between processes
-	Cell::set_transfer_all(
-		true,
-		pamhd::Bg_Magnetic_Field_Pos_X(),
-		pamhd::Bg_Magnetic_Field_Pos_Y(),
-		pamhd::Bg_Magnetic_Field_Pos_Z()
-	);
+	Cell::set_transfer_all(true, pamhd::Bg_Magnetic_Field());
 	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(
-		false,
-		pamhd::Bg_Magnetic_Field_Pos_X(),
-		pamhd::Bg_Magnetic_Field_Pos_Y(),
-		pamhd::Bg_Magnetic_Field_Pos_Z()
-	);
+	Cell::set_transfer_all(false, pamhd::Bg_Magnetic_Field());
 
 	// initialize resistivity
 	for (auto& cell: grid.local_cells()) {
@@ -1079,8 +1058,7 @@ int main(int argc, char* argv[])
 				time_step,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
-				Mas, Mom, Nrj, Mag,
-				Bg_B_Pos_X, Bg_B_Pos_Y, Bg_B_Pos_Z,
+				Mas, Mom, Nrj, Mag, Bg_B,
 				Mas_f, Mom_f, Nrj_f, Mag_f,
 				Sol_Info
 			);
@@ -1128,8 +1106,7 @@ int main(int argc, char* argv[])
 				time_step,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
-				Mas, Mom, Nrj, Mag,
-				Bg_B_Pos_X, Bg_B_Pos_Y, Bg_B_Pos_Z,
+				Mas, Mom, Nrj, Mag, Bg_B,
 				Mas_f, Mom_f, Nrj_f, Mag_f,
 				Sol_Info
 			);
@@ -1513,6 +1490,7 @@ int main(int argc, char* argv[])
 					).append("mhd_").generic_string(),
 					grid,
 					2,
+					simulated_steps,
 					simulation_time,
 					options_sim.adiabatic_index,
 					options_sim.proton_mass,
@@ -1523,9 +1501,7 @@ int main(int argc, char* argv[])
 					pamhd::MPI_Rank(),
 					pamhd::Resistivity(),
 					pamhd::Magnetic_Field(),
-					pamhd::Bg_Magnetic_Field_Pos_X(),
-					pamhd::Bg_Magnetic_Field_Pos_Y(),
-					pamhd::Bg_Magnetic_Field_Pos_Z()
+					pamhd::Bg_Magnetic_Field()
 				)
 			) {
 				std::cerr <<  __FILE__ << "(" << __LINE__ << "): Couldn't save MHD result." << std::endl;
