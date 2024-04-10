@@ -89,7 +89,7 @@ template <
 	const Total_Energy_Density_Flux_Getter Nrj_f,
 	const Magnetic_Field_Flux_Getter Mag_f,
 	const Solver_Info_Getter Sol_Info
-) {
+) try {
 	using std::get;
 	using std::to_string;
 
@@ -329,6 +329,9 @@ template <
 	}
 
 	return max_dt;
+
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
 
 
@@ -362,7 +365,7 @@ template <
 	const Magnetic_Field_Flux_Getter Mag_f,
 	const Solver_Info_Getter Sol_Info,
 	const bool check_new_state = true
-) {
+) try {
 	using std::to_string;
 
 	for (const auto& cell: grid.local_cells()) {
@@ -437,6 +440,8 @@ template <
 			);
 		}
 	}
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
 
 }} // namespaces
