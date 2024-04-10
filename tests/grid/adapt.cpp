@@ -1,7 +1,7 @@
 /*
 AMR test for grid options of PAMHD.
 
-Copyright 2023 Finnish Meteorological Institute
+Copyright 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 
+#include "array"
 #include "stdexcept"
 #include "string"
 
@@ -41,6 +42,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "grid/amr.hpp"
 #include "grid/options.hpp"
+
+using Cell = std::array<int, 2>;
+
+const auto Ref_Lvl_Min = [](Cell& cell_data)->auto& {
+	return cell_data[0];
+};
+const auto Ref_Lvl_Max = [](Cell& cell_data)->auto& {
+	return cell_data[1];
+};
+
 
 
 int main(int argc, char* argv[])
@@ -71,14 +82,21 @@ int main(int argc, char* argv[])
 	pamhd::grid::Options options;
 	options.set(document);
 
-	dccrg::Dccrg<int> grid; grid
+	dccrg::Dccrg<Cell> grid; grid
 		.set_initial_length(options.get_number_of_cells())
 		.set_neighborhood_length(0)
 		.set_periodic(options.get_periodic()[0], options.get_periodic()[1], options.get_periodic()[2])
 		.set_load_balancing_method("RANDOM")
 		.set_maximum_refinement_level(options.get_max_ref_lvl())
 		.initialize(comm);
-	adapt_grid(grid, options, 0);
+	pamhd::grid::get_minmax_refinement_level(
+		grid.local_cells(), grid, options,
+		0, Ref_Lvl_Min, Ref_Lvl_Max);
+	pamhd::grid::adapt_grid(
+		grid, Ref_Lvl_Min, Ref_Lvl_Max,
+		pamhd::grid::New_Cells_Handler(Ref_Lvl_Min, Ref_Lvl_Max),
+		pamhd::grid::Removed_Cells_Handler(Ref_Lvl_Min, Ref_Lvl_Max)
+	);
 	for (const auto& cell: grid.local_cells()) {
 		if (cell.id == 1) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
@@ -100,7 +118,7 @@ int main(int argc, char* argv[])
 	pamhd::grid::Options options;
 	options.set(document);
 
-	dccrg::Dccrg<int> grid; grid
+	dccrg::Dccrg<Cell> grid; grid
 		.set_initial_length(options.get_number_of_cells())
 		.set_neighborhood_length(0)
 		.set_periodic(options.get_periodic()[0], options.get_periodic()[1], options.get_periodic()[2])
@@ -109,7 +127,14 @@ int main(int argc, char* argv[])
 		.initialize(comm);
 	grid.refine_completely(1);
 	grid.stop_refining();
-	adapt_grid(grid, options, 0);
+	pamhd::grid::get_minmax_refinement_level(
+		grid.local_cells(), grid, options,
+		0, Ref_Lvl_Min, Ref_Lvl_Max);
+	pamhd::grid::adapt_grid(
+		grid, Ref_Lvl_Min, Ref_Lvl_Max,
+		pamhd::grid::New_Cells_Handler(Ref_Lvl_Min, Ref_Lvl_Max),
+		pamhd::grid::Removed_Cells_Handler(Ref_Lvl_Min, Ref_Lvl_Max)
+	);
 	for (const auto& cell: grid.local_cells()) {
 		if (cell.id != 1) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
@@ -131,14 +156,21 @@ int main(int argc, char* argv[])
 	pamhd::grid::Options options;
 	options.set(document);
 
-	dccrg::Dccrg<int> grid; grid
+	dccrg::Dccrg<Cell> grid; grid
 		.set_initial_length(options.get_number_of_cells())
 		.set_neighborhood_length(0)
 		.set_periodic(options.get_periodic()[0], options.get_periodic()[1], options.get_periodic()[2])
 		.set_load_balancing_method("RANDOM")
 		.set_maximum_refinement_level(options.get_max_ref_lvl())
 		.initialize(comm);
-	adapt_grid(grid, options, 0);
+	pamhd::grid::get_minmax_refinement_level(
+		grid.local_cells(), grid, options,
+		0, Ref_Lvl_Min, Ref_Lvl_Max);
+	pamhd::grid::adapt_grid(
+		grid, Ref_Lvl_Min, Ref_Lvl_Max,
+		pamhd::grid::New_Cells_Handler(Ref_Lvl_Min, Ref_Lvl_Max),
+		pamhd::grid::Removed_Cells_Handler(Ref_Lvl_Min, Ref_Lvl_Max)
+	);
 	for (const auto& cell: grid.local_cells()) {
 		const auto ref_lvl = grid.get_refinement_level(cell.id);
 		if (ref_lvl < 2) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
@@ -161,14 +193,21 @@ int main(int argc, char* argv[])
 	pamhd::grid::Options options;
 	options.set(document);
 
-	dccrg::Dccrg<int> grid; grid
+	dccrg::Dccrg<Cell> grid; grid
 		.set_initial_length(options.get_number_of_cells())
 		.set_neighborhood_length(0)
 		.set_periodic(options.get_periodic()[0], options.get_periodic()[1], options.get_periodic()[2])
 		.set_load_balancing_method("RANDOM")
 		.set_maximum_refinement_level(options.get_max_ref_lvl())
 		.initialize(comm);
-	adapt_grid(grid, options, 0);
+	pamhd::grid::get_minmax_refinement_level(
+		grid.local_cells(), grid, options,
+		0, Ref_Lvl_Min, Ref_Lvl_Max);
+	pamhd::grid::adapt_grid(
+		grid, Ref_Lvl_Min, Ref_Lvl_Max,
+		pamhd::grid::New_Cells_Handler(Ref_Lvl_Min, Ref_Lvl_Max),
+		pamhd::grid::Removed_Cells_Handler(Ref_Lvl_Min, Ref_Lvl_Max)
+	);
 	for (const auto& cell: grid.local_cells()) {
 		const auto ref_lvl = grid.get_refinement_level(cell.id);
 		if (ref_lvl < 3) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
