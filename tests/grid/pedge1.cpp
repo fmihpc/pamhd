@@ -1,7 +1,7 @@
 /*
 Tests primary cell edge calculation of PAMHD.
 
-Copyright 2023 Finnish Meteorological Institute
+Copyright 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -74,18 +74,18 @@ int main(int argc, char* argv[])
 	for (const auto& cell: grid.local_cells()) {
 		if (cell.id != 1) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pe = PEdge(*cell.data);
-		if (pe(0,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	{Grid grid; grid
@@ -98,9 +98,9 @@ int main(int argc, char* argv[])
 	for (const auto& cell: grid.local_cells()) {
 		if (cell.id != 1) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pe = PEdge(*cell.data);
-		for (size_t d = 0; d < 3; d++)
-		for (size_t a = 0; a < 2; a++)
-		for (size_t b = 0; b < 2; b++)
+		for (auto d: {0, 1, 2})
+		for (auto a: {-1, +1})
+		for (auto b: {-1, +1})
 			if (pe(d,a,b) == false) throw runtime_error(
 				__FILE__"(" + to_string(__LINE__) + "): "
 				+ to_string(d) + ", " + to_string(a)
@@ -117,18 +117,18 @@ int main(int argc, char* argv[])
 	for (const auto& cell: grid.local_cells()) {
 		if (cell.id != 1) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pe = PEdge(*cell.data);
-		if (pe(0,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,1,0) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,1,0) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,+1,-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,+1,-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	{Grid grid; grid
@@ -141,18 +141,18 @@ int main(int argc, char* argv[])
 	for (const auto& cell: grid.local_cells()) {
 		if (cell.id != 1) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pe = PEdge(*cell.data);
-		if (pe(0,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,0,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,1,0) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,-1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,+1,-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	{Grid grid; grid
@@ -165,18 +165,18 @@ int main(int argc, char* argv[])
 	for (const auto& cell: grid.local_cells()) {
 		if (cell.id != 1) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pe = PEdge(*cell.data);
-		if (pe(0,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,0,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,0,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,-1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,-1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	MPI_Finalize();

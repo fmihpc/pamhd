@@ -1,7 +1,7 @@
 /*
 Tests primary cell edge calculation of PAMHD.
 
-Copyright 2023 Finnish Meteorological Institute
+Copyright 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -76,9 +76,9 @@ int main(int argc, char* argv[])
 		const auto pe = PEdge(*cell.data);
 		// test  only diagonal neighbor logic
 		if (cell.id != 4) continue;
-		for (size_t d: {0, 1, 2})
-		for (size_t a: {0, 1})
-		for (size_t b: {0, 1})
+		for (auto d: {0, 1, 2})
+		for (auto a: {-1, +1})
+		for (auto b: {-1, +1})
 			if (d < 2 and a == 1 and b == 1) {
 				if (pe(d,a,b) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			} else {
@@ -100,9 +100,9 @@ int main(int argc, char* argv[])
 		const auto pe = PEdge(*cell.data);
 		// test  only diagonal neighbor logic
 		if (cell.id != 4) continue;
-		for (size_t d: {0, 1, 2})
-		for (size_t a: {0, 1})
-		for (size_t b: {0, 1})
+		for (auto d: {0, 1, 2})
+		for (auto a: {-1, +1})
+		for (auto b: {-1, +1})
 			if (d != 1 and a == 1 and b == 1) {
 				if (pe(d,a,b) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			} else {
@@ -124,9 +124,9 @@ int main(int argc, char* argv[])
 		const auto pe = PEdge(*cell.data);
 		// test  only diagonal neighbor logic
 		if (cell.id != 4) continue;
-		for (size_t d: {0, 1, 2})
-		for (size_t a: {0, 1})
-		for (size_t b: {0, 1})
+		for (auto d: {0, 1, 2})
+		for (auto a: {-1, +1})
+		for (auto b: {-1, +1})
 			if (d > 0 and a == 1 and b == 1) {
 				if (pe(d,a,b) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			} else {
@@ -153,25 +153,25 @@ int main(int argc, char* argv[])
 		case 15:
 		case 21:
 		case 31:
-			if (pe(2,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(2,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			break;
 		case 6:
 		case 16:
 		case 22:
 		case 32:
-			if (pe(2,1,0) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(2,+1,-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			break;
 		case 9:
 		case 19:
 		case 25:
 		case 35:
-			if (pe(2,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(2,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			break;
 		case 10:
 		case 20:
 		case 26:
 		case 36:
-			if (pe(2,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(2,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			break;
 		default:
 			break;
@@ -196,25 +196,25 @@ int main(int argc, char* argv[])
 		case 9:
 		case 23:
 		case 27:
-			if (pe(1,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(1,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			break;
 		case 6:
 		case 10:
 		case 24:
 		case 28:
-			if (pe(1,1,0) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(1,+1,-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			break;
 		case 13:
 		case 17:
 		case 31:
 		case 35:
-			if (pe(1,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(1,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			break;
 		case 14:
 		case 18:
 		case 32:
 		case 36:
-			if (pe(1,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(1,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			break;
 		default:
 			break;
@@ -239,25 +239,25 @@ int main(int argc, char* argv[])
 		case 6:
 		case 25:
 		case 26:
-			if (pe(0,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(0,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			break;
 		case 7:
 		case 8:
 		case 27:
 		case 28:
-			if (pe(0,1,0) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(0,+1,-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			break;
 		case 13:
 		case 14:
 		case 33:
 		case 34:
-			if (pe(0,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(0,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			break;
 		case 15:
 		case 16:
 		case 35:
 		case 36:
-			if (pe(0,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(0,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			break;
 		default:
 			break;

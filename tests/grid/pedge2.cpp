@@ -1,7 +1,7 @@
 /*
 Tests primary cell edge calculation of PAMHD.
 
-Copyright 2023 Finnish Meteorological Institute
+Copyright 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -76,18 +76,18 @@ int main(int argc, char* argv[])
 	for (const auto& cell: grid.local_cells()) {
 		if (cell.id < 2 or cell.id > 9) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pe = PEdge(*cell.data);
-		if (pe(0,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	{Grid grid; grid
@@ -103,53 +103,53 @@ int main(int argc, char* argv[])
 		if (cell.id < 2 or cell.id > 9) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pe = PEdge(*cell.data);
 		if (cell.id < 4) {
-			if (pe(0,0,0) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(0,-1,-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pe(0,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(0,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 		if (cell.id % 4 < 2) {
-			if (pe(0,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(0,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pe(0,0,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(0,-1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 		if (cell.id < 6) {
-			if (pe(0,1,0) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(0,+1,-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pe(0,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(0,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pe(0,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (cell.id == 2 or cell.id == 4) {
-			if (pe(1,0,0) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(1,-1,-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pe(1,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(1,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 		if (cell.id % 4 == 0 or cell.id % 4 == 2) {
-			if (pe(1,0,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(1,-1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pe(1,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(1,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 		if (cell.id < 6) {
-			if (pe(1,1,0) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(1,+1,-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pe(1,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(1,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pe(1,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (cell.id % 4 == 2) {
-			if (pe(2,0,0) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(2,-1,-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pe(2,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(2,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 		if (cell.id % 2 == 0) {
-			if (pe(2,0,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(2,-1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pe(2,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(2,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 		if (cell.id % 4 > 1) {
-			if (pe(2,1,0) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(2,+1,-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pe(2,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(2,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pe(2,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	{Grid grid; grid
@@ -164,26 +164,26 @@ int main(int argc, char* argv[])
 	for (const auto& cell: grid.local_cells()) {
 		if (cell.id < 2 or cell.id > 9) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pe = PEdge(*cell.data);
-		if (pe(0,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (cell.id > 5) {
-			if (pe(0,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(0,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pe(0,1,0) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(0,+1,-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pe(0,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (cell.id > 5) {
-			if (pe(1,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(1,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pe(1,1,0) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(1,+1,-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pe(1,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	{Grid grid; grid
@@ -198,26 +198,26 @@ int main(int argc, char* argv[])
 	for (const auto& cell: grid.local_cells()) {
 		if (cell.id < 2 or cell.id > 9) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pe = PEdge(*cell.data);
-		if (pe(0,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (cell.id % 4 > 1) {
-			if (pe(0,0,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(0,-1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pe(0,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(0,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pe(0,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (cell.id % 4 > 1) {
-			if (pe(2,1,0) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(2,+1,-1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pe(2,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(2,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pe(2,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	{Grid grid; grid
@@ -232,26 +232,26 @@ int main(int argc, char* argv[])
 	for (const auto& cell: grid.local_cells()) {
 		if (cell.id < 2 or cell.id > 9) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		const auto pe = PEdge(*cell.data);
-		if (pe(0,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(0,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(0,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (cell.id % 2 == 0) {
-			if (pe(1,0,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(1,-1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pe(1,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(1,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pe(1,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(1,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,0,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(1,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,-1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (cell.id % 2 == 0) {
-			if (pe(2,0,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(2,-1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		} else {
-			if (pe(2,0,1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (pe(2,-1,+1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
-		if (pe(2,1,0) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (pe(2,1,1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,+1,-1) == true) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (pe(2,+1,+1) == false) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}}
 
 	MPI_Finalize();
