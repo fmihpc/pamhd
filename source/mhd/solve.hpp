@@ -2,7 +2,7 @@
 Solves the MHD part of PAMHD using an external flux function.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2019, 2023 Finnish Meteorological Institute
+Copyright 2018, 2019, 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -195,13 +195,13 @@ template <
 
 				switch (neighbor_dir) {
 				case 1:
-					bg_face_b = get_rotated_vector(Bg_B(*cell.data)(0,0), 1);
+					bg_face_b = get_rotated_vector(Bg_B(*cell.data)(-1), 1);
 					break;
 				case 2:
-					bg_face_b = get_rotated_vector(Bg_B(*cell.data)(1,0), 2);
+					bg_face_b = get_rotated_vector(Bg_B(*cell.data)(-2), 2);
 					break;
 				case 3:
-					bg_face_b = get_rotated_vector(Bg_B(*cell.data)(2,0), 3);
+					bg_face_b = get_rotated_vector(Bg_B(*cell.data)(-3), 3);
 					break;
 				default:
 					abort();
@@ -219,13 +219,13 @@ template <
 
 				switch (neighbor_dir) {
 				case -1:
-					bg_face_b = get_rotated_vector(Bg_B(*neighbor.data)(0,0), 1);
+					bg_face_b = get_rotated_vector(Bg_B(*neighbor.data)(-1), 1);
 					break;
 				case -2:
-					bg_face_b = get_rotated_vector(Bg_B(*neighbor.data)(1,0), 2);
+					bg_face_b = get_rotated_vector(Bg_B(*neighbor.data)(-2), 2);
 					break;
 				case -3:
-					bg_face_b = get_rotated_vector(Bg_B(*neighbor.data)(2,0), 3);
+					bg_face_b = get_rotated_vector(Bg_B(*neighbor.data)(-3), 3);
 					break;
 				default:
 					abort();
