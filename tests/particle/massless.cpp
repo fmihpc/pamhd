@@ -58,7 +58,7 @@ Copy boundaries have no effect in this program and shouldn't be used in config f
 #include "boundaries/geometries.hpp"
 #include "boundaries/multivariable_boundaries.hpp"
 #include "boundaries/multivariable_initial_conditions.hpp"
-#include "grid_options.hpp"
+#include "grid/options.hpp"
 #include "mhd/initialize.hpp"
 #include "mhd/options.hpp"
 #include "mhd/variables.hpp"
@@ -83,21 +83,10 @@ using Cell = pamhd::particle::Cell_test_particle;
 using Grid = dccrg::Dccrg<Cell, dccrg::Cartesian_Geometry>;
 
 // background magnetic field not stored on cell faces in this program
-pamhd::Bg_Magnetic_Field_Pos_X::data_type zero_bg_b = {0, 0, 0};
-const auto Bg_B_Pos_X
-	= [](Cell& cell_data)->typename pamhd::Bg_Magnetic_Field_Pos_X::data_type&{
-		return zero_bg_b;
-	};
-// reference to +Y face background magnetic field
-const auto Bg_B_Pos_Y
-	= [](Cell& cell_data)->typename pamhd::Bg_Magnetic_Field_Pos_Y::data_type&{
-		return zero_bg_b;
-	};
-// ref to +Z face bg B
-const auto Bg_B_Pos_Z
-	= [](Cell& cell_data)->typename pamhd::Bg_Magnetic_Field_Pos_Z::data_type&{
-		return zero_bg_b;
-	};
+pamhd::Bg_Magnetic_Field::data_type zero_bg_b;
+const auto Bg_B = [](Cell& cell_data)->auto& {
+	return zero_bg_b;
+};
 
 // returns reference to magnetic field for propagating particles
 const auto Mag
@@ -410,6 +399,9 @@ int main(int argc, char* argv[])
 	// set initial condition
 	std::mt19937_64 random_source;
 
+	for (auto dir: {-3,-2,-1,+1,+2,+3}) {
+		zero_bg_b(dir) = {0, 0, 0};
+	}
 	pamhd::mhd::initialize_magnetic_field<pamhd::Magnetic_Field>(
 		geometries,
 		initial_conditions,
@@ -417,8 +409,7 @@ int main(int argc, char* argv[])
 		grid,
 		simulation_time,
 		options_sim.vacuum_permeability,
-		Mag, Mag_f,
-		Bg_B_Pos_X, Bg_B_Pos_Y, Bg_B_Pos_Z
+		Mag, Mag_f, Bg_B
 	);
 
 	pamhd::particle::initialize_electric_field<pamhd::particle::Electric_Field>(
