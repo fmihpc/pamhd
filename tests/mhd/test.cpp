@@ -804,7 +804,7 @@ int main(int argc, char* argv[])
 					).append("mhd_").generic_string(),
 					grid,
 					2,
-					0,
+					simulated_steps,
 					simulation_time,
 					options_sim.adiabatic_index,
 					options_sim.proton_mass,
