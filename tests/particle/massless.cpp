@@ -736,7 +736,7 @@ int main(int argc, char* argv[])
 				cout << "Saving particles at time " << simulation_time << endl;
 			}
 
-			// TODO: add version info
+			constexpr uint64_t file_version = 1;
 			if (
 				not pamhd::particle::save<
 					pamhd::particle::Electric_Field,
@@ -749,6 +749,8 @@ int main(int argc, char* argv[])
 						boost::filesystem::path(options_sim.output_directory)
 					).append("particle_").generic_string(),
 					grid,
+					file_version,
+					simulated_steps,
 					simulation_time,
 					0,
 					0,

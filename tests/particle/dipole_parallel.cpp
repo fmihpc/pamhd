@@ -392,6 +392,7 @@ int main(int argc, char* argv[])
 				//cout << "Saving particles at time " << simulation_time << endl;
 			}
 
+			constexpr uint64_t file_version = 1;
 			if (
 				not pamhd::particle::save<
 					pamhd::particle::Electric_Field,
@@ -402,6 +403,8 @@ int main(int argc, char* argv[])
 				>(
 					"tests/particle/",
 					grid,
+					file_version,
+					simulated_steps,
 					simulation_time,
 					0,
 					0,

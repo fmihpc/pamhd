@@ -2,6 +2,7 @@
 Saves particle solution of PAMHD.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
+Copyright 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -69,28 +70,54 @@ template <
 > bool save(
 	const std::string& file_name_prefix,
 	Grid& grid,
+	const uint64_t file_version,
+	const uint64_t simulation_step,
 	const double simulation_time,
 	const double adiabatic_index,
 	const double vacuum_permeability,
 	const double particle_temp_nrj_ratio
 ) {
-	std::array<double, 4> header_data{{
+	const std::array<double, 4> simulation_parameters{{
 		simulation_time,
 		adiabatic_index,
 		vacuum_permeability,
 		particle_temp_nrj_ratio
 	}};
+
+	const std::array<int, 3> counts{{1, 1, 4}};
+	const std::array<MPI_Aint, 3> displacements{{
+		0,
+		reinterpret_cast<char*>(const_cast<uint64_t*>(&simulation_step))
+			- reinterpret_cast<char*>(const_cast<uint64_t*>(&file_version)),
+		reinterpret_cast<char*>(const_cast<double*>(simulation_parameters.data()))
+			- reinterpret_cast<char*>(const_cast<uint64_t*>(&file_version))
+	}};
+	std::array<MPI_Datatype, 3> datatypes{{MPI_UINT64_T, MPI_UINT64_T, MPI_DOUBLE}};
+
+	MPI_Datatype header_datatype;
+	if (
+		MPI_Type_create_struct(
+			counts.size(),
+			counts.data(),
+			displacements.data(),
+			datatypes.data(),
+			&header_datatype
+		) != MPI_SUCCESS
+	) {
+		std::cerr << __FILE__ << ":" << __LINE__
+			<< " Couldn't create header datatype"
+			<< std::endl;
+		abort();
+	}
+
 	std::tuple<void*, int, MPI_Datatype> header{
-		(void*) header_data.data(),
-		header_data.size(),
-		MPI_DOUBLE
+		(void*) &file_version,
+		1,
+		header_datatype
 	};
 
-	std::ostringstream time_string;
-	time_string
-		<< std::scientific
-		<< std::setprecision(3)
-		<< simulation_time;
+	std::ostringstream step_string;
+	step_string << std::setw(9) << std::setfill('0') << simulation_step;
 
 	// update number of internal particles
 	for (const auto& cell_id: grid.get_cells()) {
@@ -112,7 +139,7 @@ template <
 		Particles_T()
 	);
 	const bool ret_val = grid.save_grid_data(
-		file_name_prefix + time_string.str() + "_s.dc",
+		file_name_prefix + step_string.str() + ".dc",
 		0,
 		header
 	);
