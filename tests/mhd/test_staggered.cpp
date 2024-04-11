@@ -238,17 +238,13 @@ const auto Ref_max = [](Cell& cell_data)->auto& {
 
 int main(int argc, char* argv[])
 {
-	using std::asin;
-	using std::atan2;
 	using std::ceil;
 	using std::cerr;
 	using std::cout;
 	using std::endl;
 	using std::flush;
-	using std::get;
 	using std::max;
 	using std::min;
-	using std::sqrt;
 
 	/*
 	Initialize MPI
