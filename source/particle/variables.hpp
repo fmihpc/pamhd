@@ -345,6 +345,45 @@ using Cell_hyb_particle = gensimcell::Cell<
 	pamhd::Magnetic_Field_Flux
 >;
 
+using Cell_hyb_particle_staggered = gensimcell::Cell<
+	gensimcell::Optional_Transfer,
+	pamhd::mhd::MHD_State_Conservative,
+	pamhd::mhd::Solver_Info,
+	pamhd::MPI_Rank,
+	pamhd::Bg_Magnetic_Field,
+	pamhd::Magnetic_Field_Divergence,
+	pamhd::mhd::MHD_Flux,
+	pamhd::Face_Magnetic_Field,
+	pamhd::Edge_Electric_Field,
+	pamhd::Electric_Current_Density,
+	pamhd::grid::Is_Primary_Face,
+	pamhd::grid::Is_Primary_Edge,
+	pamhd::grid::Target_Refinement_Level_Max,
+	pamhd::grid::Target_Refinement_Level_Min,
+	pamhd::mhd::Face_Boundary_Type,
+	pamhd::mhd::Edge_Boundary_Type,
+	pamhd::mhd::Substepping_Period,
+	pamhd::particle::Solver_Info,
+	pamhd::particle::Electric_Field,
+	pamhd::particle::Number_Of_Particles,
+	pamhd::particle::Bdy_Number_Density,
+	pamhd::particle::Bdy_Velocity,
+	pamhd::particle::Bdy_Temperature,
+	pamhd::particle::Bdy_Species_Mass,
+	pamhd::particle::Bdy_Charge_Mass_Ratio,
+	pamhd::particle::Bdy_Nr_Particles_In_Cell,
+	pamhd::particle::Bulk_Mass,
+	pamhd::particle::Bulk_Momentum,
+	pamhd::particle::Bulk_Velocity,
+	pamhd::particle::Current_Minus_Velocity,
+	pamhd::particle::Bulk_Relative_Velocity2,
+	pamhd::particle::Nr_Particles_Internal,
+	pamhd::particle::Nr_Particles_External,
+	pamhd::particle::Nr_Accumulated_To_Cells,
+	pamhd::particle::Particles_Internal,
+	pamhd::particle::Particles_External,
+	pamhd::particle::Accumulated_To_Cells
+>;
 
 // Save this info in every neighbor iterator of every cell.
 // Updated automatically by dccrg.

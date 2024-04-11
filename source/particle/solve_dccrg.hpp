@@ -2,7 +2,7 @@
 Particle propagator of PAMHD for DCCRG grid.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019 Finnish Meteorological Institute
+Copyright 2019, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
