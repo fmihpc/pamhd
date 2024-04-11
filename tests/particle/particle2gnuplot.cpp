@@ -111,7 +111,7 @@ boost::optional<std::array<double, 4>> read_data(
 		MPI_STATUS_IGNORE
 	);
 	offset += sizeof(uint64_t);
-	if (file_version != 1) {
+	if (file_version < 1 and file_version > 2) {
 		cerr << "Process " << mpi_rank
 			<< " Unsupported file version: " << file_version
 			<< endl;
@@ -234,10 +234,10 @@ boost::optional<std::array<double, 4>> read_data(
 		Cell_test_particle::set_transfer_all(
 			true,
 			Electric_Field(),
-			pamhd::Magnetic_Field(),
 			pamhd::Electric_Current_Density(),
 			Nr_Particles_Internal()
 		);
+		if (file_version == 1) Cell_test_particle::set_transfer_all(true, pamhd::Magnetic_Field());
 		tie(
 			memory_address,
 			memory_count,
