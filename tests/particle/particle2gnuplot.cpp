@@ -2,6 +2,7 @@
 Program for plotting particle output of PAMHD with gnuplot.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
+Copyright 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -77,6 +78,7 @@ boost::optional<std::array<double, 4>> read_data(
 	dccrg::Grid_Topology& topology,
 	dccrg::Cartesian_Geometry& geometry,
 	unordered_map<uint64_t, Cell_test_particle>& simulation_data,
+	uint64_t& simulation_step,
 	const std::string& file_name,
 	const int mpi_rank
 ) {
@@ -97,6 +99,42 @@ boost::optional<std::array<double, 4>> read_data(
 	}
 
 	MPI_Offset offset = 0;
+
+	// read file version
+	uint64_t file_version = 0;
+	MPI_File_read_at( // TODO: add error checking
+		file,
+		offset,
+		&file_version,
+		1,
+		MPI_UINT64_T,
+		MPI_STATUS_IGNORE
+	);
+	offset += sizeof(uint64_t);
+	if (file_version != 1) {
+		cerr << "Process " << mpi_rank
+			<< " Unsupported file version: " << file_version
+			<< endl;
+		return boost::optional<std::array<double, 4>>();
+	}
+
+	uint64_t read_simulation_step = ~0ull;
+	MPI_File_read_at(
+		file,
+		offset,
+		&read_simulation_step,
+		1,
+		MPI_UINT64_T,
+		MPI_STATUS_IGNORE
+	);
+	offset += sizeof(uint64_t);
+	if (read_simulation_step > 999999999) {
+		cerr << "Process " << mpi_rank
+			<< " Suspicious simulation step: " << read_simulation_step
+			<< endl;
+		return boost::optional<std::array<double, 4>>();
+	}
+	simulation_step = read_simulation_step;
 
 	// read physical constants
 	std::array<double, 4> metadata;
@@ -948,6 +986,7 @@ int main(int argc, char* argv[])
 		dccrg::Grid_Topology topology;
 		dccrg::Cartesian_Geometry geometry(cell_id_mapping.length, cell_id_mapping, topology);
 		unordered_map<uint64_t, Cell_test_particle> simulation_data;
+		uint64_t simulation_step;
 
 		boost::optional<std::array<double, 4>> metadata
 			= read_data(
@@ -957,6 +996,7 @@ int main(int argc, char* argv[])
 				topology,
 				geometry,
 				simulation_data,
+				simulation_step,
 				input_files[i],
 				rank
 			);
