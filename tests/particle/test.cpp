@@ -138,6 +138,9 @@ const auto Nr_Ext
 	= [](Cell& cell_data)->typename pamhd::particle::Nr_Particles_External::data_type&{
 		return cell_data[pamhd::particle::Nr_Particles_External()];
 	};
+const auto Nr_Int = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::particle::Nr_Particles_Internal()];
+};
 // references to initial condition & boundary data of cell
 const auto Bdy_N
 	= [](Cell& cell_data)->typename pamhd::particle::Bdy_Number_Density::data_type&{
@@ -1435,15 +1438,13 @@ int main(int argc, char* argv[])
 				cout << "Saving particles at time " << simulation_time << "... ";
 			}
 
+			// update number of internal particles
+			for (const auto& cell: grid.local_cells()) {
+				Nr_Int(*cell.data) = Part_Int(*cell.data).size();
+			}
 			constexpr uint64_t file_version = 1;
 			if (
-				not pamhd::particle::save<
-					pamhd::particle::Electric_Field,
-					pamhd::Magnetic_Field,
-					pamhd::Electric_Current_Density,
-					pamhd::particle::Nr_Particles_Internal,
-					pamhd::particle::Particles_Internal
-				>(
+				not pamhd::particle::save(
 					boost::filesystem::canonical(
 						boost::filesystem::path(options_sim.output_directory)
 					).append("particle_").generic_string(),
@@ -1453,7 +1454,12 @@ int main(int argc, char* argv[])
 					simulation_time,
 					options_sim.adiabatic_index,
 					options_sim.proton_mass,
-					options_particle.boltzmann
+					options_particle.boltzmann,
+					pamhd::particle::Electric_Field(),
+					pamhd::Magnetic_Field(),
+					pamhd::Electric_Current_Density(),
+					pamhd::particle::Nr_Particles_Internal(),
+					pamhd::particle::Particles_Internal()
 				)
 			) {
 				std::cerr <<  __FILE__ << "(" << __LINE__ << "): Couldn't save particle result." << std::endl;

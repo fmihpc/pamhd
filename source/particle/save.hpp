@@ -61,12 +61,8 @@ Cell must be compatible with gensimcell (github.com/nasailja/gensimcell)
 Return true on success, false otherwise.
 */
 template <
-	class Electric_Field_T,
-	class Magnetic_Field_T,
-	class Electric_Current_Density_T,
-	class Nr_Particles_T,
-	class Particles_T,
-	class Grid
+	class Grid,
+	class... Variables
 > bool save(
 	const std::string& file_name_prefix,
 	Grid& grid,
@@ -75,7 +71,8 @@ template <
 	const double simulation_time,
 	const double adiabatic_index,
 	const double vacuum_permeability,
-	const double particle_temp_nrj_ratio
+	const double particle_temp_nrj_ratio,
+	const Variables&... variables
 ) {
 	const std::array<double, 4> simulation_parameters{{
 		simulation_time,
@@ -119,38 +116,13 @@ template <
 	std::ostringstream step_string;
 	step_string << std::setw(9) << std::setfill('0') << simulation_step;
 
-	// update number of internal particles
-	for (const auto& cell_id: grid.get_cells()) {
-		auto* const cell_data = grid[cell_id];
-		if (cell_data == nullptr) {
-			std::cerr << __FILE__ << "(" << __LINE__ << ")" << std::endl;
-			abort();
-		}
-		(*cell_data)[Nr_Particles_T()]
-			= (*cell_data)[Particles_T()].size();
-	}
-
-	Grid::cell_data_type::set_transfer_all(
-		true,
-		Electric_Field_T(),
-		Magnetic_Field_T(),
-		Electric_Current_Density_T(),
-		Nr_Particles_T(),
-		Particles_T()
-	);
+	Grid::cell_data_type::set_transfer_all(true, variables...);
 	const bool ret_val = grid.save_grid_data(
 		file_name_prefix + step_string.str() + ".dc",
 		0,
 		header
 	);
-	Grid::cell_data_type::set_transfer_all(
-		false,
-		Electric_Field_T(),
-		Magnetic_Field_T(),
-		Electric_Current_Density_T(),
-		Nr_Particles_T(),
-		Particles_T()
-	);
+	Grid::cell_data_type::set_transfer_all(false, variables...);
 
 	return ret_val;
 }
