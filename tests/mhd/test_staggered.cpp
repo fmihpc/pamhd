@@ -633,10 +633,14 @@ int main(int argc, char* argv[])
 			) != MPI_SUCCESS
 		) {
 			cerr << __FILE__ << ":" << __LINE__
-				<< ": Couldn't set reduce time step."
+				<< ": Couldn't reduce time step."
 				<< endl;
 			abort();
 		}
+
+		/*
+		Solve
+		*/
 
 		max_dt_mhd = std::numeric_limits<double>::max();
 
@@ -644,10 +648,6 @@ int main(int argc, char* argv[])
 			cout << "Solving MHD at time " << simulation_time
 				<< " s with time step " << time_step << " s" << flush;
 		}
-
-		/*
-		Solve
-		*/
 
 		Cell::set_transfer_all(true, pamhd::mhd::MHD_State_Conservative());
 		grid.start_remote_neighbor_copy_updates();
