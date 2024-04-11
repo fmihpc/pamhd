@@ -314,6 +314,7 @@ tests/particle/test_staggered.exe: \
   source/particle/accumulation_variables.hpp \
   source/particle/options.hpp \
   source/particle/splitter.hpp \
+  source/math/staggered.hpp \
   source/mhd/boundaries.hpp \
   source/mhd/common.hpp \
   source/mhd/initialize_staggered.hpp \
