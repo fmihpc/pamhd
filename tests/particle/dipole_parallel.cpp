@@ -394,13 +394,7 @@ int main(int argc, char* argv[])
 
 			constexpr uint64_t file_version = 1;
 			if (
-				not pamhd::particle::save<
-					pamhd::particle::Electric_Field,
-					pamhd::Magnetic_Field,
-					pamhd::Electric_Current_Density,
-					pamhd::particle::Nr_Particles_Internal,
-					pamhd::particle::Particles_Internal
-				>(
+				not pamhd::particle::save(
 					"tests/particle/",
 					grid,
 					file_version,
@@ -408,7 +402,12 @@ int main(int argc, char* argv[])
 					simulation_time,
 					0,
 					0,
-					0
+					0,
+					pamhd::particle::Electric_Field(),
+					pamhd::Magnetic_Field(),
+					pamhd::Electric_Current_Density(),
+					pamhd::particle::Nr_Particles_Internal(),
+					pamhd::particle::Particles_Internal()
 				)
 			) {
 				std::cerr <<  __FILE__ << "(" << __LINE__ << "): "
