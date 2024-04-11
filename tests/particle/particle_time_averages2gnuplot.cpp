@@ -696,7 +696,7 @@ int main(int argc, char* argv[])
 					Species_Mass
 				>(
 					particles,
-					(*metadata)[4]
+					(*metadata)[3]
 				);
 		} else if (vertical_variable == "P") {
 			const auto volume
@@ -712,7 +712,7 @@ int main(int argc, char* argv[])
 					Species_Mass
 				>(
 					particles,
-					(*metadata)[4],
+					(*metadata)[3],
 					volume
 				);
 		}
