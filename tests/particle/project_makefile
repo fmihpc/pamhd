@@ -307,7 +307,6 @@ tests/particle/test_staggered.exe: \
   source/boundaries/geometries.hpp \
   source/boundaries/multivariable_boundaries.hpp \
   source/boundaries/multivariable_initial_conditions.hpp \
-  source/particle/solve_dccrg_staggered.hpp \
   source/particle/save.hpp \
   source/particle/initialize.hpp \
   source/particle/accumulate.hpp \
