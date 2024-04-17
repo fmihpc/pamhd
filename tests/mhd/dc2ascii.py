@@ -44,11 +44,14 @@ except Exception as e:
 	exit(1)
 
 
-def convert(inname):
+def convert(inname, verbose):
 	if not os.path.isfile(inname):
 		raise Exception('Given path (' + inname + ') is not a file.')
 
 	infile = open(inname, 'rb')
+
+	if verbose:
+		print('Converting file', inname)
 
 	# read simulation header, given by source/mhd/save.hpp
 	file_version = numpy.fromfile(infile, dtype = 'uint64', count = 1)
@@ -56,10 +59,16 @@ def convert(inname):
 		exit('Unsupported file version: ' + str(file_version))
 
 	sim_step = numpy.fromfile(infile, dtype = 'uint64', count = 1)[0]
-	#print('Simulation step:', sim_step)
+	if verbose:
+		print('Simulation step:', sim_step)
 
 	sim_time, adiabatic_index, proton_mass, vacuum_permeability \
 		= numpy.fromfile(infile, dtype = '4double', count = 1)[0]
+	if verbose:
+		print('Simulation time:', sim_time)
+
+	nr_offsets = numpy.fromfile(infile, dtype = 'u1', count = 1)[0]
+	var_offsets = numpy.fromfile(infile, dtype = 'uint64', count = nr_offsets)
 
 	# check file endiannes
 	endianness = numpy.fromfile(infile, dtype = 'uint64', count = 1)[0]
@@ -100,58 +109,47 @@ def convert(inname):
 
 	# total number of cells in grid
 	total_cells = numpy.fromfile(infile, dtype = 'uint64', count = 1)[0]
-	#print(total_cells)
+	if verbose:
+		print('Number of simulation cells:', total_cells)
 
 	# id of each cell
 	cell_ids = numpy.fromfile(infile, dtype = 'uint64', count = total_cells)
 	#print(cell_ids_data_offsets)
 
-	infile.close()
-
 	outname = inname.replace('.dc', '.txt')
 	outfile = open(outname, 'w')
-	try: bgB1 = open(inname + '_bgB1', 'rb')
-	except: bgB1 = None
-	try: divB1 = open(inname + '_divB1', 'rb')
-	except: divB1 = None
-	try: edgeE1 = open(inname + '_edgeE1', 'rb')
-	except: edgeE1 = None
-	try: faceB1 = open(inname + '_faceB1', 'rb')
-	except: faceB1 = None
-	'''try: flux1 = open(inname + '_flux1', 'rb')
-	except: flux1 = None'''
-	try: mhd1 = open(inname + '_mhd1', 'rb')
-	except: mhd1 = None
-	try: mpi1 = open(inname + '_mpi1', 'rb')
-	except: mpi1 = None
-	try: primary1 = open(inname + '_primary1', 'rb')
-	except: primary1 = None
-	try: solver1 = open(inname + '_solver1', 'rb')
-	except: solver1 = None
-	try: trl1 = open(inname + '_trl1', 'rb')
-	except: trl1 = None
+	data = dict()
+	name_len = 8
+	for offset in var_offsets:
+		infile.seek(offset, 0)
+		name = str(numpy.fromfile(infile, dtype = 'byte', count = name_len), 'ascii').strip()
+		data[name] = int(offset + name_len)
+
+	if verbose:
+		print('Number of variables:', len(data.keys()), '\nVariables:')
+		for name in data:
+			print(name, 'start in file:', data[name])
 
 	outfile.write(
 		  "# MHD data created by PAMHD\n"
 		+ "# All vectors in Cartesian GSE coordinate system\n"
 		+ "# Format of each line (lines are ordered randomly):\n"
 		+ "# x, y and z coordinates of cell's center (m)\n")
-	if mhd1 != None: outfile.write(
+	if 'mhd' in data: outfile.write(
 		"# number density (#/m^3)\n"
 		+ "# x, y and z components of velocity (m/s)\n"
 		+ "# thermal pressure (Pa)\n"
 		+ "# x, y and z components of volume magnetic field (T)\n")
-	if primary1 != None: outfile.write(
+	if 'primary' in data: outfile.write(
 		"# primary face info (-x,+x,-y...,+z)\n"
 		+ "# primary edge info (x,-y,-z; x,-y,+z; ...; z,+x,+y)\n")
-	if bgB1 != None: outfile.write("# background magnetic field on cell faces (-x,+x,-y,...,+z) with x,y,z components on each face (T)\n")
-	if divB1 != None: outfile.write("# divergence of face magnetic field (T/m)\n")
-	if edgeE1 != None: outfile.write("# edge-directed electric field on cell edges (V/m, x,-y,-z; x,-y,+z; ...; z,+x,+y)\n")
-	if faceB1 != None: outfile.write("# normal component of magnetic field on faces (T, -x,+x,-y,...,+z)\n")
-	#if flux1 != None: outfile.write("# \n")
-	if mpi1 != None: outfile.write("# MPI rank of cell owner\n")
-	if solver1 != None: outfile.write("# MHD solver information\n")
-	if trl1 != None: outfile.write("# Minimum and maximum target refinement level\n")
+	if 'bgB' in data: outfile.write("# background magnetic field on cell faces (-x,+x,-y,...,+z) with x,y,z components on each face (T)\n")
+	if 'divB' in data: outfile.write("# divergence of face magnetic field (T/m)\n")
+	if 'edgeE' in data: outfile.write("# edge-directed electric field on cell edges (V/m, x,-y,-z; x,-y,+z; ...; z,+x,+y)\n")
+	if 'faceB' in data: outfile.write("# normal component of magnetic field on faces (T, -x,+x,-y,...,+z)\n")
+	if 'mpi' in data: outfile.write("# MPI rank of cell owner\n")
+	if 'info' in data: outfile.write("# MHD solver information\n")
+	if 'reflvls' in data: outfile.write("# Minimum and maximum target refinement level\n")
 	outfile.write(
 		"# Physical constants:\n"
 		+ "# adiabatic index: " + str(adiabatic_index)
@@ -183,10 +181,10 @@ def convert(inname):
 			+ str(cell_center[1]) + ' '
 			+ str(cell_center[2]) + ' ')
 
-		if mhd1 != None:
-			mhd1.seek(i * 8 * 8, 0)
+		if 'mhd' in data:
+			infile.seek(data['mhd'] + i*8*8, 0)
 			mas, mom, nrj, mag = numpy.fromfile(
-				mhd1,
+				infile,
 				dtype = 'double, 3double, double, 3double',
 				count = 1
 			)[0]
@@ -204,48 +202,48 @@ def convert(inname):
 				+ str(mag[1]) + ' '
 				+ str(mag[2]) + ' ')
 
-		if primary1 != None:
-			primary1.seek(i*(6 + 12), 0)
-			p = numpy.fromfile(primary1, dtype = '18u1', count = 1)[0]
+		if 'primary' in data:
+			infile.seek(data['primary'] + i*(6+12), 0)
+			p = numpy.fromfile(infile, dtype = '18u1', count = 1)[0]
 			for i in range(len(p)):
 				outfile.write(str(p[i]) + ' ')
 
-		if bgB1 != None:
-			bgB1.seek(i * 3 * 6 * 8, 0)
-			B = numpy.fromfile(bgB1, dtype = '18double', count = 1)[0]
+		if 'bgB' in data:
+			infile.seek(data['bgB'] + i*3*6*8, 0)
+			B = numpy.fromfile(infile, dtype = '18double', count = 1)[0]
 			for i in range(len(B)):
 				outfile.write(str(B[i]) + ' ')
 
-		if divB1 != None:
-			divB1.seek(i * 8, 0)
-			B = numpy.fromfile(divB1, dtype = 'double', count = 1)[0]
+		if 'divB' in data:
+			infile.seek(data['divB'] + i*8, 0)
+			B = numpy.fromfile(infile, dtype = 'double', count = 1)[0]
 			outfile.write(str(B) + ' ')
 
-		if edgeE1 != None:
-			edgeE1.seek(i * 12 * 8, 0)
-			E = numpy.fromfile(edgeE1, dtype = '12double', count = 1)[0]
+		if 'edgeE' in data:
+			infile.seek(data['edgeE'] + i*12*8, 0)
+			E = numpy.fromfile(infile, dtype = '12double', count = 1)[0]
 			for i in range(len(E)):
 				outfile.write(str(E[i]) + ' ')
 
-		if faceB1 != None:
-			faceB1.seek(i * 6 * 8, 0)
-			B = numpy.fromfile(faceB1, dtype = '6double', count = 1)[0]
+		if 'faceB' in data:
+			infile.seek(data['faceB'] + i*6*8, 0)
+			B = numpy.fromfile(infile, dtype = '6double', count = 1)[0]
 			for i in range(len(B)):
 				outfile.write(str(B[i]) + ' ')
 
-		if mpi1 != None:
-			mpi1.seek(i * 4, 0)
-			rank = numpy.fromfile(mpi1, dtype = 'intc', count = 1)[0]
+		if 'mpi' in data:
+			infile.seek(data['mpi'] + i*4, 0)
+			rank = numpy.fromfile(infile, dtype = 'intc', count = 1)[0]
 			outfile.write(str(rank) + ' ')
 
-		if solver1 != None:
-			solver1.seek(i * 4, 0)
-			s = numpy.fromfile(solver1, dtype = 'uintc', count = 1)[0]
+		if 'info' in data:
+			infile.seek(data['info'] + i*4, 0)
+			s = numpy.fromfile(infile, dtype = 'uintc', count = 1)[0]
 			outfile.write(str(s) + ' ')
 
-		if trl1 != None:
-			trl1.seek(i * 8, 0)
-			r = numpy.fromfile(trl1, dtype = '2intc', count = 1)[0]
+		if 'reflvls' in data:
+			infile.seek(data['reflvls'] + i*8, 0)
+			r = numpy.fromfile(infile, dtype = '2intc', count = 1)[0]
 			outfile.write(str(r[0]) + ' ' + str(r[1]) + ' ')
 
 		outfile.write('\n')
@@ -253,5 +251,9 @@ def convert(inname):
 
 if __name__ == '__main__':
 	import sys
+	verbose = False
 	for arg in sys.argv[1:]:
-		convert(arg)
+		if arg == '--verbose':
+			verbose = True
+		else:
+			convert(arg, verbose)
