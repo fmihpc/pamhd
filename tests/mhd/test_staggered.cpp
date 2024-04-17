@@ -920,7 +920,7 @@ int main(int argc, char* argv[])
 				cout << "Saving MHD at time " << simulation_time << endl;
 			}
 
-			constexpr uint64_t file_version = 2;
+			constexpr uint64_t file_version = 3;
 			if (
 				not pamhd::mhd::save(
 					boost::filesystem::canonical(
@@ -932,16 +932,7 @@ int main(int argc, char* argv[])
 					simulation_time,
 					options_sim.adiabatic_index,
 					options_sim.proton_mass,
-					options_sim.vacuum_permeability,
-					pamhd::mhd::MHD_State_Conservative(),
-					pamhd::mhd::Solver_Info(),
-					pamhd::MPI_Rank(),
-					pamhd::Face_Magnetic_Field(),
-					pamhd::Edge_Electric_Field(),
-					pamhd::Bg_Magnetic_Field(),
-					pamhd::Magnetic_Field_Divergence(),
-					pamhd::grid::Target_Refinement_Level_Min(),
-					pamhd::grid::Target_Refinement_Level_Max()
+					options_sim.vacuum_permeability
 				)
 			) {
 				cerr <<  __FILE__ << "(" << __LINE__ << "): "
