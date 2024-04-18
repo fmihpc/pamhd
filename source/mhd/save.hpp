@@ -165,7 +165,7 @@ template <class Grid> bool save(
 	MPI_File_get_size(outfile, &outsize);
 	variable_offsets[1] = outsize;
 	Grid::cell_data_type::set_transfer_all(true, pamhd::Magnetic_Field_Divergence());
-	varname = "divB    ";
+	varname = "divfaceB";
 	get<0>(header) = (void*)varname.data();
 	ret_val = ret_val and grid.save_grid_data(
 		path_name_prefix + step_string.str() + ".dc",
@@ -195,7 +195,7 @@ template <class Grid> bool save(
 	MPI_File_get_size(outfile, &outsize);
 	variable_offsets[4] = outsize;
 	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Solver_Info());
-	varname = "info    ";
+	varname = "mhd info";
 	get<0>(header) = (void*)varname.data();
 	ret_val = ret_val and grid.save_grid_data(
 		path_name_prefix + step_string.str() + ".dc",
@@ -221,7 +221,7 @@ template <class Grid> bool save(
 	Grid::cell_data_type::set_transfer_all(true,
 		pamhd::grid::Target_Refinement_Level_Min(),
 		pamhd::grid::Target_Refinement_Level_Max());
-	varname = "reflvls ";
+	varname = "ref lvls";
 	get<0>(header) = (void*)varname.data();
 	ret_val = ret_val and grid.save_grid_data(
 		path_name_prefix + step_string.str() + ".dc",

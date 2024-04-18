@@ -114,7 +114,6 @@ def convert(inname, verbose):
 
 	# id of each cell
 	cell_ids = numpy.fromfile(infile, dtype = 'uint64', count = total_cells)
-	#print(cell_ids_data_offsets)
 
 	outname = inname.replace('.dc', '.txt')
 	outfile = open(outname, 'w')
@@ -144,12 +143,12 @@ def convert(inname, verbose):
 		"# primary face info (-x,+x,-y...,+z)\n"
 		+ "# primary edge info (x,-y,-z; x,-y,+z; ...; z,+x,+y)\n")
 	if 'bgB' in data: outfile.write("# background magnetic field on cell faces (-x,+x,-y,...,+z) with x,y,z components on each face (T)\n")
-	if 'divB' in data: outfile.write("# divergence of face magnetic field (T/m)\n")
+	if 'divfaceB' in data: outfile.write("# divergence of face magnetic field (T/m)\n")
 	if 'edgeE' in data: outfile.write("# edge-directed electric field on cell edges (V/m, x,-y,-z; x,-y,+z; ...; z,+x,+y)\n")
 	if 'faceB' in data: outfile.write("# normal component of magnetic field on faces (T, -x,+x,-y,...,+z)\n")
 	if 'mpi' in data: outfile.write("# MPI rank of cell owner\n")
-	if 'info' in data: outfile.write("# MHD solver information\n")
-	if 'reflvls' in data: outfile.write("# Minimum and maximum target refinement level\n")
+	if 'mhd info' in data: outfile.write("# MHD solver information\n")
+	if 'ref lvls' in data: outfile.write("# Minimum and maximum target refinement level\n")
 	outfile.write(
 		"# Physical constants:\n"
 		+ "# adiabatic index: " + str(adiabatic_index)
@@ -214,8 +213,8 @@ def convert(inname, verbose):
 			for i in range(len(B)):
 				outfile.write(str(B[i]) + ' ')
 
-		if 'divB' in data:
-			infile.seek(data['divB'] + i*8, 0)
+		if 'divfaceB' in data:
+			infile.seek(data['divfaceB'] + i*8, 0)
 			B = numpy.fromfile(infile, dtype = 'double', count = 1)[0]
 			outfile.write(str(B) + ' ')
 
@@ -231,18 +230,18 @@ def convert(inname, verbose):
 			for i in range(len(B)):
 				outfile.write(str(B[i]) + ' ')
 
-		if 'mpi' in data:
-			infile.seek(data['mpi'] + i*4, 0)
+		if 'rank' in data:
+			infile.seek(data['rank'] + i*4, 0)
 			rank = numpy.fromfile(infile, dtype = 'intc', count = 1)[0]
 			outfile.write(str(rank) + ' ')
 
-		if 'info' in data:
-			infile.seek(data['info'] + i*4, 0)
+		if 'mhd info' in data:
+			infile.seek(data['mhd info'] + i*4, 0)
 			s = numpy.fromfile(infile, dtype = 'uintc', count = 1)[0]
 			outfile.write(str(s) + ' ')
 
-		if 'reflvls' in data:
-			infile.seek(data['reflvls'] + i*8, 0)
+		if 'ref lvls' in data:
+			infile.seek(data['ref lvls'] + i*8, 0)
 			r = numpy.fromfile(infile, dtype = '2intc', count = 1)[0]
 			outfile.write(str(r[0]) + ' ' + str(r[1]) + ' ')
 
