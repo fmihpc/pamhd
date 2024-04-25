@@ -36,40 +36,40 @@ Should be called before get_cells() without changing infile read position.
 def get_metadata(infile):
 	from numpy import fromfile, int32
 	ret_val = dict()
-	file_version = fromfile(infile, dtype = 'uint64', count = 1)
-	if file_version[0] != 3:
-		exit('Unsupported file version: ' + str(file_version[0]))
-	ret_val['file_version'] = file_version[0]
-	ret_val['sim_step'] = fromfile(infile, dtype = 'uint64', count = 1)[0]
+	file_version = int(fromfile(infile, dtype = 'uint64', count = 1)[0])
+	if file_version != 3:
+		exit('Unsupported file version: ' + str(file_version))
+	ret_val['file_version'] = file_version
+	ret_val['sim_step'] = int(fromfile(infile, dtype = 'uint64', count = 1)[0])
 	ret_val['sim_time'], \
 	ret_val['adiabatic_index'], \
 	ret_val['proton_mass'], \
 	ret_val['vacuum_permeability'] \
-		= fromfile(infile, dtype = '4double', count = 1)[0]
-	nr_variables = fromfile(infile, dtype = 'u1', count = 1)[0]
-	var_offsets = list(fromfile(infile, dtype = 'uint64', count = nr_variables))
-	endianness = fromfile(infile, dtype = 'uint64', count = 1)[0]
+		= [float(i) for i in fromfile(infile, dtype = '4double', count = 1)[0]]
+	nr_variables = int(fromfile(infile, dtype = 'u1', count = 1)[0])
+	var_offsets = [int(i) for i in fromfile(infile, dtype = 'uint64', count = nr_variables)]
+	endianness = int(fromfile(infile, dtype = 'uint64', count = 1)[0])
 	if endianness != 0x1234567890abcdef:
 		exit('Unsupported endianness: ' + str(endianness))
 	ret_val['endianness'] = endianness
-	ret_val['ref_lvl_0_cells'] = list(fromfile(infile, dtype = '3uint64', count = 1)[0])
-	ret_val['max_ref_lvl'] = fromfile(infile, dtype = 'intc', count = 1)[0]
-	ret_val['neighborhood_length'] = fromfile(infile, dtype = 'uintc', count = 1)[0]
-	ret_val['periodicity'] = list(fromfile(infile, dtype = '3uint8', count = 1)[0])
-	geometry_id = fromfile(infile, dtype = 'intc', count = 1)[0]
-	if geometry_id != int32(1):
+	ret_val['ref_lvl_0_cells'] = [int(i) for i in fromfile(infile, dtype = '3uint64', count = 1)[0]]
+	ret_val['max_ref_lvl'] = int(fromfile(infile, dtype = 'intc', count = 1)[0])
+	ret_val['neighborhood_length'] = int(fromfile(infile, dtype = 'uintc', count = 1)[0])
+	ret_val['periodicity'] = [int(i) for i in fromfile(infile, dtype = '3uint8', count = 1)[0]]
+	geometry_id = int(fromfile(infile, dtype = 'intc', count = 1)[0])
+	if geometry_id != 1:
 		exit('Unsupported geometry: ' + str(geometry_id))
 	ret_val['geometry_id'] = geometry_id
-	ret_val['grid_start'] = list(fromfile(infile, dtype = '3double', count = 1)[0])
-	ret_val['lvl_0_cell_length'] = list(fromfile(infile, dtype = '3double', count = 1)[0])
-	ret_val['total_cells'] = fromfile(infile, dtype = 'uint64', count = 1)[0]
+	ret_val['grid_start'] = [float(i) for i in fromfile(infile, dtype = '3double', count = 1)[0]]
+	ret_val['lvl_0_cell_length'] = [float(i) for i in fromfile(infile, dtype = '3double', count = 1)[0]]
+	ret_val['total_cells'] = int(fromfile(infile, dtype = 'uint64', count = 1)[0])
 	ret_val['cell_list_start'] = infile.tell()
 	ret_val['var_data_start'] = dict()
 	name_len = 8
 	for offset in var_offsets:
 		infile.seek(offset, 0)
 		name = str(fromfile(infile, dtype = 'byte', count = name_len), 'ascii').strip()
-		ret_val['var_data_start'][name] = int(offset + name_len)
+		ret_val['var_data_start'][name] = offset + name_len
 	infile.seek(ret_val['cell_list_start'], 0)
 	return ret_val
 
@@ -84,7 +84,7 @@ seek to place where previous read left off before calling again.
 '''
 def get_cells(infile, total_cells):
 	from numpy import dtype, fromfile
-	return fromfile(infile, dtype = 'uint64', count = total_cells)
+	return [int(i) for i in fromfile(infile, dtype = 'uint64', count = total_cells)]
 
 
 '''
@@ -133,6 +133,37 @@ def get_cell_data(infile, metadata, range_):
 				if varname != 'fluxes':
 					exit('Unsupported variable: ' + varname)
 	return ret_val
+
+
+def get_cell_center(metadata, cell_id):
+	rl0c = metadata['ref_lvl_0_cells']
+	l0cl = metadata['lvl_0_cell_length']
+	gs = metadata['grid_start']
+	mrl = metadata['max_ref_lvl']
+
+	ref_lvl = 0
+	while True:
+		last = rl0c[0] * rl0c[1] * rl0c[2] * 2**(3*ref_lvl)
+		if cell_id <= last:
+			break
+		cell_id -= last
+		ref_lvl += 1
+	if ref_lvl > mrl:
+		raise Exception('Impossibly large refinement level for cell: ' + str(cell_id))
+
+	cell_id -= 1
+	cell_index = (
+		(cell_id % (rl0c[0] * 2**ref_lvl)) * 2**(mrl-ref_lvl),
+		((cell_id // (rl0c[0] * 2**ref_lvl)) % (rl0c[1] * 2**ref_lvl)) * 2**(mrl-ref_lvl),
+		(cell_id // (rl0c[0]*rl0c[1] * 2**(2*ref_lvl))) * 2**(mrl-ref_lvl)
+	)
+	cell_center = (
+		gs[0] + l0cl[0] * (cell_index[0] / 2**mrl + 1 / 2**(ref_lvl+1)),
+		gs[1] + l0cl[1] * (cell_index[1] / 2**mrl + 1 / 2**(ref_lvl+1)),
+		gs[2] + l0cl[2] * (cell_index[2] / 2**mrl + 1 / 2**(ref_lvl+1)),
+	)
+	return cell_center
+
 
 if __name__ == '__main__':
 	import sys
