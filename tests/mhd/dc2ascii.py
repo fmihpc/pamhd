@@ -109,6 +109,7 @@ def convert(inname, verbose):
 	if 'mpi' in metadata['var_data_start']: outfile.write("# MPI rank of cell owner\n")
 	if 'mhd info' in metadata['var_data_start']: outfile.write("# MHD solver information\n")
 	if 'ref lvls' in metadata['var_data_start']: outfile.write("# Minimum and maximum target refinement level\n")
+	if 'substep' in metadata['var_data_start']: outfile.write("# Temporal substepping period\n")
 
 	for i in range(len(metadata['cells'])):
 		cell_id = metadata['cells'][i]
@@ -165,6 +166,9 @@ def convert(inname, verbose):
 		if 'ref lvls' in sim_data[cell_id]:
 			r = sim_data[cell_id]['ref lvls']
 			outfile.write(str(r[0]) + ' ' + str(r[1]) + ' ')
+
+		if 'substep' in sim_data[cell_id]:
+			outfile.write(str(sim_data[cell_id]['substep']) + ' ')
 
 		outfile.write('\n')
 

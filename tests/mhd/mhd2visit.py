@@ -254,6 +254,11 @@ def dc2vtk(outname, data):
 			for c in cells:
 				outfile.write(str(data[c]['ref lvls'][1]) + '\n')
 
+		if 'substep' in data[cells[0]]:
+			outfile.write('SCALARS substep_period int 1\nlookup_table default\n')
+			for c in cells:
+				outfile.write(str(data[c]['substep']) + '\n')
+
 
 plot_vars = {
 	'mass_density', 'pressure',
@@ -262,7 +267,8 @@ plot_vars = {
 	'B', 'Bx', 'By', 'Bz',
 	'B0', 'B0x', 'B0y', 'B0z',
 	'B1', 'B1x', 'B1y', 'B1z',
-	'target_ref_lvl_min', 'target_ref_lvl_max'
+	'target_ref_lvl_min', 'target_ref_lvl_max',
+	'substep_period'
 }
 plot_vars_str = ''
 for v in sorted(plot_vars):

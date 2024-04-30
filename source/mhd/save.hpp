@@ -87,7 +87,7 @@ template <class Grid> bool save_staggered(
 	std::set<string>
 		variables{},
 		allowed_variables{
-			"mhd", "divfaceB", "bgB", "rank", "mhd info",
+			"mhd", "divfaceB", "bgB", "rank", "mhd info", "substep",
 			"primary", "ref lvls", "faceB", "edgeE", "fluxes"
 		};
 	if (variables_.size() == 0) {
@@ -297,6 +297,18 @@ template <class Grid> bool save_staggered(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
 		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::MHD_Flux());
+	}
+
+	if (variables.count("substep") > 0) {
+		MPI_File_get_size(outfile, &outsize);
+		variable_offsets.push_back(outsize);
+		Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Substepping_Period());
+		const string varname = "substep ";
+		get<0>(header) = (void*)varname.data();
+		ret_val = ret_val and grid.save_grid_data(
+			path_name_prefix + step_string.str() + ".dc",
+			outsize, header, cells, false, false, false);
+		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Substepping_Period());
 	}
 
 	if (grid.get_rank() == 0) {

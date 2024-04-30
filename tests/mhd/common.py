@@ -133,6 +133,9 @@ def get_cell_data(infile, metadata, range_):
 			elif varname == 'ref lvls':
 				infile.seek(i*8, 1)
 				ret_val[-1][varname] = list(fromfile(infile, dtype = '2intc', count = 1)[0])
+			elif varname == 'substep':
+				infile.seek(i*4, 1)
+				ret_val[-1][varname] = fromfile(infile, dtype = 'intc', count = 1)[0]
 			else:
 				if varname != 'fluxes':
 					exit('Unsupported variable: ' + varname)
