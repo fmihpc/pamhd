@@ -445,7 +445,13 @@ int main(int argc, char* argv[])
 		grid, Ref_min, Ref_max,
 		pamhd::grid::New_Cells_Handler(Ref_min, Ref_max),
 		pamhd::grid::Removed_Cells_Handler(Ref_min, Ref_max));
+	Cell::set_transfer_all(true,
+		pamhd::grid::Target_Refinement_Level_Min(),
+		pamhd::grid::Target_Refinement_Level_Max());
 	grid.balance_load();
+	Cell::set_transfer_all(false,
+		pamhd::grid::Target_Refinement_Level_Min(),
+		pamhd::grid::Target_Refinement_Level_Max());
 	if (rank == 0) {
 		cout << "done" << endl;
 	}
