@@ -180,7 +180,7 @@ def dc2vtk(outname, data):
 			outfile.write('VECTORS velocity double\n')
 			for c in cells:
 				mas = data[c]['mhd'][0]
-				mom = (data[c]['mhd'][1][0], data[c]['mhd'][1][1], data[c]['mhd'][1][2])
+				mom = data[c]['mhd'][1]
 				outfile.write(
 					str(mom[0]/mas) + ' '
 					+ str(mom[1]/mas) + ' '
@@ -188,19 +188,17 @@ def dc2vtk(outname, data):
 			outfile.write('SCALARS pressure double 1\nlookup_table default\n')
 			for c in cells:
 				mas = data[c]['mhd'][0]
-				mom = (data[c]['mhd'][1][0], data[c]['mhd'][1][1], data[c]['mhd'][1][2])
+				mom = data[c]['mhd'][1]
 				nrj = data[c]['mhd'][2]
-				mag = (data[c]['mhd'][3][0], data[c]['mhd'][3][1], data[c]['mhd'][3][2])
+				mag = data[c]['mhd'][3]
 				kin_nrj = (mom[0]**2 + mom[1]**2 + mom[2]**2) / 2 / mas
 				mag_nrj = (mag[0]**2 + mag[1]**2 + mag[2]**2) / 2 / data['vacuum_permeability']
 				pressure = (nrj - kin_nrj - mag_nrj) * (data['adiabatic_index'] - 1)
 				outfile.write(str(pressure) + '\n')
 			outfile.write('VECTORS volume_B double\n')
 			for c in cells:
-				outfile.write(
-					str(data[c]['mhd'][3][0]) + ' '
-					+ str(data[c]['mhd'][3][1]) + ' '
-					+ str(data[c]['mhd'][3][2]) + '\n')
+				mag = data[c]['mhd'][3]
+				outfile.write(str(mag[0]) + ' ' + str(mag[1]) + ' ' + str(mag[2]) + '\n')
 
 		if 'primary' in data[cells[0]]:
 			outfile.write('SCALARS nr_primary_faces int 1\nlookup_table default\n')
@@ -229,13 +227,15 @@ def dc2vtk(outname, data):
 		if 'mhd' in data[cells[0]] and 'bgB' in data[cells[0]]:
 			outfile.write('VECTORS total_face_magnetic_field double\n')
 			for c in cells:
+				B0 = data[c]['bgB']
+				B1 = data[c]['mhd'][3]
 				outfile.write(
-					str(data[c]['mhd'][3][0] + data[c]['bgB'][3]) + ' '
-					+ str(data[c]['mhd'][3][1] + data[c]['bgB'][10]) + ' '
-					+ str(data[c]['mhd'][3][2] + data[c]['bgB'][17]) + '\n')
+					str(B1[0] + B0[3]) + ' '
+					+ str(B1[1] + B0[10]) + ' '
+					+ str(B1[2] + B0[17]) + '\n')
 
 		if 'divfaceB' in data[cells[0]]:
-			outfile.write('SCALARS div_B double 1\nlookup_table default\n')
+			outfile.write('SCALARS divergence_of_magnetic_field double 1\nlookup_table default\n')
 			for c in cells:
 				outfile.write(str(data[c]['divfaceB']) + '\n')
 
@@ -245,19 +245,19 @@ def dc2vtk(outname, data):
 				outfile.write(str(data[c]['rank']) + '\n')
 
 		if 'ref lvls' in data[cells[0]]:
-			outfile.write('SCALARS target_min_ref_lvl 1\nlookup_table default\n')
+			outfile.write('SCALARS target_ref_lvl_min int 1\nlookup_table default\n')
 			for c in cells:
 				outfile.write(str(data[c]['ref lvls'][0]) + '\n')
 
 		if 'ref lvls' in data[cells[0]]:
-			outfile.write('SCALARS target_max_ref_lvl 1\nlookup_table default\n')
+			outfile.write('SCALARS target_ref_lvl_max int 1\nlookup_table default\n')
 			for c in cells:
 				outfile.write(str(data[c]['ref lvls'][1]) + '\n')
 
 
 plot_vars = {
 	'mass_density', 'pressure',
-	'number_density', 'divB',
+	'number_density', 'divB', 'rank',
 	'V', 'Vx', 'Vy', 'Vz',
 	'B', 'Bx', 'By', 'Bz',
 	'B0', 'B0x', 'B0y', 'B0z',
@@ -306,7 +306,6 @@ for filename_ in args.files:
 		filename = outname
 	else:
 		filename = filename_
-	print(filename)
 	OpenDatabase(filename)
 	result = GetLastError()
 	if result != '':
