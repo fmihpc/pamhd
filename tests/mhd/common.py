@@ -34,7 +34,8 @@ Returns dict of simulation metadata in given file open for reading in binary mod
 Should be called before get_cells() without changing infile read position.
 '''
 def get_metadata(infile):
-	from numpy import fromfile, int32
+	from sys import version_info
+	from numpy import fromfile
 	ret_val = dict()
 	file_version = int(fromfile(infile, dtype = 'uint64', count = 1)[0])
 	if file_version != 3:
@@ -68,7 +69,10 @@ def get_metadata(infile):
 	name_len = 8
 	for offset in var_offsets:
 		infile.seek(offset, 0)
-		name = str(fromfile(infile, dtype = 'byte', count = name_len), 'ascii').strip()
+		if version_info[0] >= 3:
+			name = str(fromfile(infile, dtype = 'byte', count = name_len), 'ascii').strip()
+		else:
+			name = ''.join(fromfile(infile, dtype = 'c', count = name_len)).strip()
 		ret_val['var_data_start'][name] = offset + name_len
 	infile.seek(ret_val['cell_list_start'], 0)
 	return ret_val
@@ -83,7 +87,7 @@ Reads from current position of infile, to read fewer cells,
 seek to place where previous read left off before calling again.
 '''
 def get_cells(infile, total_cells):
-	from numpy import dtype, fromfile
+	from numpy import fromfile
 	return [int(i) for i in fromfile(infile, dtype = 'uint64', count = total_cells)]
 
 
@@ -135,7 +139,8 @@ def get_cell_data(infile, metadata, range_):
 	return ret_val
 
 
-def get_cell_center(metadata, cell_id):
+def get_cell_geom(metadata, cell_id):
+	orig_id = cell_id
 	rl0c = metadata['ref_lvl_0_cells']
 	l0cl = metadata['lvl_0_cell_length']
 	gs = metadata['grid_start']
@@ -153,16 +158,19 @@ def get_cell_center(metadata, cell_id):
 
 	cell_id -= 1
 	cell_index = (
-		(cell_id % (rl0c[0] * 2**ref_lvl)) * 2**(mrl-ref_lvl),
-		((cell_id // (rl0c[0] * 2**ref_lvl)) % (rl0c[1] * 2**ref_lvl)) * 2**(mrl-ref_lvl),
-		(cell_id // (rl0c[0]*rl0c[1] * 2**(2*ref_lvl))) * 2**(mrl-ref_lvl)
-	)
-	cell_center = (
-		gs[0] + l0cl[0] * (cell_index[0] / 2**mrl + 1 / 2**(ref_lvl+1)),
-		gs[1] + l0cl[1] * (cell_index[1] / 2**mrl + 1 / 2**(ref_lvl+1)),
-		gs[2] + l0cl[2] * (cell_index[2] / 2**mrl + 1 / 2**(ref_lvl+1)),
-	)
-	return cell_center
+		cell_id % (rl0c[0] * 2**ref_lvl),
+		(cell_id // (rl0c[0] * 2**ref_lvl)) % (rl0c[1] * 2**ref_lvl),
+		cell_id // (rl0c[0]*rl0c[1] * 2**(2*ref_lvl)))
+	cell_index = (
+		cell_index[0] * 2**(mrl - ref_lvl),
+		cell_index[1] * 2**(mrl - ref_lvl),
+		cell_index[2] * 2**(mrl - ref_lvl))
+	cell_center = ( # python2 division requires float(s)
+		gs[0] + l0cl[0] * (cell_index[0] / 2.0**mrl + 1.0 / 2**(ref_lvl+1)),
+		gs[1] + l0cl[1] * (cell_index[1] / 2.0**mrl + 1.0 / 2**(ref_lvl+1)),
+		gs[2] + l0cl[2] * (cell_index[2] / 2.0**mrl + 1.0 / 2**(ref_lvl+1)))
+	cell_length = (l0cl[0] / 2.0**ref_lvl, l0cl[1] / 2.0**ref_lvl, l0cl[2] / 2.0**ref_lvl)
+	return cell_center, cell_length
 
 
 if __name__ == '__main__':
@@ -178,10 +186,12 @@ if __name__ == '__main__':
 		pos = infile.tell()
 
 		data1 = get_cell_data(infile, metadata, range(len(cells1)))
-		print('Cell:', cells1[0], '\ndata:', data1[0])
+		if len(data1) > 0:
+			print('Cell:', cells1[0], '\ndata:', data1[0])
 
 		infile.seek(pos, 0)
 		cells2 = get_cells(infile, int(total_cells - total_cells//2))
 
 		data2 = get_cell_data(infile, metadata, range(len(cells1), len(cells1) + len(cells2)))
-		print('Cell:', cells2[0], '\ndata:', data2[0])
+		if len(data2) > 0:
+			print('Cell:', cells2[0], '\ndata:', data2[0])

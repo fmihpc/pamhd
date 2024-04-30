@@ -112,7 +112,7 @@ def convert(inname, verbose):
 
 	for i in range(len(metadata['cells'])):
 		cell_id = metadata['cells'][i]
-		cell_center = common.get_cell_center(metadata, cell_id)
+		cell_center, cell_length = common.get_cell_geom(metadata, cell_id)
 
 		outfile.write(
 			str(cell_center[0]) + ' '
