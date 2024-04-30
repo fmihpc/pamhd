@@ -119,14 +119,11 @@ def convert(inname, verbose):
 			+ str(cell_center[1]) + ' '
 			+ str(cell_center[2]) + ' ')
 
-		if 'mhd' in metadata['var_data_start']:
-			infile.seek(metadata['var_data_start']['mhd'] + i*8*8, 0)
-			mas, mom, nrj, mag = numpy.fromfile(
-				infile,
-				dtype = 'double, 3double, double, 3double',
-				count = 1
-			)[0]
-
+		if 'mhd' in sim_data[cell_id]:
+			mas = sim_data[cell_id]['mhd'][0]
+			mom = sim_data[cell_id]['mhd'][1]
+			nrj = sim_data[cell_id]['mhd'][2]
+			mag = sim_data[cell_id]['mhd'][3]
 			kin_nrj = (mom[0]**2 + mom[1]**2 + mom[2]**2) / 2 / mas
 			mag_nrj = (mag[0]**2 + mag[1]**2 + mag[2]**2) / 2 / metadata['vacuum_permeability']
 			pressure = (nrj - kin_nrj - mag_nrj) * (metadata['adiabatic_index'] - 1)
@@ -140,48 +137,33 @@ def convert(inname, verbose):
 				+ str(mag[1]) + ' '
 				+ str(mag[2]) + ' ')
 
-		if 'primary' in metadata['var_data_start']:
-			infile.seek(metadata['var_data_start']['primary'] + i*(6+12), 0)
-			p = numpy.fromfile(infile, dtype = '18u1', count = 1)[0]
-			for i in range(len(p)):
-				outfile.write(str(p[i]) + ' ')
+		if 'primary' in sim_data[cell_id]:
+			for i in range(len(sim_data[cell_id]['primary'])):
+				outfile.write(str(sim_data[cell_id]['primary'][i]) + ' ')
 
-		if 'bgB' in metadata['var_data_start']:
-			infile.seek(metadata['var_data_start']['bgB'] + i*3*6*8, 0)
-			B = numpy.fromfile(infile, dtype = '18double', count = 1)[0]
-			for i in range(len(B)):
-				outfile.write(str(B[i]) + ' ')
+		if 'bgB' in sim_data[cell_id]:
+			for i in range(len(sim_data[cell_id]['bgB'])):
+				outfile.write(str(sim_data[cell_id]['bgB'][i]) + ' ')
 
-		if 'divfaceB' in metadata['var_data_start']:
-			infile.seek(metadata['var_data_start']['divfaceB'] + i*8, 0)
-			B = numpy.fromfile(infile, dtype = 'double', count = 1)[0]
-			outfile.write(str(B) + ' ')
+		if 'divfaceB' in sim_data[cell_id]:
+			outfile.write(str(sim_data[cell_id]['divfaceB']) + ' ')
 
-		if 'edgeE' in metadata['var_data_start']:
-			infile.seek(metadata['var_data_start']['edgeE'] + i*12*8, 0)
-			E = numpy.fromfile(infile, dtype = '12double', count = 1)[0]
-			for i in range(len(E)):
-				outfile.write(str(E[i]) + ' ')
+		if 'edgeE' in sim_data[cell_id]:
+			for i in range(len(sim_data[cell_id]['edgeE'])):
+				outfile.write(str(sim_data[cell_id]['edgeE'][i]) + ' ')
 
-		if 'faceB' in metadata['var_data_start']:
-			infile.seek(metadata['var_data_start']['faceB'] + i*6*8, 0)
-			B = numpy.fromfile(infile, dtype = '6double', count = 1)[0]
-			for i in range(len(B)):
-				outfile.write(str(B[i]) + ' ')
+		if 'faceB' in sim_data[cell_id]:
+			for i in range(len(sim_data[cell_id]['faceB'])):
+				outfile.write(str(sim_data[cell_id]['faceB'][i]) + ' ')
 
-		if 'rank' in metadata['var_data_start']:
-			infile.seek(metadata['var_data_start']['rank'] + i*4, 0)
-			rank = numpy.fromfile(infile, dtype = 'intc', count = 1)[0]
-			outfile.write(str(rank) + ' ')
+		if 'rank' in sim_data[cell_id]:
+			outfile.write(str(sim_data[cell_id]['rank']) + ' ')
 
-		if 'mhd info' in metadata['var_data_start']:
-			infile.seek(metadata['var_data_start']['mhd info'] + i*4, 0)
-			s = numpy.fromfile(infile, dtype = 'uintc', count = 1)[0]
-			outfile.write(str(s) + ' ')
+		if 'mhd info' in sim_data[cell_id]:
+			outfile.write(str(sim_data[cell_id]['mhd info']) + ' ')
 
-		if 'ref lvls' in metadata['var_data_start']:
-			infile.seek(metadata['var_data_start']['ref lvls'] + i*8, 0)
-			r = numpy.fromfile(infile, dtype = '2intc', count = 1)[0]
+		if 'ref lvls' in sim_data[cell_id]:
+			r = sim_data[cell_id]['ref lvls']
 			outfile.write(str(r[0]) + ' ' + str(r[1]) + ' ')
 
 		outfile.write('\n')
