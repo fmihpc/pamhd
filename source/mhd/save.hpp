@@ -69,7 +69,7 @@ in order to get written to file(s).
 
 Return true on success, false otherwise.
 */
-template <class Grid> bool save(
+template <class Grid> bool save_staggered(
 	const std::string& path_name_prefix,
 	Grid& grid,
 	const uint64_t file_version,
@@ -297,6 +297,208 @@ template <class Grid> bool save(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
 		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::MHD_Flux());
+	}
+
+	if (grid.get_rank() == 0) {
+		if (nr_var_offsets != variable_offsets.size()) {
+			throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+		}
+		MPI_File_write_at(
+			outfile,
+			8 * (1+1+4) + 1,
+			(void*)variable_offsets.data(),
+			variable_offsets.size(),
+			MPI_UINT64_T,
+			MPI_STATUS_IGNORE
+		);
+	}
+	MPI_File_close(&outfile);
+
+	return ret_val;
+}
+
+
+template <class Grid> bool save(
+	const std::string& path_name_prefix,
+	Grid& grid,
+	const uint64_t file_version,
+	const uint64_t simulation_step,
+	const double simulation_time,
+	const double adiabatic_index,
+	const double proton_mass,
+	const double vacuum_permeability,
+	std::set<std::string> variables_ = std::set<std::string>()
+) {
+	using std::get;
+	using std::string;
+	using std::vector;
+
+	std::set<string>
+		variables{},
+		allowed_variables{"hd", "volume B", "Ecurrent", "res", "bgB", "rank", "mhd info"};
+	if (variables_.size() == 0) {
+		variables_ = allowed_variables;
+	}
+	std::set_intersection(
+		variables_.cbegin(), variables_.cend(),
+		allowed_variables.cbegin(), allowed_variables.cend(),
+		std::inserter(variables, variables.begin())
+	);
+
+	const vector<double> simulation_parameters{
+		simulation_time,
+		adiabatic_index,
+		proton_mass,
+		vacuum_permeability
+	};
+	const int nr_sim_params = simulation_parameters.size();
+
+	const uint8_t nr_var_offsets = variables.size();
+	const vector<int> counts{1, 1, nr_sim_params, 1, nr_var_offsets};
+	vector<uint64_t> variable_offsets(nr_var_offsets, 0);
+	const vector<MPI_Aint> displacements{
+		0,
+		reinterpret_cast<char*>(const_cast<uint64_t*>(&simulation_step))
+			- reinterpret_cast<char*>(const_cast<uint64_t*>(&file_version)),
+		reinterpret_cast<char*>(const_cast<double*>(simulation_parameters.data()))
+			- reinterpret_cast<char*>(const_cast<uint64_t*>(&file_version)),
+		reinterpret_cast<char*>(const_cast<uint8_t*>(&nr_var_offsets))
+			- reinterpret_cast<char*>(const_cast<uint64_t*>(&file_version)),
+		reinterpret_cast<char*>(variable_offsets.data())
+			- reinterpret_cast<char*>(const_cast<uint64_t*>(&file_version))
+	};
+	const vector<MPI_Datatype> datatypes{MPI_UINT64_T, MPI_UINT64_T, MPI_DOUBLE, MPI_UINT8_T, MPI_UINT64_T};
+
+	MPI_Datatype header_datatype;
+	if (
+		MPI_Type_create_struct(
+			counts.size(),
+			counts.data(),
+			displacements.data(),
+			datatypes.data(),
+			&header_datatype
+		) != MPI_SUCCESS
+	) {
+		std::cerr << __FILE__ << ":" << __LINE__
+			<< " Couldn't create header datatype"
+			<< std::endl;
+		abort();
+	}
+
+	std::tuple<void*, int, MPI_Datatype> header{
+		(void*) &file_version,
+		1,
+		header_datatype
+	};
+
+	std::ostringstream step_string;
+	step_string << std::setw(9) << std::setfill('0') << simulation_step;
+
+	// make sure data if written in same order to all files
+	vector<uint64_t> cells = grid.get_cells();
+
+	// assume transfer of all variables has been switched off
+	bool ret_val = grid.save_grid_data(
+		path_name_prefix + step_string.str() + ".dc",
+		0, header, cells, true, true, false
+	);
+	variable_offsets.resize(0);
+
+	// append variables to file one by one
+	MPI_File outfile;
+	MPI_File_open(
+		MPI_COMM_WORLD,
+		(path_name_prefix + step_string.str() + ".dc").data(),
+		MPI_MODE_RDWR, MPI_INFO_NULL, &outfile
+	);
+
+	MPI_Offset outsize = 0;
+	get<1>(header) = 8;
+	get<2>(header) = MPI_BYTE;
+
+	if (variables.count("hd") > 0) {
+		MPI_File_get_size(outfile, &outsize);
+		variable_offsets.push_back(outsize);
+		Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::HD_State_Conservative());
+		const string varname = "hd      ";
+		get<0>(header) = (void*)varname.data();
+		ret_val = ret_val and grid.save_grid_data(
+			path_name_prefix + step_string.str() + ".dc",
+			outsize, header, cells, false, false, false
+		);
+		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::HD_State_Conservative());
+	}
+
+	if (variables.count("bgB") > 0) {
+		MPI_File_get_size(outfile, &outsize);
+		variable_offsets.push_back(outsize);
+		Grid::cell_data_type::set_transfer_all(true, pamhd::Bg_Magnetic_Field());
+		const string varname = "bgB     ";
+		get<0>(header) = (void*)varname.data();
+		ret_val = ret_val and grid.save_grid_data(
+			path_name_prefix + step_string.str() + ".dc",
+			outsize, header, cells, false, false, false);
+		Grid::cell_data_type::set_transfer_all(false, pamhd::Bg_Magnetic_Field());
+	}
+
+	if (variables.count("rank") > 0) {
+		MPI_File_get_size(outfile, &outsize);
+		variable_offsets.push_back(outsize);
+		Grid::cell_data_type::set_transfer_all(true, pamhd::MPI_Rank());
+		const string varname = "rank    ";
+		get<0>(header) = (void*)varname.data();
+		ret_val = ret_val and grid.save_grid_data(
+			path_name_prefix + step_string.str() + ".dc",
+			outsize, header, cells, false, false, false);
+		Grid::cell_data_type::set_transfer_all(false, pamhd::MPI_Rank());
+	}
+
+	if (variables.count("mhd info") > 0) {
+		MPI_File_get_size(outfile, &outsize);
+		variable_offsets.push_back(outsize);
+		Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Solver_Info());
+		const string varname = "mhd info";
+		get<0>(header) = (void*)varname.data();
+		ret_val = ret_val and grid.save_grid_data(
+			path_name_prefix + step_string.str() + ".dc",
+			outsize, header, cells, false, false, false);
+		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Solver_Info());
+	}
+
+	if (variables.count("volume B") > 0) {
+		MPI_File_get_size(outfile, &outsize);
+		variable_offsets.push_back(outsize);
+		Grid::cell_data_type::set_transfer_all(true, pamhd::Magnetic_Field());
+		const string varname = "volume B";
+		get<0>(header) = (void*)varname.data();
+		ret_val = ret_val and grid.save_grid_data(
+			path_name_prefix + step_string.str() + ".dc",
+			outsize, header, cells, false, false, false);
+		Grid::cell_data_type::set_transfer_all(false, pamhd::Magnetic_Field());
+	}
+
+	if (variables.count("res") > 0) {
+		MPI_File_get_size(outfile, &outsize);
+		variable_offsets.push_back(outsize);
+		Grid::cell_data_type::set_transfer_all(true, pamhd::Resistivity());
+		const string varname = "res     ";
+		get<0>(header) = (void*)varname.data();
+		ret_val = ret_val and grid.save_grid_data(
+			path_name_prefix + step_string.str() + ".dc",
+			outsize, header, cells, false, false, false);
+		Grid::cell_data_type::set_transfer_all(false, pamhd::Resistivity());
+	}
+
+	if (variables.count("Ecurrent") > 0) {
+		MPI_File_get_size(outfile, &outsize);
+		variable_offsets.push_back(outsize);
+		Grid::cell_data_type::set_transfer_all(true, pamhd::Electric_Current_Density());
+		const string varname = "Ecurrent";
+		get<0>(header) = (void*)varname.data();
+		ret_val = ret_val and grid.save_grid_data(
+			path_name_prefix + step_string.str() + ".dc",
+			outsize, header, cells, false, false, false);
+		Grid::cell_data_type::set_transfer_all(false, pamhd::Electric_Current_Density());
 	}
 
 	if (grid.get_rank() == 0) {

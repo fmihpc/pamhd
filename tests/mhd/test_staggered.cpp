@@ -928,7 +928,7 @@ int main(int argc, char* argv[])
 
 			constexpr uint64_t file_version = 3;
 			if (
-				not pamhd::mhd::save(
+				not pamhd::mhd::save_staggered(
 					boost::filesystem::canonical(
 						boost::filesystem::path(options_sim.output_directory)
 					).append("mhd_staggered_").generic_string(),
