@@ -111,7 +111,7 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 	sim_data2_ = common.get_cell_data(infile2, data2, range(len(data2['cells'])))
 	sim_data2 = dict()
 	for i in range(len(data2['cells'])):
-		sim_data2[data1['cells'][i]] = sim_data2_[i]
+		sim_data2[data2['cells'][i]] = sim_data2_[i]
 
 	for i in range(len(data1['cells'])):
 		cell_id = data1['cells'][i]
