@@ -49,10 +49,15 @@ Author(s): Ilja Honkonen
 #include "gensimcell.hpp"
 #include "prettyprint.hpp"
 
+#include "grid/amr.hpp"
+#include "grid/options.hpp"
 #include "grid/variables.hpp"
+#include "mhd/boundaries.hpp"
 #include "mhd/common.hpp"
 #include "mhd/options.hpp"
+#include "mhd/solve_staggered.hpp"
 #include "mhd/variables.hpp"
+#include "variables.hpp"
 
 
 namespace pamhd {
@@ -77,7 +82,7 @@ template <
 > void set_minmax_refinement_level(
 	const Cells& cells,
 	Grid& grid,
-	Options& options_mhd,
+	const Options& options_mhd,
 	const Mass_Density_Getter& Mas,
 	const Momentum_Density_Getter& Mom,
 	const Total_Energy_Density_Getter& Nrj,
@@ -502,6 +507,147 @@ template <
 		}
 	}
 };
+
+
+template<
+	class Grid,
+	class Geometries,
+	class Boundaries,
+	class Background_B,
+	class Mass_Density_Getter,
+	class Momentum_Density_Getter,
+	class Total_Energy_Density_Getter,
+	class Magnetic_Field_Getter,
+	class Face_Magnetic_Field_Getter,
+	class Background_Magnetic_Field_Getter,
+	class Primary_Face_Getter,
+	class Primary_Edge_Getter,
+	class Solver_Info_Getter,
+	class Solver_Info_Getter2,
+	class Face_Info_Getter,
+	class Edge_Info_Getter,
+	class Target_Refinement_Level_Min_Getter,
+	class Target_Refinement_Level_Max_Getter,
+	class Substepping_Period_Getter
+> void adapt_grid(
+	Grid& grid,
+	pamhd::grid::Options& options_grid,
+	const pamhd::mhd::Options& options_mhd,
+	Geometries& geometries,
+	Boundaries& boundaries,
+	const Background_B& bg_B,
+	const double simulation_time,
+	const double proton_mass,
+	const double adiabatic_index,
+	const double vacuum_permeability,
+	const Mass_Density_Getter Mas,
+	const Momentum_Density_Getter Mom,
+	const Total_Energy_Density_Getter Nrj,
+	const Magnetic_Field_Getter Mag,
+	const Face_Magnetic_Field_Getter Face_B,
+	const Background_Magnetic_Field_Getter Bg_B_Getter,
+	const Primary_Face_Getter PFace,
+	const Primary_Edge_Getter PEdge,
+	const Solver_Info_Getter SInfo,
+	const Solver_Info_Getter2 SInfo2,
+	const Face_Info_Getter FInfo,
+	const Edge_Info_Getter EInfo,
+	const Target_Refinement_Level_Min_Getter Ref_min,
+	const Target_Refinement_Level_Max_Getter Ref_max,
+	const Substepping_Period_Getter Substep
+) try {
+	pamhd::grid::set_minmax_refinement_level(
+		grid.local_cells(), grid, options_grid,
+		simulation_time, Ref_min, Ref_max);
+	pamhd::mhd::set_minmax_refinement_level(
+		grid.local_cells(), grid, options_mhd,
+		Mas, Mom, Nrj, Mag, SInfo2, Ref_min, Ref_max,
+		adiabatic_index, vacuum_permeability, proton_mass);
+	pamhd::grid::adapt_grid(
+		grid, Ref_min, Ref_max,
+		pamhd::mhd::New_Cells_Handler(
+			Mas, Mom, Nrj, Face_B, Mag, Bg_B_Getter,
+			bg_B, Ref_min, Ref_max,
+			adiabatic_index, vacuum_permeability),
+		pamhd::mhd::Removed_Cells_Handler(
+			Mas, Mom, Nrj, Face_B, Mag, Bg_B_Getter,
+			bg_B, Ref_min, Ref_max,
+			adiabatic_index, vacuum_permeability));
+	Grid::cell_data_type::set_transfer_all(true,
+		pamhd::Face_Magnetic_Field(),
+		pamhd::mhd::MHD_State_Conservative(),
+		pamhd::Bg_Magnetic_Field()
+	);
+	grid.update_copies_of_remote_neighbors();
+	Grid::cell_data_type::set_transfer_all(false,
+		pamhd::Face_Magnetic_Field(),
+		pamhd::mhd::MHD_State_Conservative(),
+		pamhd::Bg_Magnetic_Field()
+	);
+
+	for (const auto& cell: grid.local_cells()) {
+		(*cell.data)[pamhd::MPI_Rank()] = grid.get_rank();
+	}
+
+	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
+	pamhd::grid::update_primary_edges(grid.local_cells(), grid, PEdge);
+	Grid::cell_data_type::set_transfer_all(true,
+		pamhd::grid::Is_Primary_Face(),
+		pamhd::grid::Is_Primary_Edge()
+	);
+	grid.update_copies_of_remote_neighbors();
+	Grid::cell_data_type::set_transfer_all(false,
+		pamhd::grid::Is_Primary_Face(),
+		pamhd::grid::Is_Primary_Edge()
+	);
+
+	for (const auto& gid: geometries.get_geometry_ids()) {
+		geometries.clear_cells(gid);
+	}
+	for (const auto& cell: grid.local_cells()) {
+		geometries.overlaps(
+			grid.geometry.get_min(cell.id),
+			grid.geometry.get_max(cell.id),
+			cell.id);
+	}
+
+	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Solver_Info());
+	pamhd::mhd::set_solver_info<pamhd::mhd::Solver_Info>(
+		grid, boundaries, geometries, SInfo
+	);
+	grid.update_copies_of_remote_neighbors();
+	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Solver_Info());
+
+	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Face_Boundary_Type());
+	pamhd::mhd::classify_faces(grid, PFace, SInfo2, FInfo);
+	grid.update_copies_of_remote_neighbors();
+	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Face_Boundary_Type());
+
+	pamhd::mhd::classify_edges(grid.local_cells(), PFace, PEdge, FInfo, EInfo);
+	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Edge_Boundary_Type());
+	grid.update_copies_of_remote_neighbors();
+	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Edge_Boundary_Type());
+
+	pamhd::mhd::update_B_consistency(
+		grid.local_cells(),
+		Mas, Mom, Nrj, Mag, Face_B,
+		PFace, FInfo, Substep,
+		adiabatic_index,
+		vacuum_permeability,
+		true
+	);
+	Grid::cell_data_type::set_transfer_all(true,
+		pamhd::Face_Magnetic_Field(),
+		pamhd::mhd::MHD_State_Conservative()
+	);
+	grid.update_copies_of_remote_neighbors();
+	Grid::cell_data_type::set_transfer_all(false,
+		pamhd::Face_Magnetic_Field(),
+		pamhd::mhd::MHD_State_Conservative()
+	);
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
 
 
 }} // namespaces

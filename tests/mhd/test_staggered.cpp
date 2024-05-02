@@ -627,7 +627,6 @@ int main(int argc, char* argv[])
 			until_end = time_end - simulation_time,
 			local_time_step = min(options_mhd.time_step_factor * max_dt_mhd, until_end),
 			time_step = -1;
-
 		if (
 			MPI_Allreduce(
 				&local_time_step,
@@ -662,106 +661,23 @@ int main(int argc, char* argv[])
 		);
 		simulation_time += time_step;
 
-		/*
-		Adapative mesh refinement
-		*/
 		if (options_grid.amr_n > 0 and simulation_time >= next_amr and time_step > 0) {
-			next_amr
-				+= options_grid.amr_n
-				* ceil((simulation_time - next_amr) / options_grid.amr_n);
-
 			if (rank == 0) {
 				cout << "...\nAdapting grid at time " << simulation_time << "..." << flush;
 			}
-			pamhd::grid::set_minmax_refinement_level(
-				grid.local_cells(), grid, options_grid,
-				simulation_time, Ref_min, Ref_max);
-			pamhd::mhd::set_minmax_refinement_level(
-				grid.local_cells(), grid, options_mhd,
-				Mas, Mom, Nrj, Mag, Sol_Info2, Ref_min, Ref_max,
-				options_sim.adiabatic_index, options_sim.vacuum_permeability,
-				options_sim.proton_mass);
-			pamhd::grid::adapt_grid(
-				grid, Ref_min, Ref_max,
-				pamhd::mhd::New_Cells_Handler(
-					Mas, Mom, Nrj, Face_B, Mag, Bg_B,
-					background_B, Ref_min, Ref_max,
-					options_sim.adiabatic_index, options_sim.vacuum_permeability),
-				pamhd::mhd::Removed_Cells_Handler(
-					Mas, Mom, Nrj, Face_B, Mag, Bg_B,
-					background_B, Ref_min, Ref_max,
-					options_sim.adiabatic_index, options_sim.vacuum_permeability));
-			Cell::set_transfer_all(true,
-				pamhd::Face_Magnetic_Field(),
-				pamhd::mhd::MHD_State_Conservative(),
-				pamhd::Bg_Magnetic_Field()
-			);
-			grid.update_copies_of_remote_neighbors();
-			Cell::set_transfer_all(false,
-				pamhd::Face_Magnetic_Field(),
-				pamhd::mhd::MHD_State_Conservative(),
-				pamhd::Bg_Magnetic_Field()
-			);
-
-			for (const auto& cell: grid.local_cells()) {
-				(*cell.data)[pamhd::MPI_Rank()] = rank;
-			}
-
-			pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
-			pamhd::grid::update_primary_edges(grid.local_cells(), grid, PEdge);
-			Cell::set_transfer_all(true,
-				pamhd::grid::Is_Primary_Face(),
-				pamhd::grid::Is_Primary_Edge()
-			);
-			grid.update_copies_of_remote_neighbors();
-			Cell::set_transfer_all(false,
-				pamhd::grid::Is_Primary_Face(),
-				pamhd::grid::Is_Primary_Edge()
-			);
-
-			for (const auto& gid: geometries.get_geometry_ids()) {
-				geometries.clear_cells(gid);
-			}
-			for (const auto& cell: grid.local_cells()) {
-				geometries.overlaps(
-					grid.geometry.get_min(cell.id),
-					grid.geometry.get_max(cell.id),
-					cell.id);
-			}
-
-			Cell::set_transfer_all(true, pamhd::mhd::Solver_Info());
-			pamhd::mhd::set_solver_info<pamhd::mhd::Solver_Info>(
-				grid, boundaries, geometries, Sol_Info
-			);
-			grid.update_copies_of_remote_neighbors();
-			Cell::set_transfer_all(false, pamhd::mhd::Solver_Info());
-
-			Cell::set_transfer_all(true, pamhd::mhd::Face_Boundary_Type());
-			pamhd::mhd::classify_faces(grid, PFace, Sol_Info2, FInfo);
-			grid.update_copies_of_remote_neighbors();
-			Cell::set_transfer_all(false, pamhd::mhd::Face_Boundary_Type());
-
-			pamhd::mhd::classify_edges(grid.local_cells(), PFace, PEdge, FInfo, EInfo);
-			Cell::set_transfer_all(true, pamhd::mhd::Edge_Boundary_Type());
-			grid.update_copies_of_remote_neighbors();
-			Cell::set_transfer_all(false, pamhd::mhd::Edge_Boundary_Type());
-
-			pamhd::mhd::update_B_consistency(
-				grid.local_cells(),
-				Mas, Mom, Nrj, Mag, Face_B,
-				PFace, FInfo, Substep,
+			next_amr
+				+= options_grid.amr_n
+				* ceil((simulation_time - next_amr) / options_grid.amr_n);
+			pamhd::mhd::adapt_grid(
+				grid,
+				options_grid, options_mhd,
+				geometries, boundaries, background_B,
+				simulation_time, options_sim.proton_mass,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
-				true
-			);
-			Cell::set_transfer_all(true,
-				pamhd::Face_Magnetic_Field(),
-				pamhd::mhd::MHD_State_Conservative()
-			);
-			grid.update_copies_of_remote_neighbors();
-			Cell::set_transfer_all(false,
-				pamhd::Face_Magnetic_Field(),
-				pamhd::mhd::MHD_State_Conservative()
+				Mas, Mom, Nrj, Mag, Face_B, Bg_B,
+				PFace, PEdge, Sol_Info, Sol_Info2,
+				FInfo, EInfo, Ref_min, Ref_max, Substep
 			);
 		}
 
