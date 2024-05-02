@@ -809,15 +809,7 @@ int main(int argc, char* argv[])
 					simulation_time,
 					options_sim.adiabatic_index,
 					options_sim.proton_mass,
-					options_sim.vacuum_permeability,
-					pamhd::mhd::HD_State_Conservative(),
-					pamhd::mhd::HD2_State_Conservative(),
-					pamhd::Magnetic_Field(),
-					pamhd::Electric_Current_Density(),
-					pamhd::mhd::Solver_Info(),
-					pamhd::MPI_Rank(),
-					pamhd::Resistivity(),
-					pamhd::Bg_Magnetic_Field()
+					options_sim.vacuum_permeability
 				)
 			) {
 				std::cerr <<  __FILE__ << "(" << __LINE__ << "): "
