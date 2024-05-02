@@ -803,19 +803,12 @@ int main(int argc, char* argv[])
 						boost::filesystem::path(options_sim.output_directory)
 					).append("mhd_").generic_string(),
 					grid,
-					2,
+					3,
 					simulated_steps,
 					simulation_time,
 					options_sim.adiabatic_index,
 					options_sim.proton_mass,
-					options_sim.vacuum_permeability,
-					pamhd::mhd::HD_State_Conservative(),
-					pamhd::Electric_Current_Density(),
-					pamhd::mhd::Solver_Info(),
-					pamhd::MPI_Rank(),
-					pamhd::Resistivity(),
-					pamhd::Magnetic_Field(),
-					pamhd::Bg_Magnetic_Field()
+					options_sim.vacuum_permeability
 				)
 			) {
 				std::cerr <<  __FILE__ << "(" << __LINE__ << "): "

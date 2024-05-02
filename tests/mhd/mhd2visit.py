@@ -27,8 +27,10 @@ Author(s): Ilja Honkonen
 '''
 
 from argparse import ArgumentParser
+from imp import load_source
 from os.path import basename, dirname, join
 from sys import argv, stdout
+common = load_source('common', join(dirname(__file__), 'common.py'))
 
 DefineScalarExpression('number_density', 'mass_density / 1.67262192369e-21')
 DefineScalarExpression('V', 'velocity_magnitude')
@@ -40,14 +42,14 @@ DefineScalarExpression('B', 'total_face_magnetic_field_magnitude')
 DefineScalarExpression('Bx', 'total_face_magnetic_field[0]')
 DefineScalarExpression('By', 'total_face_magnetic_field[1]')
 DefineScalarExpression('Bz', 'total_face_magnetic_field[2]')
-DefineScalarExpression('B0', 'background_B_pos_x_magnitude')
-DefineScalarExpression('B0x', 'background_B_pos_x[0]')
-DefineScalarExpression('B0y', 'background_B_pos_y[1]')
-DefineScalarExpression('B0z', 'background_B_pos_z[2]')
-DefineScalarExpression('B1', 'perturbed_magnetic_field_cell_center_magnitude')
-DefineScalarExpression('B1x', 'perturbed_magnetic_field_cell_center[0]')
-DefineScalarExpression('B1y', 'perturbed_magnetic_field_cell_center[1]')
-DefineScalarExpression('B1z', 'perturbed_magnetic_field_cell_center[2]')
+DefineScalarExpression('B0', 'background_B_magnitude')
+DefineScalarExpression('B0x', 'background_B[0]')
+DefineScalarExpression('B0y', 'background_B[1]')
+DefineScalarExpression('B0z', 'background_B[2]')
+DefineScalarExpression('B1', 'volume_B_magnitude')
+DefineScalarExpression('B1x', 'volume_B[0]')
+DefineScalarExpression('B1y', 'volume_B[1]')
+DefineScalarExpression('B1z', 'volume_B[2]')
 
 save_win_attrs = SaveWindowAttributes()
 save_win_attrs.family = 0
@@ -127,14 +129,146 @@ def save_slice_plot(
 	SetPlotOptions(attrs)
 
 
+def dc2vtk(outname, data):
+	with open(outname, 'w') as outfile:
+		cells = data['cells']
+		outfile.write(
+			"# vtk DataFile Version 2.0\n"
+			+ "MHD data from PAMHD\n"
+			+ "ASCII\nDATASET UNSTRUCTURED_GRID\n"
+			+ "FIELD FieldData 2\n"
+			+ "CYCLE 1 1 int\n" + str(data['sim_step'])
+			+ "\nTIME 1 1 double\n" +str(data['sim_time'])
+			+ "\nPOINTS " + str(8*len(cells)) + " float\n")
+		if len(cells) == 0:
+			return
+		for c in cells:
+			center, length = common.get_cell_geom(data, c)
+			start = (
+				str(center[0] - length[0]/2) + ' ',
+				str(center[1] - length[1]/2) + ' ',
+				str(center[2] - length[2]/2) + ' ')
+			end = (
+				str(center[0] + length[0]/2) + ' ',
+				str(center[1] + length[1]/2) + ' ',
+				str(center[2] + length[2]/2) + ' ')
+			outfile.write(
+				start[0] + start[1] + start[2] + '\n'
+				+ end[0] + start[1] + start[2] + '\n'
+				+ start[0] + end[1] + start[2] + '\n'
+				+ end[0] + end[1] + start[2] + '\n'
+				+ start[0] + start[1] + end[2] + '\n'
+				+ end[0] + start[1] + end[2] + '\n'
+				+ start[0] + end[1] + end[2] + '\n'
+				+ end[0] + end[1] + end[2] + '\n')
+
+		outfile.write('CELLS ' + str(len(cells)) + ' ' + str(9*len(cells)) + '\n')
+		for i in range(len(cells)):
+			outfile.write('8 ')
+			for j in range(8):
+				outfile.write(str(i*8 + j) + ' ')
+			outfile.write('\n')
+		outfile.write('CELL_TYPES ' + str(len(cells)) + '\n')
+		for i in range(len(cells)):
+			outfile.write('11\n')
+		outfile.write('CELL_DATA ' + str(len(cells)) + '\n')
+
+		if 'mhd' in data[cells[0]]:
+			outfile.write('SCALARS mass_density double 1\nlookup_table default\n')
+			for c in cells:
+				outfile.write(str(data[c]['mhd'][0]) + '\n')
+			outfile.write('VECTORS velocity double\n')
+			for c in cells:
+				mas = data[c]['mhd'][0]
+				mom = data[c]['mhd'][1]
+				outfile.write(
+					str(mom[0]/mas) + ' '
+					+ str(mom[1]/mas) + ' '
+					+ str(mom[2]/mas) + '\n')
+			outfile.write('SCALARS pressure double 1\nlookup_table default\n')
+			for c in cells:
+				mas = data[c]['mhd'][0]
+				mom = data[c]['mhd'][1]
+				nrj = data[c]['mhd'][2]
+				mag = data[c]['mhd'][3]
+				kin_nrj = (mom[0]**2 + mom[1]**2 + mom[2]**2) / 2 / mas
+				mag_nrj = (mag[0]**2 + mag[1]**2 + mag[2]**2) / 2 / data['vacuum_permeability']
+				pressure = (nrj - kin_nrj - mag_nrj) * (data['adiabatic_index'] - 1)
+				outfile.write(str(pressure) + '\n')
+			outfile.write('VECTORS volume_B double\n')
+			for c in cells:
+				mag = data[c]['mhd'][3]
+				outfile.write(str(mag[0]) + ' ' + str(mag[1]) + ' ' + str(mag[2]) + '\n')
+
+		if 'primary' in data[cells[0]]:
+			outfile.write('SCALARS nr_primary_faces int 1\nlookup_table default\n')
+			for c in cells:
+				nr = 0
+				for i in range(6):
+					if data[c]['primary'][i] > 0:
+						nr += 1
+				outfile.write(str(nr) + '\n')
+			outfile.write('SCALARS nr_primary_edges int 1\nlookup_table default\n')
+			for c in cells:
+				nr = 0
+				for i in range(6, 18):
+					if data[c]['primary'][i] > 0:
+						nr += 1
+				outfile.write(str(nr) + '\n')
+
+		if 'bgB' in data[cells[0]]:
+			outfile.write('VECTORS background_B double\n')
+			for c in cells:
+				outfile.write(
+					str(data[c]['bgB'][3]) + ' '
+					+ str(data[c]['bgB'][10]) + ' '
+					+ str(data[c]['bgB'][17]) + '\n')
+
+		if 'mhd' in data[cells[0]] and 'bgB' in data[cells[0]]:
+			outfile.write('VECTORS total_face_magnetic_field double\n')
+			for c in cells:
+				B0 = data[c]['bgB']
+				B1 = data[c]['mhd'][3]
+				outfile.write(
+					str(B1[0] + B0[3]) + ' '
+					+ str(B1[1] + B0[10]) + ' '
+					+ str(B1[2] + B0[17]) + '\n')
+
+		if 'divfaceB' in data[cells[0]]:
+			outfile.write('SCALARS divergence_of_magnetic_field double 1\nlookup_table default\n')
+			for c in cells:
+				outfile.write(str(data[c]['divfaceB']) + '\n')
+
+		if 'rank' in data[cells[0]]:
+			outfile.write('SCALARS rank int 1\nlookup_table default\n')
+			for c in cells:
+				outfile.write(str(data[c]['rank']) + '\n')
+
+		if 'ref lvls' in data[cells[0]]:
+			outfile.write('SCALARS target_ref_lvl_min int 1\nlookup_table default\n')
+			for c in cells:
+				outfile.write(str(data[c]['ref lvls'][0]) + '\n')
+
+		if 'ref lvls' in data[cells[0]]:
+			outfile.write('SCALARS target_ref_lvl_max int 1\nlookup_table default\n')
+			for c in cells:
+				outfile.write(str(data[c]['ref lvls'][1]) + '\n')
+
+		if 'substep' in data[cells[0]]:
+			outfile.write('SCALARS substep_period int 1\nlookup_table default\n')
+			for c in cells:
+				outfile.write(str(data[c]['substep']) + '\n')
+
+
 plot_vars = {
 	'mass_density', 'pressure',
-	'number_density', 'divB',
+	'number_density', 'divB', 'rank',
 	'V', 'Vx', 'Vy', 'Vz',
 	'B', 'Bx', 'By', 'Bz',
 	'B0', 'B0x', 'B0y', 'B0z',
 	'B1', 'B1x', 'B1y', 'B1z',
-	'target_ref_lvl_min', 'target_ref_lvl_max'
+	'target_ref_lvl_min', 'target_ref_lvl_max',
+	'substep_period'
 }
 plot_vars_str = ''
 for v in sorted(plot_vars):
@@ -159,7 +293,25 @@ args.variables = [v for v in args.variables.split(',') if v.replace('_log','') i
 if args.verbose:
 	stdout.write('Plotting variables: ' + str(args.variables) + '\n')
 
-for filename in args.files:
+for filename_ in args.files:
+	if filename_.endswith('.dc'):
+		with open(filename_, 'rb') as infile:
+			data = common.get_metadata(infile)
+			if data['file_version'] != 3:
+				print('Unsupported file version:', data['file_version'])
+				continue
+			if data['geometry_id'] != 1:
+				print('Unsupported geometry:', data['geometry_id'])
+				continue
+			data['cells'] = common.get_cells(infile, data['total_cells'])
+			sim_data_ = common.get_cell_data(infile, data, range(len(data['cells'])))
+			for i in range(len(data['cells'])):
+				data[data['cells'][i]] = sim_data_[i]
+		outname = filename_[:-2] + 'vtk'
+		dc2vtk(outname, data)
+		filename = outname
+	else:
+		filename = filename_
 	OpenDatabase(filename)
 	result = GetLastError()
 	if result != '':

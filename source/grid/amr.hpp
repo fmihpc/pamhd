@@ -71,7 +71,8 @@ struct Target_Refinement_Level_Max {
 /*! Common accessors for values stored on cell faces.
 */
 template<class Data_Type> struct Face_Type {
-	std::array<Data_Type, 6> face;
+	static constexpr size_t nr_faces = 6;
+	std::array<Data_Type, nr_faces> face;
 
 	/*! Returns data of given cell face.
 	dir: -1 == -x, +1 == +x, -2 == -y, ..., +3 == +z face
@@ -199,7 +200,31 @@ template<class Data_Type> struct Face_Type {
 			return make_tuple((void*) this->face.data(), this->face.size(), MPI_CXX_BOOL);
 		#ifdef EIGEN_WORLD_VERSION
 		} else if constexpr (is_same_v<Data_Type, Eigen::Vector3d>) {
-			return make_tuple((void*) this->face.data(), 3*this->face.size(), MPI_DOUBLE);
+			std::array<void*, nr_faces> addresses;
+			std::array<int, nr_faces> counts;
+			std::array<MPI_Datatype, nr_faces> datatypes;
+			std::array<MPI_Aint, nr_faces> displacements;
+
+			MPI_Datatype final_datatype = MPI_DATATYPE_NULL;
+			for (size_t i = 0; i < nr_faces; i++) {
+				addresses[i] = (void*)this->face[i].data();
+				counts[i] = 3;
+				datatypes[i] = MPI_DOUBLE;
+				displacements[i]
+					= static_cast<char*>(addresses[i])
+					- static_cast<char*>(addresses[0]);
+			}
+			const auto result = MPI_Type_create_struct(
+				int(counts.size()),
+				counts.data(),
+				displacements.data(),
+				datatypes.data(),
+				&final_datatype
+			);
+			if (result != MPI_SUCCESS) {
+				throw std::runtime_error("Couldn't create MPI datatype for MHD flux");
+			}
+			return std::make_tuple(addresses[0], 1, final_datatype);
 		#endif
 		} else {
 			static_assert(false, "Unsupported face item type for MPI");
