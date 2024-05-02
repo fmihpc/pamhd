@@ -804,8 +804,8 @@ int main(int argc, char* argv[])
 						boost::filesystem::path(options_sim.output_directory)
 					).append("2mhd_").generic_string(),
 					grid,
-					2,
-					0,
+					3,
+					simulated_steps,
 					simulation_time,
 					options_sim.adiabatic_index,
 					options_sim.proton_mass,
