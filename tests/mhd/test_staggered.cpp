@@ -644,105 +644,22 @@ int main(int argc, char* argv[])
 			abort();
 		}
 
-		/*
-		Solve
-		*/
-
-		max_dt_mhd = std::numeric_limits<double>::max();
-
 		if (rank == 0) {
 			cout << "Solving MHD at time " << simulation_time
 				<< " s with time step " << time_step << " s" << flush;
 		}
-
-		Cell::set_transfer_all(true, pamhd::mhd::MHD_State_Conservative());
-		grid.start_remote_neighbor_copy_updates();
-
-		double solve_max_dt = pamhd::mhd::get_fluxes(
+		max_dt_mhd = pamhd::mhd::timestep(
 			mhd_solver,
-			grid.inner_cells(),
-			grid,
-			options_sim.adiabatic_index,
-			options_sim.vacuum_permeability,
-			Mas, Mom, Nrj, Mag,
-			Bg_B,
-			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-			PFace, Sol_Info2, Substep
-		);
-		max_dt_mhd = min(solve_max_dt, max_dt_mhd);
-
-		grid.wait_remote_neighbor_copy_update_receives();
-
-		solve_max_dt = pamhd::mhd::get_fluxes(
-			mhd_solver,
-			grid.outer_cells(),
-			grid,
-			options_sim.adiabatic_index,
-			options_sim.vacuum_permeability,
-			Mas, Mom, Nrj, Mag,
-			Bg_B,
-			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-			PFace, Sol_Info2, Substep
-		);
-		max_dt_mhd = min(solve_max_dt, max_dt_mhd);
-
-		grid.wait_remote_neighbor_copy_update_sends();
-		Cell::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
-
-
-		Cell::set_transfer_all(true, pamhd::mhd::MHD_Flux());
-		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false, pamhd::mhd::MHD_Flux());
-
-		// TODO: split into inner and outer cells
-		pamhd::mhd::get_edge_electric_field(
-			grid, time_step,
-			Mas, Mom, Nrj, Mag, Edge_E,
-			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-			PFace, PEdge, FInfo, Substep
-		);
-
-		Cell::set_transfer_all(true,
-			pamhd::Edge_Electric_Field(),
-			// update pressure for B consistency calculation
-			pamhd::mhd::MHD_State_Conservative()
-		);
-		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false,
-			pamhd::Edge_Electric_Field(),
-			pamhd::mhd::MHD_State_Conservative()
-		);
-
-		pamhd::mhd::get_face_magnetic_field(
-			grid.local_cells(),
 			grid,
 			time_step,
-			Face_B, Edge_E,
-			PFace, PEdge, FInfo, Substep
-		);
-		Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
-		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
-
-		// constant thermal pressure when updating vol B after solution
-		pamhd::mhd::update_B_consistency(
-			grid.local_cells(),
-			Mas, Mom, Nrj, Mag, Face_B,
-			PFace, FInfo, Substep,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
-			true
+			Mas, Mom, Nrj, Mag,
+			Face_B, Edge_E, Bg_B,
+			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
+			PFace, PEdge,
+			Sol_Info2, FInfo, Substep
 		);
-		Cell::set_transfer_all(true,
-			pamhd::Face_Magnetic_Field(),
-			pamhd::mhd::MHD_State_Conservative()
-		);
-		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false,
-			pamhd::Face_Magnetic_Field(),
-			pamhd::mhd::MHD_State_Conservative()
-		);
-
 		simulation_time += time_step;
 
 		/*

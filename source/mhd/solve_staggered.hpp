@@ -172,6 +172,15 @@ template <
 
 		const auto& cpface = PFace(*cell.data);
 
+		// maximum substep period in neighborhood
+		int max_substep = Substep(*cell.data);
+		for (const auto& neighbor: cell.neighbors_of) {
+			if (neighbor.face_neighbor == 0 and neighbor.edge_neighbor[0] < 0) {
+				continue;
+			}
+			max_substep = std::max(Substep(*neighbor.data), max_substep);
+		}
+
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& n = neighbor.face_neighbor;
 			// flux stored in neighbor and calculated by its owner
@@ -1758,6 +1767,145 @@ template <
 			);
 		}
 	}
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
+
+
+template <
+	class Solver,
+	class Grid,
+	class Mass_Density_Getter,
+	class Momentum_Density_Getter,
+	class Total_Energy_Density_Getter,
+	class Magnetic_Field_Getter,
+	class Face_Magnetic_Field_Getter,
+	class Edge_Electric_Field_Getter,
+	class Background_Magnetic_Field_Getter,
+	class Mass_Density_Flux_Getters,
+	class Momentum_Density_Flux_Getters,
+	class Total_Energy_Density_Flux_Getters,
+	class Magnetic_Field_Flux_Getters,
+	class Primary_Face_Getter,
+	class Primary_Edge_Getter,
+	class Solver_Info_Getter,
+	class Face_Info_Getter,
+	class Substepping_Period_Getter
+> double timestep(
+	const Solver solver,
+	Grid& grid,
+	const double time_step,
+	const double adiabatic_index,
+	const double vacuum_permeability,
+	const Mass_Density_Getter Mas,
+	const Momentum_Density_Getter Mom,
+	const Total_Energy_Density_Getter Nrj,
+	const Magnetic_Field_Getter Mag,
+	const Face_Magnetic_Field_Getter Face_B,
+	const Edge_Electric_Field_Getter Edge_E,
+	const Background_Magnetic_Field_Getter Bg_B,
+	const Mass_Density_Flux_Getters Mas_fs,
+	const Momentum_Density_Flux_Getters Mom_fs,
+	const Total_Energy_Density_Flux_Getters Nrj_fs,
+	const Magnetic_Field_Flux_Getters Mag_fs,
+	const Primary_Face_Getter PFace,
+	const Primary_Edge_Getter PEdge,
+	const Solver_Info_Getter SInfo,
+	const Face_Info_Getter FInfo,
+	const Substepping_Period_Getter Substep
+) try {
+	using std::min;
+
+	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::MHD_State_Conservative());
+	grid.start_remote_neighbor_copy_updates();
+
+	double solve_max_dt = pamhd::mhd::get_fluxes(
+		solver,
+		grid.inner_cells(),
+		grid,
+		adiabatic_index,
+		vacuum_permeability,
+		Mas, Mom, Nrj, Mag,
+		Bg_B,
+		Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
+		PFace, SInfo, Substep
+	);
+	double max_dt_mhd = min(solve_max_dt, std::numeric_limits<double>::max());
+
+	grid.wait_remote_neighbor_copy_update_receives();
+
+	solve_max_dt = pamhd::mhd::get_fluxes(
+		solver,
+		grid.outer_cells(),
+		grid,
+		adiabatic_index,
+		vacuum_permeability,
+		Mas, Mom, Nrj, Mag,
+		Bg_B,
+		Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
+		PFace, SInfo, Substep
+	);
+	max_dt_mhd = min(solve_max_dt, max_dt_mhd);
+
+	grid.wait_remote_neighbor_copy_update_sends();
+	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
+
+
+	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::MHD_Flux());
+	grid.update_copies_of_remote_neighbors();
+	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::MHD_Flux());
+
+	// TODO: split into inner and outer cells
+	pamhd::mhd::get_edge_electric_field(
+		grid, time_step,
+		Mas, Mom, Nrj, Mag, Edge_E,
+		Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
+		PFace, PEdge, FInfo, Substep
+	);
+
+	Grid::cell_data_type::set_transfer_all(true,
+		pamhd::Edge_Electric_Field(),
+		// update pressure for B consistency calculation
+		pamhd::mhd::MHD_State_Conservative()
+	);
+	grid.update_copies_of_remote_neighbors();
+	Grid::cell_data_type::set_transfer_all(false,
+		pamhd::Edge_Electric_Field(),
+		pamhd::mhd::MHD_State_Conservative()
+	);
+
+	pamhd::mhd::get_face_magnetic_field(
+		grid.local_cells(),
+		grid,
+		time_step,
+		Face_B, Edge_E,
+		PFace, PEdge, FInfo, Substep
+	);
+	Grid::cell_data_type::set_transfer_all(true, pamhd::Face_Magnetic_Field());
+	grid.update_copies_of_remote_neighbors();
+	Grid::cell_data_type::set_transfer_all(false, pamhd::Face_Magnetic_Field());
+
+	// constant thermal pressure when updating vol B after solution
+	pamhd::mhd::update_B_consistency(
+		grid.local_cells(),
+		Mas, Mom, Nrj, Mag, Face_B,
+		PFace, FInfo, Substep,
+		adiabatic_index,
+		vacuum_permeability,
+		true
+	);
+	Grid::cell_data_type::set_transfer_all(true,
+		pamhd::Face_Magnetic_Field(),
+		pamhd::mhd::MHD_State_Conservative()
+	);
+	grid.update_copies_of_remote_neighbors();
+	Grid::cell_data_type::set_transfer_all(false,
+		pamhd::Face_Magnetic_Field(),
+		pamhd::mhd::MHD_State_Conservative()
+	);
+
+	return max_dt_mhd;
+
 } catch (...) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
