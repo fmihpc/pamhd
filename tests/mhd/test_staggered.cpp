@@ -681,52 +681,13 @@ int main(int argc, char* argv[])
 			);
 		}
 
-		/*
-		Update boundaries
-		*/
-
-		pamhd::mhd::apply_fluid_boundaries(
-			grid,
-			boundaries,
-			geometries,
-			simulation_time,
-			Mas, Mom, Nrj, Mag, Sol_Info2,
-			options_sim.proton_mass,
-			options_sim.adiabatic_index,
-			options_sim.vacuum_permeability
-		);
-		Cell::set_transfer_all(true, pamhd::mhd::MHD_State_Conservative());
-		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
-
-		pamhd::mhd::apply_magnetic_field_boundaries_staggered(
-			grid,
-			boundaries,
-			geometries,
-			simulation_time,
-			Face_B,
-			PFace, FInfo
-		);
-		Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
-		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
-
-		pamhd::mhd::update_B_consistency(
-			grid.local_cells(),
-			Mas, Mom, Nrj, Mag, Face_B,
-			PFace, FInfo, Substep,
+		pamhd::mhd::apply_boundaries(
+			grid, geometries, boundaries,
+			simulation_time, options_sim.proton_mass,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
-			true
-		);
-		Cell::set_transfer_all(true,
-			pamhd::Face_Magnetic_Field(),
-			pamhd::mhd::MHD_State_Conservative()
-		);
-		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false,
-			pamhd::Face_Magnetic_Field(),
-			pamhd::mhd::MHD_State_Conservative()
+			Mas, Mom, Nrj, Mag,
+			Face_B, PFace, Sol_Info2, FInfo, Substep
 		);
 
 		const auto avg_div = pamhd::math::get_divergence_staggered(
@@ -741,24 +702,18 @@ int main(int argc, char* argv[])
 		grid.update_copies_of_remote_neighbors();
 		Cell::set_transfer_all(false, pamhd::Magnetic_Field_Divergence());
 
-		/*
-		Save simulation to disk
-		*/
-
 		if (
 			(options_mhd.save_n >= 0 and simulation_time >= time_end)
 			or (options_mhd.save_n > 0 and simulation_time >= next_mhd_save)
 		) {
+			if (rank == 0) {
+				cout << "Saving MHD at time " << simulation_time << endl;
+			}
 			if (next_mhd_save <= simulation_time) {
 				next_mhd_save
 					+= options_mhd.save_n
 					* ceil(max(options_mhd.save_n, simulation_time - next_mhd_save) / options_mhd.save_n);
 			}
-
-			if (rank == 0) {
-				cout << "Saving MHD at time " << simulation_time << endl;
-			}
-
 			constexpr uint64_t file_version = 3;
 			if (
 				not pamhd::mhd::save_staggered(

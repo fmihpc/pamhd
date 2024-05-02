@@ -52,6 +52,7 @@ Author(s): Ilja Honkonen
 
 #include "grid/amr.hpp"
 #include "mhd/common.hpp"
+#include "mhd/solve_staggered.hpp"
 #include "mhd/variables.hpp"
 
 
@@ -1846,6 +1847,87 @@ template <
 	}
 } catch (const std::exception& e) {
 	throw std::runtime_error(__func__ + std::string(": ") + e.what());
+}
+
+
+template<
+	class Grid,
+	class Geometries,
+	class Boundaries,
+	class Mass_Density_Getter,
+	class Momentum_Density_Getter,
+	class Total_Energy_Density_Getter,
+	class Magnetic_Field_Getter,
+	class Face_Magnetic_Field_Getter,
+	class Primary_Face_Getter,
+	class Solver_Info_Getter,
+	class Face_Info_Getter,
+	class Substepping_Period_Getter
+> void apply_boundaries(
+	Grid& grid,
+	Geometries& geometries,
+	Boundaries& boundaries,
+	const double simulation_time,
+	const double proton_mass,
+	const double adiabatic_index,
+	const double vacuum_permeability,
+	const Mass_Density_Getter Mas,
+	const Momentum_Density_Getter Mom,
+	const Total_Energy_Density_Getter Nrj,
+	const Magnetic_Field_Getter Mag,
+	const Face_Magnetic_Field_Getter Face_B,
+	const Primary_Face_Getter PFace,
+	const Solver_Info_Getter SInfo,
+	const Face_Info_Getter FInfo,
+	const Substepping_Period_Getter Substep
+) try {
+	pamhd::mhd::apply_fluid_boundaries(
+		grid,
+		boundaries,
+		geometries,
+		simulation_time,
+		Mas, Mom, Nrj, Mag, SInfo,
+		proton_mass,
+		adiabatic_index,
+		vacuum_permeability
+	);
+	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::MHD_State_Conservative());
+	grid.update_copies_of_remote_neighbors();
+	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
+
+	pamhd::mhd::apply_magnetic_field_boundaries_staggered(
+		grid,
+		boundaries,
+		geometries,
+		simulation_time,
+		Face_B,
+		PFace, FInfo
+	);
+	Grid::cell_data_type::set_transfer_all(true, pamhd::Face_Magnetic_Field());
+	grid.update_copies_of_remote_neighbors();
+	Grid::cell_data_type::set_transfer_all(false, pamhd::Face_Magnetic_Field());
+
+	pamhd::mhd::update_B_consistency(
+		grid.local_cells(),
+		Mas, Mom, Nrj, Mag, Face_B,
+		PFace, FInfo, Substep,
+		adiabatic_index,
+		vacuum_permeability,
+		true
+	);
+	Grid::cell_data_type::set_transfer_all(true,
+		pamhd::Face_Magnetic_Field(),
+		pamhd::mhd::MHD_State_Conservative()
+	);
+	grid.update_copies_of_remote_neighbors();
+	Grid::cell_data_type::set_transfer_all(false,
+		pamhd::Face_Magnetic_Field(),
+		pamhd::mhd::MHD_State_Conservative()
+	);
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
 
 }} // namespaces
