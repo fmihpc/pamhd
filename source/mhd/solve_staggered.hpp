@@ -106,7 +106,8 @@ template <
 	const Magnetic_Field_Flux_Getters Mag_f,
 	const Primary_Face_Getter PFace,
 	const Solver_Info_Getter SInfo,
-	const Substepping_Period_Getter Substep
+	const Substepping_Period_Getter Substep,
+	const bool update_substep_periods
 ) try {
 	using std::abs;
 	using std::get;
@@ -177,6 +178,9 @@ template <
 		int max_substep = Substep(*cell.data);
 		for (const auto& neighbor: cell.neighbors_of) {
 			if (neighbor.face_neighbor == 0 and neighbor.edge_neighbor[0] < 0) {
+				continue;
+			}
+			if (SInfo(*neighbor.data) < 0) {
 				continue;
 			}
 			max_substep = std::max(Substep(*neighbor.data), max_substep);
@@ -314,7 +318,7 @@ template <
 			}
 		}
 
-		if (time_step > 0) {
+		if (update_substep_periods and time_step > 0) {
 			Substep(*cell.data) = 1 + std::max(0, (int)std::floor(std::log2(time_step_factor * max_dt_cell / time_step)));
 		}
 	}
@@ -392,7 +396,11 @@ template <
 	for (const auto& cell: grid.local_cells()) {
 		int max_substep = Substep(*cell.data);
 		for (const auto& neighbor: cell.neighbors_of) {
-			if (neighbor.face_neighbor == 0 and neighbor.edge_neighbor[0] < 0) {
+			const auto& fn = neighbor.face_neighbor;
+			if (fn == 0 and neighbor.edge_neighbor[0] < 0) {
+				continue;
+			}
+			if (fn != 0 and PFace(*neighbor.data)(-fn) and FInfo(*neighbor.data)(-fn) < 0) {
 				continue;
 			}
 			max_substep = std::max(Substep(*neighbor.data), max_substep);
@@ -1366,7 +1374,11 @@ template <
 	for (const auto& cell: cells) {
 		int max_substep = Substep(*cell.data);
 		for (const auto& neighbor: cell.neighbors_of) {
-			if (neighbor.face_neighbor == 0 and neighbor.edge_neighbor[0] < 0) {
+			const auto& fn = neighbor.face_neighbor;
+			if (fn == 0 and neighbor.edge_neighbor[0] < 0) {
+				continue;
+			}
+			if (fn != 0 and PFace(*neighbor.data)(-fn) and FInfo(*neighbor.data)(-fn) < 0) {
 				continue;
 			}
 			max_substep = std::max(Substep(*neighbor.data), max_substep);
@@ -1715,7 +1727,11 @@ template <
 	for (const auto& cell: cells) {
 		int max_substep = Substep(*cell.data);
 		for (const auto& neighbor: cell.neighbors_of) {
-			if (neighbor.face_neighbor == 0 and neighbor.edge_neighbor[0] < 0) {
+			const auto& fn = neighbor.face_neighbor;
+			if (fn == 0 and neighbor.edge_neighbor[0] < 0) {
+				continue;
+			}
+			if (fn != 0 and PFace(*neighbor.data)(-fn) and FInfo(*neighbor.data)(-fn) < 0) {
 				continue;
 			}
 			max_substep = std::max(Substep(*neighbor.data), max_substep);
@@ -1798,6 +1814,65 @@ template <
 }
 
 
+//! Enforces max substep period diff of 1 between neighbors
+template<
+	class Grid,
+	class Solver_Info_Getter,
+	class Substepping_Period_Getter
+> void constrain_substep_periods(
+	Grid& grid,
+	const Solver_Info_Getter& SInfo,
+	const Substepping_Period_Getter& Substep
+) try {
+	auto comm = grid.get_communicator();
+	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Substepping_Period());
+	uint64_t modified_cells = 0;
+	do {
+		grid.update_copies_of_remote_neighbors();
+		uint64_t modified_cells_local = 0;
+		for (const auto& cell: grid.local_cells()) {
+			if (SInfo(*cell.data) < 0) {
+				continue;
+			}
+			for (const auto& neighbor: cell.neighbors_of) {
+				if (neighbor.face_neighbor == 0 and neighbor.edge_neighbor[0] < 0) {
+					continue;
+				}
+				if (SInfo(*neighbor.data) < 0) {
+					continue;
+				}
+
+				if (Substep(*cell.data) > Substep(*neighbor.data) + 1) {
+					Substep(*cell.data) = Substep(*neighbor.data) + 1;
+					modified_cells_local++;
+				}
+			}
+		}
+		if (
+			MPI_Allreduce(
+				&modified_cells_local,
+				&modified_cells,
+				1,
+				MPI_UINT64_T,
+				MPI_SUM,
+				comm
+			) != MPI_SUCCESS
+		) {
+			std::cerr << __FILE__ "(" << __LINE__
+				<< "): Couldn't reduce modified cell count."
+				<< std::endl;
+			abort();
+		}
+	} while (modified_cells > 0);
+	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Substepping_Period());
+	MPI_Comm_free(&comm);
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
+
+
 template <
 	class Solver,
 	class Grid,
@@ -1857,7 +1932,7 @@ template <
 		Mas, Mom, Nrj, Mag,
 		Bg_B,
 		Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-		PFace, SInfo, Substep
+		PFace, SInfo, Substep, true
 	);
 	double max_dt_mhd = min(solve_max_dt, std::numeric_limits<double>::max());
 
@@ -1874,13 +1949,14 @@ template <
 		Mas, Mom, Nrj, Mag,
 		Bg_B,
 		Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-		PFace, SInfo, Substep
+		PFace, SInfo, Substep, true
 	);
 	max_dt_mhd = min(solve_max_dt, max_dt_mhd);
 
 	grid.wait_remote_neighbor_copy_update_sends();
 	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
 
+	constrain_substep_periods(grid, SInfo, Substep);
 
 	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::MHD_Flux());
 	grid.update_copies_of_remote_neighbors();
