@@ -73,7 +73,7 @@ template<
 	Boundaries& boundaries,
 	const Boundary_Geometries& geometries,
 	const Solver_Info_Getter& Sol_Info
-) {
+) try {
 	using std::runtime_error;
 	using std::to_string;
 
@@ -114,6 +114,10 @@ template<
 	}
 
 	grid.update_copies_of_remote_neighbors();
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
 
 
@@ -133,7 +137,7 @@ template<
 	Boundaries& boundaries,
 	const Boundary_Geometries& geometries,
 	const Solver_Info_Getter& Sol_Info
-) {
+) try {
 	using std::runtime_error;
 	using std::to_string;
 
@@ -274,6 +278,10 @@ template<
 	}
 
 	grid.update_copies_of_remote_neighbors();
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
 
 
@@ -715,7 +723,9 @@ template<
 		}
 	}
 } catch (const std::exception& e) {
-	throw std::runtime_error(__func__ + std::string(": ") + e.what());
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
 
 
@@ -790,7 +800,9 @@ template<
 		Mag(*target_data) = source_value;
 	}
 } catch (const std::exception& e) {
-	throw std::runtime_error(__func__ + std::string(": ") + e.what());
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
 
 
@@ -1071,7 +1083,9 @@ template<
 		}
 	}
 } catch (const std::exception& e) {
-	throw std::runtime_error(__func__ + std::string(": ") + e.what());
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
 
 
@@ -1371,7 +1385,9 @@ template <
 		}
 	}
 } catch (const std::exception& e) {
-	throw std::runtime_error(__func__ + std::string(": ") + e.what());
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
 
 
@@ -1817,7 +1833,9 @@ template <
 		}
 	}
 } catch (const std::exception& e) {
-	throw std::runtime_error(__func__ + std::string(": ") + e.what());
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
 
 

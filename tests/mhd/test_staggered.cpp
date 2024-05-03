@@ -619,18 +619,12 @@ int main(int argc, char* argv[])
 	while (simulation_time < time_end) {
 		simulation_step++;
 
-		/*
-		Get maximum allowed time step
-		*/
-		double
-			// don't step over the final simulation time
-			until_end = time_end - simulation_time,
-			local_time_step = min(options_mhd.time_step_factor * max_dt_mhd, until_end),
-			time_step = -1;
+		// get length of next timestep
+		double max_dt_mhd_all = std::numeric_limits<double>::max();
 		if (
 			MPI_Allreduce(
-				&local_time_step,
-				&time_step,
+				&max_dt_mhd,
+				&max_dt_mhd_all,
 				1,
 				MPI_DOUBLE,
 				MPI_MIN,
@@ -642,22 +636,26 @@ int main(int argc, char* argv[])
 				<< endl;
 			abort();
 		}
+		double
+			// don't step over the final simulation time
+			until_end = time_end - simulation_time,
+			time_step_factor = min(
+				options_mhd.time_step_factor,
+				until_end / max_dt_mhd_all),
+			time_step = time_step_factor * max_dt_mhd_all;
 
 		if (rank == 0) {
 			cout << "Solving MHD at time " << simulation_time
 				<< " s with time step " << time_step << " s" << flush;
 		}
 		max_dt_mhd = pamhd::mhd::timestep(
-			mhd_solver,
-			grid,
-			time_step,
+			mhd_solver, grid,
+			time_step, time_step_factor,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
-			Mas, Mom, Nrj, Mag,
-			Face_B, Edge_E, Bg_B,
-			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-			PFace, PEdge,
-			Sol_Info2, FInfo, Substep
+			Mas, Mom, Nrj, Mag, Face_B, Edge_E,
+			Bg_B, Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
+			PFace, PEdge, Sol_Info2, FInfo, Substep
 		);
 		simulation_time += time_step;
 

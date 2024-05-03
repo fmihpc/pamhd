@@ -91,6 +91,8 @@ template <
 	const Solver solver,
 	const Cell_Iter& cells,
 	Grid& grid,
+	const double time_step,
+	const double time_step_factor,
 	const double adiabatic_index,
 	const double vacuum_permeability,
 	const Mass_Density_Getter Mas,
@@ -108,6 +110,7 @@ template <
 ) try {
 	using std::abs;
 	using std::get;
+	using std::tie;
 	using std::to_string;
 
 	const auto
@@ -134,9 +137,7 @@ template <
 	double max_dt = std::numeric_limits<double>::max();
 
 	for (const auto& cell: cells) {
-		if (Substep(*cell.data) != 1) {
-			throw std::runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-		}
+		double max_dt_cell = std::numeric_limits<double>::max();
 
 		Mas_fnx(*cell.data) =
 		Mas_fny(*cell.data) =
@@ -227,16 +228,16 @@ template <
 					)
 				switch (solver) {
 				case pamhd::mhd::Solver::rusanov:
-					std::tie(flux, max_vel) = SOLVER(pamhd::mhd::get_flux_rusanov);
+					tie(flux, max_vel) = SOLVER(pamhd::mhd::get_flux_rusanov);
 					break;
 				case pamhd::mhd::Solver::hll_athena:
-					std::tie(flux, max_vel) = SOLVER(pamhd::mhd::athena::get_flux_hll);
+					tie(flux, max_vel) = SOLVER(pamhd::mhd::athena::get_flux_hll);
 					break;
 				case pamhd::mhd::Solver::hlld_athena:
-					std::tie(flux, max_vel) = SOLVER(pamhd::mhd::athena::get_flux_hlld);
+					tie(flux, max_vel) = SOLVER(pamhd::mhd::athena::get_flux_hlld);
 					break;
 				case pamhd::mhd::Solver::roe_athena:
-					std::tie(flux, max_vel) = SOLVER(pamhd::mhd::athena::get_flux_roe);
+					tie(flux, max_vel) = SOLVER(pamhd::mhd::athena::get_flux_roe);
 					break;
 				default:
 					std::cerr <<  __FILE__ << "(" << __LINE__ << ") "
@@ -268,6 +269,7 @@ template <
 			}
 
 			const auto neighbor_dim = size_t(abs(n) - 1);
+			max_dt_cell = std::min(max_dt_cell, cell_length[neighbor_dim] / max_vel);
 			max_dt = std::min(max_dt, cell_length[neighbor_dim] / max_vel);
 
 			// rotate flux back
@@ -311,10 +313,16 @@ template <
 				Mag_fpz(*cell.data) = flux[mag_int];
 			}
 		}
+
+		if (time_step > 0) {
+			Substep(*cell.data) = 1 + std::max(0, (int)std::floor(std::log2(time_step_factor * max_dt_cell / time_step)));
+		}
 	}
 
 	return max_dt;
 
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
@@ -382,8 +390,12 @@ template <
 		Mag_fnz = get<4>(Mag_f), Mag_fpz = get<5>(Mag_f);
 
 	for (const auto& cell: grid.local_cells()) {
-		if (Substep(*cell.data) != 1) {
-			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+		int max_substep = Substep(*cell.data);
+		for (const auto& neighbor: cell.neighbors_of) {
+			if (neighbor.face_neighbor == 0 and neighbor.edge_neighbor[0] < 0) {
+				continue;
+			}
+			max_substep = std::max(Substep(*neighbor.data), max_substep);
 		}
 
 		auto& edge_e = Edge_E(*cell.data);
@@ -1314,6 +1326,8 @@ template <
 			abort();
 		}
 	}
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
@@ -1350,8 +1364,12 @@ template <
 	using std::to_string;
 
 	for (const auto& cell: cells) {
-		if (Substep(*cell.data) != 1) {
-			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+		int max_substep = Substep(*cell.data);
+		for (const auto& neighbor: cell.neighbors_of) {
+			if (neighbor.face_neighbor == 0 and neighbor.edge_neighbor[0] < 0) {
+				continue;
+			}
+			max_substep = std::max(Substep(*neighbor.data), max_substep);
 		}
 
 		const auto cell_length = grid.geometry.get_length(cell.id);
@@ -1640,6 +1658,8 @@ template <
 			}
 		}
 	}
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
@@ -1693,8 +1713,12 @@ template <
 	using std::to_string;
 
 	for (const auto& cell: cells) {
-		if (Substep(*cell.data) != 1) {
-			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+		int max_substep = Substep(*cell.data);
+		for (const auto& neighbor: cell.neighbors_of) {
+			if (neighbor.face_neighbor == 0 and neighbor.edge_neighbor[0] < 0) {
+				continue;
+			}
+			max_substep = std::max(Substep(*neighbor.data), max_substep);
 		}
 
 		if (constant_thermal_pressure and Mas(*cell.data) <= 0) {
@@ -1767,6 +1791,8 @@ template <
 			);
 		}
 	}
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
@@ -1795,6 +1821,7 @@ template <
 	const Solver solver,
 	Grid& grid,
 	const double time_step,
+	const double time_step_factor,
 	const double adiabatic_index,
 	const double vacuum_permeability,
 	const Mass_Density_Getter Mas,
@@ -1823,6 +1850,8 @@ template <
 		solver,
 		grid.inner_cells(),
 		grid,
+		time_step,
+		time_step_factor,
 		adiabatic_index,
 		vacuum_permeability,
 		Mas, Mom, Nrj, Mag,
@@ -1838,6 +1867,8 @@ template <
 		solver,
 		grid.outer_cells(),
 		grid,
+		time_step,
+		time_step_factor,
 		adiabatic_index,
 		vacuum_permeability,
 		Mas, Mom, Nrj, Mag,
@@ -1906,6 +1937,8 @@ template <
 
 	return max_dt_mhd;
 
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }

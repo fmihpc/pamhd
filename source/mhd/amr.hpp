@@ -93,7 +93,7 @@ template <
 	const double& adiabatic_index,
 	const double& vacuum_permeability,
 	const double& proton_mass
-) {
+) try {
 	using std::abs;
 	using std::clamp;
 	using std::max;
@@ -196,6 +196,10 @@ template <
 			min(int(round(tgt_ref_lvl+0.25)), RLMax(*cell.data)),
 			RLMin(*cell.data), max_ref_lvl);
 	}
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
 
 
@@ -645,6 +649,8 @@ template<
 		pamhd::Face_Magnetic_Field(),
 		pamhd::mhd::MHD_State_Conservative()
 	);
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
