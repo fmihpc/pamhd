@@ -86,13 +86,12 @@ template <
 	class Magnetic_Field_Flux_Getters,
 	class Primary_Face_Getter,
 	class Solver_Info_Getter,
-	class Substepping_Period_Getter
-> double get_fluxes(
+	class Substepping_Period_Getter,
+	class Max_Velocity_Getter
+> void get_fluxes(
 	const Solver solver,
 	const Cell_Iter& cells,
 	Grid& grid,
-	const double time_step,
-	const double time_step_factor,
 	const double adiabatic_index,
 	const double vacuum_permeability,
 	const Mass_Density_Getter Mas,
@@ -107,7 +106,7 @@ template <
 	const Primary_Face_Getter PFace,
 	const Solver_Info_Getter SInfo,
 	const Substepping_Period_Getter Substep,
-	const bool update_substep_periods
+	const Max_Velocity_Getter Max_v
 ) try {
 	using std::abs;
 	using std::get;
@@ -134,12 +133,7 @@ template <
 	const pamhd::mhd::Total_Energy_Density nrj_int{};
 	const pamhd::Magnetic_Field mag_int{};
 
-	// maximum allowed next time step for cells of this process
-	double max_dt = std::numeric_limits<double>::max();
-
 	for (const auto& cell: cells) {
-		double max_dt_cell = std::numeric_limits<double>::max();
-
 		Mas_fnx(*cell.data) =
 		Mas_fny(*cell.data) =
 		Mas_fnz(*cell.data) =
@@ -170,7 +164,6 @@ template <
 		if (SInfo(*cell.data) < 0) {
 			continue;
 		}
-		const auto cell_length = grid.geometry.get_length(cell.id);
 
 		const auto& cpface = PFace(*cell.data);
 
@@ -272,9 +265,7 @@ template <
 				abort();
 			}
 
-			const auto neighbor_dim = size_t(abs(n) - 1);
-			max_dt_cell = std::min(max_dt_cell, cell_length[neighbor_dim] / max_vel);
-			max_dt = std::min(max_dt, cell_length[neighbor_dim] / max_vel);
+			Max_v(*cell.data)(n) = max_vel;
 
 			// rotate flux back
 			flux[mom_int] = get_rotated_vector(flux[mom_int], -abs(n));
@@ -317,14 +308,7 @@ template <
 				Mag_fpz(*cell.data) = flux[mag_int];
 			}
 		}
-
-		if (update_substep_periods and time_step > 0) {
-			Substep(*cell.data) = 1 + std::max(0, (int)std::floor(std::log2(time_step_factor * max_dt_cell / time_step)));
-		}
 	}
-
-	return max_dt;
-
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
@@ -354,10 +338,12 @@ template <
 	class Primary_Face_Getter,
 	class Primary_Edge_Getter,
 	class Face_Info_Getter,
-	class Substepping_Period_Getter
-> void get_edge_electric_field(
+	class Substepping_Period_Getter,
+	class Max_Velocity_Getter
+> double get_edge_electric_field(
 	Grid& grid,
 	const double dt,
+	const double time_step_factor,
 	const Mass_Density_Getter Mas,
 	const Momentum_Density_Getter Mom,
 	const Total_Energy_Density_Getter Nrj,
@@ -370,11 +356,14 @@ template <
 	const Primary_Face_Getter PFace,
 	const Primary_Edge_Getter PEdge,
 	const Face_Info_Getter FInfo,
-	const Substepping_Period_Getter Substep
+	const Substepping_Period_Getter Substep,
+	const Max_Velocity_Getter Max_v,
+	const bool update_substep_periods
 ) try {
 	using std::array;
 	using std::get;
 	using std::make_tuple;
+	using std::min;
 	using std::pow;
 	using std::runtime_error;
 	using std::to_string;
@@ -393,7 +382,12 @@ template <
 		Mag_fny = get<2>(Mag_f), Mag_fpy = get<3>(Mag_f),
 		Mag_fnz = get<4>(Mag_f), Mag_fpz = get<5>(Mag_f);
 
+	// maximum allowed next time step for cells of this process
+	double max_dt = std::numeric_limits<double>::max();
+
 	for (const auto& cell: grid.local_cells()) {
+		double max_dt_cell = std::numeric_limits<double>::max();
+
 		int max_substep = Substep(*cell.data);
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
@@ -601,7 +595,8 @@ template <
 			}
 		}
 
-		const auto [dx, dy, dz] = grid.geometry.get_length(cell.id);
+		const auto clen = grid.geometry.get_length(cell.id);
+		const auto [dx, dy, dz] = clen;
 		const auto cleni = grid.mapping.get_cell_length_in_indices(cell.id);
 
 		for (const auto& neighbor: cell.neighbors_of) {
@@ -713,6 +708,18 @@ template <
 			const auto& npface = PFace(*neighbor.data);
 			const auto& nfinfo = FInfo(*neighbor.data);
 			const auto nleni = grid.mapping.get_cell_length_in_indices(neighbor.id);
+
+			const auto neigh_dim = size_t(abs(fn) - 1);
+			if (fn != 0) {
+				if (cpface(fn)) {
+					max_dt_cell = min(clen[neigh_dim] / Max_v(*cell.data)(fn), max_dt_cell);
+				} else {
+					max_dt_cell = min(clen[neigh_dim] / Max_v(*neighbor.data)(-fn), max_dt_cell);
+					if (not npface(-fn)) {
+						throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+					}
+				}
+			}
 
 			if (fn == -1) {
 				if (d1 = 1, d2 = -1, d3 = -1, Bd = 0; cpedge(d1,d2,d3)) {
@@ -1309,6 +1316,12 @@ template <
 			}
 		}
 
+		max_dt = min(max_dt_cell, max_dt);
+		if (update_substep_periods and dt > 0) {
+//std::cout << __FILE__ "(" << __LINE__ << "): " << cell.id << " " << max_dt_cell << std::endl;
+			Substep(*cell.data) = 1 + std::max(0, (int)std::floor(std::log2(time_step_factor * max_dt_cell / dt)));
+		}
+
 		for (int d1: {0, 1, 2})
 		for (int d2: {-1, +1})
 		for (int d3: {-1, +1}) {
@@ -1334,6 +1347,9 @@ template <
 			abort();
 		}
 	}
+
+	return max_dt;
+
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
@@ -1891,7 +1907,8 @@ template <
 	class Primary_Edge_Getter,
 	class Solver_Info_Getter,
 	class Face_Info_Getter,
-	class Substepping_Period_Getter
+	class Substepping_Period_Getter,
+	class Max_Velocity_Getter
 > double timestep(
 	const Solver solver,
 	Grid& grid,
@@ -1914,61 +1931,52 @@ template <
 	const Primary_Edge_Getter PEdge,
 	const Solver_Info_Getter SInfo,
 	const Face_Info_Getter FInfo,
-	const Substepping_Period_Getter Substep
+	const Substepping_Period_Getter Substep,
+	const Max_Velocity_Getter Max_v
 ) try {
 	using std::min;
 
 	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::MHD_State_Conservative());
 	grid.start_remote_neighbor_copy_updates();
 
-	double solve_max_dt = pamhd::mhd::get_fluxes(
-		solver,
-		grid.inner_cells(),
-		grid,
-		time_step,
-		time_step_factor,
-		adiabatic_index,
-		vacuum_permeability,
-		Mas, Mom, Nrj, Mag,
-		Bg_B,
+	pamhd::mhd::get_fluxes(
+		solver, grid.inner_cells(), grid,
+		adiabatic_index, vacuum_permeability,
+		Mas, Mom, Nrj, Mag, Bg_B,
 		Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-		PFace, SInfo, Substep, true
+		PFace, SInfo, Substep, Max_v
 	);
-	double max_dt_mhd = min(solve_max_dt, std::numeric_limits<double>::max());
 
 	grid.wait_remote_neighbor_copy_update_receives();
 
-	solve_max_dt = pamhd::mhd::get_fluxes(
-		solver,
-		grid.outer_cells(),
-		grid,
-		time_step,
-		time_step_factor,
-		adiabatic_index,
-		vacuum_permeability,
-		Mas, Mom, Nrj, Mag,
-		Bg_B,
+	pamhd::mhd::get_fluxes(
+		solver, grid.outer_cells(), grid,
+		adiabatic_index, vacuum_permeability,
+		Mas, Mom, Nrj, Mag, Bg_B,
 		Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-		PFace, SInfo, Substep, true
+		PFace, SInfo, Substep, Max_v
 	);
-	max_dt_mhd = min(solve_max_dt, max_dt_mhd);
 
 	grid.wait_remote_neighbor_copy_update_sends();
 	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
 
-	constrain_substep_periods(grid, SInfo, Substep);
-
-	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::MHD_Flux());
+	Grid::cell_data_type::set_transfer_all(true,
+		pamhd::mhd::MHD_Flux(),
+		pamhd::mhd::Max_Velocity());
 	grid.update_copies_of_remote_neighbors();
-	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::MHD_Flux());
+	Grid::cell_data_type::set_transfer_all(false,
+		pamhd::mhd::MHD_Flux(),
+		pamhd::mhd::Max_Velocity());
 
 	// TODO: split into inner and outer cells
-	pamhd::mhd::get_edge_electric_field(
-		grid, time_step,
+	const double max_dt_mhd = pamhd::mhd::get_edge_electric_field(
+		grid, time_step, time_step_factor,
 		Mas, Mom, Nrj, Mag, Edge_E,
 		Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-		PFace, PEdge, FInfo, Substep
+		PFace, PEdge, FInfo, Substep, Max_v, true
 	);
+
+	constrain_substep_periods(grid, SInfo, Substep);
 
 	Grid::cell_data_type::set_transfer_all(true,
 		pamhd::Edge_Electric_Field(),
