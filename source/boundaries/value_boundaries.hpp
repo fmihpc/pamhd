@@ -62,13 +62,13 @@ template<
 {
 public:
 
-	Value_Boundaries<Geometry_Id, Variable>() : boundaries(boundaries_rw) {}
+	Value_Boundaries() : boundaries(boundaries_rw) {}
 
-	Value_Boundaries<Geometry_Id, Variable>(
+	Value_Boundaries(
 		const Value_Boundaries<Geometry_Id, Variable>& other
 	) : boundaries(boundaries_rw), boundaries_rw(other.boundaries_rw) {}
 
-	Value_Boundaries<Geometry_Id, Variable>(
+	Value_Boundaries(
 		Value_Boundaries<Geometry_Id, Variable>&& other
 	) : boundaries(boundaries_rw), boundaries_rw(std::move(other.boundaries_rw)) {}
 

@@ -65,17 +65,17 @@ template<
 {
 public:
 
-	Geometries<Geometry_Id, Vector, Scalar, Cell_Id>() = default;
+	Geometries() = default;
 
-	Geometries<Geometry_Id, Vector, Scalar, Cell_Id>(
+	Geometries(
 		const Geometries<Geometry_Id, Vector, Scalar, Cell_Id>&
 	) = default;
 
-	Geometries<Geometry_Id, Vector, Scalar, Cell_Id>(
+	Geometries(
 		Geometries<Geometry_Id, Vector, Scalar, Cell_Id>&&
 	) = default;
 
-	Geometries<Geometry_Id, Vector, Scalar, Cell_Id>(const rapidjson::Value& object)
+	Geometries(const rapidjson::Value& object)
 	{
 		this->set_geometries(object);
 	}

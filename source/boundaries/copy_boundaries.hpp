@@ -57,30 +57,18 @@ template<
 {
 public:
 
-	Copy_Boundaries<
-		Cell_Id,
-		Geometry_Id,
-		Variable
-	>() :
+	Copy_Boundaries() :
 		geometry_ids(geometry_ids_rw),
 		copy_sources(copy_sources_rw)
 	{}
 
-	Copy_Boundaries<
-		Cell_Id,
-		Geometry_Id,
-		Variable
-	>(const Copy_Boundaries& other) :
+	Copy_Boundaries(const Copy_Boundaries& other) :
 		geometry_ids(geometry_ids_rw),
 		copy_sources(copy_sources_rw),
 		geometry_ids_rw(other.geometry_ids_rw)
 	{}
 
-	Copy_Boundaries<
-		Cell_Id,
-		Geometry_Id,
-		Variable
-	>(Copy_Boundaries&& other) :
+	Copy_Boundaries(Copy_Boundaries&& other) :
 		geometry_ids(geometry_ids_rw),
 		copy_sources(copy_sources_rw),
 		geometry_ids_rw(std::move(other.geometry_ids_rw))
