@@ -129,6 +129,10 @@ const auto Substep = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::mhd::Substepping_Period()];
 };
 
+const auto Max_v = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::Max_Velocity()];
+};
+
 // flux of mass density through positive x face of cell
 const auto Mas_pfx = [](Cell& cell_data)->auto& {
 		return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::mhd::Mass_Density()];
@@ -455,10 +459,24 @@ int main(int argc, char* argv[])
 	if (rank == 0) {
 		cout << "done" << endl;
 	}
+
 	for (const auto& cell: grid.local_cells()) {
 		(*cell.data)[pamhd::MPI_Rank()] = rank;
 		Substep(*cell.data) = 1;
+		Max_v(*cell.data) = {-1, -1, -1, -1, -1, -1};
 	}
+	Cell::set_transfer_all(true,
+		pamhd::mhd::Max_Velocity(),
+		pamhd::mhd::Substepping_Period(),
+		pamhd::MPI_Rank()
+	);
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false,
+		pamhd::mhd::Max_Velocity(),
+		pamhd::mhd::Substepping_Period(),
+		pamhd::MPI_Rank()
+	);
+
 	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
 	pamhd::grid::update_primary_edges(grid.local_cells(), grid, PEdge);
 	Cell::set_transfer_all(true,
@@ -488,9 +506,8 @@ int main(int argc, char* argv[])
 
 	const double time_end = options_sim.time_start + options_sim.time_length;
 	double
-		max_dt_mhd = 0,
 		simulation_time = options_sim.time_start,
-		next_mhd_save = 0,
+		next_mhd_save = options_mhd.save_n,
 		next_amr = options_grid.amr_n;
 
 	// initialize MHD
@@ -615,51 +632,62 @@ int main(int argc, char* argv[])
 		cout << "Done initializing MHD" << endl;
 	}
 
+	// initialize max velocities from cell faces
+	pamhd::mhd::timestep(
+		mhd_solver, grid, 0,
+		options_mhd.time_step_factor,
+		options_sim.adiabatic_index,
+		options_sim.vacuum_permeability,
+		Mas, Mom, Nrj, Mag, Face_B, Edge_E, Bg_B,
+		Mas_fs, Mom_fs, Nrj_fs, Mag_fs, PFace,
+		PEdge, Sol_Info2, FInfo, Substep, Max_v
+	);
 	size_t simulation_step = 0;
-	while (simulation_time < time_end) {
-		simulation_step++;
-
-		// get length of next timestep
-		double max_dt_mhd_all = std::numeric_limits<double>::max();
+	constexpr uint64_t file_version = 3;
+	if (options_mhd.save_n >= 0) {
+		if (rank == 0) {
+			cout << "Saving MHD at time " << simulation_time << endl;
+		}
 		if (
-			MPI_Allreduce(
-				&max_dt_mhd,
-				&max_dt_mhd_all,
-				1,
-				MPI_DOUBLE,
-				MPI_MIN,
-				comm
-			) != MPI_SUCCESS
+			not pamhd::mhd::save_staggered(
+				boost::filesystem::canonical(
+					boost::filesystem::path(options_sim.output_directory)
+				).append("mhd_staggered_").generic_string(),
+				grid,
+				file_version,
+				simulation_step,
+				simulation_time,
+				options_sim.adiabatic_index,
+				options_sim.proton_mass,
+				options_sim.vacuum_permeability
+			)
 		) {
-			cerr << __FILE__ << ":" << __LINE__
-				<< ": Couldn't reduce time step."
+			cerr <<  __FILE__ << "(" << __LINE__ << "): "
+				"Couldn't save mhd result."
 				<< endl;
 			abort();
 		}
-		double
-			// don't step over the final simulation time
-			until_end = time_end - simulation_time,
-			time_step_factor = min(
-				options_mhd.time_step_factor,
-				until_end / max_dt_mhd_all),
-			time_step = time_step_factor * max_dt_mhd_all;
+	}
+
+	while (simulation_time < time_end) {
+		simulation_step++;
 
 		if (rank == 0) {
 			cout << "Solving MHD at time " << simulation_time
-				<< " s with time step " << time_step << " s" << flush;
+				<< " s" << flush;
 		}
-		max_dt_mhd = pamhd::mhd::timestep(
-			mhd_solver, grid,
-			time_step, time_step_factor,
+		auto dt = pamhd::mhd::timestep(
+			mhd_solver, grid, options_sim.time_step,
+			options_mhd.time_step_factor,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
-			Mas, Mom, Nrj, Mag, Face_B, Edge_E,
-			Bg_B, Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
-			PFace, PEdge, Sol_Info2, FInfo, Substep
+			Mas, Mom, Nrj, Mag, Face_B, Edge_E, Bg_B,
+			Mas_fs, Mom_fs, Nrj_fs, Mag_fs, PFace,
+			PEdge, Sol_Info2, FInfo, Substep, Max_v
 		);
-		simulation_time += time_step;
+		simulation_time += dt;
 
-		if (options_grid.amr_n > 0 and simulation_time >= next_amr and time_step > 0) {
+		if (options_grid.amr_n > 0 and simulation_time >= next_amr and options_sim.time_step > 0) {
 			if (rank == 0) {
 				cout << "...\nAdapting grid at time " << simulation_time << "..." << flush;
 			}
@@ -712,7 +740,6 @@ int main(int argc, char* argv[])
 					+= options_mhd.save_n
 					* ceil(max(options_mhd.save_n, simulation_time - next_mhd_save) / options_mhd.save_n);
 			}
-			constexpr uint64_t file_version = 3;
 			if (
 				not pamhd::mhd::save_staggered(
 					boost::filesystem::canonical(

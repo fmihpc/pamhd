@@ -336,6 +336,11 @@ struct Edge_Boundary_Type {
 	using data_type = pamhd::grid::Edge_Type<int>;
 };
 
+//! maximum wave velocity away from cell faces
+struct Max_Velocity {
+	using data_type = pamhd::grid::Face_Type<double>;
+};
+
 // cell type for staggered solver MHD test program
 using Cell_Staggered = gensimcell::Cell<
 	gensimcell::Optional_Transfer,
@@ -353,7 +358,8 @@ using Cell_Staggered = gensimcell::Cell<
 	pamhd::grid::Target_Refinement_Level_Min,
 	pamhd::mhd::Face_Boundary_Type,
 	pamhd::mhd::Edge_Boundary_Type,
-	pamhd::mhd::Substepping_Period
+	pamhd::mhd::Substepping_Period,
+	pamhd::mhd::Max_Velocity
 >;
 
 
