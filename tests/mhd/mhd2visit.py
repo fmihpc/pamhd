@@ -71,7 +71,9 @@ def save_slice_plot(
 	outname,
 	variable = 'mass_density_log',
 	dimension = 'x',
-	mesh = False
+	mesh = False,
+	var_min = None,
+	var_max = None
 ):
 	# get grid extents
 	DeleteAllPlots()
@@ -88,6 +90,12 @@ def save_slice_plot(
 	attrs.limitsMode = attrs.CurrentPlot
 	if variable.endswith('log'):
 		attrs.scaling = attrs.Log
+	if var_min != None:
+		attrs.minFlag = 1
+		attrs.min = var_min
+	if var_max != None:
+		attrs.maxFlag = 1
+		attrs.max = var_max
 	SetPlotOptions(attrs)
 	if mesh:
 		AddPlot('Mesh', 'mesh')
@@ -259,6 +267,11 @@ def dc2vtk(outname, data):
 			for c in cells:
 				outfile.write(str(data[c]['substep']) + '\n')
 
+		if 'mhd info' in data[cells[0]]:
+			outfile.write('SCALARS mhd_info int 1\nlookup_table default\n')
+			for c in cells:
+				outfile.write(str(data[c]['mhd info']) + '\n')
+
 
 plot_vars = {
 	'mass_density', 'pressure',
@@ -268,7 +281,7 @@ plot_vars = {
 	'B0', 'B0x', 'B0y', 'B0z',
 	'B1', 'B1x', 'B1y', 'B1z',
 	'target_ref_lvl_min', 'target_ref_lvl_max',
-	'substep_period'
+	'substep_period', 'mhd_info'
 }
 plot_vars_str = ''
 for v in sorted(plot_vars):
@@ -279,6 +292,7 @@ parser.add_argument('files', metavar = 'F', nargs = '*', help = 'Names of input 
 parser.add_argument('--mesh', action = 'store_true', default = False, help = 'Plot mesh on top of variables (default: False)')
 parser.add_argument('--dimensions', type = str, default = 'x,y,z', help = 'comma separated list of dimensions to plot (default: x,y,z)')
 parser.add_argument('--variables', type = str, default = plot_vars_str, help = 'comma separated list of variables to plot (append _log for log plot, default: ' + plot_vars_str + ')')
+parser.add_argument('--limits', type = str, default = '', help = 'comma separated list of range limits for variables given as var1_min,var1_max,,var2_max,,,var4_min...; with empty automatic limit(s)')
 parser.add_argument('--verbose', action = 'store_true', default = False)
 args = parser.parse_args()
 
@@ -293,6 +307,9 @@ args.variables = [v for v in args.variables.split(',') if v.replace('_log','') i
 if args.verbose:
 	stdout.write('Plotting variables: ' + str(args.variables) + '\n')
 
+args.limits = args.limits.split(',')
+while len(args.limits) < 2*len(args.variables):
+	args.limits.append('')
 for filename_ in args.files:
 	if filename_.endswith('.dc'):
 		with open(filename_, 'rb') as infile:
@@ -316,10 +333,17 @@ for filename_ in args.files:
 	result = GetLastError()
 	if result != '':
 		exit("Couldn't load " + filename + ': ' + result)
-	for var in args.variables:
+	for var_i in range(len(args.variables)):
+		var = args.variables[var_i]
+		var_min = None
+		if args.limits[2*var_i] != '':
+			var_min = float(args.limits[2*var_i])
+		var_max = None
+		if args.limits[2*var_i+1] != '':
+			var_max = float(args.limits[2*var_i+1])
 		for dim in args.dimensions:
 			outname = join(dirname(filename), basename(filename).replace('.vtk', '_' + var + '_' + dim + '.png'))
-			save_slice_plot(outname, var, dim, mesh = args.mesh)
+			save_slice_plot(outname, var, dim, mesh = args.mesh, var_min = var_min, var_max = var_max)
 	DeleteAllPlots()
 	CloseDatabase(filename)
 exit()
