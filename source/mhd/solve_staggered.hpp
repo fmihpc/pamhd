@@ -315,6 +315,8 @@ template <
 
 	return max_dt;
 
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
@@ -1314,6 +1316,8 @@ template <
 			abort();
 		}
 	}
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
@@ -1640,6 +1644,8 @@ template <
 			}
 		}
 	}
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
@@ -1767,6 +1773,8 @@ template <
 			);
 		}
 	}
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
@@ -1906,6 +1914,8 @@ template <
 
 	return max_dt_mhd;
 
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
