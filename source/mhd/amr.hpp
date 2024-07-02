@@ -93,7 +93,7 @@ template <
 	const double& adiabatic_index,
 	const double& vacuum_permeability,
 	const double& proton_mass
-) {
+) try {
 	using std::abs;
 	using std::clamp;
 	using std::max;
@@ -189,13 +189,20 @@ template <
 			mrg_pre / options_mhd.pressure_mrl_at),
 			mrg_mag / options_mhd.mag_mrl_at);
 
+		const auto
+			prev_min = RLMin(*cell.data),
+			prev_max = RLMax(*cell.data);
 		RLMin(*cell.data) = clamp(
 			max(int(round(tgt_ref_lvl-0.25)), RLMin(*cell.data)),
-			0, max_ref_lvl);
+			prev_min, prev_max);
 		RLMax(*cell.data) = clamp(
 			min(int(round(tgt_ref_lvl+0.25)), RLMax(*cell.data)),
-			RLMin(*cell.data), max_ref_lvl);
+			prev_min, prev_max);
 	}
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
 
 
@@ -587,6 +594,7 @@ template<
 
 	for (const auto& cell: grid.local_cells()) {
 		(*cell.data)[pamhd::MPI_Rank()] = grid.get_rank();
+		Substep(*cell.data) = 1;
 	}
 
 	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
@@ -645,6 +653,8 @@ template<
 		pamhd::Face_Magnetic_Field(),
 		pamhd::mhd::MHD_State_Conservative()
 	);
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
