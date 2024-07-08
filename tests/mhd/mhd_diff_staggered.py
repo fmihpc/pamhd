@@ -116,29 +116,29 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 	for i in range(len(data1['cells'])):
 		cell_id = data1['cells'][i]
 
-		rho1 = sim_data1[cell_id]['mhd'][0]
-		rho2 = sim_data2[cell_id]['mhd'][0]
+		rho1 = sim_data1[cell_id]['mhd     '][0]
+		rho2 = sim_data2[cell_id]['mhd     '][0]
 		denom = maximum(abs(rho1), abs(rho2))
 		if denom != 0 and args.mass < abs(rho1 - rho2) / denom:
 			error = 'Mass density differs too much in cell ' + str(cell_id) + ': ' + str(rho1) + ' vs ' + str(rho2)
 
-		vel1 = array(sim_data1[cell_id]['mhd'][1]) / rho1
+		vel1 = array(sim_data1[cell_id]['mhd     '][1]) / rho1
 		vel1 = vel1.dot(vel1)**0.5
-		vel2 = array(sim_data2[cell_id]['mhd'][1]) / rho2
+		vel2 = array(sim_data2[cell_id]['mhd     '][1]) / rho2
 		vel2 = vel2.dot(vel2)**0.5
 		denom = maximum(vel1, vel2)
 		if denom != 0 and args.velocity < abs(vel1 - vel2) / denom:
 			error = 'Velocity differs too much in cell ' + str(cell_id) + ': ' + str(vel1) + ' vs ' + str(vel2)
 
-		nrj1 = sim_data1[cell_id]['mhd'][2]
-		nrj2 = sim_data2[cell_id]['mhd'][2]
+		nrj1 = sim_data1[cell_id]['mhd     '][2]
+		nrj2 = sim_data2[cell_id]['mhd     '][2]
 		denom = maximum(abs(nrj1), abs(nrj2))
 		if denom != 0 and args.energy < abs(nrj1 - nrj2) / denom:
 			error = 'Energy density differs too much in cell ' + str(cell_id) + ': ' + str(nrj1) + ' vs ' + str(nrj2)
 
-		mag1 = array(sim_data1[cell_id]['mhd'][3])
+		mag1 = array(sim_data1[cell_id]['mhd     '][3])
 		mag1 = mag1.dot(mag1)**0.5
-		mag2 = array(sim_data2[cell_id]['mhd'][3])
+		mag2 = array(sim_data2[cell_id]['mhd     '][3])
 		mag2 = mag2.dot(mag2)**0.5
 		denom = maximum(mag1, mag2)
 		if denom != 0 and args.magnetic_field < abs(mag1 - mag2) / denom:

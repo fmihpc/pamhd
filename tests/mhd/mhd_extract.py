@@ -3,6 +3,7 @@
 Extracts subvolumes of MHD output of PAMHD.
 
 Copyright 2016 Ilja Honkonen
+Copyright 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,7 +30,15 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 '''
+
+
+from imp import load_source
+from os.path import basename, dirname, join
+common = load_source('common', join(dirname(__file__), 'common.py'))
 
 '''
 Reads simulation data from infile_name and writes it into outfile_name while excluding cells whose center is outside of given volume
@@ -47,133 +56,70 @@ def extract(
 	from os.path import exists, isfile
 	from numpy import dtype, fromfile, int32, uint64, zeros
 
-	if not exists(infile_name):
-		exit('Path ' + infile_name + " doesn't exist")
-	if not isfile(infile_name):
-		exit('Path ' + infile_name + ' is not a file')
+	try:
+		infile = open(infile_name, 'rb')
+	except Exception as e:
+		print("Couldn't open/read from", infile_name, ':', e)
+		return
 
-	with open(infile_name, 'rb') as infile:
-		with open(outfile_name, 'wb') as outfile:
+	try:
+		meta = common.get_metadata(infile)
+	except Exception as e:
+		print('Failed to load metadata from', infile_name, ':', e)
+		return
 
-			file_version = fromfile(infile, dtype = 'uint64', count = 1)
-			if file_version[0] > 1:
-				exit('File ' + infile_name + ' is of unsupported version: ' + str(file_version[0]))
-			sim_params = fromfile(infile, dtype = '4double', count = 1)
-			endianness = fromfile(infile, dtype = 'uint64', count = 1)
-			ref_lvl_0_cells = fromfile(infile, dtype = '3uint64', count = 1)
-			max_ref_lvl = fromfile(infile, dtype = 'intc', count = 1)
-			if max_ref_lvl[0] > 0:
-				exit('Refinement level > 0 not supported')
-			neighborhood_length = fromfile(infile, dtype = 'uintc', count = 1)
-			periodicity = fromfile(infile, dtype = '3uint8', count = 1)
-			geometry_id = fromfile(infile, dtype = 'intc', count = 1)
-			if geometry_id[0] != int32(1):
-				exit('Unsupported geometry: ' + str(geometry_id[0]))
-			grid_start = fromfile(infile, dtype = '3double', count = 1)
-			lvl_0_cell_length = fromfile(infile, dtype = '3double', count = 1)
-			total_cells = fromfile(infile, dtype = 'uint64', count = 1)
-			cell_ids_data_offsets = fromfile(infile, dtype = '2uint64', count = total_cells[0])
+	if meta['file_version'] != 3:
+		print('File version', meta['file_version'], 'not supported:', infile_name)
+		return
 
-			# check which cells are inside requested volume
-			max_x_i, max_y_i, max_z_i = 0, 0, 0
-			min_x_i, min_y_i, min_z_i = ref_lvl_0_cells[0][0], ref_lvl_0_cells[0][1], ref_lvl_0_cells[0][2]
-			out_cells = []
-			out_cell_data = []
-			cell_data_t = 'double, 3double, double, 3double, 3double, intc, intc, double, 3double, 3double, 3double'
-			for item in cell_ids_data_offsets:
-				cell_id = uint64(item[0])
+	try:
+		incells = common.get_cells(infile, meta['total_cells'])
+	except Exception as e:
+		print("Couldn't load cell list from", infile_name, ':', e)
+		return
 
-				cell_id -= 1
-				cell_index = (
-					uint64(cell_id % ref_lvl_0_cells[0][0]),
-					uint64(cell_id / ref_lvl_0_cells[0][0] % ref_lvl_0_cells[0][1]),
-					uint64(cell_id / (ref_lvl_0_cells[0][0] * ref_lvl_0_cells[0][1]))
-				)
+	# only read&write cells overlapping with requested volume
+	outcells = []
+	inds = [] # location of outcell in incells
+	for ind in range(len(incells)):
+		cell = incells[ind]
+		center, length = common.get_cell_geom(meta, cell)
+		cix = center[0] - length[0]/2 # cell_min_x
+		cax = center[0] + length[0]/2 # cell_max_x
+		ciy = center[1] - length[1]/2
+		cay = center[1] + length[1]/2
+		ciz = center[2] - length[2]/2
+		caz = center[2] + length[2]/2
+		if cax >= min_x and cix <= max_x \
+			and cay >= min_y and ciy <= max_y \
+			and caz >= min_z and ciz <= max_z \
+		:
+			outcells.append(cell)
+			inds.append(ind)
 
-				cell_center = (
-					grid_start[0][0] + lvl_0_cell_length[0][0] * (0.5 + cell_index[0]),
-					grid_start[0][1] + lvl_0_cell_length[0][1] * (0.5 + cell_index[1]),
-					grid_start[0][2] + lvl_0_cell_length[0][2] * (0.5 + cell_index[2])
-				)
-				cell_id += 1
+	try:
+		data = common.get_cell_data(infile, meta, inds)
+	except Exception as e:
+		print("Couldn't load simulation data from", infile_name, ':', e)
+		return
 
-				if cell_center[0] < min_x or cell_center[0] > max_x or cell_center[1] < min_y or cell_center[1] > max_y or cell_center[2] < min_z or cell_center[2] > max_z:
-					continue
+	try:
+		outfile = open(outfile_name, 'wb')
+	except Exception as e:
+		print("Couldn't open/write to", outfile_name, ':', e)
+		return
 
-				min_x_i = min(min_x_i, cell_index[0])
-				min_y_i = min(min_y_i, cell_index[1])
-				min_z_i = min(min_z_i, cell_index[2])
-				max_x_i = max(max_x_i, cell_index[0])
-				max_y_i = max(max_y_i, cell_index[1])
-				max_z_i = max(max_z_i, cell_index[2])
-
-				out_cells.append(cell_id)
-
-				infile.seek(item[1], 0)
-				out_cell_data.append(
-					fromfile(
-						infile,
-						dtype = cell_data_t,
-						count = 1
-					)
-				)
-
-			file_version.tofile(outfile)
-			sim_params.tofile(outfile)
-			endianness.tofile(outfile)
-
-			# write grid parameters corresponding to filtered grid
-			new_ref_lvl_0_cells = ref_lvl_0_cells.copy()
-			new_ref_lvl_0_cells[0][0] = max_x_i - min_x_i + 1
-			new_ref_lvl_0_cells[0][1] = max_y_i - min_y_i + 1
-			new_ref_lvl_0_cells[0][2] = max_z_i - min_z_i + 1
-			new_ref_lvl_0_cells.tofile(outfile)
-
-			max_ref_lvl.tofile(outfile)
-			neighborhood_length.tofile(outfile)
-			periodicity.tofile(outfile)
-			geometry_id.tofile(outfile)
-
-			new_grid_start = grid_start.copy()
-			new_grid_start[0][0] += lvl_0_cell_length[0][0] * min_x_i
-			new_grid_start[0][1] += lvl_0_cell_length[0][1] * min_y_i
-			new_grid_start[0][2] += lvl_0_cell_length[0][2] * min_z_i
-			new_grid_start.tofile(outfile)
-
-			lvl_0_cell_length.tofile(outfile)
-
-			new_total_cells = total_cells.copy()
-			new_total_cells[0] = len(out_cells)
-			new_total_cells.tofile(outfile)
-
-			cell_data_start = outfile.tell()
-			out_cell_ids_offsets = zeros(len(out_cells), dtype = '2uint64')
-			for i in range(len(out_cells)):
-
-				old_id = out_cells[i] - 1
-				old_index = (
-					uint64(old_id % ref_lvl_0_cells[0][0]),
-					uint64(old_id / ref_lvl_0_cells[0][0] % ref_lvl_0_cells[0][1]),
-					uint64(old_id / (ref_lvl_0_cells[0][0] * ref_lvl_0_cells[0][1]))
-				)
-				new_index = (
-					old_index[0] - min_x_i,
-					old_index[1] - min_y_i,
-					old_index[2] - min_z_i
-				)
-				new_id = uint64(
-					new_index[2] * new_ref_lvl_0_cells[0][0] * new_ref_lvl_0_cells[0][1]
-					+ new_index[1] * new_ref_lvl_0_cells[0][0]
-					+ new_index[0]
-				)
-				new_id += 1
-
-				out_cell_ids_offsets[i][0] = new_id
-				out_cell_ids_offsets[i][1] = cell_data_start + out_cell_ids_offsets.nbytes + dtype(cell_data_t).itemsize * i
-
-			out_cell_ids_offsets.tofile(outfile)
-			for d in out_cell_data:
-				d.tofile(outfile)
+	common.set_metadata(outfile, meta)
+	common.set_cells(outfile, outcells)
+	saved_vars = common.set_cell_data(outfile, meta, data)
+	# write header again with correct values
+	meta['total_cells'] = len(outcells)
+	nr_vars_orig = len(meta['variable_offsets'])
+	meta['variable_offsets'] = [offset[1] for offset in saved_vars]
+	while len(meta['variable_offsets']) < nr_vars_orig:
+		meta['variable_offsets'].append(meta['variable_offsets'][-1])
+	outfile.seek(0, 0)
+	common.set_metadata(outfile, meta)
 
 
 if __name__ == '__main__':
