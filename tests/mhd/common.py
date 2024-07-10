@@ -47,8 +47,10 @@ def get_metadata(infile):
 	ret_val['proton_mass'], \
 	ret_val['vacuum_permeability'] \
 		= [float(i) for i in fromfile(infile, dtype = '4double', count = 1)[0]]
-	nr_variables = int(fromfile(infile, dtype = 'u1', count = 1)[0])
-	var_offsets = [int(i) for i in fromfile(infile, dtype = 'uint64', count = nr_variables)]
+	ret_val['nr_variables'] = int(fromfile(infile, dtype = 'u1', count = 1)[0])
+	nr_variables = ret_val['nr_variables']
+	ret_val['variable_offsets'] = [int(i) for i in fromfile(infile, dtype = 'uint64', count = nr_variables)]
+	var_offsets = ret_val['variable_offsets']
 	endianness = int(fromfile(infile, dtype = 'uint64', count = 1)[0])
 	if endianness != 0x1234567890abcdef:
 		exit('Unsupported endianness: ' + str(endianness))
@@ -70,25 +72,65 @@ def get_metadata(infile):
 	for offset in var_offsets:
 		infile.seek(offset, 0)
 		if version_info[0] >= 3:
-			name = str(fromfile(infile, dtype = 'byte', count = name_len), 'ascii').strip()
+			name = str(fromfile(infile, dtype = 'byte', count = name_len), 'ascii')
 		else:
-			name = ''.join(fromfile(infile, dtype = 'c', count = name_len)).strip()
+			name = ''.join(fromfile(infile, dtype = 'c', count = name_len))
 		ret_val['var_data_start'][name] = offset + name_len
 	infile.seek(ret_val['cell_list_start'], 0)
 	return ret_val
 
 
 '''
-Returns list of simulation cells and their byte offsets in infile.
+Writes simulation metadata to given file open for writing in binary mode.
+'''
+def set_metadata(outfile, metadata):
+	from numpy import array
+	if metadata['file_version'] != 3:
+		raise Exception('Unsupported file version: ' + str(metadata['file_version']))
+	if metadata['endianness'] != 0x1234567890abcdef:
+		raise Exception('Unsupported endianness: ' + str(metadata['endianness']))
+	if metadata['geometry_id'] != 1:
+		raise Exception('Unsupported geometry: ' + str(metadata['geometry_id']))
+	array(metadata['file_version'], dtype = 'uint64').tofile(outfile)
+	array(metadata['sim_step'], dtype = 'uint64').tofile(outfile)
+	array(metadata['sim_time'], dtype = 'double').tofile(outfile)
+	array(metadata['adiabatic_index'], dtype = 'double').tofile(outfile)
+	array(metadata['proton_mass'], dtype = 'double').tofile(outfile)
+	array(metadata['vacuum_permeability'], dtype = 'double').tofile(outfile)
+	array(metadata['nr_variables'], dtype = 'u1').tofile(outfile)
+	array(metadata['variable_offsets'], dtype = 'uint64').tofile(outfile)
+	array(metadata['endianness'], dtype = 'uint64').tofile(outfile)
+	array(metadata['ref_lvl_0_cells'], dtype = 'uint64').tofile(outfile)
+	array(metadata['max_ref_lvl'], dtype = 'intc').tofile(outfile)
+	array(metadata['neighborhood_length'], dtype = 'uintc').tofile(outfile)
+	array(metadata['periodicity'], dtype = 'uint8').tofile(outfile)
+	array(metadata['geometry_id'], dtype = 'intc').tofile(outfile)
+	array(metadata['grid_start'], dtype = 'double').tofile(outfile)
+	array(metadata['lvl_0_cell_length'], dtype = 'double').tofile(outfile)
+	array(metadata['total_cells'], dtype = 'uint64').tofile(outfile)
+
+
+'''
+Returns list of simulation cells in infile.
 
 Should be called after get_metadata() without changing infile read position.
 
-Reads from current position of infile, to read fewer cells,
+Reads from current position of infile, to read fewer cells at a time,
 seek to place where previous read left off before calling again.
 '''
 def get_cells(infile, total_cells):
 	from numpy import fromfile
 	return [int(i) for i in fromfile(infile, dtype = 'uint64', count = total_cells)]
+
+
+'''
+Writes given list of simulation cells to outfile.
+
+Should be called after set_metadata() without changing outfile write position.
+'''
+def set_cells(outfile, cells):
+	from numpy import array
+	array(cells, dtype = 'uint64').tofile(outfile)
 
 
 '''
@@ -103,28 +145,28 @@ def get_cell_data(infile, metadata, range_):
 		ret_val.append(dict())
 		for varname in metadata['var_data_start']:
 			infile.seek(metadata['var_data_start'][varname], 0)
-			if varname == 'mhd':
+			if varname == 'mhd     ':
 				infile.seek(i*8*8, 1)
 				ret_val[-1][varname] = fromfile(
 					infile,
 					dtype = 'double, 3double, double, 3double',
 					count = 1)[0]
-			elif varname == 'primary':
+			elif varname == 'primary ':
 				infile.seek(i*(6+12), 1)
 				ret_val[-1][varname] = list(fromfile(infile, dtype = '18u1', count = 1)[0])
-			elif varname == 'bgB':
+			elif varname == 'bgB     ':
 				infile.seek(i*3*6*8, 1)
 				ret_val[-1][varname] = list(fromfile(infile, dtype = '18double', count = 1)[0])
 			elif varname == 'divfaceB':
 				infile.seek(i*8, 1)
 				ret_val[-1][varname] = fromfile(infile, dtype = 'double', count = 1)[0]
-			elif varname == 'edgeE':
+			elif varname == 'edgeE   ':
 				infile.seek(i*12*8, 1)
 				ret_val[-1][varname] = list(fromfile(infile, dtype = '12double', count = 1)[0])
-			elif varname == 'faceB':
+			elif varname == 'faceB   ':
 				infile.seek(i*6*8, 1)
 				ret_val[-1][varname] = list(fromfile(infile, dtype = '6double', count = 1)[0])
-			elif varname == 'rank':
+			elif varname == 'rank    ':
 				infile.seek(i*4, 1)
 				ret_val[-1][varname] = fromfile(infile, dtype = 'intc', count = 1)[0]
 			elif varname == 'mhd info':
@@ -133,12 +175,81 @@ def get_cell_data(infile, metadata, range_):
 			elif varname == 'ref lvls':
 				infile.seek(i*8, 1)
 				ret_val[-1][varname] = list(fromfile(infile, dtype = '2intc', count = 1)[0])
-			elif varname == 'substep':
+			elif varname == 'substep ':
 				infile.seek(i*4, 1)
 				ret_val[-1][varname] = fromfile(infile, dtype = 'intc', count = 1)[0]
 			else:
-				if varname != 'fluxes':
+				if varname != 'fluxes  ':
 					exit('Unsupported variable: ' + varname)
+	return ret_val
+
+
+'''
+Writes simulation data to outfile.
+
+Should be called after set_cells() without changing outfile write position.
+Data should be in same order as cells given to set_cells().
+
+Returns names and starting offsets of saved variables.
+'''
+def set_cell_data(outfile, metadata, data):
+	from numpy import array
+
+	ret_val = []
+	if len(data) == 0:
+		return ret_val
+
+	for varname in metadata['var_data_start']:
+		if varname == 'fluxes  ':
+			continue
+
+		ret_val.append((varname, outfile.tell()))
+		outfile.write(varname.encode('utf-8'))
+		if varname == 'mhd     ':
+			for i in range(len(data)):
+				try:
+					d = data[i][varname]
+				except Exception as e:
+					print(varname, len(simdata), len(simcells), len(outcells), ind, e)
+					exit()
+				array((d[0], d[1][0], d[1][1], d[1][2], d[2], d[3][0], d[3][1], d[3][2]), dtype = 'double').tofile(outfile)
+		if varname == 'primary ':
+			for i in range(len(data)):
+				d = data[i][varname]
+				array(d, dtype = 'u1').tofile(outfile)
+		if varname == 'bgB     ':
+			for i in range(len(data)):
+				d = data[i][varname]
+				array(d, dtype = 'double').tofile(outfile)
+		if varname == 'divfaceB':
+			for i in range(len(data)):
+				d = data[i][varname]
+				array(d, dtype = 'double').tofile(outfile)
+		if varname == 'edgeE   ':
+			for i in range(len(data)):
+				d = data[i][varname]
+				array(d, dtype = 'double').tofile(outfile)
+		if varname == 'faceB   ':
+			for i in range(len(data)):
+				d = data[i][varname]
+				array(d, dtype = 'double').tofile(outfile)
+		if varname == 'rank    ':
+			for i in range(len(data)):
+				d = data[i][varname]
+				array(d, dtype = 'intc').tofile(outfile)
+		if varname == 'mhd info':
+			for i in range(len(data)):
+				d = data[i][varname]
+				array(d, dtype = 'uintc').tofile(outfile)
+		if varname == 'ref lvls':
+			for i in range(len(data)):
+				d = data[i][varname]
+				array(d, dtype = 'intc').tofile(outfile)
+		if varname == 'substep ':
+			for i in range(len(data)):
+				d = data[i][varname]
+				array(d, dtype = 'intc').tofile(outfile)
+
 	return ret_val
 
 

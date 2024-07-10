@@ -110,21 +110,21 @@ def save_slice_plot(
 		attrs.upAxis = (0, 0, 1)
 		attrs.flip = 1
 		save_win_attrs.height = 900
-		save_win_attrs.width = int(900*dy/dz)
+		save_win_attrs.width = int(min(2560, 900*dy/dz))
 	elif dimension == 'y':
 		attrs.originIntercept = ymin + dy / 2
 		attrs.normal = (0, 1, 0)
 		attrs.axisType = attrs.YAxis
 		attrs.upAxis = (0, 0, 1)
 		save_win_attrs.height = 900
-		save_win_attrs.width = int(900*dx/dz)
+		save_win_attrs.width = int(min(2560, 900*dx/dz))
 	elif dimension == 'z':
 		attrs.originIntercept = zmin + dz / 2
 		attrs.normal = (0, 0, 1)
 		attrs.axisType = attrs.ZAxis
 		attrs.upAxis = (0, 1, 0)
 		save_win_attrs.height = 900
-		save_win_attrs.width = int(900*dx/dy)
+		save_win_attrs.width = int(min(2560, 900*dx/dy))
 	else:
 		exit('Unsupported dimension in save_slice_plot: ' + dimension)
 	SetOperatorOptions(attrs, 0, 1)
@@ -181,62 +181,62 @@ def dc2vtk(outname, data):
 			outfile.write('11\n')
 		outfile.write('CELL_DATA ' + str(len(cells)) + '\n')
 
-		if 'mhd' in data[cells[0]]:
+		if 'mhd     ' in data[cells[0]]:
 			outfile.write('SCALARS mass_density double 1\nlookup_table default\n')
 			for c in cells:
-				outfile.write(str(data[c]['mhd'][0]) + '\n')
+				outfile.write(str(data[c]['mhd     '][0]) + '\n')
 			outfile.write('VECTORS velocity double\n')
 			for c in cells:
-				mas = data[c]['mhd'][0]
-				mom = data[c]['mhd'][1]
+				mas = data[c]['mhd     '][0]
+				mom = data[c]['mhd     '][1]
 				outfile.write(
 					str(mom[0]/mas) + ' '
 					+ str(mom[1]/mas) + ' '
 					+ str(mom[2]/mas) + '\n')
 			outfile.write('SCALARS pressure double 1\nlookup_table default\n')
 			for c in cells:
-				mas = data[c]['mhd'][0]
-				mom = data[c]['mhd'][1]
-				nrj = data[c]['mhd'][2]
-				mag = data[c]['mhd'][3]
+				mas = data[c]['mhd     '][0]
+				mom = data[c]['mhd     '][1]
+				nrj = data[c]['mhd     '][2]
+				mag = data[c]['mhd     '][3]
 				kin_nrj = (mom[0]**2 + mom[1]**2 + mom[2]**2) / 2 / mas
 				mag_nrj = (mag[0]**2 + mag[1]**2 + mag[2]**2) / 2 / data['vacuum_permeability']
 				pressure = (nrj - kin_nrj - mag_nrj) * (data['adiabatic_index'] - 1)
 				outfile.write(str(pressure) + '\n')
 			outfile.write('VECTORS volume_B double\n')
 			for c in cells:
-				mag = data[c]['mhd'][3]
+				mag = data[c]['mhd     '][3]
 				outfile.write(str(mag[0]) + ' ' + str(mag[1]) + ' ' + str(mag[2]) + '\n')
 
-		if 'primary' in data[cells[0]]:
+		if 'primary ' in data[cells[0]]:
 			outfile.write('SCALARS nr_primary_faces int 1\nlookup_table default\n')
 			for c in cells:
 				nr = 0
 				for i in range(6):
-					if data[c]['primary'][i] > 0:
+					if data[c]['primary '][i] > 0:
 						nr += 1
 				outfile.write(str(nr) + '\n')
 			outfile.write('SCALARS nr_primary_edges int 1\nlookup_table default\n')
 			for c in cells:
 				nr = 0
 				for i in range(6, 18):
-					if data[c]['primary'][i] > 0:
+					if data[c]['primary '][i] > 0:
 						nr += 1
 				outfile.write(str(nr) + '\n')
 
-		if 'bgB' in data[cells[0]]:
+		if 'bgB     ' in data[cells[0]]:
 			outfile.write('VECTORS background_B double\n')
 			for c in cells:
 				outfile.write(
-					str(data[c]['bgB'][3]) + ' '
-					+ str(data[c]['bgB'][10]) + ' '
-					+ str(data[c]['bgB'][17]) + '\n')
+					str(data[c]['bgB     '][3]) + ' '
+					+ str(data[c]['bgB     '][10]) + ' '
+					+ str(data[c]['bgB     '][17]) + '\n')
 
-		if 'mhd' in data[cells[0]] and 'bgB' in data[cells[0]]:
+		if 'mhd     ' in data[cells[0]] and 'bgB     ' in data[cells[0]]:
 			outfile.write('VECTORS total_face_magnetic_field double\n')
 			for c in cells:
-				B0 = data[c]['bgB']
-				B1 = data[c]['mhd'][3]
+				B0 = data[c]['bgB     ']
+				B1 = data[c]['mhd     '][3]
 				outfile.write(
 					str(B1[0] + B0[3]) + ' '
 					+ str(B1[1] + B0[10]) + ' '
@@ -247,10 +247,10 @@ def dc2vtk(outname, data):
 			for c in cells:
 				outfile.write(str(data[c]['divfaceB']) + '\n')
 
-		if 'rank' in data[cells[0]]:
+		if 'rank    ' in data[cells[0]]:
 			outfile.write('SCALARS rank int 1\nlookup_table default\n')
 			for c in cells:
-				outfile.write(str(data[c]['rank']) + '\n')
+				outfile.write(str(data[c]['rank    ']) + '\n')
 
 		if 'ref lvls' in data[cells[0]]:
 			outfile.write('SCALARS target_ref_lvl_min int 1\nlookup_table default\n')
@@ -262,10 +262,10 @@ def dc2vtk(outname, data):
 			for c in cells:
 				outfile.write(str(data[c]['ref lvls'][1]) + '\n')
 
-		if 'substep' in data[cells[0]]:
+		if 'substep ' in data[cells[0]]:
 			outfile.write('SCALARS substep_period int 1\nlookup_table default\n')
 			for c in cells:
-				outfile.write(str(data[c]['substep']) + '\n')
+				outfile.write(str(data[c]['substep ']) + '\n')
 
 		if 'mhd info' in data[cells[0]]:
 			outfile.write('SCALARS mhd_info int 1\nlookup_table default\n')
