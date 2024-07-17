@@ -52,6 +52,7 @@ Author(s): Ilja Honkonen
 #include "mhd/rusanov.hpp"
 #include "mhd/hll_athena.hpp"
 #include "mhd/hlld_athena.hpp"
+#include "mhd/options.hpp"
 #include "mhd/roe_athena.hpp"
 #include "mhd/variables.hpp"
 #include "variables.hpp"
@@ -63,8 +64,6 @@ namespace mhd {
 
 /*!
 Calculates MHD fluxes in/out of given cells.
-
-Returns the maximum allowed length of time step for the next step on this process.
 
 Flux getters with array indices [0..5] should return variables in this order:
 -x,+x,-y,+y,-z,+z.
@@ -104,13 +103,14 @@ template <
 	const Momentum_Density_Flux_Getters Mom_f,
 	const Total_Energy_Density_Flux_Getters Nrj_f,
 	const Magnetic_Field_Flux_Getters Mag_f,
-	const Primary_Face_Getter PFace,
+	const Primary_Face_Getter /*PFace*/,
 	const Solver_Info_Getter SInfo,
 	const Substepping_Period_Getter Substep,
 	const Max_Velocity_Getter Max_v
 ) try {
 	using std::abs;
 	using std::get;
+	using std::runtime_error;
 	using std::tie;
 	using std::to_string;
 
@@ -135,45 +135,14 @@ template <
 	const pamhd::Magnetic_Field mag_int{};
 
 	for (const auto& cell: cells) {
-		Mas_fnx(*cell.data) =
-		Mas_fny(*cell.data) =
-		Mas_fnz(*cell.data) =
-		Mas_fpx(*cell.data) =
-		Mas_fpy(*cell.data) =
-		Mas_fpz(*cell.data) =
-		Nrj_fnx(*cell.data) =
-		Nrj_fny(*cell.data) =
-		Nrj_fnz(*cell.data) =
-		Nrj_fpx(*cell.data) =
-		Nrj_fpy(*cell.data) =
-		Nrj_fpz(*cell.data) = 0;
-
-		Mom_fnx(*cell.data) =
-		Mom_fny(*cell.data) =
-		Mom_fnz(*cell.data) =
-		Mom_fpx(*cell.data) =
-		Mom_fpy(*cell.data) =
-		Mom_fpz(*cell.data) =
-		Mag_fnx(*cell.data) =
-		Mag_fny(*cell.data) =
-		Mag_fnz(*cell.data) =
-		Mag_fpx(*cell.data) =
-		Mag_fpy(*cell.data) =
-		Mag_fpz(*cell.data) = {0, 0, 0};
-
-		// solve flux also if boundary cell on negative side of face
 		if (SInfo(*cell.data) < 0) {
 			continue;
 		}
 
-		if (current_substep % Substep(*cell.data) != 0) {
-			continue;
-		}
-
-		const auto& cpface = PFace(*cell.data);
+		//const auto& cpface = PFace(*cell.data);
 
 		// maximum substep period in neighborhood
-		int max_substep = Substep(*cell.data);
+		/*int max_substep = Substep(*cell.data);
 		for (const auto& neighbor: cell.neighbors_of) {
 			if (neighbor.face_neighbor == 0 and neighbor.edge_neighbor[0] < 0) {
 				continue;
@@ -182,40 +151,46 @@ template <
 				continue;
 			}
 			max_substep = std::max(Substep(*neighbor.data), max_substep);
-		}
+		}*/
+		const int csub = Substep(*cell.data);
 
 		for (const auto& neighbor: cell.neighbors_of) {
-			const auto& n = neighbor.face_neighbor;
-			// flux stored in neighbor and calculated by its owner
-			if (n == 0 or not cpface(n)) continue;
+			const auto& fn = neighbor.face_neighbor;
+			if (fn == 0) continue;
+
+			// solve flux only once between local cells
+			if (neighbor.is_local and fn < 0) continue;
 
 			if (SInfo(*neighbor.data) < 0) {
 				continue;
 			}
 
-			if (current_substep % Substep(*neighbor.data) != 0) {
+			if (
+				current_substep % Substep(*cell.data) != 0
+				and current_substep % Substep(*neighbor.data) != 0
+			) {
 				continue;
 			}
 
 			detail::MHD state_neg, state_pos;
 			// take into account direction of neighbor from cell
 			state_neg[mas_int] = Mas(*cell.data);
-			state_neg[mom_int] = get_rotated_vector(Mom(*cell.data), abs(n));
+			state_neg[mom_int] = get_rotated_vector(Mom(*cell.data), abs(fn));
 			state_neg[nrj_int] = Nrj(*cell.data);
-			state_neg[mag_int] = get_rotated_vector(Mag(*cell.data), abs(n));
+			state_neg[mag_int] = get_rotated_vector(Mag(*cell.data), abs(fn));
 
 			state_pos[mas_int] = Mas(*neighbor.data);
-			state_pos[mom_int] = get_rotated_vector(Mom(*neighbor.data), abs(n));
+			state_pos[mom_int] = get_rotated_vector(Mom(*neighbor.data), abs(fn));
 			state_pos[nrj_int] = Nrj(*neighbor.data);
-			state_pos[mag_int] = get_rotated_vector(Mag(*neighbor.data), abs(n));
-			if (n < 0) {
+			state_pos[mag_int] = get_rotated_vector(Mag(*neighbor.data), abs(fn));
+			if (fn < 0) {
 				const auto temp = state_neg;
 				state_neg = state_pos;
 				state_pos = temp;
 			}
 
 			const Magnetic_Field::data_type bg_face_b
-				= get_rotated_vector(Bg_B(*cell.data)(n), abs(n));
+				= get_rotated_vector(Bg_B(*cell.data)(fn), abs(fn));
 			detail::MHD flux;
 			double max_vel;
 			try {
@@ -259,7 +234,7 @@ template <
 					<< " and " << SInfo(*neighbor.data)
 					<< " at " << grid.geometry.get_center(cell.id)
 					<< " and " << grid.geometry.get_center(neighbor.id)
-					<< " in direction " << n
+					<< " in direction " << fn
 					<< " with states (mass, momentum, total energy, magnetic field): "
 					<< Mas(*cell.data) << ", "
 					<< Mom(*cell.data) << ", "
@@ -274,51 +249,93 @@ template <
 				abort();
 			}
 
-			Max_v(*cell.data)(n) = max_vel;
+			Max_v(*cell.data)(fn) = max_vel;
 
 			// rotate flux back
-			flux[mom_int] = get_rotated_vector(flux[mom_int], -abs(n));
-			flux[mag_int] = get_rotated_vector(flux[mag_int], -abs(n));
+			flux[mom_int] = get_rotated_vector(flux[mom_int], -abs(fn));
+			flux[mag_int] = get_rotated_vector(flux[mag_int], -abs(fn));
 
-			if (n == -1) {
-				Mas_fnx(*cell.data) = flux[mas_int];
-				Mom_fnx(*cell.data) = flux[mom_int];
-				Nrj_fnx(*cell.data) = flux[nrj_int];
-				Mag_fnx(*cell.data) = flux[mag_int];
+			const int nsub = Substep(*neighbor.data);
+			// size and substep factors for fluxes
+			double cfac = 1, nfac = 1;
+			// average smaller fluxes through large face
+			if (neighbor.relative_size > 0) {
+				cfac /= 4;
+			} else if (neighbor.relative_size < 0) {
+				nfac /= 4;
 			}
-			if (n == +1) {
-				Mas_fpx(*cell.data) = flux[mas_int];
-				Mom_fpx(*cell.data) = flux[mom_int];
-				Nrj_fpx(*cell.data) = flux[nrj_int];
-				Mag_fpx(*cell.data) = flux[mag_int];
+			// average out smaller fluxes through large face
+			if (csub > nsub) {
+				cfac /= 2;
+			} else if (csub < nsub) {
+				nfac /= 2;
 			}
-			if (n == -2) {
-				Mas_fny(*cell.data) = flux[mas_int];
-				Mom_fny(*cell.data) = flux[mom_int];
-				Nrj_fny(*cell.data) = flux[nrj_int];
-				Mag_fny(*cell.data) = flux[mag_int];
+
+			if (fn == -1) {
+				Mas_fnx(*cell.data) += cfac * flux[mas_int];
+				Mom_fnx(*cell.data) += cfac * flux[mom_int];
+				Nrj_fnx(*cell.data) += cfac * flux[nrj_int];
+				Mag_fnx(*cell.data) += cfac * flux[mag_int];
+				if (neighbor.is_local) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				}
 			}
-			if (n == +2) {
-				Mas_fpy(*cell.data) = flux[mas_int];
-				Mom_fpy(*cell.data) = flux[mom_int];
-				Nrj_fpy(*cell.data) = flux[nrj_int];
-				Mag_fpy(*cell.data) = flux[mag_int];
+			if (fn == +1) {
+				Mas_fpx(*cell.data) += cfac * flux[mas_int];
+				Mom_fpx(*cell.data) += cfac * flux[mom_int];
+				Nrj_fpx(*cell.data) += cfac * flux[nrj_int];
+				Mag_fpx(*cell.data) += cfac * flux[mag_int];
+				if (neighbor.is_local) {
+					Mas_fnx(*neighbor.data) += nfac * flux[mas_int];
+					Mom_fnx(*neighbor.data) += nfac * flux[mom_int];
+					Nrj_fnx(*neighbor.data) += nfac * flux[nrj_int];
+					Mag_fnx(*neighbor.data) += nfac * flux[mag_int];
+				}
 			}
-			if (n == -3) {
-				Mas_fnz(*cell.data) = flux[mas_int];
-				Mom_fnz(*cell.data) = flux[mom_int];
-				Nrj_fnz(*cell.data) = flux[nrj_int];
-				Mag_fnz(*cell.data) = flux[mag_int];
+			if (fn == -2) {
+				Mas_fny(*cell.data) += cfac * flux[mas_int];
+				Mom_fny(*cell.data) += cfac * flux[mom_int];
+				Nrj_fny(*cell.data) += cfac * flux[nrj_int];
+				Mag_fny(*cell.data) += cfac * flux[mag_int];
+				if (neighbor.is_local) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				}
 			}
-			if (n == +3) {
-				Mas_fpz(*cell.data) = flux[mas_int];
-				Mom_fpz(*cell.data) = flux[mom_int];
-				Nrj_fpz(*cell.data) = flux[nrj_int];
-				Mag_fpz(*cell.data) = flux[mag_int];
+			if (fn == +2) {
+				Mas_fpy(*cell.data) += cfac * flux[mas_int];
+				Mom_fpy(*cell.data) += cfac * flux[mom_int];
+				Nrj_fpy(*cell.data) += cfac * flux[nrj_int];
+				Mag_fpy(*cell.data) += cfac * flux[mag_int];
+				if (neighbor.is_local) {
+					Mas_fny(*neighbor.data) += nfac * flux[mas_int];
+					Mom_fny(*neighbor.data) += nfac * flux[mom_int];
+					Nrj_fny(*neighbor.data) += nfac * flux[nrj_int];
+					Mag_fny(*neighbor.data) += nfac * flux[mag_int];
+				}
+			}
+			if (fn == -3) {
+				Mas_fnz(*cell.data) += cfac * flux[mas_int];
+				Mom_fnz(*cell.data) += cfac * flux[mom_int];
+				Nrj_fnz(*cell.data) += cfac * flux[nrj_int];
+				Mag_fnz(*cell.data) += cfac * flux[mag_int];
+				if (neighbor.is_local) {
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+				}
+			}
+			if (fn == +3) {
+				Mas_fpz(*cell.data) += cfac * flux[mas_int];
+				Mom_fpz(*cell.data) += cfac * flux[mom_int];
+				Nrj_fpz(*cell.data) += cfac * flux[nrj_int];
+				Mag_fpz(*cell.data) += cfac * flux[mag_int];
+				if (neighbor.is_local) {
+					Mas_fnz(*neighbor.data) += nfac * flux[mas_int];
+					Mom_fnz(*neighbor.data) += nfac * flux[mom_int];
+					Nrj_fnz(*neighbor.data) += nfac * flux[nrj_int];
+					Mag_fnz(*neighbor.data) += nfac * flux[mag_int];
+				}
 			}
 		}
 	}
-	return max_dt;
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
@@ -390,11 +407,11 @@ template <
 		Mag_fnz = get<4>(Mag_f), Mag_fpz = get<5>(Mag_f);
 
 	for (const auto& cell: grid.local_cells()) {
-		if (current_substep % Substep(*cell.data) == 0) {
+		if (current_substep % Substep(*cell.data) != 0) {
 			continue;
 		}
 
-		int max_substep = Substep(*cell.data);
+		/*int max_substep = Substep(*cell.data);
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
 			if (fn == 0 and neighbor.edge_neighbor[0] < 0) {
@@ -404,7 +421,7 @@ template <
 				continue;
 			}
 			max_substep = std::max(Substep(*neighbor.data), max_substep);
-		}
+		}*/
 
 		auto& edge_e = Edge_E(*cell.data);
 		// track number of contributions to edge_e()s
@@ -419,6 +436,24 @@ template <
 		const auto& cpface = PFace(*cell.data); // primary face true/false
 		const auto& cfinfo = FInfo(*cell.data); // face type -1/0/+1
 		const auto& cpedge = PEdge(*cell.data); // primary edge true/false
+
+		const auto [dx, dy, dz] = grid.geometry.get_length(cell.id);
+		const double dtdx = sub_dt/dx*Substep(*cell.data), dtdy = sub_dt/dy*Substep(*cell.data), dtdz = sub_dt/dz*Substep(*cell.data);
+
+		// Apply fluxes
+		Mas(*cell.data) += (Mas_fnx(*cell.data) - Mas_fpx(*cell.data))*dtdx;
+		Mas(*cell.data) += (Mas_fny(*cell.data) - Mas_fpy(*cell.data))*dtdy;
+		Mas(*cell.data) += (Mas_fnz(*cell.data) - Mas_fpz(*cell.data))*dtdz;
+		Mom(*cell.data) += (Mom_fnx(*cell.data) - Mom_fpx(*cell.data))*dtdx;
+		Nrj(*cell.data) += (Nrj_fnx(*cell.data) - Nrj_fpx(*cell.data))*dtdx;
+		Mag(*cell.data) += (Mag_fnx(*cell.data) - Mag_fpx(*cell.data))*dtdx;
+		Mom(*cell.data) += (Mom_fny(*cell.data) - Mom_fpy(*cell.data))*dtdy;
+		Nrj(*cell.data) += (Nrj_fny(*cell.data) - Nrj_fpy(*cell.data))*dtdy;
+		Mag(*cell.data) += (Mag_fny(*cell.data) - Mag_fpy(*cell.data))*dtdy;
+		Mom(*cell.data) += (Mom_fnz(*cell.data) - Mom_fpz(*cell.data))*dtdz;
+		Nrj(*cell.data) += (Nrj_fnz(*cell.data) - Nrj_fpz(*cell.data))*dtdz;
+		Mag(*cell.data) += (Mag_fnz(*cell.data) - Mag_fpz(*cell.data))*dtdz;
+
 
 		/*! Contributions to edge electric fields
 
@@ -601,7 +636,6 @@ template <
 			}
 		}
 
-		const auto [dx, dy, dz] = grid.geometry.get_length(cell.id);
 		const auto cleni = grid.mapping.get_cell_length_in_indices(cell.id);
 
 		for (const auto& neighbor: cell.neighbors_of) {
@@ -613,103 +647,6 @@ template <
 
 			if (current_substep % Substep(*neighbor.data) != 0) {
 				continue;
-			}
-
-			const auto dt = sub_dt * std::max(Substep(*cell.data), Substep(*neighbor.data));
-			const auto [dtdx, dtdy, dtdz] = [&]{
-				if (neighbor.relative_size > 0) {
-					return make_tuple(dt/dx/4, dt/dy/4, dt/dz/4);
-				} else {
-					return make_tuple(dt/dx, dt/dy, dt/dz);
-				}
-			}();
-
-			/*
-			Apply fluxes
-			*/
-
-			if (fn == -1) {
-				if (cpface(fn)) {
-					Mas(*cell.data) += Mas_fnx(*cell.data)*dtdx;
-					Mom(*cell.data) += Mom_fnx(*cell.data)*dtdx;
-					Nrj(*cell.data) += Nrj_fnx(*cell.data)*dtdx;
-					Mag(*cell.data) += Mag_fnx(*cell.data)*dtdx;
-				} else {
-					Mas(*cell.data) += Mas_fpx(*neighbor.data)*dtdx;
-					Mom(*cell.data) += Mom_fpx(*neighbor.data)*dtdx;
-					Nrj(*cell.data) += Nrj_fpx(*neighbor.data)*dtdx;
-					Mag(*cell.data) += Mag_fpx(*neighbor.data)*dtdx;
-				}
-			}
-
-			if (fn == +1) {
-				if (cpface(fn)) {
-					Mas(*cell.data) -= Mas_fpx(*cell.data)*dtdx;
-					Mom(*cell.data) -= Mom_fpx(*cell.data)*dtdx;
-					Nrj(*cell.data) -= Nrj_fpx(*cell.data)*dtdx;
-					Mag(*cell.data) -= Mag_fpx(*cell.data)*dtdx;
-				} else {
-					Mas(*cell.data) -= Mas_fnx(*neighbor.data)*dtdx;
-					Mom(*cell.data) -= Mom_fnx(*neighbor.data)*dtdx;
-					Nrj(*cell.data) -= Nrj_fnx(*neighbor.data)*dtdx;
-					Mag(*cell.data) -= Mag_fnx(*neighbor.data)*dtdx;
-				}
-			}
-
-			if (fn == -2) {
-				if (cpface(fn)) {
-					Mas(*cell.data) += Mas_fny(*cell.data)*dtdy;
-					Mom(*cell.data) += Mom_fny(*cell.data)*dtdy;
-					Nrj(*cell.data) += Nrj_fny(*cell.data)*dtdy;
-					Mag(*cell.data) += Mag_fny(*cell.data)*dtdy;
-				} else {
-					Mas(*cell.data) += Mas_fpy(*neighbor.data)*dtdy;
-					Mom(*cell.data) += Mom_fpy(*neighbor.data)*dtdy;
-					Nrj(*cell.data) += Nrj_fpy(*neighbor.data)*dtdy;
-					Mag(*cell.data) += Mag_fpy(*neighbor.data)*dtdy;
-				}
-			}
-
-			if (fn == +2) {
-				if (cpface(fn)) {
-					Mas(*cell.data) -= Mas_fpy(*cell.data)*dtdy;
-					Mom(*cell.data) -= Mom_fpy(*cell.data)*dtdy;
-					Nrj(*cell.data) -= Nrj_fpy(*cell.data)*dtdy;
-					Mag(*cell.data) -= Mag_fpy(*cell.data)*dtdy;
-				} else {
-					Mas(*cell.data) -= Mas_fny(*neighbor.data)*dtdy;
-					Mom(*cell.data) -= Mom_fny(*neighbor.data)*dtdy;
-					Nrj(*cell.data) -= Nrj_fny(*neighbor.data)*dtdy;
-					Mag(*cell.data) -= Mag_fny(*neighbor.data)*dtdy;
-				}
-			}
-
-			if (fn == -3) {
-				if (cpface(fn)) {
-					Mas(*cell.data) += Mas_fnz(*cell.data)*dtdz;
-					Mom(*cell.data) += Mom_fnz(*cell.data)*dtdz;
-					Nrj(*cell.data) += Nrj_fnz(*cell.data)*dtdz;
-					Mag(*cell.data) += Mag_fnz(*cell.data)*dtdz;
-				} else {
-					Mas(*cell.data) += Mas_fpz(*neighbor.data)*dtdz;
-					Mom(*cell.data) += Mom_fpz(*neighbor.data)*dtdz;
-					Nrj(*cell.data) += Nrj_fpz(*neighbor.data)*dtdz;
-					Mag(*cell.data) += Mag_fpz(*neighbor.data)*dtdz;
-				}
-			}
-
-			if (fn == +3) {
-				if (cpface(fn)) {
-					Mas(*cell.data) -= Mas_fpz(*cell.data)*dtdz;
-					Mom(*cell.data) -= Mom_fpz(*cell.data)*dtdz;
-					Nrj(*cell.data) -= Nrj_fpz(*cell.data)*dtdz;
-					Mag(*cell.data) -= Mag_fpz(*cell.data)*dtdz;
-				} else {
-					Mas(*cell.data) -= Mas_fnz(*neighbor.data)*dtdz;
-					Mom(*cell.data) -= Mom_fnz(*neighbor.data)*dtdz;
-					Nrj(*cell.data) -= Nrj_fnz(*neighbor.data)*dtdz;
-					Mag(*cell.data) -= Mag_fnz(*neighbor.data)*dtdz;
-				}
 			}
 
 			/*
@@ -1346,6 +1283,76 @@ template <
 }
 
 
+template <
+	class Grid,
+	class Mass_Density_Flux_Getters,
+	class Momentum_Density_Flux_Getters,
+	class Total_Energy_Density_Flux_Getters,
+	class Magnetic_Field_Flux_Getters,
+	class Substepping_Period_Getter
+> void clear_fluxes(
+	Grid& grid,
+	const int current_substep,
+	const Mass_Density_Flux_Getters Mas_f,
+	const Momentum_Density_Flux_Getters Mom_f,
+	const Total_Energy_Density_Flux_Getters Nrj_f,
+	const Magnetic_Field_Flux_Getters Mag_f,
+	const Substepping_Period_Getter Substep
+) try {
+	using std::get;
+
+	const auto
+		Mas_fnx = get<0>(Mas_f), Mas_fpx = get<1>(Mas_f),
+		Mas_fny = get<2>(Mas_f), Mas_fpy = get<3>(Mas_f),
+		Mas_fnz = get<4>(Mas_f), Mas_fpz = get<5>(Mas_f),
+		Mom_fnx = get<0>(Mom_f), Mom_fpx = get<1>(Mom_f),
+		Mom_fny = get<2>(Mom_f), Mom_fpy = get<3>(Mom_f),
+		Mom_fnz = get<4>(Mom_f), Mom_fpz = get<5>(Mom_f),
+		Nrj_fnx = get<0>(Nrj_f), Nrj_fpx = get<1>(Nrj_f),
+		Nrj_fny = get<2>(Nrj_f), Nrj_fpy = get<3>(Nrj_f),
+		Nrj_fnz = get<4>(Nrj_f), Nrj_fpz = get<5>(Nrj_f),
+		Mag_fnx = get<0>(Mag_f), Mag_fpx = get<1>(Mag_f),
+		Mag_fny = get<2>(Mag_f), Mag_fpy = get<3>(Mag_f),
+		Mag_fnz = get<4>(Mag_f), Mag_fpz = get<5>(Mag_f);
+
+	for (const auto& cell: grid.local_cells()) {
+		if (current_substep % Substep(*cell.data) != 0) {
+			continue;
+		}
+
+		Mas_fnx(*cell.data) =
+		Mas_fny(*cell.data) =
+		Mas_fnz(*cell.data) =
+		Mas_fpx(*cell.data) =
+		Mas_fpy(*cell.data) =
+		Mas_fpz(*cell.data) =
+		Nrj_fnx(*cell.data) =
+		Nrj_fny(*cell.data) =
+		Nrj_fnz(*cell.data) =
+		Nrj_fpx(*cell.data) =
+		Nrj_fpy(*cell.data) =
+		Nrj_fpz(*cell.data) = 0;
+
+		Mom_fnx(*cell.data) =
+		Mom_fny(*cell.data) =
+		Mom_fnz(*cell.data) =
+		Mom_fpx(*cell.data) =
+		Mom_fpy(*cell.data) =
+		Mom_fpz(*cell.data) =
+		Mag_fnx(*cell.data) =
+		Mag_fny(*cell.data) =
+		Mag_fnz(*cell.data) =
+		Mag_fpx(*cell.data) =
+		Mag_fpy(*cell.data) =
+		Mag_fpz(*cell.data) = {0, 0, 0};
+	}
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
+
+
 /*! Solves new face magnetic fields from edge electric fields.
 
 Equations 13-15 of https://doi.org/10.1006/jcph.1998.6153
@@ -1828,184 +1835,30 @@ template <
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
 
+/*! Converts substepping periods from 2^N to N format.
 
-//! Returns length of substep and max substep interval among all cells
+Returns new largest N.
+*/
 template <
 	class Grid,
-	class Primary_Face_Getter,
 	class Solver_Info_Getter,
 	class Substepping_Period_Getter,
-	class Max_Velocity_Getter
-> std::tuple<double, int> update_substeps(
+	class Substep_Max_Getter
+> int update_substeps(
 	Grid& grid,
-	const double max_dt,
-	const double dt_factor,
-	const Primary_Face_Getter PFace,
 	const Solver_Info_Getter SInfo,
 	const Substepping_Period_Getter Substep,
-	const Max_Velocity_Getter Max_v
+	const Substep_Max_Getter /*Substep_Max*/
 ) try {
-	using std::make_tuple;
-	using std::max;
-	using std::min;
-
-	if (max_dt <= 0) {
-		return make_tuple(0.0, 1);
-	}
-
-	double
-		min_dt_local = std::numeric_limits<double>::max(),
-		min_dt_global = std::numeric_limits<double>::max();
-	for (const auto& cell: grid.local_cells()) {
-		if (SInfo(*cell.data) < 0) {
-			continue;
-		}
-
-		const auto clen = grid.geometry.get_length(cell.id);
-		const auto& cpface = PFace(*cell.data);
-		for (const auto& neighbor: cell.neighbors_of) {
-			const auto& fn = neighbor.face_neighbor;
-			if (fn == 0 or SInfo(*neighbor.data) < 0) {
-				continue;
-			}
-
-			const auto neigh_dim = size_t(abs(fn) - 1);
-			if (cpface(fn)) {
-				min_dt_local = min(clen[neigh_dim] / Max_v(*cell.data)(fn), min_dt_local);
-			} else {
-				min_dt_local = min(clen[neigh_dim] / Max_v(*neighbor.data)(-fn), min_dt_local);
-				const auto& npface = PFace(*neighbor.data);
-				if (not npface(-fn)) {
-					throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
-				}
-			}
-		}
-	}
-	auto comm = grid.get_communicator();
-	if (
-		MPI_Allreduce(
-			&min_dt_local,
-			&min_dt_global,
-			1,
-			MPI_DOUBLE,
-			MPI_MIN,
-			comm
-		) != MPI_SUCCESS
-	) {
-		std::cerr << __FILE__ "(" << __LINE__
-			<< "): Couldn't reduce min_dt_local."
-			<< std::endl;
-		abort();
-	}
-	min_dt_global *= dt_factor;
-	if (min_dt_global > max_dt) {
-		min_dt_global = max_dt;
-	}
-
-	for (const auto& cell: grid.local_cells()) {
-		if (SInfo(*cell.data) < 0) {
-			continue;
-		}
-
-		double min_dt_cell = std::numeric_limits<double>::max();
-		const auto clen = grid.geometry.get_length(cell.id);
-		const auto& cpface = PFace(*cell.data);
-
-		for (const auto& neighbor: cell.neighbors_of) {
-			const auto& fn = neighbor.face_neighbor;
-			if (fn == 0 or SInfo(*neighbor.data) < 0) {
-				continue;
-			}
-
-			const auto neigh_dim = size_t(abs(fn) - 1);
-			if (cpface(fn)) {
-				min_dt_cell = min(clen[neigh_dim] / Max_v(*cell.data)(fn), min_dt_cell);
-			} else {
-				min_dt_cell = min(clen[neigh_dim] / Max_v(*neighbor.data)(-fn), min_dt_cell);
-			}
-		}
-		min_dt_cell *= dt_factor;
-		// 2^N form
-		if (min_dt_cell > 0) {
-			Substep(*cell.data) = max(0, (int)std::floor(std::log2(min_dt_cell / min_dt_global)));
-		} else {
-			Substep(*cell.data) = 0;
-		}
-	}
-
-	// reduce substep difference between neighbors to 2x
-	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Substepping_Period());
-	uint64_t modified_cells = 0;
 	int max_substep = 0;
-	do {
-		grid.update_copies_of_remote_neighbors();
-		uint64_t modified_cells_local = 0;
-		int max_substep_local = 0;
-		for (const auto& cell: grid.local_cells()) {
-			if (SInfo(*cell.data) < 0) {
-				continue;
-			}
-			for (const auto& neighbor: cell.neighbors_of) {
-				if (neighbor.face_neighbor == 0 and neighbor.edge_neighbor[0] < 0) {
-					continue;
-				}
-				if (SInfo(*neighbor.data) < 0) {
-					continue;
-				}
-
-				if (Substep(*cell.data) > Substep(*neighbor.data) + 1) {
-					Substep(*cell.data) = Substep(*neighbor.data) + 1;
-					modified_cells_local++;
-				}
-				max_substep_local = max(Substep(*cell.data), max_substep_local);
-			}
-		}
-		if (
-			MPI_Allreduce(
-				&modified_cells_local,
-				&modified_cells,
-				1,
-				MPI_UINT64_T,
-				MPI_SUM,
-				comm
-			) != MPI_SUCCESS
-		) {
-			std::cerr << __FILE__ "(" << __LINE__
-				<< "): Couldn't reduce modified cell count."
-				<< std::endl;
-			abort();
-		}
-		if (modified_cells == 0) {
-			if (
-				MPI_Allreduce(
-					&max_substep_local,
-					&max_substep,
-					1,
-					MPI_INT,
-					MPI_MAX,
-					comm
-				) != MPI_SUCCESS
-			) {
-				std::cerr << __FILE__ "(" << __LINE__
-					<< "): Couldn't reduce modified cell count."
-					<< std::endl;
-				abort();
-			}
-		}
-	} while (modified_cells > 0);
-	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Substepping_Period());
-	MPI_Comm_free(&comm);
-
-	// convert substep from 2^N to N
-	max_substep = 1 << max_substep;
 	for (const auto& cell: grid.local_cells()) {
 		if (SInfo(*cell.data) < 0) {
 			continue;
 		}
 		Substep(*cell.data) = 1 << Substep(*cell.data);
+		max_substep = std::max(Substep(*cell.data), max_substep);
 	}
-
-	return make_tuple(min_dt_global, max_substep);
+	return max_substep;
 
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
@@ -2033,13 +1886,18 @@ template <
 	class Primary_Edge_Getter,
 	class Solver_Info_Getter,
 	class Face_Info_Getter,
+	class Timestep_Getter,
 	class Substepping_Period_Getter,
+	class Substep_Min_Getter,
+	class Substep_Max_Getter,
 	class Max_Velocity_Getter
 > double timestep(
 	const Solver solver,
 	Grid& grid,
-	const double max_time_step,
-	const double time_step_factor,
+	Options& options_mhd,
+	const double simulation_time,
+	double max_time_step,
+	const double /*time_step_factor*/,
 	const double adiabatic_index,
 	const double vacuum_permeability,
 	const Mass_Density_Getter Mas,
@@ -2057,19 +1915,47 @@ template <
 	const Primary_Edge_Getter PEdge,
 	const Solver_Info_Getter SInfo,
 	const Face_Info_Getter FInfo,
+	const Timestep_Getter /*Timestep*/,
 	const Substepping_Period_Getter Substep,
+	const Substep_Min_Getter Substep_Min,
+	const Substep_Max_Getter Substep_Max,
 	const Max_Velocity_Getter Max_v
 ) try {
 	using std::max;
 	using std::min;
 
-	const auto [sub_dt, max_substep] = update_substeps(
-		grid, max_time_step, time_step_factor,
-		PFace, SInfo, Substep, Max_v);
+	set_minmax_substepping_period(
+		simulation_time,
+		grid,
+		options_mhd,
+		Substep_Min,
+		Substep_Max
+	);
 
-std::cout << "\n" __FILE__ "(" << __LINE__ << ") Entering substep loop: " << sub_dt << " " << max_substep << std::endl;
+	/*max_time_step = set_minmax_substepping_period(
+		grid,
+		max_time_step,
+		time_step_factor,
+		PFace,
+		SInfo,
+		Timestep,
+		Substep_Min,
+		Substep_Max,
+		Max_v
+	);*/
+
+	auto [sub_dt, max_substep] = restrict_substepping_period(
+		grid,
+		max_time_step,
+		Substep,
+		Substep_Max,
+		SInfo
+	);
+
+	max_substep = update_substeps(grid, SInfo, Substep, Substep_Max);
+
 	double total_dt = 0;
-	for (int substep = 1; substep <= max_substep; substep++) {
+	for (int substep = 1; substep <= max_substep; substep += 1) {
 		total_dt += sub_dt;
 
 	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::MHD_State_Conservative());
@@ -2123,6 +2009,11 @@ std::cout << "\n" __FILE__ "(" << __LINE__ << ") Entering substep loop: " << sub
 		pamhd::mhd::MHD_State_Conservative()
 	);
 
+	pamhd::mhd::clear_fluxes(
+		grid, substep, Mas_fs, Mom_fs,
+		Nrj_fs, Mag_fs, Substep
+	);
+
 	pamhd::mhd::get_face_magnetic_field(
 		grid.local_cells(), grid,
 		sub_dt, substep, Face_B, Edge_E,
@@ -2154,6 +2045,302 @@ std::cout << "\n" __FILE__ "(" << __LINE__ << ") Entering substep loop: " << sub
 	}
 
 	return total_dt;
+
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
+
+
+//! Reduces substep difference between neighbors to at most 1
+template <
+	class Grid,
+	class Substepping_Period_Getter,
+	class Substep_Max_Getter,
+	class Solver_Info_Getter
+> std::tuple<double, int> restrict_substepping_period(
+	Grid& grid,
+	const double timestep,
+	const Substepping_Period_Getter Substep,
+	const Substep_Max_Getter Substep_Max,
+	const Solver_Info_Getter SInfo
+) try {
+	using std::max;
+	using std::min;
+
+	auto comm = grid.get_communicator();
+	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Substepping_Period());
+
+	for (const auto& cell: grid.local_cells()) {
+		if (SInfo(*cell.data) < 0) {
+			continue;
+		}
+		Substep(*cell.data) = Substep_Max(*cell.data);
+	}
+
+	uint64_t modified_cells = 0;
+	int max_substep_local;
+	do {
+		max_substep_local = 0;
+		grid.update_copies_of_remote_neighbors();
+		uint64_t modified_cells_local = 0;
+		for (const auto& cell: grid.local_cells()) {
+			if (SInfo(*cell.data) < 0) {
+				continue;
+			}
+			for (const auto& neighbor: cell.neighbors_of) {
+				if (neighbor.face_neighbor == 0 and neighbor.edge_neighbor[0] < 0) {
+					continue;
+				}
+				if (SInfo(*neighbor.data) < 0) {
+					continue;
+				}
+
+				if (Substep(*cell.data) > Substep(*neighbor.data) + 1) {
+					Substep(*cell.data) = Substep(*neighbor.data) + 1;
+					modified_cells_local++;
+				}
+				max_substep_local = max(Substep(*cell.data), max_substep_local);
+			}
+		}
+		if (
+			MPI_Allreduce(
+				&modified_cells_local,
+				&modified_cells,
+				1,
+				MPI_UINT64_T,
+				MPI_SUM,
+				comm
+			) != MPI_SUCCESS
+		) {
+			std::cerr << __FILE__ "(" << __LINE__
+				<< "): Couldn't reduce modified cell count."
+				<< std::endl;
+			abort();
+		}
+	} while (modified_cells > 0);
+	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Substepping_Period());
+	int max_substep_global = -1;
+	if (
+		MPI_Allreduce(
+			&max_substep_local,
+			&max_substep_global,
+			1,
+			MPI_INT,
+			MPI_MAX,
+			comm
+		) != MPI_SUCCESS
+	) {
+		std::cerr << __FILE__ "(" << __LINE__
+			<< "): Couldn't reduce max_substep."
+			<< std::endl;
+		abort();
+	}
+
+	double sub_dt_local = std::numeric_limits<double>::max();
+	for (const auto& cell: grid.local_cells()) {
+		if (SInfo(*cell.data) < 0) {
+			continue;
+		}
+		sub_dt_local = min(timestep / (1 << Substep(*cell.data)), sub_dt_local);
+	}
+	double sub_dt_global = -1;
+	if (
+		MPI_Allreduce(
+			&sub_dt_local,
+			&sub_dt_global,
+			1,
+			MPI_DOUBLE,
+			MPI_MIN,
+			comm
+		) != MPI_SUCCESS
+	) {
+		std::cerr << __FILE__ "(" << __LINE__
+			<< "): Couldn't reduce sub_dt."
+			<< std::endl;
+		abort();
+	}
+	MPI_Comm_free(&comm);
+
+	return std::make_tuple(sub_dt_global, max_substep_global);
+
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
+
+
+//! Sets min and max substepping periods based on geometry.
+template <
+	class Grid,
+	class Substep_Min_Getter,
+	class Substep_Max_Getter
+> void set_minmax_substepping_period(
+	double time,
+	Grid& grid,
+	Options& options_mhd,
+	const Substep_Min_Getter Substep_Min,
+	const Substep_Max_Getter Substep_Max
+) try {
+	for (const auto& cell: grid.local_cells()) {
+		const auto c = grid.geometry.get_center(cell.id);
+		const auto
+			r = std::sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]),
+			lat = std::asin(c[2] / r),
+			lon = std::atan2(c[1], c[0]);
+		if (options_mhd.substep_min_i > 0) {
+			Substep_Min(*cell.data) = options_mhd.substep_min_i;
+		} else {
+			Substep_Min(*cell.data) = options_mhd.substep_min_e.evaluate(time, c[0], c[1], c[2], r, lat, lon);
+		}
+		if (options_mhd.substep_max_i > 0) {
+			Substep_Max(*cell.data) = options_mhd.substep_max_i;
+		} else {
+			Substep_Max(*cell.data) = options_mhd.substep_max_e.evaluate(time, c[0], c[1], c[2], r, lat, lon);
+		}
+	}
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
+
+
+/*! Restricts min and max substepping periods based on physics.
+
+max_dt is length of time step requested
+by user regardless of dt_factor.
+
+Returns max_dt/2^N with smallest N with which returned value
+is no larger than largest timestep allowed in cells. These
+cells' substepping period is largest of all cells.
+*/
+template <
+	class Grid,
+	class Primary_Face_Getter,
+	class Solver_Info_Getter,
+	class Timestep_Getter,
+	class Substep_Min_Getter,
+	class Substep_Max_Getter,
+	class Max_Velocity_Getter
+> double set_minmax_substepping_period(
+	Grid& grid,
+	double max_dt,
+	const double dt_factor,
+	const Primary_Face_Getter PFace,
+	const Solver_Info_Getter SInfo,
+	const Timestep_Getter Timestep,
+	const Substep_Min_Getter Substep_Min,
+	const Substep_Max_Getter Substep_Max,
+	const Max_Velocity_Getter Max_v
+) try {
+	using std::max;
+	using std::min;
+
+	// calculate range of dts allowed in cells
+	double
+		smallest_dt_local = std::numeric_limits<double>::max(),
+		largest_dt_local = 0;
+	for (const auto& cell: grid.local_cells()) {
+		if (SInfo(*cell.data) < 0) {
+			continue;
+		}
+
+		Timestep(*cell.data) = std::numeric_limits<double>::max();
+		const auto clen = grid.geometry.get_length(cell.id);
+		const auto& cpface = PFace(*cell.data);
+		for (const auto& neighbor: cell.neighbors_of) {
+			const auto& fn = neighbor.face_neighbor;
+			if (fn == 0 or SInfo(*neighbor.data) < 0) {
+				continue;
+			}
+
+			const auto neigh_dim = size_t(abs(fn) - 1);
+			// no need for nlen, face owner never larger than neighbor
+			double dt = -1;
+			if (cpface(fn)) {
+				dt = clen[neigh_dim] / Max_v(*cell.data)(fn);
+			} else {
+				dt = clen[neigh_dim] / Max_v(*neighbor.data)(-fn);
+				const auto& npface = PFace(*neighbor.data);
+				if (not npface(-fn)) {
+					throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+				}
+			}
+			Timestep(*cell.data) = min(dt, Timestep(*cell.data));
+		}
+		Timestep(*cell.data) *= dt_factor;
+		smallest_dt_local = min(Timestep(*cell.data), smallest_dt_local);
+		largest_dt_local = max(Timestep(*cell.data), largest_dt_local);
+	}
+	auto comm = grid.get_communicator();
+	double smallest_dt_global = -1, largest_dt_global = -1;
+	if (
+		MPI_Allreduce(
+			&smallest_dt_local,
+			&smallest_dt_global,
+			1,
+			MPI_DOUBLE,
+			MPI_MIN,
+			comm
+		) != MPI_SUCCESS
+	) {
+		std::cerr << __FILE__ "(" << __LINE__
+			<< "): Couldn't reduce smallest_dt."
+			<< std::endl;
+		abort();
+	}
+	if (
+		MPI_Allreduce(
+			&largest_dt_local,
+			&largest_dt_global,
+			1,
+			MPI_DOUBLE,
+			MPI_MIN,
+			comm
+		) != MPI_SUCCESS
+	) {
+		std::cerr << __FILE__ "(" << __LINE__
+			<< "): Couldn't reduce largest_dt."
+			<< std::endl;
+		abort();
+	}
+
+	if (max_dt <= smallest_dt_global) {
+		for (const auto& cell: grid.local_cells()) {
+			Substep_Min(*cell.data) =
+			Substep_Max(*cell.data) = 0;
+		}
+		return max_dt;
+	}
+
+	// iterate largest substepping period only once
+	while (max_dt > largest_dt_global) {
+		max_dt /= 2;
+	}
+
+	// restrict substepping periods relative to max_dt
+	for (const auto& cell: grid.local_cells()) {
+		const auto& dt = Timestep(*cell.data) * dt_factor;
+		// 2^N form
+		if (dt > 0) {
+			int step = max(0, (int)std::floor(std::log2(dt / max_dt)));
+			// don't solve less frequently than required
+			if (Substep_Max(*cell.data) > step) {
+				Substep_Max(*cell.data) = step;
+			}
+			if (Substep_Min(*cell.data) > Substep_Max(*cell.data)) {
+				Substep_Min(*cell.data) = Substep_Max(*cell.data);
+			}
+		} else {
+			Substep_Min(*cell.data) =
+			Substep_Max(*cell.data) = 0;
+		}
+	}
+
+	return max_dt;
 
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());

@@ -138,12 +138,14 @@ Returns data of given range() of cells in cell list(s) returned by get_cells().
 
 See end of file for example usage.
 '''
-def get_cell_data(infile, metadata, range_):
+def get_cell_data(infile, metadata, range_, variables = None):
 	from numpy import fromfile
 	ret_val = []
 	for i in range_:
 		ret_val.append(dict())
-		for varname in metadata['var_data_start']:
+		if variables == None:
+			variables = list(metadata['var_data_start'])
+		for varname in variables:
 			infile.seek(metadata['var_data_start'][varname], 0)
 			if varname == 'mhd     ':
 				infile.seek(i*8*8, 1)
@@ -178,9 +180,15 @@ def get_cell_data(infile, metadata, range_):
 			elif varname == 'substep ':
 				infile.seek(i*4, 1)
 				ret_val[-1][varname] = fromfile(infile, dtype = 'intc', count = 1)[0]
+			elif varname == 'substmin':
+				infile.seek(i*4, 1)
+				ret_val[-1][varname] = fromfile(infile, dtype = 'intc', count = 1)[0]
+			elif varname == 'substmax':
+				infile.seek(i*4, 1)
+				ret_val[-1][varname] = fromfile(infile, dtype = 'intc', count = 1)[0]
 			else:
-				if varname != 'fluxes  ':
-					exit('Unsupported variable: ' + varname)
+				if varname != 'fluxes  ' and varname != 'timestep':
+					print('Unsupported variable: ' + varname)
 	return ret_val
 
 

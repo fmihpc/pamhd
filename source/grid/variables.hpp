@@ -1,7 +1,7 @@
 /*
 Grid-related stuff common to all PAMHD models.
 
-Copyright 2022, 2023 Finnish Meteorological Institute
+Copyright 2022, 2023, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +28,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_GRID_VARIABLES_HPP
@@ -252,6 +255,23 @@ struct Edge_Neighbor {
 			this->edge_neighbor[0] = -1;
 			return;
 		}
+	}
+};
+
+//! whether cell's neighbor is stored by this MPI rank
+struct Is_Local {
+	bool is_local = false;
+
+	template<
+		class Grid, class Cell_Item, class Neighbor_Item
+	> void update(
+		const Grid& grid,
+		const Cell_Item&,
+		const Neighbor_Item& neighbor,
+		const int&,
+		const Is_Local&
+	) {
+		this->is_local = grid.is_local(neighbor.id);
 	}
 };
 

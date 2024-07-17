@@ -632,6 +632,10 @@ template<
 /*! Adapts given grid based on target min and max refinement level.
 
 Grid is adapted at most grid.get_maximum_refinement_level() times.
+Cells whose refinement level is smaller than target minimum are
+refined.
+Cells whose refinement level is larger than target maximum are
+unrefined.
 
 Handlers must have following operator() signature:
 nch(grid, new_cells);

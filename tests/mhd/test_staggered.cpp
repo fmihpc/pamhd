@@ -77,7 +77,8 @@ using Grid = dccrg::Dccrg<
 	std::tuple<
 		pamhd::grid::Face_Neighbor,
 		pamhd::grid::Edge_Neighbor,
-		pamhd::grid::Relative_Size>
+		pamhd::grid::Relative_Size,
+		pamhd::grid::Is_Local>
 >;
 
 // returns reference to background magnetic field on cell faces
@@ -127,6 +128,18 @@ const auto Sol_Info2 = [](Cell& cell_data)->int {
 
 const auto Substep = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::mhd::Substepping_Period()];
+};
+
+const auto Substep_Min = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::Substep_Min()];
+};
+
+const auto Substep_Max = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::Substep_Max()];
+};
+
+const auto Timestep = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::Timestep()];
 };
 
 const auto Max_v = [](Cell& cell_data)->auto& {
@@ -465,15 +478,22 @@ int main(int argc, char* argv[])
 		Substep(*cell.data) = 1;
 		Max_v(*cell.data) = {-1, -1, -1, -1, -1, -1};
 	}
+	pamhd::mhd::set_minmax_substepping_period(
+		options_sim.time_start, grid,
+		options_mhd, Substep_Min, Substep_Max);
 	Cell::set_transfer_all(true,
 		pamhd::mhd::Max_Velocity(),
 		pamhd::mhd::Substepping_Period(),
+		pamhd::mhd::Substep_Min(),
+		pamhd::mhd::Substep_Max(),
 		pamhd::MPI_Rank()
 	);
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(false,
 		pamhd::mhd::Max_Velocity(),
 		pamhd::mhd::Substepping_Period(),
+		pamhd::mhd::Substep_Min(),
+		pamhd::mhd::Substep_Max(),
 		pamhd::MPI_Rank()
 	);
 
@@ -634,13 +654,14 @@ int main(int argc, char* argv[])
 
 	// initialize max velocities from cell faces
 	pamhd::mhd::timestep(
-		mhd_solver, grid, 0,
-		options_mhd.time_step_factor,
+		mhd_solver, grid, options_mhd, options_sim.time_start,
+		0, options_mhd.time_step_factor,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		Mas, Mom, Nrj, Mag, Face_B, Edge_E, Bg_B,
 		Mas_fs, Mom_fs, Nrj_fs, Mag_fs, PFace,
-		PEdge, Sol_Info2, FInfo, Substep, Max_v
+		PEdge, Sol_Info2, FInfo, Timestep, Substep,
+		Substep_Min, Substep_Max, Max_v
 	);
 	size_t simulation_step = 0;
 	constexpr uint64_t file_version = 3;
@@ -677,13 +698,14 @@ int main(int argc, char* argv[])
 				<< " s" << flush;
 		}
 		auto dt = pamhd::mhd::timestep(
-			mhd_solver, grid, options_sim.time_step,
-			options_mhd.time_step_factor,
+			mhd_solver, grid, options_mhd, simulation_time,
+			options_sim.time_step, options_mhd.time_step_factor,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			Mas, Mom, Nrj, Mag, Face_B, Edge_E, Bg_B,
 			Mas_fs, Mom_fs, Nrj_fs, Mag_fs, PFace,
-			PEdge, Sol_Info2, FInfo, Substep, Max_v
+			PEdge, Sol_Info2, FInfo, Timestep, Substep,
+			Substep_Min, Substep_Max, Max_v
 		);
 		simulation_time += dt;
 

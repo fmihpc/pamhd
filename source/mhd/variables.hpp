@@ -189,6 +189,19 @@ struct Substepping_Period {
 	using data_type = int;
 };
 
+//! Minimum substep period, solved no more often than every Nth substep
+struct Substep_Min {
+	using data_type = int;
+	static const std::string get_name() { return {"Minimum substepping period"}; }
+};
+
+//! Maximum substep period, solved no less often than every Nth substep
+struct Substep_Max {
+	using data_type = int;
+	static const std::string get_name() { return {"Maximum substepping period"}; }
+};
+
+
 // cell type for MHD test program
 using Cell = gensimcell::Cell<
 	gensimcell::Optional_Transfer,
@@ -341,6 +354,10 @@ struct Max_Velocity {
 	using data_type = pamhd::grid::Face_Type<double>;
 };
 
+struct Timestep {
+	using data_type = double;
+};
+
 // cell type for staggered solver MHD test program
 using Cell_Staggered = gensimcell::Cell<
 	gensimcell::Optional_Transfer,
@@ -358,7 +375,10 @@ using Cell_Staggered = gensimcell::Cell<
 	pamhd::grid::Target_Refinement_Level_Min,
 	pamhd::mhd::Face_Boundary_Type,
 	pamhd::mhd::Edge_Boundary_Type,
+	pamhd::mhd::Timestep,
 	pamhd::mhd::Substepping_Period,
+	pamhd::mhd::Substep_Min,
+	pamhd::mhd::Substep_Max,
 	pamhd::mhd::Max_Velocity
 >;
 

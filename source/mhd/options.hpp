@@ -44,6 +44,9 @@ Author(s): Ilja Honkonen
 
 #include "rapidjson/document.h"
 
+#include "math/expression.hpp"
+#include "mhd/variables.hpp"
+
 
 namespace pamhd {
 namespace mhd {
@@ -60,8 +63,13 @@ struct Options
 		this->set(object);
 	};
 
+	math::Expression<Substep_Min> substep_min_e;
+	math::Expression<Substep_Max> substep_max_e;
 
 	std::string solver = "roe_athena";
+	int
+		substep_min_i = 1,
+		substep_max_i = 1;
 	double
 		save_n = -1,
 		min_pressure = 0,
@@ -226,6 +234,48 @@ struct Options
 				);
 			}
 			vel_min_mrg = vel_min_mrg_json.GetDouble();
+		}
+
+		if (object.HasMember("substep-min")) {
+			const auto& substep_min_json = object["substep-min"];
+			if (substep_min_json.IsInt()) {
+				this->substep_min_i = substep_min_json.GetInt();
+				if (this->substep_min_i < 0) {
+					throw std::invalid_argument(
+						__FILE__ "(" + std::to_string(__LINE__) + "): "
+						+ "JSON item substep-min must be positive."
+					);
+				}
+			} else if (substep_min_json.IsString()) {
+				this->substep_min_i = -2;
+				this->substep_min_e.set_expression(substep_min_json.GetString());
+			} else {
+				throw std::invalid_argument(
+					__FILE__ "(" + std::to_string(__LINE__) + "): "
+					+ "JSON item substep-min must either positive integer or string."
+				);
+			}
+		}
+
+		if (object.HasMember("substep-max")) {
+			const auto& substep_max_json = object["substep-max"];
+			if (substep_max_json.IsInt()) {
+				this->substep_max_i = substep_max_json.GetInt();
+				if (this->substep_max_i < 0) {
+					throw std::invalid_argument(
+						__FILE__ "(" + std::to_string(__LINE__) + "): "
+						+ "JSON item substep-max must be positive."
+					);
+				}
+			} else if (substep_max_json.IsString()) {
+				this->substep_max_i = -2;
+				this->substep_max_e.set_expression(substep_max_json.GetString());
+			} else {
+				throw std::invalid_argument(
+					__FILE__ "(" + std::to_string(__LINE__) + "): "
+					+ "JSON item substep-max must either positive integer or string."
+				);
+			}
 		}
 	}
 };
