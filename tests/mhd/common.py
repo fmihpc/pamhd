@@ -153,18 +153,12 @@ def get_cell_data(infile, metadata, range_, variables = None):
 					infile,
 					dtype = 'double, 3double, double, 3double',
 					count = 1)[0]
-			elif varname == 'primary ':
-				infile.seek(i*(6+12), 1)
-				ret_val[-1][varname] = list(fromfile(infile, dtype = '18u1', count = 1)[0])
 			elif varname == 'bgB     ':
 				infile.seek(i*3*6*8, 1)
 				ret_val[-1][varname] = list(fromfile(infile, dtype = '18double', count = 1)[0])
 			elif varname == 'divfaceB':
 				infile.seek(i*8, 1)
 				ret_val[-1][varname] = fromfile(infile, dtype = 'double', count = 1)[0]
-			elif varname == 'edgeE   ':
-				infile.seek(i*12*8, 1)
-				ret_val[-1][varname] = list(fromfile(infile, dtype = '12double', count = 1)[0])
 			elif varname == 'faceB   ':
 				infile.seek(i*6*8, 1)
 				ret_val[-1][varname] = list(fromfile(infile, dtype = '6double', count = 1)[0])
@@ -173,7 +167,7 @@ def get_cell_data(infile, metadata, range_, variables = None):
 				ret_val[-1][varname] = fromfile(infile, dtype = 'intc', count = 1)[0]
 			elif varname == 'mhd info':
 				infile.seek(i*4, 1)
-				ret_val[-1][varname] = fromfile(infile, dtype = 'uintc', count = 1)[0]
+				ret_val[-1][varname] = fromfile(infile, dtype = 'intc', count = 1)[0]
 			elif varname == 'ref lvls':
 				infile.seek(i*8, 1)
 				ret_val[-1][varname] = list(fromfile(infile, dtype = '2intc', count = 1)[0])
@@ -186,9 +180,9 @@ def get_cell_data(infile, metadata, range_, variables = None):
 			elif varname == 'substmax':
 				infile.seek(i*4, 1)
 				ret_val[-1][varname] = fromfile(infile, dtype = 'intc', count = 1)[0]
-			else:
-				if varname != 'fluxes  ' and varname != 'timestep':
-					print('Unsupported variable: ' + varname)
+			elif varname == 'timestep':
+				infile.seek(i*8, 1)
+				ret_val[-1][varname] = fromfile(infile, dtype = 'double', count = 1)[0]
 	return ret_val
 
 

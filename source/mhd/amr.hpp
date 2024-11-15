@@ -99,6 +99,7 @@ template <
 	using std::max;
 	using std::min;
 	using std::round;
+	using std::runtime_error;
 	using std::to_string;
 
 	const auto max_ref_lvl = grid.get_maximum_refinement_level();
@@ -121,6 +122,13 @@ template <
 			RLMin(*cell.data) =
 			RLMax(*cell.data) = grid.get_refinement_level(cell.id);
 			continue;
+		}
+
+		if (Mas(*cell.data) <= 0) {
+			throw runtime_error(__FILE__ ":" + to_string(__LINE__));
+		}
+		if (Nrj(*cell.data) <= 0) {
+			throw runtime_error(__FILE__ ":" + to_string(__LINE__));
 		}
 
 		const auto [cdx, cdy, cdz] = grid.geometry.get_length(cell.id);
@@ -171,7 +179,7 @@ template <
 					return 0.5 * (cdz + ndz);
 					break;
 				default:
-					throw std::runtime_error(__FILE__ ":" + to_string(__LINE__));
+					throw runtime_error(__FILE__ ":" + to_string(__LINE__));
 					break;
 				}
 				return -1.0;
@@ -216,7 +224,8 @@ template <
 	class Background_Magnetic_Field_Getter,
 	class Background_Magnetic_Field,
 	class Target_Refinement_Level_Min_Getter,
-	class Target_Refinement_Level_Max_Getter
+	class Target_Refinement_Level_Max_Getter,
+	class Maximum_Signal_Velocity_Getter
 > struct New_Cells_Handler {
 	const Mass_Density_Getter& Mas;
 	const Momentum_Density_Getter& Mom;
@@ -227,6 +236,7 @@ template <
 	const Background_Magnetic_Field& bg_B;
 	const Target_Refinement_Level_Min_Getter& RLMin;
 	const Target_Refinement_Level_Max_Getter& RLMax;
+	const Maximum_Signal_Velocity_Getter& Max_v;
 	const double& adiabatic_index;
 	const double& vacuum_permeability;
 
@@ -240,12 +250,13 @@ template <
 		const Background_Magnetic_Field& bg_B_,
 		const Target_Refinement_Level_Min_Getter& RLMin_,
 		const Target_Refinement_Level_Max_Getter& RLMax_,
+		const Maximum_Signal_Velocity_Getter& Max_v_,
 		const double& adiabatic_index_,
 		const double& vacuum_permeability_
 	) :
 		Mas(Mas_), Mom(Mom_), Nrj(Nrj_),
 		Face_B(Face_B_), Vol_B(Vol_B_), Bg_B(Bg_B_), bg_B(bg_B_),
-		RLMin(RLMin_), RLMax(RLMax_),
+		RLMin(RLMin_), RLMax(RLMax_), Max_v(Max_v_),
 		adiabatic_index(adiabatic_index_),
 		vacuum_permeability(vacuum_permeability_)
 	{};
@@ -276,16 +287,23 @@ template <
 			Mom(*cell_data) = Mom(*parent_data);
 			RLMin(*cell_data) = RLMin(*parent_data);
 			RLMax(*cell_data) = RLMax(*parent_data);
+			Max_v(*cell_data) = Max_v(*parent_data);
 
 			// inherit thermal pressure
-			const double parent_pressure = get_pressure(
-				Mas(*parent_data),
-				Mom(*parent_data),
-				Nrj(*parent_data),
-				Vol_B(*parent_data),
-				adiabatic_index,
-				vacuum_permeability
-			);
+			const double parent_pressure = [&](){
+				try {
+					return get_pressure(
+						Mas(*parent_data),
+						Mom(*parent_data),
+						Nrj(*parent_data),
+						Vol_B(*parent_data),
+						adiabatic_index,
+						vacuum_permeability
+					);
+				} catch (...) {
+					throw runtime_error(__FILE__ ":" + to_string(__LINE__));
+				}
+			}();
 
 			const auto
 				cindex = grid.mapping.get_indices(new_cell_id),
@@ -357,7 +375,8 @@ template <
 	class Background_Magnetic_Field_Getter,
 	class Background_Magnetic_Field,
 	class Target_Refinement_Level_Min_Getter,
-	class Target_Refinement_Level_Max_Getter
+	class Target_Refinement_Level_Max_Getter,
+	class Maximum_Signal_Velocity_Getter
 > struct Removed_Cells_Handler {
 	const Mass_Density_Getter& Mas;
 	const Momentum_Density_Getter& Mom;
@@ -368,6 +387,7 @@ template <
 	const Background_Magnetic_Field& bg_B;
 	const Target_Refinement_Level_Min_Getter& RLMin;
 	const Target_Refinement_Level_Max_Getter& RLMax;
+	const Maximum_Signal_Velocity_Getter& Max_v;
 	const double& adiabatic_index;
 	const double& vacuum_permeability;
 
@@ -381,12 +401,13 @@ template <
 		const Background_Magnetic_Field& bg_B_,
 		const Target_Refinement_Level_Min_Getter& RLMin_,
 		const Target_Refinement_Level_Max_Getter& RLMax_,
+		const Maximum_Signal_Velocity_Getter& Max_v_,
 		const double& adiabatic_index_,
 		const double& vacuum_permeability_
 	) :
 		Mas(Mas_), Mom(Mom_), Nrj(Nrj_),
 		Face_B(Face_B_), Vol_B(Vol_B_), Bg_B(Bg_B_), bg_B(bg_B_),
-		RLMin(RLMin_), RLMax(RLMax_),
+		RLMin(RLMin_), RLMax(RLMax_), Max_v(Max_v_),
 		adiabatic_index(adiabatic_index_),
 		vacuum_permeability(vacuum_permeability_)
 	{};
@@ -398,6 +419,8 @@ template <
 		const Grid& grid,
 		const Cells& removed_cells
 	) const {
+		using std::max;
+		using std::min;
 		using std::runtime_error;
 		using std::to_string;
 
@@ -415,6 +438,7 @@ template <
 			}
 			RLMin(*parent_data) = 999;
 			RLMax(*parent_data) = 0;
+			Max_v(*parent_data) = {-1, -1, -1, -1, -1, -1};
 			Mas(*parent_data) =
 			Nrj(*parent_data) = 0;
 			Mom(*parent_data) = {0, 0, 0};
@@ -434,20 +458,38 @@ template <
 				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
 			}
 
+			if (Mas(*removed_cell_data) <= 0) {
+				throw runtime_error(
+					__FILE__ "(" + to_string(__LINE__)
+					+ "): " + to_string(removed_cell_id) + ", "
+					+ to_string(parent_id)
+				);
+			}
+
 			// all children included
-			RLMin(*parent_data) = std::min(RLMin(*removed_cell_data), RLMin(*parent_data));
-			RLMax(*parent_data) = std::max(RLMax(*removed_cell_data), RLMax(*parent_data));
+			RLMin(*parent_data) = min(RLMin(*parent_data),
+				RLMin(*removed_cell_data));
+			RLMax(*parent_data) = max(RLMax(*parent_data),
+				RLMax(*removed_cell_data));
+			for (int dir: {-3,-2,-1,+1,+2,+3}) {
+				Max_v(*parent_data)(dir) = max(Max_v(*parent_data)(dir),
+					Max_v(*removed_cell_data)(dir));
+			}
 			Mas(*parent_data) += Mas(*removed_cell_data) / 8;
 			Mom(*parent_data) += Mom(*removed_cell_data) / 8;
 			// temporarily store pressure in energy density variable
-			Nrj(*parent_data) += get_pressure(
-				Mas(*removed_cell_data),
-				Mom(*removed_cell_data),
-				Nrj(*removed_cell_data),
-				Vol_B(*removed_cell_data),
-				adiabatic_index,
-				vacuum_permeability
-			) / 8;;
+			try {
+				Nrj(*parent_data) += get_pressure(
+					Mas(*removed_cell_data),
+					Mom(*removed_cell_data),
+					Nrj(*removed_cell_data),
+					Vol_B(*removed_cell_data),
+					adiabatic_index,
+					vacuum_permeability
+				) / 8;
+			} catch (...) {
+				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
+			}
 
 			const auto
 				pindex = grid.mapping.get_indices(parent_id),
@@ -527,15 +569,13 @@ template<
 	class Magnetic_Field_Getter,
 	class Face_Magnetic_Field_Getter,
 	class Background_Magnetic_Field_Getter,
-	class Primary_Face_Getter,
-	class Primary_Edge_Getter,
 	class Solver_Info_Getter,
 	class Solver_Info_Getter2,
 	class Face_Info_Getter,
-	class Edge_Info_Getter,
 	class Target_Refinement_Level_Min_Getter,
 	class Target_Refinement_Level_Max_Getter,
-	class Substepping_Period_Getter
+	class Substepping_Period_Getter,
+	class Maximum_Signal_Speed_Getter
 > void adapt_grid(
 	Grid& grid,
 	pamhd::grid::Options& options_grid,
@@ -553,36 +593,44 @@ template<
 	const Magnetic_Field_Getter Mag,
 	const Face_Magnetic_Field_Getter Face_B,
 	const Background_Magnetic_Field_Getter Bg_B_Getter,
-	const Primary_Face_Getter PFace,
-	const Primary_Edge_Getter PEdge,
 	const Solver_Info_Getter SInfo,
 	const Solver_Info_Getter2 SInfo2,
 	const Face_Info_Getter FInfo,
-	const Edge_Info_Getter EInfo,
 	const Target_Refinement_Level_Min_Getter Ref_min,
 	const Target_Refinement_Level_Max_Getter Ref_max,
-	const Substepping_Period_Getter Substep
+	const Substepping_Period_Getter Substep,
+	const Maximum_Signal_Speed_Getter Max_v
 ) try {
 	pamhd::grid::set_minmax_refinement_level(
 		grid.local_cells(), grid, options_grid,
 		simulation_time, Ref_min, Ref_max);
+
 	pamhd::mhd::set_minmax_refinement_level(
 		grid.local_cells(), grid, options_mhd,
 		Mas, Mom, Nrj, Mag, SInfo2, Ref_min, Ref_max,
 		adiabatic_index, vacuum_permeability, proton_mass);
+
+	Grid::cell_data_type::set_transfer_all(true,
+		pamhd::Face_Magnetic_Field(),
+		pamhd::mhd::MHD_State_Conservative(),
+		pamhd::grid::Target_Refinement_Level_Min(),
+		pamhd::grid::Target_Refinement_Level_Max()
+	);
 	pamhd::grid::adapt_grid(
 		grid, Ref_min, Ref_max,
 		pamhd::mhd::New_Cells_Handler(
 			Mas, Mom, Nrj, Face_B, Mag, Bg_B_Getter,
-			bg_B, Ref_min, Ref_max,
+			bg_B, Ref_min, Ref_max, Max_v,
 			adiabatic_index, vacuum_permeability),
 		pamhd::mhd::Removed_Cells_Handler(
 			Mas, Mom, Nrj, Face_B, Mag, Bg_B_Getter,
-			bg_B, Ref_min, Ref_max,
+			bg_B, Ref_min, Ref_max, Max_v,
 			adiabatic_index, vacuum_permeability));
+	Grid::cell_data_type::set_transfer_all(false,
+		pamhd::grid::Target_Refinement_Level_Min(),
+		pamhd::grid::Target_Refinement_Level_Max()
+	);
 	Grid::cell_data_type::set_transfer_all(true,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::mhd::MHD_State_Conservative(),
 		pamhd::Bg_Magnetic_Field()
 	);
 	grid.update_copies_of_remote_neighbors();
@@ -596,18 +644,9 @@ template<
 		(*cell.data)[pamhd::MPI_Rank()] = grid.get_rank();
 		Substep(*cell.data) = 1;
 	}
-
-	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
-	pamhd::grid::update_primary_edges(grid.local_cells(), grid, PEdge);
-	Grid::cell_data_type::set_transfer_all(true,
-		pamhd::grid::Is_Primary_Face(),
-		pamhd::grid::Is_Primary_Edge()
-	);
+	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Substepping_Period());
 	grid.update_copies_of_remote_neighbors();
-	Grid::cell_data_type::set_transfer_all(false,
-		pamhd::grid::Is_Primary_Face(),
-		pamhd::grid::Is_Primary_Edge()
-	);
+	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Substepping_Period());
 
 	for (const auto& gid: geometries.get_geometry_ids()) {
 		geometries.clear_cells(gid);
@@ -627,19 +666,14 @@ template<
 	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Solver_Info());
 
 	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Face_Boundary_Type());
-	pamhd::mhd::classify_faces(grid, PFace, SInfo2, FInfo);
+	pamhd::mhd::classify_faces(grid, SInfo2, FInfo);
 	grid.update_copies_of_remote_neighbors();
 	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Face_Boundary_Type());
 
-	pamhd::mhd::classify_edges(grid.local_cells(), PFace, PEdge, FInfo, EInfo);
-	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Edge_Boundary_Type());
-	grid.update_copies_of_remote_neighbors();
-	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Edge_Boundary_Type());
-
 	pamhd::mhd::update_B_consistency(
-		grid.local_cells(),
+		0, grid.local_cells(),
 		Mas, Mom, Nrj, Mag, Face_B,
-		PFace, FInfo, Substep,
+		SInfo, Substep,
 		adiabatic_index,
 		vacuum_permeability,
 		true

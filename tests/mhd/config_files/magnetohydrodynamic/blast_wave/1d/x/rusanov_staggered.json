@@ -14,7 +14,7 @@
 		"periodic": "{true, true, true}",
 		"cells": "{100, 1, 1}",
 		"volume": "{0.03, 0.0002, 0.0002}",
-		"start": "{-0.015, -0.0001, -0.0001}"
+		"start": "{-volume[0]/2, -volume[1]/2, -volume[2]/2}"
 	},
 	"number-density": {"default": 1},
 	"velocity": {"default": [0, 0, 0]},

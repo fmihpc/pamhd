@@ -78,7 +78,7 @@ template <class Grid> bool save_staggered(
 	const double adiabatic_index,
 	const double proton_mass,
 	const double vacuum_permeability,
-	std::set<std::string> variables_ = std::set<std::string>()
+	std::set<std::string> given_variables = std::set<std::string>()
 ) {
 	using std::get;
 	using std::string;
@@ -87,15 +87,15 @@ template <class Grid> bool save_staggered(
 	std::set<string>
 		variables{},
 		allowed_variables{
-			"mhd", "divfaceB", "bgB", "rank", "mhd info", "timestep",
-			"substep", "substmin", "substmax", "primary", "ref lvls",
-			"faceB", "edgeE", "fluxes"
+			"mhd", "divfaceB", "bgB", "rank", "mhd info",
+			"timestep", "substep", "substmin", "substmax",
+			"ref lvls", "faceB", "fluxes"
 		};
-	if (variables_.size() == 0) {
-		variables_ = allowed_variables;
+	if (given_variables.size() == 0) {
+		given_variables = allowed_variables;
 	}
 	std::set_intersection(
-		variables_.cbegin(), variables_.cend(),
+		given_variables.cbegin(), given_variables.cend(),
 		allowed_variables.cbegin(), allowed_variables.cend(),
 		std::inserter(variables, variables.begin())
 	);
@@ -232,22 +232,6 @@ template <class Grid> bool save_staggered(
 		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Solver_Info());
 	}
 
-	if (variables.count("primary") > 0) {
-		MPI_File_get_size(outfile, &outsize);
-		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true,
-			pamhd::grid::Is_Primary_Face(),
-			pamhd::grid::Is_Primary_Edge());
-		const string varname = "primary ";
-		get<0>(header) = (void*)varname.data();
-		ret_val = ret_val and grid.save_grid_data(
-			path_name_prefix + step_string.str() + ".dc",
-			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false,
-			pamhd::grid::Is_Primary_Face(),
-			pamhd::grid::Is_Primary_Edge());
-	}
-
 	if (variables.count("ref lvls") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
@@ -274,18 +258,6 @@ template <class Grid> bool save_staggered(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
 		Grid::cell_data_type::set_transfer_all(false, pamhd::Face_Magnetic_Field());
-	}
-
-	if (variables.count("edgeE") > 0) {
-		MPI_File_get_size(outfile, &outsize);
-		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::Edge_Electric_Field());
-		const string varname = "edgeE   ";
-		get<0>(header) = (void*)varname.data();
-		ret_val = ret_val and grid.save_grid_data(
-			path_name_prefix + step_string.str() + ".dc",
-			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::Edge_Electric_Field());
 	}
 
 	if (variables.count("fluxes") > 0) {

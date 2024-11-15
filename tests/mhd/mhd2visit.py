@@ -28,6 +28,7 @@ Author(s): Ilja Honkonen
 
 from argparse import ArgumentParser
 from imp import load_source
+from os import _exit
 from os.path import basename, dirname, join
 from sys import argv, stdout
 common = load_source('common', join(dirname(__file__), 'common.py'))
@@ -87,7 +88,7 @@ def save_slice_plot(
 	DeleteAllPlots()
 	AddPlot('Pseudocolor', variable.replace('_log', ''), 1, 1)
 	attrs = PseudocolorAttributes()
-	attrs.limitsMode = attrs.CurrentPlot
+	attrs.limitsMode = attrs.OriginalData
 	if variable.endswith('log'):
 		attrs.scaling = attrs.Log
 	if var_min != None:
@@ -126,7 +127,8 @@ def save_slice_plot(
 		save_win_attrs.height = 900
 		save_win_attrs.width = int(min(2560, 900*dx/dy))
 	else:
-		exit('Unsupported dimension in save_slice_plot: ' + dimension)
+		print('Unsupported dimension in save_slice_plot:', dimension)
+		_exit(1)
 	SetOperatorOptions(attrs, 0, 1)
 	save_win_attrs.fileName = outname
 	SetSaveWindowAttributes(save_win_attrs)
@@ -267,6 +269,14 @@ def dc2vtk(outname, data):
 			for c in cells:
 				outfile.write(str(data[c]['substep ']) + '\n')
 
+		if 'timestep' in data[cells[0]]:
+			outfile.write('SCALARS cell_dt double 1\nlookup_table default\n')
+			for c in cells:
+				cell_dt = data[c]['timestep']
+				if cell_dt > 1e100:
+					cell_dt = 0
+				outfile.write(str(cell_dt) + '\n')
+
 		if 'mhd info' in data[cells[0]]:
 			outfile.write('SCALARS mhd_info int 1\nlookup_table default\n')
 			for c in cells:
@@ -281,7 +291,7 @@ plot_vars = {
 	'B0', 'B0x', 'B0y', 'B0z',
 	'B1', 'B1x', 'B1y', 'B1z',
 	'target_ref_lvl_min', 'target_ref_lvl_max',
-	'substep_period', 'mhd_info'
+	'substep_period', 'cell_dt', 'mhd_info'
 }
 plot_vars_str = ''
 for v in sorted(plot_vars):
@@ -332,7 +342,8 @@ for filename_ in args.files:
 	OpenDatabase(filename)
 	result = GetLastError()
 	if result != '':
-		exit("Couldn't load " + filename + ': ' + result)
+		print("Couldn't load " + filename + ': ' + result)
+		_exit(1)
 	for var_i in range(len(args.variables)):
 		var = args.variables[var_i]
 		var_min = None
@@ -346,4 +357,4 @@ for filename_ in args.files:
 			save_slice_plot(outname, var, dim, mesh = args.mesh, var_min = var_min, var_max = var_max)
 	DeleteAllPlots()
 	CloseDatabase(filename)
-exit()
+_exit(0)

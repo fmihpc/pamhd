@@ -100,12 +100,20 @@ struct Face_Magnetic_Field {
 	static const std::string get_option_help() { return {"magnetic field on cell faces normal to cell faces"}; }
 };
 
+struct Face_dB {
+	using data_type = pamhd::grid::Face_Type<double>;
+};
+
 //! Electric field along each cell edge
 struct Edge_Electric_Field {
 	using data_type = pamhd::grid::Edge_Type<double>;
 	static const std::string get_name() { return {"electric field on edges"}; }
 	static const std::string get_option_name() { return {"edge-e"}; }
 	static const std::string get_option_help() { return {"electric field on cell edges parallel to cell edges"}; }
+};
+
+struct Nr_Edge_Items {
+	using data_type = pamhd::grid::Edge_Type<int>;
 };
 
 struct MPI_Rank {

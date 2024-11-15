@@ -59,18 +59,14 @@ template <
 	class Grid,
 	class Face_Var_Getter,
 	class Divergence_Getter,
-	class Is_Primary_Face_Getter,
 	class Cell_Type_Getter
 > double get_divergence_staggered(
 	const Cell_Iterator& cells,
 	Grid& grid,
 	const Face_Var_Getter& Face_Var,
 	const Divergence_Getter& Divergence,
-	const Is_Primary_Face_Getter& PFace,
 	const Cell_Type_Getter& Cell_Type
 ) {
-	using std::abs;
-
 	double local_divergence = 0, global_divergence = 0;
 	uint64_t local_calculated_cells = 0, global_calculated_cells = 0;
 	for (const auto& cell: cells) {
@@ -85,29 +81,9 @@ template <
 
 		for (auto dim: {0, 1, 2})
 		for (auto side: {-1, +1}) {
-			if (PFace(*cell.data)(dim, side)) div += side * Face_Var(*cell.data)(dim, side) / cell_length[dim];
+			div += side * Face_Var(*cell.data)(dim, side) / cell_length[dim];
 		}
-
-		for (const auto& neighbor: cell.neighbors_of) {
-			const auto& n = neighbor.face_neighbor;
-			if (n == 0 or PFace(*cell.data)(n)) continue;
-			if (Cell_Type(*neighbor.data) < 0) {
-				continue;
-			}
-
-			const double factor = [&]{
-				double ret_val = 1.0 / cell_length[abs(n) - 1];
-				if (neighbor.relative_size > 0) {
-					ret_val *= 0.25;
-				}
-				if (n < 0) {
-					ret_val *= -1;
-				}
-				return ret_val;
-			}();
-			div += factor * Face_Var(*neighbor.data)(-n);
-		}
-		local_divergence += abs(div);
+		local_divergence += std::abs(div);
 	}
 
 	MPI_Comm comm = grid.get_communicator();

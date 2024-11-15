@@ -259,7 +259,7 @@ struct Edge_Neighbor {
 };
 
 //! whether cell's neighbor is stored by this MPI rank
-struct Is_Local {
+struct Neighbor_Is_Local {
 	bool is_local = false;
 
 	template<
@@ -269,9 +269,23 @@ struct Is_Local {
 		const Cell_Item&,
 		const Neighbor_Item& neighbor,
 		const int&,
-		const Is_Local&
+		const Neighbor_Is_Local&
 	) {
 		this->is_local = grid.is_local(neighbor.id);
+	}
+};
+
+struct Cell_Is_Local {
+	bool is_local = false;
+
+	template<
+		class Grid, class Cell_Item
+	> void update(
+		const Grid& grid,
+		const Cell_Item& cell,
+		const Cell_Is_Local&
+	) {
+		this->is_local = grid.is_local(cell.id);
 	}
 };
 

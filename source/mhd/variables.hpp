@@ -128,13 +128,13 @@ is only applied if the cell isn't a value or copy boundary
 of that variable.
 */
 struct Solver_Info {
-	using data_type = unsigned int;
+	using data_type = int;
 
 	/*!
 	Corresponding bit of this variable is set when a cell is
 	of a boundary type for a variable.
 	*/
-	static const unsigned int
+	static const int
 		dont_solve = 1 << 0,
 		mass_density_bdy = 1 << 1,
 		velocity_bdy = 1 << 2,
@@ -200,7 +200,6 @@ struct Substep_Max {
 	using data_type = int;
 	static const std::string get_name() { return {"Maximum substepping period"}; }
 };
-
 
 // cell type for MHD test program
 using Cell = gensimcell::Cell<
@@ -368,7 +367,9 @@ using Cell_Staggered = gensimcell::Cell<
 	pamhd::Magnetic_Field_Divergence,
 	pamhd::mhd::MHD_Flux,
 	pamhd::Face_Magnetic_Field,
+	pamhd::Face_dB,
 	pamhd::Edge_Electric_Field,
+	pamhd::Nr_Edge_Items,
 	pamhd::grid::Is_Primary_Face,
 	pamhd::grid::Is_Primary_Edge,
 	pamhd::grid::Target_Refinement_Level_Max,

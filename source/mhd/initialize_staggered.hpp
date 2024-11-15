@@ -41,6 +41,7 @@ Author(s): Ilja Honkonen
 #include "cmath"
 #include "iostream"
 #include "limits"
+#include "string"
 #include "tuple"
 
 #include "dccrg.hpp"
@@ -62,8 +63,7 @@ template <
 	class Grid,
 	class Face_Magnetic_Field_Getter,
 	class Magnetic_Field_Flux_Getters,
-	class Background_Magnetic_Field_Getter,
-	class Primary_Face_Getter
+	class Background_Magnetic_Field_Getter
 > void initialize_magnetic_field_staggered(
 	const Geometries& geometries,
 	Init_Cond& initial_conditions,
@@ -73,11 +73,12 @@ template <
 	const double vacuum_permeability,
 	const Face_Magnetic_Field_Getter Face_B,
 	const Magnetic_Field_Flux_Getters Mag_f,
-	const Background_Magnetic_Field_Getter Bg_B,
-	const Primary_Face_Getter PFace
+	const Background_Magnetic_Field_Getter Bg_B
 ) {
 	using std::get;
 	using std::make_tuple;
+	using std::runtime_error;
+	using std::to_string;
 
 	const auto
 		Mag_fnx = get<0>(Mag_f), Mag_fpx = get<1>(Mag_f),
@@ -97,37 +98,34 @@ template <
 		const auto [sx, sy, sz] = grid.geometry.get_min(cell.id);
 		const auto [ex, ey, ez] = grid.geometry.get_max(cell.id);
 
-		Bg_B(*cell.data)(0, -1) = bg_B.get_background_field(
+		Bg_B(*cell.data)(-1) = bg_B.get_background_field(
 			{sx, ry, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(0, +1) = bg_B.get_background_field(
+		Bg_B(*cell.data)(+1) = bg_B.get_background_field(
 			{ex, ry, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(1, -1) = bg_B.get_background_field(
+		Bg_B(*cell.data)(-2) = bg_B.get_background_field(
 			{rx, sy, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(1, +1) = bg_B.get_background_field(
+		Bg_B(*cell.data)(+2) = bg_B.get_background_field(
 			{rx, ey, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(2, -1) = bg_B.get_background_field(
+		Bg_B(*cell.data)(-3) = bg_B.get_background_field(
 			{rx, ry, sz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(2, +1) = bg_B.get_background_field(
+		Bg_B(*cell.data)(+3) = bg_B.get_background_field(
 			{rx, ry, ez},
 			vacuum_permeability
 		);
 
-		const auto& pface = PFace(*cell.data);
-		for (const int dir: {-1,+1,-2,+2,-3,+3}) {
-			if (not pface(dir)) continue;
-
-			// center of face
+		for (const int dir: {-3,-2,-1,+1,+2,+3}) {
 			const auto [x, y, z] = [&](){
+				// center of face
 				switch (dir) {
 				case -1:
 					return make_tuple(sx, ry, rz);
@@ -148,9 +146,7 @@ template <
 					return make_tuple(rx, ry, ez);
 					break;
 				default:
-					std::cout << __FILE__ "(" << __LINE__ << ")" << std::endl;
-					abort();
-					break;
+					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 				}
 			}();
 			const auto
@@ -183,19 +179,14 @@ template <
 		for (const auto& cell_id: cells) {
 			auto* const cell_data = grid[cell_id];
 			if (cell_data == nullptr) {
-				std::cerr <<  __FILE__ << "(" << __LINE__
-					<< ") No data for cell: " << cell_id
-					<< std::endl;
-				abort();
+				throw runtime_error(__FILE__ "(" + to_string(__LINE__)
+					+ ") No data for cell: " + to_string(cell_id));
 			}
-			const auto& pface = PFace(*cell_data);
 
 			const auto [rx, ry, rz] = grid.geometry.get_center(cell_id);
 			const auto [sx, sy, sz] = grid.geometry.get_min(cell_id);
 			const auto [ex, ey, ez] = grid.geometry.get_max(cell_id);
-			for (const int dir: {-1,+1,-2,+2,-3,+3}) {
-				if (not pface(dir)) continue;
-
+			for (const int dir: {-3,-2,-1,+1,+2,+3}) {
 				// center of face
 				const auto [x, y, z] = [&](){
 					switch (dir) {
@@ -218,8 +209,7 @@ template <
 						return make_tuple(rx, ry, ez);
 						break;
 					default:
-						std::cout << __FILE__ "(" << __LINE__ << ")" << std::endl;
-						abort();
+						throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 					}
 				}();
 				const auto

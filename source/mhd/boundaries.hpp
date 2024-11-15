@@ -291,7 +291,6 @@ template<
 	class Boundaries,
 	class Boundary_Geometries,
 	class Magnetic_Field_Getter,
-	class Primary_Face_Getter,
 	class Face_Info_Getter
 > void apply_magnetic_field_boundaries_staggered(
 	Grid& grid,
@@ -299,7 +298,6 @@ template<
 	const Boundary_Geometries& bdy_geoms,
 	const double t,
 	const Magnetic_Field_Getter& Face_B,
-	const Primary_Face_Getter& PFace,
 	const Face_Info_Getter& FInfo
 ) try {
 	using std::array;
@@ -336,11 +334,10 @@ template<
 				return value_bdy.get_data(t, c[0], c[1], c[2], r, lat, lon);
 			};
 
-			const auto& pface = PFace(*cell_data);
 			const auto& finfo = FInfo(*cell_data);
 			for (auto dim: {0, 1, 2})
 			for (auto side: {-1, +1}) {
-				if (pface(dim, side) and finfo(dim, side) == 0) {
+				if (finfo(dim, side) == 0) {
 					auto r = c;
 					r[dim] += side * len[dim]/2;
 					Face_B(*cell_data)(dim, side) = get_B(r)[dim];
@@ -359,27 +356,27 @@ template<
 		if (cp_bdy_cells.count(cell.id) == 0) continue;
 
 		auto& c_face_b = Face_B(*cell.data);
-		const auto& cpface = PFace(*cell.data);
 		const auto& cfinfo = FInfo(*cell.data);
 
 		pamhd::grid::Face_Type<int> nr_values{0, 0, 0, 0, 0, 0};
 		for (auto dim: {0, 1, 2}) {
 			for (auto side: {-1, +1}) {
-				if (cpface(dim, side) and cfinfo(dim, side) < 1) c_face_b(dim, side) = 0;
+				if (cfinfo(dim, side) < 1) c_face_b(dim, side) = 0;
 			}
 
-			if (cpface(dim, -1) and cpface(dim, +1)) {
-				if (cfinfo(dim, -1) == 0 and cfinfo(dim, +1) == 0) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-				if (cfinfo(dim, -1) == -1 and cfinfo(dim, +1) == -1) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+			if (cfinfo(dim, -1) == 0 and cfinfo(dim, +1) == 0) throw runtime_error(
+				__FILE__ "(" + to_string(__LINE__) + ") "
+				+ to_string(dim) + " " + to_string(cell.id)
+			);
+			if (cfinfo(dim, -1) == -1 and cfinfo(dim, +1) == -1) throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 
-				if (cfinfo(dim, -1) == 0 and cfinfo(dim, +1) == 1) {
-					c_face_b(dim, -1) += c_face_b(dim, +1);
-					nr_values(dim, -1)++;
-				}
-				if (cfinfo(dim, -1) == 1 and cfinfo(dim, +1) == 0) {
-					c_face_b(dim, +1) += c_face_b(dim, -1);
-					nr_values(dim, +1)++;
-				}
+			if (cfinfo(dim, -1) == 0 and cfinfo(dim, +1) == 1) {
+				c_face_b(dim, -1) += c_face_b(dim, +1);
+				nr_values(dim, -1)++;
+			}
+			if (cfinfo(dim, -1) == 1 and cfinfo(dim, +1) == 0) {
+				c_face_b(dim, +1) += c_face_b(dim, -1);
+				nr_values(dim, +1)++;
 			}
 		}
 
@@ -416,15 +413,11 @@ template<
 			const auto& en = neighbor.edge_neighbor;
 			if (fn == 0 and en[0] < 0) continue;
 
-			const auto& npface = PFace(*neighbor.data);
 			const auto& nfinfo = FInfo(*neighbor.data);
 
 			if (fn != 0) {
 				for (auto dir: {-3,-2,-1,+1,+2,+3}) {
-					if (
-						cpface(dir) and cfinfo(dir) == 0 and
-						npface(dir) and nfinfo(dir) == 1
-					) {
+					if (cfinfo(dir) == 0 and nfinfo(dir) == 1) {
 						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
 					}
@@ -433,10 +426,7 @@ template<
 
 			if (en[0] == 0 and en[1] == -1 and en[2] == -1) {
 				for (auto dir: {-2, -3}) {
-					if (
-						cpface(+dir) and cfinfo(+dir) == 0 and
-						npface(-dir) and nfinfo(-dir) == 1
-					) {
+					if (cfinfo(+dir) == 0 and nfinfo(-dir) == 1) {
 						c_face_b(+dir) += n_face_b(-dir);
 						nr_values(+dir)++;
 					}
@@ -447,10 +437,7 @@ template<
 				const int d3 = +1;
 				if (en[2] == d3) {
 					for (auto dir: {-2, +3}) {
-						if (
-							cpface(+dir) and cfinfo(+dir) == 0 and
-							npface(-dir) and nfinfo(-dir) == 1
-						) {
+						if (cfinfo(+dir) == 0 and nfinfo(-dir) == 1) {
 							c_face_b(+dir) += n_face_b(-dir);
 							nr_values(+dir)++;
 						}
@@ -458,8 +445,7 @@ template<
 				}
 				if (en[2] != d3 and nys < 0) {
 					if (const int dir = +3;
-						cpface(dir) and cfinfo(dir) == 0 and
-						npface(dir) and nfinfo(dir) == 1
+						cfinfo(dir) == 0 and nfinfo(dir) == 1
 					) {
 						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
@@ -471,10 +457,7 @@ template<
 				const int d2 = +1;
 				if (en[1] == d2) {
 					for (auto dir: {+2, -3}) {
-						if (
-							cpface(+dir) and cfinfo(+dir) == 0 and
-							npface(-dir) and nfinfo(-dir) == 1
-						) {
+						if (cfinfo(+dir) == 0 and nfinfo(-dir) == 1) {
 							c_face_b(+dir) += n_face_b(-dir);
 							nr_values(+dir)++;
 						}
@@ -482,8 +465,7 @@ template<
 				}
 				if (en[1] != d2 and nzs < 0) {
 					if (const int dir = +2;
-						cpface(dir) and cfinfo(dir) == 0 and
-						npface(dir) and nfinfo(dir) == 1
+						cfinfo(dir) == 0 and nfinfo(dir) == 1
 					) {
 						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
@@ -495,10 +477,7 @@ template<
 				const int d2 = +1, d3 = +1;
 				if (en[1] == d2 and en[2] == d3) {
 					for (auto dir: {+2, -3}) {
-						if (
-							cpface(+dir) and cfinfo(+dir) == 0 and
-							npface(-dir) and nfinfo(-dir) == 1
-						) {
+						if (cfinfo(+dir) == 0 and nfinfo(-dir) == 1) {
 							c_face_b(+dir) += n_face_b(-dir);
 							nr_values(+dir)++;
 						}
@@ -506,8 +485,7 @@ template<
 				}
 				if (en[1] != d2 and en[2] == d3 and pzs < 0) {
 					if (const int dir = +2;
-						cpface(dir) and cfinfo(dir) == 0 and
-						npface(dir) and nfinfo(dir) == 1
+						cfinfo(dir) == 0 and nfinfo(dir) == 1
 					) {
 						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
@@ -515,8 +493,7 @@ template<
 				}
 				if (en[1] == d2 and en[2] != d3 and pys < 0) {
 					if (const int dir = +3;
-						cpface(dir) and cfinfo(dir) == 0 and
-						npface(dir) and nfinfo(dir) == 1
+						cfinfo(dir) == 0 and nfinfo(dir) == 1
 					) {
 						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
@@ -526,10 +503,7 @@ template<
 
 			if (en[0] == 1 and en[1] == -1 and en[2] == -1) {
 				for (auto dir: {-1, -3}) {
-					if (
-						cpface(+dir) and cfinfo(+dir) == 0 and
-						npface(-dir) and nfinfo(-dir) == 1
-					) {
+					if (cfinfo(+dir) == 0 and nfinfo(-dir) == 1) {
 						c_face_b(+dir) += n_face_b(-dir);
 						nr_values(+dir)++;
 					}
@@ -540,10 +514,7 @@ template<
 				const int d3 = +1;
 				if (en[2] == d3) {
 					for (auto dir: {-1, +3}) {
-						if (
-							cpface(+dir) and cfinfo(+dir) == 0 and
-							npface(-dir) and nfinfo(-dir) == 1
-						) {
+						if (cfinfo(+dir) == 0 and nfinfo(-dir) == 1) {
 							c_face_b(+dir) += n_face_b(-dir);
 							nr_values(+dir)++;
 						}
@@ -551,8 +522,7 @@ template<
 				}
 				if (en[2] != d3 and nxs < 0) {
 					if (const int dir = +3;
-						cpface(dir) and cfinfo(dir) == 0 and
-						npface(dir) and nfinfo(dir) == 1
+						cfinfo(dir) == 0 and nfinfo(dir) == 1
 					) {
 						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
@@ -564,10 +534,7 @@ template<
 				const int d2 = +1;
 				if (en[1] == d2) {
 					for (auto dir: {+1, -3}) {
-						if (
-							cpface(+dir) and cfinfo(+dir) == 0 and
-							npface(-dir) and nfinfo(-dir) == 1
-						) {
+						if (cfinfo(+dir) == 0 and nfinfo(-dir) == 1) {
 							c_face_b(+dir) += n_face_b(-dir);
 							nr_values(+dir)++;
 						}
@@ -575,8 +542,7 @@ template<
 				}
 				if (en[1] != d2 and nzs < 0) {
 					if (const int dir = +1;
-						cpface(dir) and cfinfo(dir) == 0 and
-						npface(dir) and nfinfo(dir) == 1
+						cfinfo(dir) == 0 and nfinfo(dir) == 1
 					) {
 						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
@@ -588,10 +554,7 @@ template<
 				const int d2 = +1, d3 = +1;
 				if (en[1] == d2 and en[2] == d3) {
 					for (auto dir: {+1, +3}) {
-						if (
-							cpface(+dir) and cfinfo(+dir) == 0 and
-							npface(-dir) and nfinfo(-dir) == 1
-						) {
+						if (cfinfo(+dir) == 0 and nfinfo(-dir) == 1) {
 							c_face_b(+dir) += n_face_b(-dir);
 							nr_values(+dir)++;
 						}
@@ -599,8 +562,7 @@ template<
 				}
 				if (en[1] != d2 and en[2] == d3 and pzs < 0) {
 					if (const int dir = +1;
-						cpface(dir) and cfinfo(dir) == 0 and
-						npface(dir) and nfinfo(dir) == 1
+						cfinfo(dir) == 0 and nfinfo(dir) == 1
 					) {
 						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
@@ -608,8 +570,7 @@ template<
 				}
 				if (en[1] == d2 and en[2] != d3 and pxs < 0) {
 					if (const int dir = +3;
-						cpface(dir) and cfinfo(dir) == 0 and
-						npface(dir) and nfinfo(dir) == 1
+						cfinfo(dir) == 0 and nfinfo(dir) == 1
 					) {
 						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
@@ -619,10 +580,7 @@ template<
 
 			if (en[0] == 2 and en[1] == -1 and en[2] == -1) {
 				for (auto dir: {-1, -2}) {
-					if (
-						cpface(+dir) and cfinfo(+dir) == 0 and
-						npface(-dir) and nfinfo(-dir) == 1
-					) {
+					if (cfinfo(+dir) == 0 and nfinfo(-dir) == 1) {
 						c_face_b(+dir) += n_face_b(-dir);
 						nr_values(+dir)++;
 					}
@@ -633,10 +591,7 @@ template<
 				const int d3 = +1;
 				if (en[2] == d3) {
 					for (auto dir: {-1, +2}) {
-						if (
-							cpface(+dir) and cfinfo(+dir) == 0 and
-							npface(-dir) and nfinfo(-dir) == 1
-						) {
+						if (cfinfo(+dir) == 0 and nfinfo(-dir) == 1) {
 							c_face_b(+dir) += n_face_b(-dir);
 							nr_values(+dir)++;
 						}
@@ -644,8 +599,7 @@ template<
 				}
 				if (en[2] != d3 and nxs < 0) {
 					if (const int dir = +2;
-						cpface(dir) and cfinfo(dir) == 0 and
-						npface(dir) and nfinfo(dir) == 1
+						cfinfo(dir) == 0 and nfinfo(dir) == 1
 					) {
 						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
@@ -657,10 +611,7 @@ template<
 				const int d2 = +1;
 				if (en[1] == d2) {
 					for (auto dir: {+1, -2}) {
-						if (
-							cpface(+dir) and cfinfo(+dir) == 0 and
-							npface(-dir) and nfinfo(-dir) == 1
-						) {
+						if (cfinfo(+dir) == 0 and nfinfo(-dir) == 1) {
 							c_face_b(+dir) += n_face_b(-dir);
 							nr_values(+dir)++;
 						}
@@ -668,8 +619,7 @@ template<
 				}
 				if (en[1] != d2 and nys < 0) {
 					if (const int dir = +1;
-						cpface(dir) and cfinfo(dir) == 0 and
-						npface(dir) and nfinfo(dir) == 1
+						cfinfo(dir) == 0 and nfinfo(dir) == 1
 					) {
 						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
@@ -681,10 +631,7 @@ template<
 				const int d2 = +1, d3 = +1;
 				if (en[1] == d2 and en[2] == d3) {
 					for (auto dir: {+1, +2}) {
-						if (
-							cpface(+dir) and cfinfo(+dir) == 0 and
-							npface(-dir) and nfinfo(-dir) == 1
-						) {
+						if (cfinfo(+dir) == 0 and nfinfo(-dir) == 1) {
 							c_face_b(+dir) += n_face_b(-dir);
 							nr_values(+dir)++;
 						}
@@ -692,8 +639,7 @@ template<
 				}
 				if (en[1] != d2 and en[2] == d3 and pys < 0) {
 					if (const int dir = +1;
-						cpface(dir) and cfinfo(dir) == 0 and
-						npface(dir) and nfinfo(dir) == 1
+						cfinfo(dir) == 0 and nfinfo(dir) == 1
 					) {
 						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
@@ -701,8 +647,7 @@ template<
 				}
 				if (en[1] == d2 and en[2] != d3 and pxs < 0) {
 					if (const int dir = +2;
-						cpface(dir) and cfinfo(dir) == 0 and
-						npface(dir) and nfinfo(dir) == 1
+						cfinfo(dir) == 0 and nfinfo(dir) == 1
 					) {
 						c_face_b(dir) += n_face_b(dir);
 						nr_values(dir)++;
@@ -712,7 +657,7 @@ template<
 		}
 
 		for (auto dir: {-3,-2,-1,+1,+2,+3}) {
-			if (cpface(dir) and cfinfo(dir) == 0) {
+			if (cfinfo(dir) == 0) {
 				if (nr_values(dir) == 0) {
 					throw runtime_error(
 						__FILE__ "(" + to_string(__LINE__) + "): "
@@ -1099,739 +1044,171 @@ Update of FInfo variable between processes must be enabled.
 */
 template <
 	class Grid,
-	class Primary_Face_Getter,
 	class Cell_Info_Getter,
 	class Face_Info_Getter
 > void classify_faces(
 	Grid& grid,
-	const Primary_Face_Getter& PFace,
 	const Cell_Info_Getter& CInfo,
 	const Face_Info_Getter& FInfo
 ) try {
+	using std::max;
+	using std::min;
+	using std::runtime_error;
+	using std::to_string;
+
 	const std::array<int, 6> all_dirs{-3,-2,-1,+1,+2,+3};
+
 	// face(s) sharing edge(s) with normal cell(s) is normal
 	for (const auto& cell: grid.local_cells()) {
-		for (const int dir: all_dirs) {
-			FInfo(*cell.data)(dir) = -99;
+		auto& finfo = FInfo(*cell.data);
+
+		for (auto dir: all_dirs) {
+			finfo(dir) = -99;
 		}
 
 		const auto& ccinfo = CInfo(*cell.data);
-		const auto& cpface = PFace(*cell.data);
 		if (ccinfo == 1) {
-			for (const int dir: all_dirs) {
-				if (PFace(*cell.data)(dir)) {
-					FInfo(*cell.data)(dir) = 1;
-				}
+			for (auto dir: all_dirs) {
+				finfo(dir) = 1;
 			}
 			continue;
 		}
 
-		std::set<int> dirs; // faces to set as normal
 		for (const auto& neighbor: cell.neighbors_of) {
+			const auto& ncinfo = CInfo(*neighbor.data);
+			if (ncinfo < 1) continue;
+
 			const auto& fn = neighbor.face_neighbor;
-			if (
-				fn != 0
-				and cpface(fn)
-				and CInfo(*neighbor.data) == 1
-			) FInfo(*cell.data)(fn) = 1;
+			if (fn != 0) {
+				for (auto dir: all_dirs) {
+					if (dir == -fn) continue;
+					finfo(dir) = 1;
+				}
+			}
+			const auto& en = neighbor.edge_neighbor;
+			if (en[0] >= 0) {
+				const int
+					dir1 = 1 + std::min((en[0] + 1) % 3, (en[0] + 2) % 3),
+					dir2 = 1 + std::max((en[0] + 1) % 3, (en[0] + 2) % 3);
+				if (en[1] < 0) {
+					finfo(-dir1) = 1;
+				} else {
+					finfo(+dir1) = 1;
+				}
+				if (en[2] < 0) {
+					finfo(-dir2) = 1;
+				} else {
+					finfo(+dir2) = 1;
+				}
+			}
 		}
 	}
 
 	grid.update_copies_of_remote_neighbors();
+
+	for (const auto& cell: grid.local_cells()) {
+		const auto& cfinfo = FInfo(*cell.data);
+		for (const auto& neighbor: cell.neighbors_of) {
+			const auto& fn = neighbor.face_neighbor;
+			const auto& en = neighbor.edge_neighbor;
+			if (fn != 0 and en[0] < 0) continue;
+			const auto& nfinfo = FInfo(*neighbor.data);
+			if (fn != 0) {
+				if (cfinfo(fn) != nfinfo(-fn)) {
+					throw runtime_error(
+						__FILE__ "(" + to_string(__LINE__) + "): "
+						+ to_string(cell.id) + " "
+						+ to_string(neighbor.id) + " "
+						+ to_string(fn) + " "
+						+ to_string(cfinfo(fn)) + " "
+						+ to_string(nfinfo(-fn))
+					);
+				}
+			}
+		}
+	}
 
 	/*
 	Face(s) sharing edge(s) with normal face(s) or face(s)
 	on opposite side of cell from normal face(s) are boundary
 	*/
 	for (const auto& cell: grid.local_cells()) {
-		std::set<int> dirs; // faces to set as boundary
-
-		const auto& cpface = PFace(*cell.data);
-		const auto& cfinfo = FInfo(*cell.data);
-		for (const int dir: all_dirs) {
-			if (cpface(dir) and cfinfo(dir) == 1) {
-				dirs.insert(all_dirs.cbegin(), all_dirs.cend());
+		// if even one cell face is normal other faces are boundary
+		bool has_normal_face = false;
+		auto& cfinfo = FInfo(*cell.data);
+		for (auto dir: all_dirs) {
+			if (cfinfo(dir) == 1) {
+				has_normal_face = true;
 				break;
 			}
 		}
-		for (const auto& neighbor: cell.neighbors_of) {
-			if (dirs.size() == all_dirs.size()) break;
+		if (not has_normal_face) continue;
 
-			const auto& fn = neighbor.face_neighbor;
-			const auto& en = neighbor.edge_neighbor;
-			if (fn == 0 and en[0] < 0) continue;
-
-			const auto& npface = PFace(*neighbor.data);
-			const auto& nfinfo = FInfo(*neighbor.data);
-
-			if (fn != 0) {
-				if (npface(fn) and nfinfo(fn) == 1) dirs.insert(fn);
-				if (npface(-fn) and nfinfo(-fn) == 1) {
-					dirs.insert(all_dirs.cbegin(), all_dirs.cend());
-					break;
-				}
-				for (const int dir: all_dirs) {
-					if (dir == fn or dir == -fn) continue;
-					if (npface(dir) and nfinfo(dir) == 1) dirs.insert(dir);
-				}
-			}
-
-			int dir1 = 9, dir2 = 9;
-			if (en[0] == 0) {
-				if (en[1] == -1 and en[2] == -1) {
-					if (dir1 = +2, dir2 = +3;
-						   (npface(dir1) and nfinfo(dir1) == 1)
-						or (npface(dir2) and nfinfo(dir2) == 1)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == -1 and en[2] == +1) {
-					if (dir1 = +2, dir2 = -3;
-						   (npface(dir1) and nfinfo(dir1) == 1)
-						or (npface(dir2) and nfinfo(dir2) == 1)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == +1 and en[2] == -1) {
-					if (dir1 = -2, dir2 = +3;
-						   (npface(dir1) and nfinfo(dir1) == 1)
-						or (npface(dir2) and nfinfo(dir2) == 1)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == +1 and en[2] == +1) {
-					if (dir1 = -2, dir2 = -3;
-						   (npface(dir1) and nfinfo(dir1) == 1)
-						or (npface(dir2) and nfinfo(dir2) == 1)
-					) dirs.insert({-dir1, -dir2});
-				}
-			}
-			if (en[0] == 1) {
-				if (en[1] == -1 and en[2] == -1) {
-					if (dir1 = +1, dir2 = +3;
-						   (npface(dir1) and nfinfo(dir1) == 1)
-						or (npface(dir2) and nfinfo(dir2) == 1)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == -1 and en[2] == +1) {
-					if (dir1 = +1, dir2 = -3;
-						   (npface(dir1) and nfinfo(dir1) == 1)
-						or (npface(dir2) and nfinfo(dir2) == 1)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == +1 and en[2] == -1) {
-					if (dir1 = -1, dir2 = +3;
-						   (npface(dir1) and nfinfo(dir1) == 1)
-						or (npface(dir2) and nfinfo(dir2) == 1)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == +1 and en[2] == +1) {
-					if (dir1 = -1, dir2 = -3;
-						   (npface(dir1) and nfinfo(dir1) == 1)
-						or (npface(dir2) and nfinfo(dir2) == 1)
-					) dirs.insert({-dir1, -dir2});
-				}
-			}
-			if (en[0] == 2) {
-				if (en[1] == -1 and en[2] == -1) {
-					if (dir1 = +1, dir2 = +2;
-						   (npface(dir1) and nfinfo(dir1) == 1)
-						or (npface(dir2) and nfinfo(dir2) == 1)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == -1 and en[2] == +1) {
-					if (dir1 = +1, dir2 = -2;
-						   (npface(dir1) and nfinfo(dir1) == 1)
-						or (npface(dir2) and nfinfo(dir2) == 1)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == +1 and en[2] == -1) {
-					if (dir1 = -1, dir2 = +2;
-						   (npface(dir1) and nfinfo(dir1) == 1)
-						or (npface(dir2) and nfinfo(dir2) == 1)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == +1 and en[2] == +1) {
-					if (dir1 = -1, dir2 = -2;
-						   (npface(dir1) and nfinfo(dir1) == 1)
-						or (npface(dir2) and nfinfo(dir2) == 1)
-					) dirs.insert({-dir1, -dir2});
-				}
-			}
-		}
-
-		for (int dir: dirs) {
-			if (cpface(dir) and cfinfo(dir) == -99) FInfo(*cell.data)(dir) = 0;
+		for (auto dir: all_dirs) {
+			if (cfinfo(dir) < 0) cfinfo(dir) = 0;
 		}
 	}
 
 	grid.update_copies_of_remote_neighbors();
 
-	// face(s) sharing edge(s) with boundary face(s) is dont_solve
+	// as above but for neighboring cells
 	for (const auto& cell: grid.local_cells()) {
-		std::set<int> dirs;
-
-		const auto& cpface = PFace(*cell.data);
-		const auto& cfinfo = FInfo(*cell.data);
-		for (const int dir: all_dirs) {
-			if (cpface(dir) and cfinfo(dir) == 0) {
-				dirs.insert(all_dirs.cbegin(), all_dirs.cend());
-				break;
-			}
-		}
-
+		auto& cfinfo = FInfo(*cell.data);
 		for (const auto& neighbor: cell.neighbors_of) {
-			if (dirs.size() == all_dirs.size()) break;
-
-			const auto& fn = neighbor.face_neighbor;
-			const auto& en = neighbor.edge_neighbor;
-			if (fn == 0 and en[0] < 0) continue;
-
-			const auto& npface = PFace(*neighbor.data);
 			const auto& nfinfo = FInfo(*neighbor.data);
-
+			const auto& fn = neighbor.face_neighbor;
 			if (fn != 0) {
-				if (npface(fn) and nfinfo(fn) == 0) dirs.insert(fn);
-				if (npface(-fn) and nfinfo(-fn) == 0) {
-					dirs.insert(all_dirs.cbegin(), all_dirs.cend());
-					break;
-				}
-				for (const int dir: all_dirs) {
-					if (dir == fn or dir == -fn) continue;
-					if (npface(dir) and nfinfo(dir) == 0) dirs.insert(dir);
-				}
-			}
+				for (auto dir: all_dirs) {
+					if (nfinfo(dir) < 1) continue;
+					if (dir == fn and cfinfo(dir) < 0) {
+						cfinfo(dir) = 0;
+						continue;
+					}
+					if (dir == -fn and cfinfo(fn) < 1) throw runtime_error(
+						__FILE__ "(" + to_string(__LINE__) + "): "
+						+ to_string(cell.id) + " "
+						+ to_string(neighbor.id) + " "
+						+ to_string(dir) + " "
+						+ to_string(cfinfo(fn)) + " "
+						+ to_string(nfinfo(-fn))
+					);
 
-			int dir1 = 9, dir2 = 9;
-			if (en[0] == 0) {
-				if (en[1] == -1 and en[2] == -1) {
-					if (dir1 = +2, dir2 = +3;
-						   (npface(dir1) and nfinfo(dir1) == 0)
-						or (npface(dir2) and nfinfo(dir2) == 0)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == -1 and en[2] == +1) {
-					if (dir1 = +2, dir2 = -3;
-						   (npface(dir1) and nfinfo(dir1) == 0)
-						or (npface(dir2) and nfinfo(dir2) == 0)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == +1 and en[2] == -1) {
-					if (dir1 = -2, dir2 = +3;
-						   (npface(dir1) and nfinfo(dir1) == 0)
-						or (npface(dir2) and nfinfo(dir2) == 0)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == +1 and en[2] == +1) {
-					if (dir1 = -2, dir2 = -3;
-						   (npface(dir1) and nfinfo(dir1) == 0)
-						or (npface(dir2) and nfinfo(dir2) == 0)
-					) dirs.insert({-dir1, -dir2});
+					if (nfinfo(dir) == 1 and cfinfo(dir) < 0) {
+						cfinfo(dir) = 0;
+					}
 				}
 			}
-			if (en[0] == 1) {
-				if (en[1] == -1 and en[2] == -1) {
-					if (dir1 = +1, dir2 = +3;
-						   (npface(dir1) and nfinfo(dir1) == 0)
-						or (npface(dir2) and nfinfo(dir2) == 0)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == -1 and en[2] == +1) {
-					if (dir1 = +1, dir2 = -3;
-						   (npface(dir1) and nfinfo(dir1) == 0)
-						or (npface(dir2) and nfinfo(dir2) == 0)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == +1 and en[2] == -1) {
-					if (dir1 = -1, dir2 = +3;
-						   (npface(dir1) and nfinfo(dir1) == 0)
-						or (npface(dir2) and nfinfo(dir2) == 0)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == +1 and en[2] == +1) {
-					if (dir1 = -1, dir2 = -3;
-						   (npface(dir1) and nfinfo(dir1) == 0)
-						or (npface(dir2) and nfinfo(dir2) == 0)
-					) dirs.insert({-dir1, -dir2});
-				}
-			}
-			if (en[0] == 2) {
-				if (en[1] == -1 and en[2] == -1) {
-					if (dir1 = +1, dir2 = +2;
-						   (npface(dir1) and nfinfo(dir1) == 0)
-						or (npface(dir2) and nfinfo(dir2) == 0)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == -1 and en[2] == +1) {
-					if (dir1 = +1, dir2 = -2;
-						   (npface(dir1) and nfinfo(dir1) == 0)
-						or (npface(dir2) and nfinfo(dir2) == 0)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == +1 and en[2] == -1) {
-					if (dir1 = -1, dir2 = +2;
-						   (npface(dir1) and nfinfo(dir1) == 0)
-						or (npface(dir2) and nfinfo(dir2) == 0)
-					) dirs.insert({-dir1, -dir2});
-				}
-				if (en[1] == +1 and en[2] == +1) {
-					if (dir1 = -1, dir2 = -2;
-						   (npface(dir1) and nfinfo(dir1) == 0)
-						or (npface(dir2) and nfinfo(dir2) == 0)
-					) dirs.insert({-dir1, -dir2});
-				}
-			}
-		}
-
-		for (const int dir: dirs) {
-			if (cpface(dir) and cfinfo(dir) == -99) FInfo(*cell.data)(dir) = -1;
-		}
-	}
-} catch (const std::exception& e) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
-} catch (...) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
-}
-
-
-/*! Classifies primary edges of given cells.
-
-Types: normal face/edge == 1, boundary == 0, dont_solve == -1.
-Edge type is maximum of touching faces' types.
-
-FInfo must be set for given cells and their edge neighbors'
-faces before calling this function.
-*/
-template <
-	class Cells,
-	//class Grid,
-	class Primary_Face_Getter,
-	class Primary_Edge_Getter,
-	class Face_Info_Getter,
-	class Edge_Info_Getter
-> void classify_edges(
-	const Cells& cells,
-	const Primary_Face_Getter& PFace,
-	const Primary_Edge_Getter& PEdge,
-	const Face_Info_Getter& FInfo,
-	const Edge_Info_Getter& EInfo
-) try {
-	using std::max;
-
-	for (const auto& cell: cells) {
-		auto& ceinfo = EInfo(*cell.data);
-		for (int d1: {0, 1, 2})
-		for (int d2: {-1, +1})
-		for (int d3: {-1, +1}) {
-			ceinfo(d1,d2,d3) = -2;
-		}
-
-		const auto& cpface = PFace(*cell.data);
-		const auto& cpedge = PEdge(*cell.data);
-		const auto& cfinfo = FInfo(*cell.data);
-
-		if (cpface(-1)) {
-			for (int d1: {1, 2})
-			for (int d3: {-1, +1}) {
-				if (constexpr int d2 = -1; cpedge(d1,d2,d3)) {
-					ceinfo(d1,d2,d3) = max(cfinfo(d2), ceinfo(d1,d2,d3));
-				}
-			}
-		}
-
-		size_t d1 = 9;
-		int d2 = 9, d3 = 9;
-		if (cpface(+1)) {
-			{d1 = 1, d2 = +1;
-			if (d3 = -1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(+1), ceinfo(d1,d2,d3));
-			}
-			if (d3 = +1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(+1), ceinfo(d1,d2,d3));
-			}}
-
-			{d1 = 2, d2 = +1;
-			if (d3 = -1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(+1), ceinfo(d1,d2,d3));
-			}
-			if (d3 = +1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(+1), ceinfo(d1,d2,d3));
-			}}
-		}
-
-		if (cpface(-2)) {
-			{d1 = 0, d2 = -1;
-			if (d3 = -1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(-2), ceinfo(d1,d2,d3));
-			}
-			if (d3 = +1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(-2), ceinfo(d1,d2,d3));
-			}}
-
-			{d1 = 2, d3 = -1;
-			if (d2 = -1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(-2), ceinfo(d1,d2,d3));
-			}
-			if (d2 = +1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(-2), ceinfo(d1,d2,d3));
-			}}
-		}
-
-		if (cpface(+2)) {
-			{d1 = 0, d2 = +1;
-			if (d3 = -1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(+2), ceinfo(d1,d2,d3));
-			}
-			if (d3 = +1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(+2), ceinfo(d1,d2,d3));
-			}}
-
-			{d1 = 2, d3 = +1;
-			if (d2 = -1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(+2), ceinfo(d1,d2,d3));
-			}
-			if (d2 = +1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(+2), ceinfo(d1,d2,d3));
-			}}
-		}
-
-		if (cpface(-3)) {
-			{d1 = 0, d3 = -1;
-			if (d2 = -1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(-3), ceinfo(d1,d2,d3));
-			}
-			if (d2 = +1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(-3), ceinfo(d1,d2,d3));
-			}}
-
-			{d1 = 1, d3 = -1;
-			if (d2 = -1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(-3), ceinfo(d1,d2,d3));
-			}
-			if (d2 = +1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(-3), ceinfo(d1,d2,d3));
-			}}
-		}
-
-		if (cpface(+3)) {
-			{d1 = 0, d3 = +1;
-			if (d2 = -1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(+3), ceinfo(d1,d2,d3));
-			}
-			if (d2 = +1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(+3), ceinfo(d1,d2,d3));
-			}}
-
-			{d1 = 1, d3 = +1;
-			if (d2 = -1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(+3), ceinfo(d1,d2,d3));
-			}
-			if (d2 = +1; cpedge(d1,d2,d3)) {
-				ceinfo(d1,d2,d3) = max(cfinfo(+3), ceinfo(d1,d2,d3));
-			}}
-		}
-
-		for (const auto& neighbor: cell.neighbors_of) {
-			const auto& fn = neighbor.face_neighbor;
 			const auto& en = neighbor.edge_neighbor;
-			if (fn == 0 and en[0] < 0) {
-				continue;
-			}
+			if (en[0] >= 0) {
+				const int
+					dir1 = 1 + std::min((en[0] + 1) % 3, (en[0] + 2) % 3),
+					dir2 = 1 + std::max((en[0] + 1) % 3, (en[0] + 2) % 3),
+					sign1 = [&en](){
+						if (en[1] < 0) return -1;
+						else return +1;}(),
+					sign2 = [&en](){
+						if (en[2] < 0) return -1;
+						else return +1;}();
 
-			const auto& npface = PFace(*neighbor.data);
-			const auto& nfinfo = FInfo(*neighbor.data);
-
-			int d1 = 9, d2 = 9, d3 = 9;
-			if (fn == -1) {
-				d2 = -1;
-				if (d1 = 1, d3 = -1;
-					cpedge(d1,d2,d3) and npface(-3)// and neighbor.z == 0
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 1, d3 = +1;
-					cpedge(d1,d2,d3) and npface(+3)// and cleni == neighbor.z + nleni
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+3), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 2, d3 = -1;
-					cpedge(d1,d2,d3) and npface(-2)// and neighbor.y == 0
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 2, d3 = +1;
-					cpedge(d1,d2,d3) and npface(+2)// and cleni == neighbor.y + nleni
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (fn == +1) {
-				d2 = +1;
-				if (d1 = 2, d3 = -1;
-					cpedge(d1,d2,d3) and npface(-2)// and neighbor.y == 0
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 2, d3 = +1;
-					cpedge(d1,d2,d3) and npface(+2)// and cleni == neighbor.y + nleni
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 1, d3 = -1;
-					cpedge(d1,d2,d3) and npface(-3)// and neighbor.z == 0
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 1, d3 = +1;
-					cpedge(d1,d2,d3) and npface(+3)// and cleni == neighbor.z + nleni
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+3), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (fn == -2) {
-				if (d1 = 2, d2 = -1, d3 = -1;
-					cpedge(d1,d2,d3) and npface(-1)// and neighbor.x == 0
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 2, d2 = +1, d3 = -1;
-					cpedge(d1,d2,d3) and npface(+1)// and cleni == neighbor.x + nleni
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 0, d2 = -1, d3 = -1;
-					cpedge(d1,d2,d3) and npface(-3)// and neighbor.z == 0
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 0, d2 = -1, d3 = +1;
-					cpedge(d1,d2,d3) and npface(+3)// and cleni == neighbor.z + nleni
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+3), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (fn == +2) {
-				if (d1 = 2, d2 = -1, d3 = +1;
-					cpedge(d1,d2,d3) and npface(-1)// and neighbor.x == 0
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 2, d2 = +1, d3 = +1;
-					cpedge(d1,d2,d3) and npface(+1)// and cleni == neighbor.x + nleni
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 0, d2 = +1, d3 = -1;
-					cpedge(d1,d2,d3) and npface(-3)// and neighbor.z == 0
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 0, d2 = +1, d3 = +1;
-					cpedge(d1,d2,d3) and npface(+3)// and cleni == neighbor.z + nleni
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+3), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (fn == -3) {
-				d3 = -1;
-				if (d1 = 1, d2 = -1;
-					cpedge(d1,d2,d3) and npface(-1)// and neighbor.x == 0
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 1, d2 = +1;
-					cpedge(d1,d2,d3) and npface(+1) //and cleni == neighbor.x + nleni
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 0, d2 = -1;
-					cpedge(d1,d2,d3) and npface(-2) //and neighbor.y == 0
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 0, d2 = +1;
-					cpedge(d1,d2,d3) and npface(+2) //and cleni == neighbor.y + nleni
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (fn == +3) {
-				d3 = +1;
-				if (d1 = 1, d2 = -1;
-					cpedge(d1,d2,d3) and npface(-1) //and neighbor.x == 0
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 1, d2 = +1;
-					cpedge(d1,d2,d3) and npface(+1) //and cleni == neighbor.x + nleni
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 0, d2 = -1;
-					cpedge(d1,d2,d3) and npface(-2) //and neighbor.y == 0
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
-				}
-
-				if (d1 = 0, d2 = +1;
-					cpedge(d1,d2,d3) and npface(+2) //and cleni == neighbor.y + nleni
-				) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (d1 = 0, d2 = -1, d3 = -1; cpedge(d1,d2,d3) and
-				en[0] == d1 and en[1] == d2 and en[2] == d3
-			) {
-				if (npface(+2)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
-				}
-				if (npface(+3)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+3), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (d1 = 0, d2 = -1, d3 = +1; cpedge(d1,d2,d3) and
-				en[0] == d1 and en[1] == d2 and en[2] == d3
-			) {
-				if (npface(+2)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
-				}
-				if (npface(-3)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (d1 = 0, d2 = +1, d3 = -1; cpedge(d1,d2,d3) and
-				en[0] == d1 and en[1] == d2 and en[2] == d3
-			) {
-				if (npface(-2)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
-				}
-				if (npface(+3)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+3), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (d1 = 0, d2 = +1, d3 = +1; cpedge(d1,d2,d3) and
-				en[0] == d1 and en[1] == d2 and en[2] == d3
-			) {
-				if (npface(-2)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
-				}
-				if (npface(-3)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (d1 = 1, d2 = -1, d3 = -1; cpedge(d1,d2,d3) and
-				en[0] == d1 and en[1] == d2 and en[2] == d3
-			) {
-				if (npface(+1)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
-				}
-				if (npface(+3)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+3), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (d1 = 1, d2 = -1, d3 = +1; cpedge(d1,d2,d3) and
-				en[0] == d1 and en[1] == d2 and en[2] == d3
-			) {
-				if (npface(+1)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
-				}
-				if (npface(-3)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (d1 = 1, d2 = +1, d3 = -1; cpedge(d1,d2,d3) and
-				en[0] == d1 and en[1] == d2 and en[2] == d3
-			) {
-				if (npface(-1)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
-				}
-				if (npface(+3)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+3), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (d1 = 1, d2 = +1, d3 = +1; cpedge(d1,d2,d3) and
-				en[0] == d1 and en[1] == d2 and en[2] == d3
-			) {
-				if (npface(-1)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
-				}
-				if (npface(-3)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-3), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (d1 = 2, d2 = -1, d3 = -1;
-				cpedge(d1,d2,d3) and en[0] == d1 and en[1] == d2 and en[2] == d3
-			) {
-				if (npface(+1)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
-				}
-				if (npface(+2)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (d1 = 2, d2 = -1, d3 = +1; cpedge(d1,d2,d3) and
-				en[0] == d1 and en[1] == d2 and en[2] == d3
-			) {
-				if (npface(+1)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+1), ceinfo(d1,d2,d3));
-				}
-				if (npface(-2)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (d1 = 2, d2 = +1, d3 = -1; cpedge(d1,d2,d3) and
-				en[0] == d1 and en[1] == d2 and en[2] == d3
-			) {
-				if (npface(-1)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
-				}
-				if (npface(+2)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(+2), ceinfo(d1,d2,d3));
-				}
-			}
-
-			if (d1 = 2, d2 = +1, d3 = +1; cpedge(d1,d2,d3) and
-				en[0] == d1 and en[1] == d2 and en[2] == d3
-			) {
-				if (npface(-1)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-1), ceinfo(d1,d2,d3));
-				}
-				if (npface(-2)) {
-					ceinfo(d1,d2,d3) = max(nfinfo(-2), ceinfo(d1,d2,d3));
+				if (nfinfo(-sign1*dir1) == 1 or nfinfo(-sign2*dir2) == 1) {
+					if (cfinfo(sign1*dir1) < 0) cfinfo(sign1*dir1) = 0;
+					if (cfinfo(sign2*dir2) < 0) cfinfo(sign2*dir2) = 0;
 				}
 			}
 		}
 	}
+
+	grid.update_copies_of_remote_neighbors();
+
+	// rest are dont_solve
+	for (const auto& cell: grid.local_cells()) {
+		auto& cfinfo = FInfo(*cell.data);
+		for (auto dir: all_dirs) {
+			if (cfinfo(dir) < -1) cfinfo(dir) = -1;
+		}
+	}
+
+	grid.update_copies_of_remote_neighbors();
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
@@ -1877,7 +1254,6 @@ template<
 	class Total_Energy_Density_Getter,
 	class Magnetic_Field_Getter,
 	class Face_Magnetic_Field_Getter,
-	class Primary_Face_Getter,
 	class Solver_Info_Getter,
 	class Face_Info_Getter,
 	class Substepping_Period_Getter
@@ -1894,7 +1270,6 @@ template<
 	const Total_Energy_Density_Getter Nrj,
 	const Magnetic_Field_Getter Mag,
 	const Face_Magnetic_Field_Getter Face_B,
-	const Primary_Face_Getter PFace,
 	const Solver_Info_Getter SInfo,
 	const Face_Info_Getter FInfo,
 	const Substepping_Period_Getter Substep
@@ -1918,17 +1293,16 @@ template<
 		boundaries,
 		geometries,
 		simulation_time,
-		Face_B,
-		PFace, FInfo
+		Face_B, FInfo
 	);
 	Grid::cell_data_type::set_transfer_all(true, pamhd::Face_Magnetic_Field());
 	grid.update_copies_of_remote_neighbors();
 	Grid::cell_data_type::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
 	pamhd::mhd::update_B_consistency(
-		grid.local_cells(),
+		0, grid.local_cells(),
 		Mas, Mom, Nrj, Mag, Face_B,
-		PFace, FInfo, Substep,
+		SInfo, Substep,
 		adiabatic_index,
 		vacuum_permeability,
 		true

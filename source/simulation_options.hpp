@@ -63,7 +63,6 @@ struct Options
 	double
 		time_start = 0,
 		time_length = 1,
-		time_step = 0.1,
 		adiabatic_index = 5.0 / 3.0,
 		vacuum_permeability = 4e-7 * M_PI,
 		proton_mass = 1.672621777e-27;
@@ -111,28 +110,6 @@ struct Options
 			throw std::invalid_argument(
 				std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
 				+ "Invalid time-length: " + std::to_string(time_length)
-				+ ", should be > 0"
-			);
-		}
-
-		if (not object.HasMember("time-step")) {
-			throw std::invalid_argument(
-				std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
-				+ "JSON data doesn't have a time-step key."
-			);
-		}
-		const auto& time_step_json = object["time-step"];
-		if (not time_step_json.IsNumber()) {
-			throw std::invalid_argument(
-				std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
-				+ "JSON item time-step is not a number."
-			);
-		}
-		time_step = object["time-step"].GetDouble();
-		if (not isnormal(time_step) or time_step < 0) {
-			throw std::invalid_argument(
-				std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
-				+ "Invalid time-step: " + std::to_string(time_step)
 				+ ", should be > 0"
 			);
 		}

@@ -68,8 +68,8 @@ struct Options
 
 	std::string solver = "roe_athena";
 	int
-		substep_min_i = 1,
-		substep_max_i = 1;
+		substep_min_i = 0,
+		substep_max_i = 999;
 	double
 		save_n = -1,
 		min_pressure = 0,
@@ -243,7 +243,7 @@ struct Options
 				if (this->substep_min_i < 0) {
 					throw std::invalid_argument(
 						__FILE__ "(" + std::to_string(__LINE__) + "): "
-						+ "JSON item substep-min must be positive."
+						+ "JSON item substep-min cannot be negative."
 					);
 				}
 			} else if (substep_min_json.IsString()) {
@@ -252,7 +252,7 @@ struct Options
 			} else {
 				throw std::invalid_argument(
 					__FILE__ "(" + std::to_string(__LINE__) + "): "
-					+ "JSON item substep-min must either positive integer or string."
+					+ "JSON item substep-min must either non-negative integer or string."
 				);
 			}
 		}
@@ -264,7 +264,7 @@ struct Options
 				if (this->substep_max_i < 0) {
 					throw std::invalid_argument(
 						__FILE__ "(" + std::to_string(__LINE__) + "): "
-						+ "JSON item substep-max must be positive."
+						+ "JSON item substep-max cannot be negative."
 					);
 				}
 			} else if (substep_max_json.IsString()) {
@@ -273,7 +273,7 @@ struct Options
 			} else {
 				throw std::invalid_argument(
 					__FILE__ "(" + std::to_string(__LINE__) + "): "
-					+ "JSON item substep-max must either positive integer or string."
+					+ "JSON item substep-max must either non-negative integer or string."
 				);
 			}
 		}

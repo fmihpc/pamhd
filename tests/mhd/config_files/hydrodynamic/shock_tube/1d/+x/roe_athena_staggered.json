@@ -11,10 +11,7 @@
 	"adiabatic-index": 1.6666666666666667,
 	"vacuum-permeability": 1.2566370614359173e-06,
 	"proton-mass": 1.6726217770000001e-27,
-	"remove-div-B-n": 0.1,
 	"mhd-time-step-factor": 0.5,
-	"poisson-norm-stop": 1e-10,
-	"poisson-norm-increase-max": 10,
 	"grid-options": {
 		"periodic": "{false, true, true}",
 		"cells": "{100 + 2, 1, 1}",
@@ -34,7 +31,7 @@
 	],
 	"number-density": {
 		"comment": "default value at start of simulation",
-		"default": "(x < 5e4) ? 3e6 : 1e6",
+		"default": "x < 5e4 ? 3e6 : 1e6",
 		"value-boundaries": [
 			{
 				"comment": "Time-dependent state of negative end of the shock tube",
@@ -66,7 +63,7 @@
 		]
 	},
 	"pressure": {
-		"default": "(x < 5e4) ? 3e-12 : 1e-12",
+		"default": "x < 5e4 ? 3e-12 : 1e-12",
 		"value-boundaries": [
 			{
 				"geometry-id": 0,

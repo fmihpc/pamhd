@@ -94,22 +94,19 @@ def convert(inname, verbose):
 		+ "\n# Simulation step: " + str(metadata['sim_step']) + "\n"
 		+ "# Format of each line (lines are ordered randomly):\n"
 		+ "# x, y and z coordinates of cell's center (m)\n")
-	if 'mhd' in metadata['var_data_start']: outfile.write(
+	if 'mhd     ' in metadata['var_data_start']: outfile.write(
 		"# number density (#/m^3)\n"
 		+ "# x, y and z components of velocity (m/s)\n"
 		+ "# thermal pressure (Pa)\n"
 		+ "# x, y and z components of volume magnetic field (T)\n")
-	if 'primary' in metadata['var_data_start']: outfile.write(
-		"# primary face info (-x,+x,-y...,+z)\n"
-		+ "# primary edge info (x,-y,-z; x,-y,+z; ...; z,+x,+y)\n")
-	if 'bgB' in metadata['var_data_start']: outfile.write("# background magnetic field on cell faces (-x,+x,-y,...,+z) with x,y,z components on each face (T)\n")
+	if 'bgB     ' in metadata['var_data_start']: outfile.write("# background magnetic field on cell faces (-x,+x,-y,...,+z) with x,y,z components on each face (T)\n")
 	if 'divfaceB' in metadata['var_data_start']: outfile.write("# divergence of face magnetic field (T/m)\n")
-	if 'edgeE' in metadata['var_data_start']: outfile.write("# edge-directed electric field on cell edges (V/m, x,-y,-z; x,-y,+z; ...; z,+x,+y)\n")
-	if 'faceB' in metadata['var_data_start']: outfile.write("# normal component of magnetic field on faces (T, -x,+x,-y,...,+z)\n")
-	if 'mpi' in metadata['var_data_start']: outfile.write("# MPI rank of cell owner\n")
+	if 'faceB   ' in metadata['var_data_start']: outfile.write("# normal component of magnetic field on faces (T, -x,+x,-y,...,+z)\n")
+	if 'rank    ' in metadata['var_data_start']: outfile.write("# MPI rank of cell owner\n")
 	if 'mhd info' in metadata['var_data_start']: outfile.write("# MHD solver information\n")
 	if 'ref lvls' in metadata['var_data_start']: outfile.write("# Minimum and maximum target refinement level\n")
-	if 'substep' in metadata['var_data_start']: outfile.write("# Temporal substepping period\n")
+	if 'substep ' in metadata['var_data_start']: outfile.write("# Temporal substepping period\n")
+	if 'timestep' in metadata['var_data_start']: outfile.write("# Cell's maximum allowed timestep\n")
 
 	for i in range(len(metadata['cells'])):
 		cell_id = metadata['cells'][i]
@@ -120,11 +117,11 @@ def convert(inname, verbose):
 			+ str(cell_center[1]) + ' '
 			+ str(cell_center[2]) + ' ')
 
-		if 'mhd' in sim_data[cell_id]:
-			mas = sim_data[cell_id]['mhd'][0]
-			mom = sim_data[cell_id]['mhd'][1]
-			nrj = sim_data[cell_id]['mhd'][2]
-			mag = sim_data[cell_id]['mhd'][3]
+		if 'mhd     ' in sim_data[cell_id]:
+			mas = sim_data[cell_id]['mhd     '][0]
+			mom = sim_data[cell_id]['mhd     '][1]
+			nrj = sim_data[cell_id]['mhd     '][2]
+			mag = sim_data[cell_id]['mhd     '][3]
 			kin_nrj = (mom[0]**2 + mom[1]**2 + mom[2]**2) / 2 / mas
 			mag_nrj = (mag[0]**2 + mag[1]**2 + mag[2]**2) / 2 / metadata['vacuum_permeability']
 			pressure = (nrj - kin_nrj - mag_nrj) * (metadata['adiabatic_index'] - 1)
@@ -138,27 +135,19 @@ def convert(inname, verbose):
 				+ str(mag[1]) + ' '
 				+ str(mag[2]) + ' ')
 
-		if 'primary' in sim_data[cell_id]:
-			for i in range(len(sim_data[cell_id]['primary'])):
-				outfile.write(str(sim_data[cell_id]['primary'][i]) + ' ')
-
-		if 'bgB' in sim_data[cell_id]:
-			for i in range(len(sim_data[cell_id]['bgB'])):
-				outfile.write(str(sim_data[cell_id]['bgB'][i]) + ' ')
+		if 'bgB     ' in sim_data[cell_id]:
+			for i in range(len(sim_data[cell_id]['bgB     '])):
+				outfile.write(str(sim_data[cell_id]['bgB     '][i]) + ' ')
 
 		if 'divfaceB' in sim_data[cell_id]:
 			outfile.write(str(sim_data[cell_id]['divfaceB']) + ' ')
 
-		if 'edgeE' in sim_data[cell_id]:
-			for i in range(len(sim_data[cell_id]['edgeE'])):
-				outfile.write(str(sim_data[cell_id]['edgeE'][i]) + ' ')
+		if 'faceB   ' in sim_data[cell_id]:
+			for i in range(len(sim_data[cell_id]['faceB   '])):
+				outfile.write(str(sim_data[cell_id]['faceB   '][i]) + ' ')
 
-		if 'faceB' in sim_data[cell_id]:
-			for i in range(len(sim_data[cell_id]['faceB'])):
-				outfile.write(str(sim_data[cell_id]['faceB'][i]) + ' ')
-
-		if 'rank' in sim_data[cell_id]:
-			outfile.write(str(sim_data[cell_id]['rank']) + ' ')
+		if 'rank    ' in sim_data[cell_id]:
+			outfile.write(str(sim_data[cell_id]['rank    ']) + ' ')
 
 		if 'mhd info' in sim_data[cell_id]:
 			outfile.write(str(sim_data[cell_id]['mhd info']) + ' ')
@@ -167,8 +156,11 @@ def convert(inname, verbose):
 			r = sim_data[cell_id]['ref lvls']
 			outfile.write(str(r[0]) + ' ' + str(r[1]) + ' ')
 
-		if 'substep' in sim_data[cell_id]:
-			outfile.write(str(sim_data[cell_id]['substep']) + ' ')
+		if 'substep ' in sim_data[cell_id]:
+			outfile.write(str(sim_data[cell_id]['substep ']) + ' ')
+
+		if 'timestep' in sim_data[cell_id]:
+			outfile.write(str(sim_data[cell_id]['timestep']) + ' ')
 
 		outfile.write('\n')
 
