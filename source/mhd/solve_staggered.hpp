@@ -285,6 +285,8 @@ template <
 
 		std::array<bool, 3> missing_flux{false, false, false};
 		for (const auto& neighbor: cell.neighbors_of) {
+			const auto& fn = neighbor.face_neighbor;
+			if (fn == 0) continue;
 			if (neighbor.data == nullptr) continue;
 			if (SInfo(*neighbor.data) < 0) continue;
 
@@ -297,16 +299,14 @@ template <
 				continue;
 			}
 
-			const auto& fn = neighbor.face_neighbor;
-
-			if (fn != 0 and neighbor.relative_size > 0) {
+			if (neighbor.relative_size > 0) {
 				const size_t dim = abs(fn) - 1;
 				missing_flux[(dim + 1) % 3] = true;
 				missing_flux[(dim + 2) % 3] = true;
 			}
 
 			// solve flux only in +dir
-			if (fn <= 0) continue;
+			if (fn < 0) continue;
 
 			const auto [max_vel, flux] = get_flux(
 				grid, cell, neighbor, fn, Mas, Mom, Nrj,
@@ -1581,7 +1581,7 @@ template <
 	const Substepping_Period_Getter Substep
 ) try {
 	int max_local = -1;
-	for (const auto& cell: grid.all_cells()) {
+	for (const auto& cell: grid.local_cells()) {
 		if (SInfo(*cell.data) < 0) {
 			continue;
 		}
@@ -1696,14 +1696,16 @@ template <
 		Substep_Max,
 		SInfo
 	);
-	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Substepping_Period());
 
 	const int max_substep = update_substeps(grid, SInfo, Substep);
+	grid.update_copies_of_remote_neighbors();
+	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Substepping_Period());
 	if (grid.get_rank() == 0) {
 		std::cout
 			<< "Substep: " << sub_dt << ", largest substep period: "
 			<< max_substep << std::endl;
 	}
+
 	double total_dt = 0;
 	for (int substep = 1; substep <= max_substep; substep += 1) {
 		total_dt += sub_dt;
@@ -1807,10 +1809,8 @@ template <
 	}
 
 	uint64_t modified_cells = 0;
-	int max_substep_local;
 	auto comm = grid.get_communicator();
 	do {
-		max_substep_local = 0;
 		grid.update_copies_of_remote_neighbors();
 		uint64_t modified_cells_local = 0;
 		for (const auto& cell: grid.local_cells()) {
@@ -1829,7 +1829,6 @@ template <
 					Substep(*cell.data) = Substep(*neighbor.data) + 1;
 					modified_cells_local++;
 				}
-				max_substep_local = max(Substep(*cell.data), max_substep_local);
 			}
 		}
 		if (
@@ -1848,6 +1847,7 @@ template <
 			abort();
 		}
 	} while (modified_cells > 0);
+	grid.update_copies_of_remote_neighbors();
 	MPI_Comm_free(&comm);
 
 } catch (const std::exception& e) {
