@@ -13,6 +13,7 @@ TESTS_MHD_EXECUTABLES = \
   tests/mhd/2mhd_extract.exe \
   tests/mhd/test.exe \
   tests/mhd/test_staggered.exe \
+  tests/mhd/solar_wind_box.exe \
   tests/mhd/two_test.exe
 
 TESTS_MHD_TESTS = \
@@ -258,6 +259,21 @@ tests/mhd/test.exe: \
 
 tests/mhd/test_staggered.exe: \
   tests/mhd/test_staggered.cpp \
+  $(TEST_MHD_PROGRAM_DEPS)
+	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM) \
+	  $(DCCRG_CPPFLAGS) \
+	  $(MUPARSERX_CPPFLAGS) \
+	  $(MUPARSERX_LDFLAGS) \
+	  $(MUPARSERX_LIBS) \
+	  $(PHIPROF_CPPFLAGS) \
+	  $(PRETTYPRINT_CPPFLAGS) \
+	  $(RAPIDJSON_CPPFLAGS) \
+	  $(ZOLTAN_CPPFLAGS) \
+	  $(ZOLTAN_LDFLAGS) \
+	  $(ZOLTAN_LIBS)
+
+tests/mhd/solar_wind_box.exe: \
+  tests/mhd/solar_wind_box.cpp \
   $(TEST_MHD_PROGRAM_DEPS)
 	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM) \
 	  $(DCCRG_CPPFLAGS) \
