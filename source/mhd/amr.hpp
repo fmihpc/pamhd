@@ -603,7 +603,7 @@ template<
 ) try {
 	pamhd::grid::set_minmax_refinement_level(
 		grid.local_cells(), grid, options_grid,
-		simulation_time, Ref_min, Ref_max);
+		simulation_time, Ref_min, Ref_max, false);
 
 	pamhd::mhd::set_minmax_refinement_level(
 		grid.local_cells(), grid, options_mhd,

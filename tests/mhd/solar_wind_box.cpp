@@ -454,7 +454,7 @@ template<
 
 	const auto len0 = grid.length.get();
 	const auto mrlvl = grid.get_maximum_refinement_level();
-	std::array<uint64_t, 3> end_indices{
+	const std::array<uint64_t, 3> end_indices{
 		len0[0] * (uint64_t(1) << mrlvl),
 		len0[1] * (uint64_t(1) << mrlvl),
 		len0[2] * (uint64_t(1) << mrlvl)
@@ -926,6 +926,57 @@ template<
 }
 
 
+/*! Sets target refinement levels for boundary cells.
+
+Sets cells close to outer boundaries to minimum ref
+lvl and cells close to inner boundary to max ref lvl.
+*/
+template<
+	class Grid
+> void set_minmax_refinement_level(
+	const Grid& grid
+) try {
+	using std::max;
+	using std::min;
+
+	// outer boundaries
+	const auto len0 = grid.length.get();
+	const auto mrlvl = grid.get_maximum_refinement_level();
+	const auto indices0 = uint64_t(1) << mrlvl;
+	const std::array<uint64_t, 3> end_indices{
+		len0[0] * indices0, len0[1] * indices0, len0[2] * indices0
+	};
+	for (const auto& cell: grid.local_cells()) {
+		Ref_min(*cell.data) = 0;
+		Ref_max(*cell.data) = mrlvl;
+
+		const auto indices = grid.mapping.get_indices(cell.id);
+		int min_distance = 1 << 30; // from outer wall
+		// TODO: assumes neighborhood size of 3
+		for (auto dim: {0, 1, 2}) {
+			min_distance = min(min(min_distance,
+				int(indices[dim] / indices0)),
+				int((end_indices[dim]-indices[dim]-1) / indices0));
+		}
+		if (min_distance < 2) {
+			Ref_max(*cell.data) = 0;
+		} else if (min_distance < 5) {
+			Ref_max(*cell.data) = 1;
+		} else if (min_distance < 7) {
+			Ref_max(*cell.data) = 2;
+		} else {
+			Ref_max(*cell.data) = min_distance - 4;
+		}
+	}
+
+	// inner boundary
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
+
+
 int main(int argc, char* argv[]) {
 	using std::abs;
 	using std::ceil;
@@ -1080,26 +1131,20 @@ int main(int argc, char* argv[]) {
 	*/
 	const unsigned int neighborhood_size = 3;
 	const auto& number_of_cells = options_grid.get_number_of_cells();
-	std::array<bool, 3> periodic;
-	for (size_t dim: {0, 1, 2}) {
-		if (number_of_cells[dim] <= 2) {
-			periodic[dim] = true;
-		} else {
-			periodic[dim] = false;
+	const size_t min_cell0_count = 5 + 2*options_grid.get_max_ref_lvl();
+	for (auto dim: {0, 1, 2}) {
+		if (number_of_cells[dim] < min_cell0_count) {
+			std::cout << "Number of initial cells in dimension " << dim
+				<< " must be at least " << min_cell0_count
+				<< " but " << number_of_cells[dim] << " given" << std::endl;
+			abort();
 		}
-	}
-	if (abs(solar_wind_dir) == 1) {
-		periodic[0] = false;
-	} else if (abs(solar_wind_dir) == 2) {
-		periodic[1] = false;
-	} else if (abs(solar_wind_dir) == 3) {
-		periodic[2] = false;
 	}
 
 	Grid grid; grid
 		.set_initial_length(number_of_cells)
 		.set_neighborhood_length(neighborhood_size)
-		.set_periodic(periodic[0], periodic[1], periodic[2])
+		.set_periodic(false, false, false)
 		.set_load_balancing_method(options_sim.lb_name)
 		.set_maximum_refinement_level(options_grid.get_max_ref_lvl())
 		.initialize(comm);
@@ -1131,9 +1176,10 @@ int main(int argc, char* argv[]) {
 		cout << "Adapting and balancing grid at time "
 			<< options_sim.time_start << "...  " << flush;
 	}
+	set_minmax_refinement_level(grid);
 	pamhd::grid::set_minmax_refinement_level(
 		grid.local_cells(), grid, options_grid,
-		options_sim.time_start, Ref_min, Ref_max);
+		options_sim.time_start, Ref_min, Ref_max, true);
 	pamhd::grid::adapt_grid(
 		grid, Ref_min, Ref_max,
 		pamhd::grid::New_Cells_Handler(Ref_min, Ref_max),

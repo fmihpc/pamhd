@@ -448,7 +448,7 @@ int main(int argc, char* argv[])
 	}
 	pamhd::grid::set_minmax_refinement_level(
 		grid.local_cells(), grid, options_grid,
-		options_sim.time_start, Ref_min, Ref_max);
+		options_sim.time_start, Ref_min, Ref_max, false);
 	pamhd::grid::adapt_grid(
 		grid, Ref_min, Ref_max,
 		pamhd::grid::New_Cells_Handler(Ref_min, Ref_max),

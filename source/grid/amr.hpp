@@ -694,7 +694,11 @@ template <
 }
 
 
-//! Sets min,max refinement levels based on geometry.
+/*! Sets min,max refinement levels based on geometry.
+
+If clamped == true then target minimum refinement level
+is not decreased and tgt max ref lvl is not increased.
+*/
 template <
 	class Cells,
 	class Grid,
@@ -706,13 +710,24 @@ template <
 	Options& options,
 	const double& sim_time,
 	const Target_Refinement_Level_Min_Getter& RLMin,
-	const Target_Refinement_Level_Max_Getter& RLMax
+	const Target_Refinement_Level_Max_Getter& RLMax,
+	bool clamped
 ) {
+	using std::clamp;
+
 	for (const auto& cell: cells) {
 		const auto c = grid.geometry.get_center(cell.id);
 		const auto [rlmin, rlmax] = get_target_refinement_level(options, sim_time, c);
-		RLMin(*cell.data) = rlmin;
-		RLMax(*cell.data) = rlmax;
+		if (clamped) {
+			const auto
+				prev_min = RLMin(*cell.data),
+				prev_max = RLMax(*cell.data);
+			RLMin(*cell.data) = clamp(rlmin, prev_min, prev_max);
+			RLMax(*cell.data) = clamp(rlmax, prev_min, prev_max);
+		} else {
+			RLMin(*cell.data) = rlmin;
+			RLMax(*cell.data) = rlmax;
+		}
 	}
 }
 
