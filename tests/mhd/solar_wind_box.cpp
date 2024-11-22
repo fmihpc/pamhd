@@ -598,6 +598,70 @@ template<
 }
 
 
+/*! Returns whether given cell spans inner boundary
+
+Returns tuple (a, b) where:
+	a == true if some part of cell is inside inner boundary
+		or if origin is inside of cell
+	b == true if some part of cell is outside of boundary
+
+TODO: support inner boundary not at 0,0,0
+*/
+template<
+	class Cell, class Grid
+> auto at_inner_boundary(
+	const double& inner_boundary_radius,
+	const Cell& cell,
+	const Grid& grid
+) {
+	using std::make_tuple;
+	using std::sqrt;
+
+	const auto [sx, sy, sz] = grid.geometry.get_min(cell.id);
+	const auto [ex, ey, ez] = grid.geometry.get_max(cell.id);
+	const auto
+		r1 = sqrt(sx*sx + sy*sy + sz*sz),
+		r2 = sqrt(sx*sx + sy*sy + ez*ez),
+		r3 = sqrt(sx*sx + ey*ey + sz*sz),
+		r4 = sqrt(sx*sx + ey*ey + ez*ez),
+		r5 = sqrt(ex*ex + sy*sy + sz*sz),
+		r6 = sqrt(ex*ex + sy*sy + ez*ez),
+		r7 = sqrt(ex*ex + ey*ey + sz*sz),
+		r8 = sqrt(ex*ex + ey*ey + ez*ez);
+	bool inside = false, outside = false;
+	if (
+		r1 < inner_boundary_radius
+		or r2 < inner_boundary_radius
+		or r3 < inner_boundary_radius
+		or r4 < inner_boundary_radius
+		or r5 < inner_boundary_radius
+		or r6 < inner_boundary_radius
+		or r7 < inner_boundary_radius
+		or r8 < inner_boundary_radius
+	) inside = true;
+	if (
+		r1 > inner_boundary_radius
+		or r2 > inner_boundary_radius
+		or r3 > inner_boundary_radius
+		or r4 > inner_boundary_radius
+		or r5 > inner_boundary_radius
+		or r6 > inner_boundary_radius
+		or r7 > inner_boundary_radius
+		or r8 > inner_boundary_radius
+	) outside = true;
+
+	if (
+		sx <= 0 and ex >= 0
+		and sy <= 0 and ey >= 0
+		and sz <= 0 and ez >= 0
+	) {
+		return make_tuple(true, outside);
+	}
+
+	return make_tuple(inside, outside);
+}
+
+
 /*! Returns planetary boundary cells
 
 Transfer of solver info between processes must be switched on.
@@ -610,9 +674,9 @@ template<
 ) try {
 	std::set<uint64_t> planet_candidates;
 	for (const auto& cell: grid.local_cells()) {
-		const auto [rx, ry, rz] = grid.geometry.get_center(cell.id);
-		const auto r = std::sqrt(rx*rx + ry*ry + rz*rz);
-		if (r < inner_bdy_radius) {
+		const auto [inside, _]
+			= at_inner_boundary(inner_bdy_radius, cell, grid);
+		if (inside) {
 			planet_candidates.insert(cell.id);
 			Sol_Info(*cell.data) = 0;
 		}
@@ -934,25 +998,29 @@ lvl and cells close to inner boundary to max ref lvl.
 template<
 	class Grid
 > void set_minmax_refinement_level(
+	const double& inner_bdy_radius,
 	const Grid& grid
 ) try {
 	using std::max;
 	using std::min;
+	using std::sqrt;
+
+	const auto mrlvl = grid.get_maximum_refinement_level();
+	for (const auto& cell: grid.local_cells()) {
+		Ref_min(*cell.data) = 0;
+		Ref_max(*cell.data) = mrlvl;
+	}
 
 	// outer boundaries
 	const auto len0 = grid.length.get();
-	const auto mrlvl = grid.get_maximum_refinement_level();
 	const auto indices0 = uint64_t(1) << mrlvl;
 	const std::array<uint64_t, 3> end_indices{
 		len0[0] * indices0, len0[1] * indices0, len0[2] * indices0
 	};
 	for (const auto& cell: grid.local_cells()) {
-		Ref_min(*cell.data) = 0;
-		Ref_max(*cell.data) = mrlvl;
-
 		const auto indices = grid.mapping.get_indices(cell.id);
 		int min_distance = 1 << 30; // from outer wall
-		// TODO: assumes neighborhood size of 3
+		// FIXME: assumes neighborhood size of 3
 		for (auto dim: {0, 1, 2}) {
 			min_distance = min(min(min_distance,
 				int(indices[dim] / indices0)),
@@ -970,6 +1038,16 @@ template<
 	}
 
 	// inner boundary
+	const auto max_ref_lvl = grid.get_maximum_refinement_level();
+	for (const auto& cell: grid.local_cells()) {
+		const auto [inside, outside]
+			= at_inner_boundary(inner_bdy_radius, cell, grid);
+		if (inside and outside) {
+			Ref_max(*cell.data) = max_ref_lvl;
+			const auto ref_lvl = grid.get_refinement_level(cell.id);
+			Ref_min(*cell.data) = std::min(ref_lvl + 1, max_ref_lvl);
+		}
+	}
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
@@ -1176,14 +1254,16 @@ int main(int argc, char* argv[]) {
 		cout << "Adapting and balancing grid at time "
 			<< options_sim.time_start << "...  " << flush;
 	}
-	set_minmax_refinement_level(grid);
-	pamhd::grid::set_minmax_refinement_level(
-		grid.local_cells(), grid, options_grid,
-		options_sim.time_start, Ref_min, Ref_max, true);
-	pamhd::grid::adapt_grid(
-		grid, Ref_min, Ref_max,
-		pamhd::grid::New_Cells_Handler(Ref_min, Ref_max),
-		pamhd::grid::Removed_Cells_Handler(Ref_min, Ref_max));
+	for (int i = 0; i < grid.get_maximum_refinement_level(); i++) {
+		set_minmax_refinement_level(options_sw.inner_bdy_radius, grid);
+		pamhd::grid::set_minmax_refinement_level(
+			grid.local_cells(), grid, options_grid,
+			options_sim.time_start, Ref_min, Ref_max, true);
+		pamhd::grid::adapt_grid(
+			grid, Ref_min, Ref_max,
+			pamhd::grid::New_Cells_Handler(Ref_min, Ref_max),
+			pamhd::grid::Removed_Cells_Handler(Ref_min, Ref_max), 1);
+	}
 
 	Cell::set_transfer_all(true,
 		pamhd::grid::Target_Refinement_Level_Min(),

@@ -655,12 +655,17 @@ template <
 	const Target_Refinement_Level_Min_Getter& RLMin,
 	const Target_Refinement_Level_Max_Getter& RLMax,
 	const New_Cells_Handler& nch,
-	const Removed_Cells_Handler& rch
+	const Removed_Cells_Handler& rch,
+	const int max_rounds = 1 << 30
 ) {
 	#ifdef MPI_VERSION
 	MPI_Comm comm = grid.get_communicator();
 	#endif
-	for (int i = 0; i < grid.get_maximum_refinement_level(); i++) {
+	for (
+		int i = 0;
+		i < std::min(max_rounds, grid.get_maximum_refinement_level());
+		i++
+	) {
 		for (const auto& cell: grid.local_cells()) {
 			const auto ref_lvl = grid.get_refinement_level(cell.id);
 			if (ref_lvl < RLMin(*cell.data)) {
