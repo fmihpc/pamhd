@@ -314,6 +314,7 @@ using Cell_hyb_particle = gensimcell::Cell<
 	pamhd::mhd::HD_State_Conservative,
 	pamhd::Electric_Current_Density,
 	pamhd::particle::Solver_Info,
+	pamhd::mhd::Solver_Info,
 	pamhd::MPI_Rank,
 	pamhd::Resistivity,
 	pamhd::Magnetic_Field,
