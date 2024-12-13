@@ -1503,14 +1503,7 @@ int main(int argc, char* argv[])
 					simulation_time,
 					options_sim.adiabatic_index,
 					options_sim.proton_mass,
-					options_sim.vacuum_permeability,
-					pamhd::mhd::HD_State_Conservative(),
-					pamhd::Electric_Current_Density(),
-					pamhd::particle::Solver_Info(),
-					pamhd::MPI_Rank(),
-					pamhd::Resistivity(),
-					pamhd::Magnetic_Field(),
-					pamhd::Bg_Magnetic_Field()
+					options_sim.vacuum_permeability
 				)
 			) {
 				std::cerr <<  __FILE__ << "(" << __LINE__ << "): Couldn't save MHD result." << std::endl;
