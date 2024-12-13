@@ -199,12 +199,7 @@ int main(int argc, char* argv[])
 		MPI_Allreduce(&local_real_nr_cells, &real_nr_cells, 1, MPI_UINT64_T, MPI_SUM, comm);
 		MPI_Comm_free(&comm);
 
-		auto PFace = [](Cell& cell_data)->auto& {
-			return cell_data[Is_Primary_Face()];
-		};
-
 		for (size_t dim = 0; dim < 3; dim++) {
-			pamhd::grid::update_primary_faces(grids[dim].local_cells(), PFace);
 			for (const auto& cell: grids[dim].local_cells()) {
 				auto& vec = (*cell.data)[Vector()];
 				vec = {0, 0, 0, 0, 0, 0};
@@ -246,7 +241,6 @@ int main(int argc, char* argv[])
 				grids[dim],
 				Vector_Getter,
 				Divergence_Getter,
-				PFace,
 				Type_Getter
 			);
 		}

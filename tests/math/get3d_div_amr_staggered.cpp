@@ -167,11 +167,6 @@ int main(int argc, char* argv[])
 		geom_params.level_0_cell_length = cell_length;
 		grid.set_geometry(geom_params);
 
-		auto PFace = [](Cell& cell_data)->auto& {
-			return cell_data[Is_Primary_Face()];
-		};
-		pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
-
 		for (int i = 0; i < max_refinement_level; i++) {
 			for (const auto& cell: grid.local_cells()) {
 				const auto center = grid.geometry.get_center(cell.id);
@@ -193,21 +188,24 @@ int main(int argc, char* argv[])
 			const auto
 				center = grid.geometry.get_center(cell.id),
 				length = grid.geometry.get_length(cell.id);
-			const auto
-				pos = function({
-					center[0] + length[0]/2,
-					center[1] + length[1]/2,
-					center[2] + length[2]/2
-				}),
-				neg = function({
-					center[0] - length[0]/2,
-					center[1] - length[1]/2,
-					center[2] - length[2]/2
-				});
-			for (auto dim: {0, 1, 2}) {
-				(*cell.data)[Vector()](dim, -1) = neg[dim];
-				(*cell.data)[Vector()](dim, +1) = pos[dim];
-			}
+			(*cell.data)[Vector()](0, -1) = function({
+				center[0] - length[0]/2, center[1], center[2]
+			})[0];
+			(*cell.data)[Vector()](0, +1) = function({
+				center[0] + length[0]/2, center[1], center[2]
+			})[0];
+			(*cell.data)[Vector()](1, -1) = function({
+				center[0], center[1] - length[1]/2, center[2]
+			})[1];
+			(*cell.data)[Vector()](1, +1) = function({
+				center[0], center[1] + length[1]/2, center[2]
+			})[1];
+			(*cell.data)[Vector()](2, -1) = function({
+				center[0], center[1], center[2] - length[2]/2
+			})[2];
+			(*cell.data)[Vector()](2, +1) = function({
+				center[0], center[1], center[2] + length[2]/2
+			})[2];
 		}
 		grid.update_copies_of_remote_neighbors();
 
@@ -248,7 +246,6 @@ int main(int argc, char* argv[])
 			[](Cell& cell_data)->auto& {
 				return cell_data[Divergence()];
 			},
-			PFace,
 			[](Cell& cell_data)->auto& {
 				return cell_data[Type()];
 			}

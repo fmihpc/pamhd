@@ -110,14 +110,12 @@ template<class Grid> double get_diff_lp_norm(
 template<
 	class Vector,
 	class Type,
-	class Grid,
-	class PFace_Getter
+	class Grid
 > void initialize(
 	Grid& grid,
 	MPI_Comm& comm,
 	const uint64_t nr_of_cells,
-	const unsigned int dimension,
-	const PFace_Getter PFace
+	const unsigned int dimension
 ) {
 	std::array<uint64_t, 3> grid_size;
 	std::array<double, 3> cell_length, grid_start;
@@ -152,8 +150,6 @@ template<
 	geom_params.start = grid_start;
 	geom_params.level_0_cell_length = cell_length;
 	grid.set_geometry(geom_params);
-
-	pamhd::grid::update_primary_faces(grid.local_cells(), PFace);
 
 	for (const auto& cell: grid.local_cells()) {
 		const auto
@@ -221,12 +217,9 @@ int main(int argc, char* argv[])
 				pamhd::grid::Relative_Size>
 		> grid_x, grid_y, grid_z;
 
-		auto Is_Primary_Face_Getter = [](Cell& cell_data)->auto& {
-			return cell_data[Is_Primary_Face()];
-		};
-		initialize<Vector, Type>(grid_x, comm, nr_of_cells, 0, Is_Primary_Face_Getter);
-		initialize<Vector, Type>(grid_y, comm, nr_of_cells, 1, Is_Primary_Face_Getter);
-		initialize<Vector, Type>(grid_z, comm, nr_of_cells, 2, Is_Primary_Face_Getter);
+		initialize<Vector, Type>(grid_x, comm, nr_of_cells, 0);
+		initialize<Vector, Type>(grid_y, comm, nr_of_cells, 1);
+		initialize<Vector, Type>(grid_z, comm, nr_of_cells, 2);
 
 		auto Vector_Getter = [](Cell& cell_data)->auto& {
 			return cell_data[Vector()];
@@ -242,7 +235,6 @@ int main(int argc, char* argv[])
 			grid_x,
 			Vector_Getter,
 			Divergence_Getter,
-			Is_Primary_Face_Getter,
 			Type_Getter
 		);
 		pamhd::math::get_divergence_staggered(
@@ -250,7 +242,6 @@ int main(int argc, char* argv[])
 			grid_y,
 			Vector_Getter,
 			Divergence_Getter,
-			Is_Primary_Face_Getter,
 			Type_Getter
 		);
 		pamhd::math::get_divergence_staggered(
@@ -258,7 +249,6 @@ int main(int argc, char* argv[])
 			grid_z,
 			Vector_Getter,
 			Divergence_Getter,
-			Is_Primary_Face_Getter,
 			Type_Getter
 		);
 
