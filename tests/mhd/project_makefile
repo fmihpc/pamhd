@@ -110,6 +110,7 @@ TEST_MHD_PROGRAM_DEPS = \
   $(TEST_MHD_COMMON_DEPS) \
   source/grid/amr.hpp \
   source/grid/options.hpp \
+  source/grid/solar_wind_box.hpp \
   source/variables.hpp \
   source/boundaries/boundaries.hpp \
   source/boundaries/box.hpp \
@@ -128,6 +129,7 @@ TEST_MHD_PROGRAM_DEPS = \
   source/mhd/initialize_staggered.hpp \
   source/mhd/options.hpp \
   source/mhd/save.hpp \
+  source/mhd/solar_wind_box.hpp \
   source/mhd/solve.hpp \
   source/mhd/solve_staggered.hpp \
   source/mhd/N_solve.hpp

@@ -50,6 +50,7 @@ Author(s): Ilja Honkonen
 #include "boundaries/multivariable_initial_conditions.hpp"
 #include "grid/amr.hpp"
 #include "grid/options.hpp"
+#include "grid/solar_wind_box.hpp"
 #include "grid/variables.hpp"
 #include "math/staggered.hpp"
 #include "mhd/amr.hpp"
@@ -63,6 +64,7 @@ Author(s): Ilja Honkonen
 #include "mhd/roe_athena.hpp"
 #include "mhd/rusanov.hpp"
 #include "mhd/save.hpp"
+#include "mhd/solar_wind_box.hpp"
 #include "mhd/solve_staggered.hpp"
 #include "mhd/variables.hpp"
 #include "simulation_options.hpp"
@@ -112,7 +114,7 @@ const auto Mag_div = [](Cell& cell_data)->auto&{
 };
 
 // solver info variable for boundary logic
-const auto Sol_Info = [](Cell& cell_data)->auto& {
+const auto SInfo = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::mhd::Solver_Info()];
 };
 
@@ -136,77 +138,77 @@ const auto Max_v = [](Cell& cell_data)->auto& {
 
 // flux of mass density through positive x face of cell
 const auto Mas_pfx = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::mhd::Mass_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::mhd::Mass_Density()];
+};
 const auto Mas_nfx = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](0, 0)[pamhd::mhd::Mass_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](0, 0)[pamhd::mhd::Mass_Density()];
+};
 const auto Mas_pfy = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](1, 1)[pamhd::mhd::Mass_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](1, 1)[pamhd::mhd::Mass_Density()];
+};
 const auto Mas_nfy = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](1, 0)[pamhd::mhd::Mass_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](1, 0)[pamhd::mhd::Mass_Density()];
+};
 const auto Mas_pfz = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](2, 1)[pamhd::mhd::Mass_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](2, 1)[pamhd::mhd::Mass_Density()];
+};
 const auto Mas_nfz = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](2, 0)[pamhd::mhd::Mass_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](2, 0)[pamhd::mhd::Mass_Density()];
+};
 const auto Mom_pfx = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::mhd::Momentum_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::mhd::Momentum_Density()];
+};
 const auto Mom_nfx = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](0, 0)[pamhd::mhd::Momentum_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](0, 0)[pamhd::mhd::Momentum_Density()];
+};
 const auto Mom_pfy = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](1, 1)[pamhd::mhd::Momentum_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](1, 1)[pamhd::mhd::Momentum_Density()];
+};
 const auto Mom_nfy = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](1, 0)[pamhd::mhd::Momentum_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](1, 0)[pamhd::mhd::Momentum_Density()];
+};
 const auto Mom_pfz = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](2, 1)[pamhd::mhd::Momentum_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](2, 1)[pamhd::mhd::Momentum_Density()];
+};
 const auto Mom_nfz = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](2, 0)[pamhd::mhd::Momentum_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](2, 0)[pamhd::mhd::Momentum_Density()];
+};
 const auto Nrj_pfx = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::mhd::Total_Energy_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::mhd::Total_Energy_Density()];
+};
 const auto Nrj_nfx = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](0, 0)[pamhd::mhd::Total_Energy_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](0, 0)[pamhd::mhd::Total_Energy_Density()];
+};
 const auto Nrj_pfy = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](1, 1)[pamhd::mhd::Total_Energy_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](1, 1)[pamhd::mhd::Total_Energy_Density()];
+};
 const auto Nrj_nfy = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](1, 0)[pamhd::mhd::Total_Energy_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](1, 0)[pamhd::mhd::Total_Energy_Density()];
+};
 const auto Nrj_pfz = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](2, 1)[pamhd::mhd::Total_Energy_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](2, 1)[pamhd::mhd::Total_Energy_Density()];
+};
 const auto Nrj_nfz = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](2, 0)[pamhd::mhd::Total_Energy_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](2, 0)[pamhd::mhd::Total_Energy_Density()];
+};
 const auto Mag_pfx = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::Magnetic_Field()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::Magnetic_Field()];
+};
 const auto Mag_nfx = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](0, 0)[pamhd::Magnetic_Field()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](0, 0)[pamhd::Magnetic_Field()];
+};
 const auto Mag_pfy = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](1, 1)[pamhd::Magnetic_Field()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](1, 1)[pamhd::Magnetic_Field()];
+};
 const auto Mag_nfy = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](1, 0)[pamhd::Magnetic_Field()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](1, 0)[pamhd::Magnetic_Field()];
+};
 const auto Mag_pfz = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](2, 1)[pamhd::Magnetic_Field()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](2, 1)[pamhd::Magnetic_Field()];
+};
 const auto Mag_nfz = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](2, 0)[pamhd::Magnetic_Field()];
-	};
+	return cell_data[pamhd::mhd::MHD_Flux()](2, 0)[pamhd::Magnetic_Field()];
+};
 
 // collections of above to shorten function arguments
 const auto Mas_fs = std::make_tuple(
@@ -230,489 +232,6 @@ const auto Ref_max = [](Cell& cell_data)->auto& {
 };
 
 
-template <
-	class JSON
-> std::tuple<
-	double, double,
-	std::array<double, 3>,
-	std::array<double, 3>
-> get_sw(
-	const JSON& json,
-	const double& /*sim_time*/,
-	const double& proton_mass
-) {
-	using std::string;
-	using std::invalid_argument;
-	using std::to_string;
-
-	if (not json.HasMember("number-density")) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "JSON data doesn't have a number-density key."
-		);
-	}
-	const auto& mass_json = json["number-density"];
-	if (not mass_json.IsNumber()) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "JSON item number-density is not a number."
-		);
-	}
-	const double mass = proton_mass * json["number-density"].GetDouble();
-
-	if (not json.HasMember("pressure")) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "JSON data doesn't have a pressure key."
-		);
-	}
-	const auto& pressure_json = json["pressure"];
-	if (not pressure_json.IsNumber()) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "JSON item pressure is not a number."
-		);
-	}
-	const double pressure = json["pressure"].GetDouble();
-
-	if (not json.HasMember("velocity")) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "JSON data doesn't have a velocity key."
-		);
-	}
-	const auto& velocity_json = json["velocity"];
-	if (not velocity_json.IsArray()) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "JSON item velocity is not an array."
-		);
-	}
-	const auto& velocity_array = velocity_json.GetArray();
-	if (velocity_array.Size() != 3) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "Invalid size for velocity, should be 3"
-		);
-	}
-	const std::array<double, 3> velocity{
-		velocity_array[0].GetDouble(),
-		velocity_array[1].GetDouble(),
-		velocity_array[2].GetDouble()
-	};
-
-	if (not json.HasMember("magnetic-field")) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "JSON data doesn't have a magnetic field key."
-		);
-	}
-	const auto& magnetic_field_json = json["magnetic-field"];
-	if (not magnetic_field_json.IsArray()) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "JSON item magnetic field is not an array."
-		);
-	}
-	const auto& magnetic_field_array = magnetic_field_json.GetArray();
-	if (magnetic_field_array.Size() != 3) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "Invalid size for magnetic field, should be 3"
-		);
-	}
-	const std::array<double, 3> magnetic_field{
-		magnetic_field_array[0].GetDouble(),
-		magnetic_field_array[1].GetDouble(),
-		magnetic_field_array[2].GetDouble()
-	};
-
-	return std::make_tuple(mass, pressure, velocity, magnetic_field);
-}
-
-
-template<
-	class Grid,
-	class JSON,
-	class BG_b
-> void apply_initial_condition(
-	const double& inner_bdy_radius,
-	Grid& grid,
-	const double& sim_time,
-	const JSON& json,
-	const BG_b& bg_B,
-	const double& adiabatic_index,
-	const double& vacuum_permeability,
-	const double& proton_mass
-) try {
-	using std::string;
-	using std::invalid_argument;
-	using std::to_string;
-
-	const auto [
-		mass, pressure, velocity, magnetic_field
-	] = get_sw(
-		json, sim_time, proton_mass
-	);
-	if (grid.get_rank() == 0) {
-		std::cout << "Initializing run, solar wind: "
-		<< mass/proton_mass << " #/m^3, "
-		<< velocity << " m/s, "
-		<< pressure << " Pa, "
-		<< magnetic_field << " T"
-		<< std::endl;
-	}
-
-	for (const auto& cell: grid.local_cells()) {
-		Sol_Info(*cell.data) = 1;
-
-		const auto [rx, ry, rz] = grid.geometry.get_center(cell.id);
-		const auto [sx, sy, sz] = grid.geometry.get_min(cell.id);
-		const auto [ex, ey, ez] = grid.geometry.get_max(cell.id);
-
-		Bg_B(*cell.data)(-1) = bg_B.get_background_field(
-			{sx, ry, rz},
-			vacuum_permeability
-		);
-		Bg_B(*cell.data)(+1) = bg_B.get_background_field(
-			{ex, ry, rz},
-			vacuum_permeability
-		);
-		Bg_B(*cell.data)(-2) = bg_B.get_background_field(
-			{rx, sy, rz},
-			vacuum_permeability
-		);
-		Bg_B(*cell.data)(+2) = bg_B.get_background_field(
-			{rx, ey, rz},
-			vacuum_permeability
-		);
-		Bg_B(*cell.data)(-3) = bg_B.get_background_field(
-			{rx, ry, sz},
-			vacuum_permeability
-		);
-		Bg_B(*cell.data)(+3) = bg_B.get_background_field(
-			{rx, ry, ez},
-			vacuum_permeability
-		);
-
-		Mas(*cell.data) = mass;
-		Mom(*cell.data) =
-		Mag(*cell.data) = {0, 0, 0};
-		Face_B(*cell.data)(-1) =
-		Face_B(*cell.data)(+1) =
-		Face_B(*cell.data)(-2) =
-		Face_B(*cell.data)(+2) =
-		Face_B(*cell.data)(-3) =
-		Face_B(*cell.data)(+3) = 0;
-		Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
-			Mas(*cell.data),
-			Mom(*cell.data),
-			pressure,
-			Mag(*cell.data),
-			adiabatic_index,
-			vacuum_permeability
-		);
-
-		const auto r = std::sqrt(rx*rx + ry*ry + rz*rz);
-		if (r < inner_bdy_radius) {
-			Mas(*cell.data) = proton_mass * 1e9;
-			Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
-				Mas(*cell.data),
-				Mom(*cell.data),
-				1e-11,
-				Mag(*cell.data),
-				adiabatic_index,
-				vacuum_permeability
-			);
-		}
-	}
-} catch (const std::exception& e) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
-} catch (...) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
-}
-
-
-//! Returns std::vector<> of subset of cells from:
-// for (const auto& cell: grid.local_cells()) {...}
-template<
-	class Grid
-> auto get_solar_wind_cells(
-	int direction,
-	const Grid& grid
-) try {
-	using std::invalid_argument;
-	using std::to_string;
-
-	if (direction == 0) throw invalid_argument(
-		__FILE__ "(" + to_string(__LINE__) + "): direction = 0"
-	);
-	const size_t dim = std::abs(direction) - 1;
-	if (dim > 2) throw invalid_argument(
-		__FILE__ "(" + to_string(__LINE__) + "): |direction| - 1 > 2"
-	);
-
-	const auto len0 = grid.length.get();
-	const auto mrlvl = grid.get_maximum_refinement_level();
-	const std::array<uint64_t, 3> end_indices{
-		len0[0] * (uint64_t(1) << mrlvl),
-		len0[1] * (uint64_t(1) << mrlvl),
-		len0[2] * (uint64_t(1) << mrlvl)
-	};
-
-	std::vector<
-		std::remove_cv_t<std::remove_reference_t<
-			decltype(grid.cells.front())>>
-	> sw_cells;
-	for (const auto& cell: grid.local_cells()) {
-		const auto indices = grid.mapping.get_indices(cell.id);
-		const auto len = grid.mapping.get_cell_length_in_indices(cell.id);
-
-		if (direction < 0) {
-			if (indices[dim] == 0) {
-				sw_cells.push_back(cell);
-			}
-		} else {
-			if (indices[dim] == end_indices[dim] - len) {
-				sw_cells.push_back(cell);
-			}
-		}
-	}
-
-	return sw_cells;
-} catch (const std::exception& e) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
-} catch (...) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
-}
-
-
-/*! Returns outflow cells
-
-of subset of cells from:
-for (const auto& cell: grid.local_cells()) {...}
-*/
-template<
-	class Grid
-> auto get_outflow_cells(
-	const Grid& grid
-) try {
-	using std::cout;
-	using std::endl;
-	using std::string;
-	using std::invalid_argument;
-	using std::to_string;
-
-	const auto len0 = grid.length.get();
-	const auto mrlvl = grid.get_maximum_refinement_level();
-	const std::array<uint64_t, 3> end_indices{
-		len0[0] * (uint64_t(1) << mrlvl),
-		len0[1] * (uint64_t(1) << mrlvl),
-		len0[2] * (uint64_t(1) << mrlvl)
-	};
-
-	using cell_list_t = std::vector<
-		std::remove_cv_t<std::remove_reference_t<
-			decltype(grid.cells.front())>>
-	>;
-	// boundary and normal cell share face
-	pamhd::grid::Face_Type<cell_list_t> face_bdy;
-	// boundary and normal cell share edge
-	pamhd::grid::Edge_Type<cell_list_t> edge_bdy;
-	// boundary and normal cell share vertex
-	cell_list_t vert_bdy;
-	for (const auto& cell: grid.local_cells()) {
-		const auto indices = grid.mapping.get_indices(cell.id);
-		const auto len = grid.mapping.get_cell_length_in_indices(cell.id);
-
-		int x = 0, y = 0, z = 0;
-		if (indices[0] == 0) x = -1;
-		else if (indices[0] == end_indices[0] - len) x = +1;
-		if (indices[1] == 0) y = -1;
-		else if (indices[1] == end_indices[1] - len) y = +1;
-		if (indices[2] == 0) z = -1;
-		else if (indices[2] == end_indices[2] - len) z = +1;
-
-		if (x != 0 and y != 0 and z != 0) {
-			vert_bdy.push_back(cell);
-		} else if (y < 0 and z < 0) {
-			edge_bdy(0, -1, -1).push_back(cell);
-		} else if (y < 0 and z > 0) {
-			edge_bdy(0, -1, +1).push_back(cell);
-		} else if (y > 0 and z < 0) {
-			edge_bdy(0, +1, -1).push_back(cell);
-		} else if (y > 0 and z > 0) {
-			edge_bdy(0, +1, +1).push_back(cell);
-		} else if (x < 0 and z < 0) {
-			edge_bdy(1, -1, -1).push_back(cell);
-		} else if (x < 0 and z > 0) {
-			edge_bdy(1, -1, +1).push_back(cell);
-		} else if (x > 0 and z < 0) {
-			edge_bdy(1, +1, -1).push_back(cell);
-		} else if (x > 0 and z > 0) {
-			edge_bdy(1, +1, +1).push_back(cell);
-		} else if (x < 0 and y < 0) {
-			edge_bdy(2, -1, -1).push_back(cell);
-		} else if (x < 0 and y > 0) {
-			edge_bdy(2, -1, +1).push_back(cell);
-		} else if (x > 0 and y < 0) {
-			edge_bdy(2, +1, -1).push_back(cell);
-		} else if (x > 0 and y > 0) {
-			edge_bdy(2, +1, +1).push_back(cell);
-		} else if (x < 0) {
-			face_bdy(-1).push_back(cell);
-		} else if (x > 0) {
-			face_bdy(+1).push_back(cell);
-		} else if (y < 0) {
-			face_bdy(-2).push_back(cell);
-		} else if (y > 0) {
-			face_bdy(+2).push_back(cell);
-		} else if (z < 0) {
-			face_bdy(-3).push_back(cell);
-		} else if (z > 0) {
-			face_bdy(+3).push_back(cell);
-		}
-	}
-
-	for (int dir: {-3,-2,-1,+1,+2,+3}) {
-		for (const auto& cell: face_bdy(dir)) {
-			Sol_Info(*cell.data) = 0;
-		}
-	}
-	for (int dim: {0, 1, 2})
-	for (int dir1: {-1, +1})
-	for (int dir2: {-1, +1}) {
-		for (const auto& cell: edge_bdy(dim, dir1, dir2)) {
-			Sol_Info(*cell.data) = 0;
-		}
-	}
-	for (const auto& cell: vert_bdy) {
-		Sol_Info(*cell.data) = 0;
-	}
-	return std::make_tuple(face_bdy, edge_bdy, vert_bdy);
-
-} catch (const std::exception& e) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
-} catch (...) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
-}
-
-
-/*! Returns whether given cell spans inner boundary
-
-Returns tuple (a, b) where:
-	a == true if some part of cell is inside inner boundary
-		or if origin is inside of cell
-	b == true if some part of cell is outside of boundary
-
-TODO: support inner boundary not at 0,0,0
-*/
-template<
-	class Cell, class Grid
-> auto at_inner_boundary(
-	const double& inner_boundary_radius,
-	const Cell& cell,
-	const Grid& grid
-) {
-	using std::make_tuple;
-	using std::sqrt;
-
-	const auto [sx, sy, sz] = grid.geometry.get_min(cell.id);
-	const auto [ex, ey, ez] = grid.geometry.get_max(cell.id);
-	const auto
-		r1 = sqrt(sx*sx + sy*sy + sz*sz),
-		r2 = sqrt(sx*sx + sy*sy + ez*ez),
-		r3 = sqrt(sx*sx + ey*ey + sz*sz),
-		r4 = sqrt(sx*sx + ey*ey + ez*ez),
-		r5 = sqrt(ex*ex + sy*sy + sz*sz),
-		r6 = sqrt(ex*ex + sy*sy + ez*ez),
-		r7 = sqrt(ex*ex + ey*ey + sz*sz),
-		r8 = sqrt(ex*ex + ey*ey + ez*ez);
-	bool inside = false, outside = false;
-	if (
-		r1 < inner_boundary_radius
-		or r2 < inner_boundary_radius
-		or r3 < inner_boundary_radius
-		or r4 < inner_boundary_radius
-		or r5 < inner_boundary_radius
-		or r6 < inner_boundary_radius
-		or r7 < inner_boundary_radius
-		or r8 < inner_boundary_radius
-	) inside = true;
-	if (
-		r1 > inner_boundary_radius
-		or r2 > inner_boundary_radius
-		or r3 > inner_boundary_radius
-		or r4 > inner_boundary_radius
-		or r5 > inner_boundary_radius
-		or r6 > inner_boundary_radius
-		or r7 > inner_boundary_radius
-		or r8 > inner_boundary_radius
-	) outside = true;
-
-	if (
-		sx <= 0 and ex >= 0
-		and sy <= 0 and ey >= 0
-		and sz <= 0 and ez >= 0
-	) {
-		return make_tuple(true, outside);
-	}
-
-	return make_tuple(inside, outside);
-}
-
-
-/*! Returns planetary boundary cells
-
-Transfer of solver info between processes must be switched on.
-*/
-template<
-	class Grid
-> auto get_planet_cells(
-	const double& inner_bdy_radius,
-	Grid& grid
-) try {
-	std::set<uint64_t> planet_candidates;
-	for (const auto& cell: grid.local_cells()) {
-		const auto [inside, _]
-			= at_inner_boundary(inner_bdy_radius, cell, grid);
-		if (inside) {
-			planet_candidates.insert(cell.id);
-			Sol_Info(*cell.data) = 0;
-		}
-	}
-	grid.update_copies_of_remote_neighbors();
-
-	std::vector<
-		std::remove_cv_t<std::remove_reference_t<
-			decltype(grid.cells.front())>>
-	> planet_cells;
-	for (const auto& cell: grid.local_cells()) {
-		if (planet_candidates.count(cell.id) == 0) continue;
-		// include only outer layer of planet boundary cells
-		bool have_normal = false;
-		for (const auto& neighbor: cell.neighbors_of) {
-			if (Sol_Info(*neighbor.data) == 1) {
-				have_normal = true;
-				break;
-			}
-		}
-		if (not have_normal) {
-			Sol_Info(*cell.data) = -1;
-		} else {
-			planet_cells.push_back(cell);
-		}
-	}
-	grid.update_copies_of_remote_neighbors();
-	return planet_cells;
-
-} catch (const std::exception& e) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
-} catch (...) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
-}
-
-
 template<
 	class JSON,
 	class Cells
@@ -727,7 +246,7 @@ template<
 ) try {
 	const auto [
 		mass, pressure, velocity, magnetic_field
-	] = get_sw(
+	] = pamhd::mhd::get_solar_wind_parameters(
 		json, sim_time, proton_mass
 	);
 	for (const auto& cell: solar_wind_cells) {
@@ -937,7 +456,7 @@ template<
 		pamhd::grid::Face_Type<bool> have_value{false, false, false, false, false, false};
 		// corrections to Face_B from normal neighbors
 		for (const auto& neighbor: cell.neighbors_of) {
-			if (Sol_Info(*neighbor.data) < 1) continue;
+			if (SInfo(*neighbor.data) < 1) continue;
 
 			const auto& fn = neighbor.face_neighbor;
 			const auto& en = neighbor.edge_neighbor;
@@ -990,71 +509,6 @@ template<
 }
 
 
-/*! Sets target refinement levels for boundary cells.
-
-Sets cells close to outer boundaries to minimum ref
-lvl and cells close to inner boundary to max ref lvl.
-*/
-template<
-	class Grid
-> void set_minmax_refinement_level(
-	const double& inner_bdy_radius,
-	const Grid& grid
-) try {
-	using std::max;
-	using std::min;
-	using std::sqrt;
-
-	const auto mrlvl = grid.get_maximum_refinement_level();
-	for (const auto& cell: grid.local_cells()) {
-		Ref_min(*cell.data) = 0;
-		Ref_max(*cell.data) = mrlvl;
-	}
-
-	// outer boundaries
-	const auto len0 = grid.length.get();
-	const auto indices0 = uint64_t(1) << mrlvl;
-	const std::array<uint64_t, 3> end_indices{
-		len0[0] * indices0, len0[1] * indices0, len0[2] * indices0
-	};
-	for (const auto& cell: grid.local_cells()) {
-		const auto indices = grid.mapping.get_indices(cell.id);
-		int min_distance = 1 << 30; // from outer wall
-		// FIXME: assumes neighborhood size of 3
-		for (auto dim: {0, 1, 2}) {
-			min_distance = min(min(min_distance,
-				int(indices[dim] / indices0)),
-				int((end_indices[dim]-indices[dim]-1) / indices0));
-		}
-		if (min_distance < 2) {
-			Ref_max(*cell.data) = 0;
-		} else if (min_distance < 5) {
-			Ref_max(*cell.data) = 1;
-		} else if (min_distance < 7) {
-			Ref_max(*cell.data) = 2;
-		} else {
-			Ref_max(*cell.data) = min_distance - 4;
-		}
-	}
-
-	// inner boundary
-	const auto max_ref_lvl = grid.get_maximum_refinement_level();
-	for (const auto& cell: grid.local_cells()) {
-		const auto [inside, outside]
-			= at_inner_boundary(inner_bdy_radius, cell, grid);
-		if (inside and outside) {
-			Ref_max(*cell.data) = max_ref_lvl;
-			const auto ref_lvl = grid.get_refinement_level(cell.id);
-			Ref_min(*cell.data) = std::min(ref_lvl + 1, max_ref_lvl);
-		}
-	}
-} catch (const std::exception& e) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
-} catch (...) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
-}
-
-
 int main(int argc, char* argv[]) {
 	using std::abs;
 	using std::ceil;
@@ -1064,6 +518,8 @@ int main(int argc, char* argv[]) {
 	using std::flush;
 	using std::max;
 	using std::min;
+	using std::runtime_error;
+	using std::to_string;
 
 	/*
 	Initialize MPI
@@ -1226,6 +682,7 @@ int main(int argc, char* argv[]) {
 		.set_load_balancing_method(options_sim.lb_name)
 		.set_maximum_refinement_level(options_grid.get_max_ref_lvl())
 		.initialize(comm);
+	const auto mrlvl = grid.get_maximum_refinement_level();
 
 	// set grid geometry
 	const std::array<double, 3>
@@ -1254,26 +711,86 @@ int main(int argc, char* argv[]) {
 		cout << "Adapting and balancing grid at time "
 			<< options_sim.time_start << "...  " << flush;
 	}
-	for (int i = 0; i < grid.get_maximum_refinement_level(); i++) {
-		set_minmax_refinement_level(options_sw.inner_bdy_radius, grid);
-		pamhd::grid::set_minmax_refinement_level(
-			grid.local_cells(), grid, options_grid,
-			options_sim.time_start, Ref_min, Ref_max, true);
-		pamhd::grid::adapt_grid(
-			grid, Ref_min, Ref_max,
-			pamhd::grid::New_Cells_Handler(Ref_min, Ref_max),
-			pamhd::grid::Removed_Cells_Handler(Ref_min, Ref_max), 1);
-	}
 
 	Cell::set_transfer_all(true,
 		pamhd::grid::Target_Refinement_Level_Min(),
-		pamhd::grid::Target_Refinement_Level_Max());
+		pamhd::grid::Target_Refinement_Level_Max(),
+		pamhd::mhd::Solver_Info()
+	);
+	prepare_grid(
+		options_sw.inner_bdy_radius,
+		grid, SInfo, Ref_max, Ref_min
+	);
+	pamhd::grid::set_minmax_refinement_level(
+		grid.local_cells(), grid, options_grid,
+		options_sim.time_start, Ref_min, Ref_max, true
+	);
+	pamhd::grid::adapt_grid(grid, Ref_min, Ref_max, SInfo);
 	grid.balance_load();
 	Cell::set_transfer_all(false,
 		pamhd::grid::Target_Refinement_Level_Min(),
-		pamhd::grid::Target_Refinement_Level_Max());
+		pamhd::grid::Target_Refinement_Level_Max(),
+		pamhd::mhd::Solver_Info()
+	);
 	if (rank == 0) {
 		cout << "done" << endl;
+	}
+
+	auto solar_wind_cells
+		= get_solar_wind_cells(solar_wind_dir, grid);
+	for (const auto& cell: solar_wind_cells) {
+		if (SInfo(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (Ref_max(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+	}
+
+	auto [
+		face_cells, edge_cells, vert_cells
+	] = get_outflow_cells(grid);
+	for (int dir: {-3,-2,-1,+1,+2,+3}) {
+		for (const auto& cell: face_cells(dir)) {
+			if (SInfo(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (Ref_max(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		}
+	}
+	for (int dim: {0, 1, 2})
+	for (int dir1: {-1, +1})
+	for (int dir2: {-1, +1}) {
+		for (const auto& cell: edge_cells(dim, dir1, dir2)) {
+			if (SInfo(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (Ref_max(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		}
+	}
+	for (const auto& cell: vert_cells) {
+		if (SInfo(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (Ref_max(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+	}
+
+	auto planet_cells = pamhd::grid::get_planet_cells(
+		options_sw.inner_bdy_radius, grid, SInfo
+	);
+	for (const auto& cell: planet_cells) {
+		const auto [inside, outside]
+			= pamhd::grid::at_inner_boundary(options_sw.inner_bdy_radius, cell.id, grid);
+		if (not (inside and outside)) throw runtime_error(__FILE__"(" + to_string(__LINE__) + "): " + to_string(cell.id));
+		if (SInfo(*cell.data) == 0) {
+			bool have_solve = false;
+			for (const auto& neighbor: cell.neighbors_of) {
+				if (
+					neighbor.face_neighbor == 0
+					and neighbor.edge_neighbor[0] < 0
+				) {
+					continue;
+				}
+				if (SInfo(*neighbor.data) == 1) {
+					have_solve = true;
+					break;
+				}
+			}
+			if (not have_solve) throw runtime_error(__FILE__"(" + to_string(__LINE__) + "): " + to_string(cell.id));
+		}
+		if (SInfo(*cell.data) == 1) {
+			throw runtime_error(__FILE__"(" + to_string(__LINE__) + "): " + to_string(cell.id) + " " + to_string(SInfo(*cell.data)));
+		}
 	}
 
 	for (const auto& cell: grid.local_cells()) {
@@ -1320,10 +837,11 @@ int main(int argc, char* argv[]) {
 		pamhd::Bg_Magnetic_Field(),
 		pamhd::mhd::Solver_Info()
 	);
-	apply_initial_condition(
-		options_sw.inner_bdy_radius,
+	initialize_plasma(
 		grid, simulation_time,
 		document, background_B,
+		Mas, Mom, Nrj, Mag, Face_B,
+		Face_dB, Bg_B,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		options_sim.proton_mass
@@ -1332,19 +850,12 @@ int main(int argc, char* argv[]) {
 	pamhd::mhd::update_B_consistency(
 		0, grid.local_cells(),
 		Mas, Mom, Nrj, Mag, Face_B,
-		Sol_Info, Substep,
+		SInfo, Substep,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		true
 	);
 	grid.update_copies_of_remote_neighbors();
-
-	const auto solar_wind_cells
-		= get_solar_wind_cells(solar_wind_dir, grid);
-	const auto [face_cells, edge_cells, vert_cells]
-		= get_outflow_cells(grid);
-	const auto planet_cells
-		= get_planet_cells(options_sw.inner_bdy_radius, grid);
 
 	apply_boundaries(
 		grid, simulation_time, document,
@@ -1360,7 +871,7 @@ int main(int argc, char* argv[]) {
 	pamhd::mhd::update_B_consistency(
 		0, grid.local_cells(),
 		Mas, Mom, Nrj, Mag, Face_B,
-		Sol_Info, Substep,
+		SInfo, Substep,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		true
@@ -1384,7 +895,7 @@ int main(int argc, char* argv[]) {
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		Mas, Mom, Nrj, Mag, Face_B, Face_dB, Bg_B,
-		Mas_fs, Mom_fs, Nrj_fs, Mag_fs, Sol_Info,
+		Mas_fs, Mom_fs, Nrj_fs, Mag_fs, SInfo,
 		Timestep, Substep, Substep_Min, Substep_Max, Max_v
 	);
 	size_t simulation_step = 0;
@@ -1425,7 +936,7 @@ int main(int argc, char* argv[]) {
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			Mas, Mom, Nrj, Mag, Face_B, Face_dB, Bg_B,
-			Mas_fs, Mom_fs, Nrj_fs, Mag_fs, Sol_Info,
+			Mas_fs, Mom_fs, Nrj_fs, Mag_fs, SInfo,
 			Timestep, Substep, Substep_Min, Substep_Max, Max_v
 		);
 		if (rank == 0) {
@@ -1436,7 +947,7 @@ int main(int argc, char* argv[]) {
 
 		const auto avg_div = pamhd::math::get_divergence_staggered(
 			grid.local_cells(), grid,
-			Face_B, Mag_div, Sol_Info
+			Face_B, Mag_div, SInfo
 		);
 		if (rank == 0) {
 			cout << " average divergence " << avg_div << endl;
@@ -1464,7 +975,7 @@ int main(int argc, char* argv[]) {
 		pamhd::mhd::update_B_consistency(
 			0, grid.local_cells(),
 			Mas, Mom, Nrj, Mag, Face_B,
-			Sol_Info, Substep,
+			SInfo, Substep,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			true
