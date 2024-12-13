@@ -1,5 +1,4 @@
 #! /usr/bin/env python3
-
 '''
 Common functions for working with MHD output of PAMHD.
 
@@ -213,12 +212,8 @@ def set_cell_data(outfile, metadata, data):
 					d = data[i][varname]
 				except Exception as e:
 					print(varname, len(simdata), len(simcells), len(outcells), ind, e)
-					exit()
+					exit(1)
 				array((d[0], d[1][0], d[1][1], d[1][2], d[2], d[3][0], d[3][1], d[3][2]), dtype = 'double').tofile(outfile)
-		if varname == 'primary ':
-			for i in range(len(data)):
-				d = data[i][varname]
-				array(d, dtype = 'u1').tofile(outfile)
 		if varname == 'bgB     ':
 			for i in range(len(data)):
 				d = data[i][varname]
@@ -287,6 +282,179 @@ def get_cell_geom(metadata, cell_id):
 		gs[2] + l0cl[2] * (cell_index[2] / 2.0**mrl + 1.0 / 2**(ref_lvl+1)))
 	cell_length = (l0cl[0] / 2.0**ref_lvl, l0cl[1] / 2.0**ref_lvl, l0cl[2] / 2.0**ref_lvl)
 	return cell_center, cell_length
+
+
+# writes metadata in ascii vtk format to file open for writing
+def write_metadata_vtk(outfile, meta):
+	cells = meta['cells']
+	outfile.write(
+		"# vtk DataFile Version 2.0\n"
+		+ "MHD data from PAMHD\n"
+		+ "ASCII\nDATASET UNSTRUCTURED_GRID\n"
+		+ "FIELD FieldData 2\n"
+		+ "CYCLE 1 1 int\n" + str(meta['sim_step'])
+		+ "\nTIME 1 1 double\n" +str(meta['sim_time'])
+		+ "\nPOINTS " + str(8*len(cells)) + " float\n")
+	if len(cells) == 0:
+		return
+	for c in cells:
+		center, length = get_cell_geom(meta, c)
+		start = (
+			str(center[0] - length[0]/2) + ' ',
+			str(center[1] - length[1]/2) + ' ',
+			str(center[2] - length[2]/2) + ' ')
+		end = (
+			str(center[0] + length[0]/2) + ' ',
+			str(center[1] + length[1]/2) + ' ',
+			str(center[2] + length[2]/2) + ' ')
+		outfile.write(
+			start[0] + start[1] + start[2] + '\n'
+			+ end[0] + start[1] + start[2] + '\n'
+			+ start[0] + end[1] + start[2] + '\n'
+			+ end[0] + end[1] + start[2] + '\n'
+			+ start[0] + start[1] + end[2] + '\n'
+			+ end[0] + start[1] + end[2] + '\n'
+			+ start[0] + end[1] + end[2] + '\n'
+			+ end[0] + end[1] + end[2] + '\n')
+
+	outfile.write('CELLS ' + str(len(cells)) + ' ' + str(9*len(cells)) + '\n')
+	for i in range(len(cells)):
+		outfile.write('8 ')
+		for j in range(8):
+			outfile.write(str(i*8 + j) + ' ')
+		outfile.write('\n')
+	outfile.write('CELL_TYPES ' + str(len(cells)) + '\n')
+	for i in range(len(cells)):
+		outfile.write('11\n')
+	outfile.write('CELL_DATA ' + str(len(cells)) + '\n')
+
+
+# call after write_metadata_vtk
+def write_variable_vtk(infile, outfile, variable, meta, nr_cells = -1):
+	cells = meta['cells']
+	chunks = []
+	if nr_cells < 0 or nr_cells >= len(cells):
+		chunks.append(range(len(cells)))
+	else:
+		start = 0
+		end = nr_cells
+		while start < len(cells):
+			chunks.append(range(start, end))
+			start = end
+			end = min(end + nr_cells, len(cells))
+
+	if variable == 'mhd     ':
+		outfile.write('SCALARS mass_density double 1\nlookup_table default\n')
+		for chunk in chunks:
+			data = get_cell_data(infile, meta, chunk, [variable])
+			for d in data:
+				outfile.write(str(d['mhd     '][0]) + '\n')
+			del data
+		outfile.write('VECTORS velocity double\n')
+		for chunk in chunks:
+			data = get_cell_data(infile, meta, chunk, [variable])
+			for d in data:
+				mas = d['mhd     '][0]
+				mom = d['mhd     '][1]
+				outfile.write(
+					str(mom[0]/mas) + ' '
+					+ str(mom[1]/mas) + ' '
+					+ str(mom[2]/mas) + '\n')
+			del data
+		outfile.write('SCALARS pressure double 1\nlookup_table default\n')
+		for chunk in chunks:
+			data = get_cell_data(infile, meta, chunk, [variable])
+			for d in data:
+				mas = d['mhd     '][0]
+				mom = d['mhd     '][1]
+				nrj = d['mhd     '][2]
+				mag = d['mhd     '][3]
+				kin_nrj = (mom[0]**2 + mom[1]**2 + mom[2]**2) / 2 / mas
+				mag_nrj = (mag[0]**2 + mag[1]**2 + mag[2]**2) / 2 / meta['vacuum_permeability']
+				pressure = (nrj - kin_nrj - mag_nrj) * (meta['adiabatic_index'] - 1)
+				outfile.write(str(pressure) + '\n')
+			del data
+		outfile.write('VECTORS volume_B1 double\n')
+		for chunk in chunks:
+			data = get_cell_data(infile, meta, chunk, [variable])
+			for d in data:
+				mag = d['mhd     '][3]
+				outfile.write(str(mag[0]) + ' ' + str(mag[1]) + ' ' + str(mag[2]) + '\n')
+			del data
+
+	if variable == 'bgB     ':
+		outfile.write('VECTORS background_B double\n')
+		for chunk in chunks:
+			data = get_cell_data(infile, meta, chunk, [variable])
+			for d in data:
+				outfile.write(
+					str(d['bgB     '][3]) + ' '
+					+ str(d['bgB     '][10]) + ' '
+					+ str(d['bgB     '][17]) + '\n')
+			del data
+
+	if variable == 'totB    ':
+		outfile.write('VECTORS total_magnetic_field double\n')
+		for chunk in chunks:
+			# write dont_solve cells as all 0
+			data = get_cell_data(infile, meta, chunk, ['mhd     ', 'bgB     ', 'mhd info'])
+			for d in data:
+				if 'mhd info' in d and d['mhd info'] == 1:
+					outfile.write('0 0 0\n')
+					continue
+				B0 = d['bgB     ']
+				B1 = d['mhd     '][3]
+				outfile.write(
+					str(B1[0] + B0[3]) + ' '
+					+ str(B1[1] + B0[10]) + ' '
+					+ str(B1[2] + B0[17]) + '\n')
+			del data
+
+	if variable == 'divfaceB':
+		outfile.write('SCALARS divergence_of_magnetic_field double 1\nlookup_table default\n')
+		for chunk in chunks:
+			data = get_cell_data(infile, meta, chunk, [variable])
+			for d in data:
+				outfile.write(str(d['divfaceB']) + '\n')
+			del data
+
+	if variable == 'rank    ':
+		outfile.write('SCALARS rank int 1\nlookup_table default\n')
+		for chunk in chunks:
+			data = get_cell_data(infile, meta, chunk, [variable])
+			for d in data:
+				outfile.write(str(d['rank    ']) + '\n')
+			del data
+
+	if variable == 'ref lvls':
+		outfile.write('SCALARS target_ref_lvl_min int 1\nlookup_table default\n')
+		for chunk in chunks:
+			data = get_cell_data(infile, meta, chunk, [variable])
+			for d in data:
+				outfile.write(str(d['ref lvls'][0]) + '\n')
+			del data
+		outfile.write('SCALARS target_ref_lvl_max int 1\nlookup_table default\n')
+		for chunk in chunks:
+			data = get_cell_data(infile, meta, chunk, [variable])
+			for d in data:
+				outfile.write(str(d['ref lvls'][1]) + '\n')
+			del data
+
+	if variable == 'substep ':
+		outfile.write('SCALARS substep_period int 1\nlookup_table default\n')
+		for chunk in chunks:
+			data = get_cell_data(infile, meta, chunk, [variable])
+			for d in data:
+				outfile.write(str(d['substep ']) + '\n')
+			del data
+
+	if variable == 'mhd info':
+		outfile.write('SCALARS mhd_info int 1\nlookup_table default\n')
+		for chunk in chunks:
+			data = get_cell_data(infile, meta, chunk, [variable])
+			for d in data:
+				outfile.write(str(d['mhd info']) + '\n')
+			del data
 
 
 if __name__ == '__main__':
