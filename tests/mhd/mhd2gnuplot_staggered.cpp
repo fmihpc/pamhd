@@ -220,7 +220,6 @@ std::optional<std::array<double, 4>> read_data(
 		pamhd::mhd::Solver_Info(),
 		pamhd::MPI_Rank(),
 		pamhd::Face_Magnetic_Field(),
-		pamhd::Edge_Electric_Field(),
 		pamhd::Bg_Magnetic_Field(),
 		pamhd::Magnetic_Field_Divergence(),
 		pamhd::grid::Target_Refinement_Level_Min(),
@@ -299,7 +298,6 @@ int plot_1d(
 	const std::string& density_pressure_cmd,
 	const std::string& velocity_cmd,
 	const std::string& magnetic_field_cmd,
-	const std::string& electric_field_cmd,
 	const std::string& /*current_density_cmd*/
 ) {
 	using std::to_string;
@@ -618,38 +616,6 @@ int plot_1d(
 	}
 	gnuplot_file << "end\nreset\n";
 
-	// edge electric field
-	gnuplot_file
-		<< common_cmd
-		<< "\nset output '"
-		<< output_file_name_prefix + "_Ee.png"
-		<< "'\n" << electric_field_cmd
-		<< "\nset key horizontal bottom outside\nplot "
-		     "'-' u 1:2 lw 2 t 'component 1', "
-		     "'-' u 1:2 lw 2 t 'component 2', "
-		     "'-' u 1:2 lw 2 t 'component 3'\n";
-
-	for (const auto& cell_id: cells) {
-		const auto& E = simulation_data.at(cell_id)[pamhd::Edge_Electric_Field()];
-		const double x = geometry.get_center(cell_id)[tube_dim];
-		gnuplot_file << x << " " << E(0,1,1) << "\n";
-	}
-	gnuplot_file << "end\n";
-
-	for (const auto& cell_id: cells) {
-		const auto& E = simulation_data.at(cell_id)[pamhd::Edge_Electric_Field()];
-		const double x = geometry.get_center(cell_id)[tube_dim];
-		gnuplot_file << x << " " << E(1,1,1) << "\n";
-	}
-	gnuplot_file << "end\n";
-
-	for (const auto& cell_id: cells) {
-		const auto& E = simulation_data.at(cell_id)[pamhd::Edge_Electric_Field()];
-		const double x = geometry.get_center(cell_id)[tube_dim];
-		gnuplot_file << x << " " << E(2,1,1) << "\n";
-	}
-	gnuplot_file << "end\nreset\n";
-
 	// target refinement levels
 	gnuplot_file
 		<< common_cmd
@@ -761,7 +727,6 @@ int plot_2d(
 	const std::string& pressure_cmd,
 	const std::string& velocity_cmd,
 	const std::string& magnetic_field_cmd,
-	const std::string& electric_field_cmd,
 	const std::string& /*current_density_cmd*/,
 	const std::string& /*rank_cmd*/,
 	const std::string& /*resistivity_cmd*/,
@@ -998,33 +963,6 @@ int plot_2d(
 			"\n" + magnetic_field_cmd + " 3\"\n",
 			[](const pamhd::mhd::Cell_Staggered& cell_data){
 				return cell_data[pamhd::Bg_Magnetic_Field()](+1)[2];
-			}
-		);
-	}
-
-	// electric field
-	if (electric_field_cmd != "") {
-		write_gnuplot_cmd_current(
-			"Ex",
-			"\n" + electric_field_cmd + " 1\"\n",
-			[](const pamhd::mhd::Cell_Staggered& cell_data){
-				return cell_data[pamhd::Edge_Electric_Field()](0,1,1);
-			}
-		);
-
-		write_gnuplot_cmd_current(
-			"Ey",
-			"\n" + electric_field_cmd + " 2\"\n",
-			[](const pamhd::mhd::Cell_Staggered& cell_data){
-				return cell_data[pamhd::Edge_Electric_Field()](1,1,1);
-			}
-		);
-
-		write_gnuplot_cmd_current(
-			"Ez",
-			"\n" + electric_field_cmd + " 3\"\n",
-			[](const pamhd::mhd::Cell_Staggered& cell_data){
-				return cell_data[pamhd::Edge_Electric_Field()](2,1,1);
 			}
 		);
 	}
@@ -1277,7 +1215,6 @@ int main(int argc, char* argv[])
 		),
 		velocity_plot_1d("set ylabel \"Velocity\""),
 		magnetic_field_plot_1d("set ylabel \"Magnetic field\""),
-		electric_field_plot_1d("set ylabel \"Electric field\""),
 		current_density_plot_1d("set ylabel \"Current density\""),
 		common_plot_2d(
 			"set term png enhanced size 800, 600\n"
@@ -1288,7 +1225,6 @@ int main(int argc, char* argv[])
 		pressure_plot_2d("set title \"Pressure\""),
 		velocity_plot_2d("set title \"Velocity"),
 		magnetic_field_plot_2d("set title \"Magnetic field"),
-		electric_field_plot_2d("set title \"Electric field"),
 		current_density_plot_2d("set title \"Current density"),
 		rank_plot_2d("set title \"MPI rank\""),
 		resistivity_plot_2d("set title \"Resistivity\""),
@@ -1483,7 +1419,6 @@ int main(int argc, char* argv[])
 				density_pressure_plot_1d,
 				velocity_plot_1d,
 				magnetic_field_plot_1d,
-				electric_field_plot_1d,
 				current_density_plot_1d
 			);
 			break;
@@ -1502,7 +1437,6 @@ int main(int argc, char* argv[])
 				pressure_plot_2d,
 				velocity_plot_2d,
 				magnetic_field_plot_2d,
-				electric_field_plot_2d,
 				current_density_plot_2d,
 				rank_plot_2d,
 				resistivity_plot_2d,

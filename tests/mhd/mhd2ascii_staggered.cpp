@@ -218,7 +218,6 @@ std::optional<std::array<double, 4>> read_data(
 		pamhd::mhd::Solver_Info(),
 		pamhd::MPI_Rank(),
 		pamhd::Face_Magnetic_Field(),
-		pamhd::Edge_Electric_Field(),
 		pamhd::Bg_Magnetic_Field(),
 		pamhd::Magnetic_Field_Divergence(),
 		pamhd::grid::Target_Refinement_Level_Min(),

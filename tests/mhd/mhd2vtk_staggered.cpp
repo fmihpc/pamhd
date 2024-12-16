@@ -219,7 +219,6 @@ std::optional<std::array<double, 4>> read_data(
 		pamhd::mhd::Solver_Info(),
 		pamhd::MPI_Rank(),
 		pamhd::Face_Magnetic_Field(),
-		pamhd::Edge_Electric_Field(),
 		pamhd::Bg_Magnetic_Field(),
 		pamhd::Magnetic_Field_Divergence(),
 		pamhd::grid::Target_Refinement_Level_Min(),
@@ -456,16 +455,6 @@ void convert(
 			<< magnetic_field_face(+2) << " "
 			<< magnetic_field_face(+3) << "\n";
 	}
-
-	/*constexpr pamhd::Electric_Current_Density Cur{};
-	vtk_file << "VECTORS current_density double\n";
-	for (const auto& cell: cells) {
-		const auto current_density = simulation_data.at(cell)[Cur];
-		vtk_file
-			<< current_density[0] << " "
-			<< current_density[1] << " "
-			<< current_density[2] << "\n";
-	}*/
 
 	vtk_file << "SCALARS rank int 1\nlookup_table default\n";
 	for (const auto& cell: cells) {
