@@ -1,0 +1,30 @@
+{
+	"comment": "flow direction: +x, maximum refinement level: 1, density-based time-dependent",
+	"output-directory": "tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered_amr3",
+	"time-start": 0,
+	"time-length": 1,
+	"minimum-pressure": 0,
+	"solver-mhd": "rusanov",
+	"load-balancer": "RANDOM",
+	"save-mhd-n": 0,
+	"adiabatic-index": 1.6666666667,
+	"vacuum-permeability": 1,
+	"proton-mass": 1,
+	"mhd-time-step-factor": 0.5,
+	"grid-options": {
+		"periodic": "{true, true, true}",
+		"cells": "{20, 1, 1}",
+		"volume": "{1, 1, 1}",
+		"start": "{0, 0, 0}",
+		"max-ref-lvl": 1,
+		"amr-n": 0.025,
+		"ref-lvl-at-least": "t > 0 ? 0 : (x > 0.17 and x < 0.33) ? 1 : (x > 0.67 and x < 0.83) ? 1 : 0",
+		"ref-lvl-at-most": "t > 0 ? 1 : (x > 0.17 and x < 0.33) ? 1 : (x > 0.67 and x < 0.83) ? 1 : 0"
+	},
+	"number-density": {"default": "(abs(x - 0.5) < 0.25) ? 2 : 1"},
+	"velocity": {"default": [1, 0, 0]},
+	"pressure": {"default": 1},
+	"magnetic-field": {"default": [0, 0, 0]},
+	"comment2": "unit for following is maximum relative gradient",
+	"number-density-max-ref-lvl-at": 1.5
+}

@@ -9,7 +9,7 @@
 	"adiabatic-index": 1.6666666667,
 	"vacuum-permeability": 1,
 	"proton-mass": 1,
-	"mhd-time-step-factor": 0.4,
+	"mhd-time-step-factor": 0.5,
 	"grid-options": {
 		"periodic": "{true, true, true}",
 		"cells": "{200, 1, 1}",
