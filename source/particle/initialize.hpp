@@ -2,7 +2,7 @@
 Initializes particle solution of PAMHD.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019 Finnish Meteorological Institute
+Copyright 2019, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -177,7 +177,7 @@ template<
 	// set default state
 	size_t nr_particles_created = 0;
 	auto current_id_start = first_particle_id;
-	for (const auto cell: grid.local_cells()) {
+	for (const auto& cell: grid.local_cells()) {
 
 		const auto c = grid.geometry.get_center(cell.id);
 		const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);

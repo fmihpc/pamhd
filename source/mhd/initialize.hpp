@@ -2,7 +2,7 @@
 Initializes the MHD solution of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019 Finnish Meteorological Institute
+Copyright 2019, 2024 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "cmath"
 #include "iostream"
 #include "limits"
+#include "tuple"
 
 #include "dccrg.hpp"
 
@@ -196,6 +197,249 @@ template <
 		Mom_f(*cell.data)[0]      =
 		Mom_f(*cell.data)[1]      =
 		Mom_f(*cell.data)[2]      = 0;
+
+		const auto c = grid.geometry.get_center(cell.id);
+		const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
+		const auto
+			lat = asin(c[2] / r),
+			lon = atan2(c[1], c[0]);
+
+		const auto mass_density
+			= proton_mass
+			* initial_conditions.get_default_data(
+				Number_Density(),
+				time,
+				c[0], c[1], c[2],
+				r, lat, lon
+			);
+		const auto velocity
+			= initial_conditions.get_default_data(
+				Velocity(),
+				time,
+				c[0], c[1], c[2],
+				r, lat, lon
+			);
+		const auto pressure
+			= initial_conditions.get_default_data(
+				Pressure(),
+				time,
+				c[0], c[1], c[2],
+				r, lat, lon
+			);
+
+		Mas(*cell.data) = mass_density;
+		Mom(*cell.data) = mass_density * velocity;
+		if (mass_density > 0 and pressure > 0) {
+			Nrj(*cell.data) = get_total_energy_density(
+				mass_density,
+				velocity,
+				pressure,
+				Mag(*cell.data),
+				adiabatic_index,
+				vacuum_permeability
+			);
+		} else {
+			Nrj(*cell.data) = 0;
+		}
+	}
+
+	if (verbose and grid.get_rank() == 0) {
+		std::cout << "done\nSetting non-default initial MHD state... ";
+		std::cout.flush();
+	}
+
+	// mass density
+	for (
+		size_t i = 0;
+		i < initial_conditions.get_number_of_regions(Number_Density());
+		i++
+	) {
+		const auto& init_cond = initial_conditions.get_initial_condition(Number_Density(), i);
+		const auto& geometry_id = init_cond.get_geometry_id();
+		const auto& cells = geometries.get_cells(geometry_id);
+		for (const auto& cell: cells) {
+			const auto c = grid.geometry.get_center(cell);
+			const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
+			const auto
+				lat = asin(c[2] / r),
+				lon = atan2(c[1], c[0]);
+
+			const auto mass_density
+				= proton_mass
+				* initial_conditions.get_data(
+					Number_Density(),
+					geometry_id,
+					time,
+					c[0], c[1], c[2],
+					r, lat, lon
+				);
+
+			auto* const cell_data = grid[cell];
+			if (cell_data == nullptr) {
+				std::cerr <<  __FILE__ << "(" << __LINE__ << std::endl;
+				abort();
+			}
+
+			Mas(*cell_data) = mass_density;
+		}
+	}
+
+	// velocity
+	for (
+		size_t i = 0;
+		i < initial_conditions.get_number_of_regions(Velocity());
+		i++
+	) {
+		const auto& init_cond = initial_conditions.get_initial_condition(Velocity(), i);
+		const auto& geometry_id = init_cond.get_geometry_id();
+		const auto& cells = geometries.get_cells(geometry_id);
+		for (const auto& cell: cells) {
+			const auto c = grid.geometry.get_center(cell);
+			const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
+			const auto
+				lat = asin(c[2] / r),
+				lon = atan2(c[1], c[0]);
+
+			const auto velocity = initial_conditions.get_data(
+				Velocity(),
+				geometry_id,
+				time,
+				c[0], c[1], c[2],
+				r, lat, lon
+			);
+
+			auto* const cell_data = grid[cell];
+			if (cell_data == nullptr) {
+				std::cerr <<  __FILE__ << "(" << __LINE__
+					<< ") No data for cell: " << cell
+					<< std::endl;
+				abort();
+			}
+
+			Mom(*cell_data) = Mas(*cell_data) * velocity;
+		}
+	}
+
+	// pressure
+	for (
+		size_t i = 0;
+		i < initial_conditions.get_number_of_regions(Pressure());
+		i++
+	) {
+		const auto& init_cond = initial_conditions.get_initial_condition(Pressure(), i);
+		const auto& geometry_id = init_cond.get_geometry_id();
+		const auto& cells = geometries.get_cells(geometry_id);
+		for (const auto& cell: cells) {
+			const auto c = grid.geometry.get_center(cell);
+			const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
+			const auto
+				lat = asin(c[2] / r),
+				lon = atan2(c[1], c[0]);
+
+			const auto pressure = initial_conditions.get_data(
+				Pressure(),
+				geometry_id,
+				time,
+				c[0], c[1], c[2],
+				r, lat, lon
+			);
+
+			auto* const cell_data = grid[cell];
+			if (cell_data == nullptr) {
+				std::cerr <<  __FILE__ << "(" << __LINE__
+					<< ") No data for cell: " << cell
+					<< std::endl;
+				abort();
+			}
+
+			if (Mas(*cell_data) > 0 and pressure > 0) {
+				Nrj(*cell_data) = get_total_energy_density(
+					Mas(*cell_data),
+					get_velocity(Mom(*cell_data), Mas(*cell_data)),
+					pressure,
+					Mag(*cell_data),
+					adiabatic_index,
+					vacuum_permeability
+				);
+			} else {
+				Nrj(*cell_data) = 0;
+			}
+		}
+	}
+
+	if (verbose and grid.get_rank() == 0) {
+		std::cout << "done" << std::endl;
+	}
+}
+
+
+template <
+	class Geometries,
+	class Init_Cond,
+	class Grid,
+	class Mass_Density_Getter,
+	class Momentum_Density_Getter,
+	class Total_Energy_Density_Getter,
+	class Magnetic_Field_Getter,
+	class Mass_Density_Flux_Getter,
+	class Momentum_Density_Flux_Getter,
+	class Total_Energy_Density_Flux_Getter
+> void initialize_fluid_staggered(
+	const Geometries& geometries,
+	Init_Cond& initial_conditions,
+	Grid& grid,
+	const double time,
+	const double adiabatic_index,
+	const double vacuum_permeability,
+	const double proton_mass,
+	const bool verbose,
+	const Mass_Density_Getter Mas,
+	const Momentum_Density_Getter Mom,
+	const Total_Energy_Density_Getter Nrj,
+	const Magnetic_Field_Getter Mag,
+	const Mass_Density_Flux_Getter Mas_f,
+	const Momentum_Density_Flux_Getter Mom_f,
+	const Total_Energy_Density_Flux_Getter Nrj_f
+) {
+	using std::get;
+
+	const auto
+		Mas_fnx = get<0>(Mas_f), Mas_fpx = get<1>(Mas_f),
+		Mas_fny = get<2>(Mas_f), Mas_fpy = get<3>(Mas_f),
+		Mas_fnz = get<4>(Mas_f), Mas_fpz = get<5>(Mas_f),
+		Mom_fnx = get<0>(Mom_f), Mom_fpx = get<1>(Mom_f),
+		Mom_fny = get<2>(Mom_f), Mom_fpy = get<3>(Mom_f),
+		Mom_fnz = get<4>(Mom_f), Mom_fpz = get<5>(Mom_f),
+		Nrj_fnx = get<0>(Nrj_f), Nrj_fpx = get<1>(Nrj_f),
+		Nrj_fny = get<2>(Nrj_f), Nrj_fpy = get<3>(Nrj_f),
+		Nrj_fnz = get<4>(Nrj_f), Nrj_fpz = get<5>(Nrj_f);
+
+	if (verbose and grid.get_rank() == 0) {
+		std::cout << "Setting default MHD state... ";
+		std::cout.flush();
+	}
+
+	// set default state
+	for (const auto& cell: grid.local_cells()) {
+		// zero fluxes
+		Mas_fnx(*cell.data) =
+		Mas_fpx(*cell.data) =
+		Mas_fny(*cell.data) =
+		Mas_fpy(*cell.data) =
+		Mas_fnz(*cell.data) =
+		Mas_fpz(*cell.data) =
+		Nrj_fnx(*cell.data) =
+		Nrj_fpx(*cell.data) =
+		Nrj_fny(*cell.data) =
+		Nrj_fpy(*cell.data) =
+		Nrj_fnz(*cell.data) =
+		Nrj_fpz(*cell.data) = 0;
+		Mom_fnx(*cell.data) =
+		Mom_fpx(*cell.data) =
+		Mom_fny(*cell.data) =
+		Mom_fpy(*cell.data) =
+		Mom_fnz(*cell.data) =
+		Mom_fpz(*cell.data) = {0, 0, 0};
 
 		const auto c = grid.geometry.get_center(cell.id);
 		const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
