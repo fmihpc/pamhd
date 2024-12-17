@@ -682,7 +682,6 @@ int main(int argc, char* argv[]) {
 		.set_load_balancing_method(options_sim.lb_name)
 		.set_maximum_refinement_level(options_grid.get_max_ref_lvl())
 		.initialize(comm);
-	const auto mrlvl = grid.get_maximum_refinement_level();
 
 	// set grid geometry
 	const std::array<double, 3>
