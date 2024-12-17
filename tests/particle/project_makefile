@@ -23,7 +23,6 @@ TESTS_PARTICLE_EXECUTABLES = \
   tests/particle/massless.exe \
   tests/particle/test.exe \
   tests/particle/test_staggered.exe \
-  tests/particle/bulk2gnuplot.exe \
   tests/particle/particle2gnuplot.exe \
   tests/particle/particle_time_series2gnuplot.exe \
   tests/particle/particle_time_averages2gnuplot.exe \
@@ -333,11 +332,6 @@ tests/particle/test_staggered.exe: \
 
 tests/particle/particle2gnuplot.exe: \
   tests/particle/particle2gnuplot.cpp \
-  $(TEST_PARTICLE_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_PARTICLE_SOLVE_COMPILE)
-
-tests/particle/bulk2gnuplot.exe: \
-  tests/particle/bulk2gnuplot.cpp \
   $(TEST_PARTICLE_COMMON_DEPS)
 	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_PARTICLE_SOLVE_COMPILE)
 
