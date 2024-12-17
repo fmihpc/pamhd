@@ -1,4 +1,0 @@
-This file exists because particle tests try to store their result
-in directory tests/particle/ relative to current directory.
-If executed from root of pamhd by make test they work but if
-executed manually from their directory this one must exist.
