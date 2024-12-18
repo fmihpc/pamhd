@@ -37,15 +37,16 @@ def get_metadata(infile):
 	from numpy import fromfile
 	ret_val = dict()
 	file_version = int(fromfile(infile, dtype = 'uint64', count = 1)[0])
-	if file_version != 3:
+	if file_version != 4:
 		exit('Unsupported file version: ' + str(file_version))
 	ret_val['file_version'] = file_version
 	ret_val['sim_step'] = int(fromfile(infile, dtype = 'uint64', count = 1)[0])
 	ret_val['sim_time'], \
 	ret_val['adiabatic_index'], \
 	ret_val['proton_mass'], \
-	ret_val['vacuum_permeability'] \
-		= [float(i) for i in fromfile(infile, dtype = '4double', count = 1)[0]]
+	ret_val['vacuum_permeability'], \
+	ret_val['particle_temp_nrj_ratio'] \
+		= [float(i) for i in fromfile(infile, dtype = '5double', count = 1)[0]]
 	ret_val['nr_variables'] = int(fromfile(infile, dtype = 'u1', count = 1)[0])
 	nr_variables = ret_val['nr_variables']
 	ret_val['variable_offsets'] = [int(i) for i in fromfile(infile, dtype = 'uint64', count = nr_variables)]
@@ -182,6 +183,15 @@ def get_cell_data(infile, metadata, range_, variables = None):
 			elif varname == 'timestep':
 				infile.seek(i*8, 1)
 				ret_val[-1][varname] = fromfile(infile, dtype = 'double', count = 1)[0]
+			elif varname == 'volE    ':
+				infile.seek(i*3*8, 1)
+				ret_val[-1][varname] = fromfile(infile, dtype = '3double', count = 1)[0]
+			elif varname == 'volJ    ':
+				infile.seek(i*3*8, 1)
+				ret_val[-1][varname] = fromfile(infile, dtype = '3double', count = 1)[0]
+			elif varname == 'nr ipart':
+				infile.seek(i*8, 1)
+				ret_val[-1][varname] = fromfile(infile, dtype = 'uint64', count = 1)[0]
 	return ret_val
 
 
@@ -454,6 +464,36 @@ def write_variable_vtk(infile, outfile, variable, meta, nr_cells = -1):
 			data = get_cell_data(infile, meta, chunk, [variable])
 			for d in data:
 				outfile.write(str(d['mhd info']) + '\n')
+			del data
+
+	if variable == 'volE    ':
+		outfile.write('VECTORS volume_E double\n')
+		for chunk in chunks:
+			data = get_cell_data(infile, meta, chunk, [variable])
+			for d in data:
+				outfile.write(
+					str(d['volE    '][0]) + ' '
+					+ str(d['volE    '][1]) + ' '
+					+ str(d['volE    '][2]) + '\n')
+			del data
+
+	if variable == 'volJ    ':
+		outfile.write('VECTORS volume_J double\n')
+		for chunk in chunks:
+			data = get_cell_data(infile, meta, chunk, [variable])
+			for d in data:
+				outfile.write(
+					str(d['volJ    '][0]) + ' '
+					+ str(d['volJ    '][1]) + ' '
+					+ str(d['volJ    '][2]) + '\n')
+			del data
+
+	if variable == 'nr ipart':
+		outfile.write('VECTORS nr_particles_internal int\n')
+		for chunk in chunks:
+			data = get_cell_data(infile, meta, chunk, [variable])
+			for d in data:
+				outfile.write(str(d['nr ipart']) + '\n')
 			del data
 
 

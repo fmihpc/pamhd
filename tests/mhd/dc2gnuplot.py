@@ -220,7 +220,7 @@ if __name__ == '__main__':
 				continue
 			data['cell_data'] = common.get_cell_data(infile, data, range(len(data['cells'])))
 
-			if data['file_version'] != 3:
+			if data['file_version'] != 4:
 				exit('Unsupported file version: ' + str(data['file_version']))
 
 			if data['geometry_id'] != 1:

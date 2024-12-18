@@ -1520,7 +1520,7 @@ int main(int argc, char* argv[])
 			for (const auto& cell: grid.local_cells()) {
 				Nr_Int(*cell.data) = Part_Int(*cell.data).size();
 			}
-			constexpr uint64_t file_version = 2;
+			constexpr uint64_t file_version = 4;
 			if (
 				not pamhd::particle::save(
 					boost::filesystem::canonical(
@@ -1532,11 +1532,7 @@ int main(int argc, char* argv[])
 					simulation_time,
 					options_sim.adiabatic_index,
 					options_sim.proton_mass,
-					options_particle.boltzmann,
-					pamhd::particle::Electric_Field(),
-					pamhd::Electric_Current_Density(),
-					pamhd::particle::Nr_Particles_Internal(),
-					pamhd::particle::Particles_Internal()
+					options_particle.boltzmann
 				)
 			) {
 				cerr <<  __FILE__ << "(" << __LINE__ << "): "
@@ -1561,7 +1557,7 @@ int main(int argc, char* argv[])
 				cout << "Saving MHD at time " << simulation_time << "... " << endl;
 			}
 
-			constexpr uint64_t file_version = 3;
+			constexpr uint64_t file_version = 4;
 			if (
 				not pamhd::mhd::save_staggered(
 					boost::filesystem::canonical(

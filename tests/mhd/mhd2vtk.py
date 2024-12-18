@@ -41,7 +41,7 @@ args = parser.parse_args()
 for filename_ in args.files:
 	with open(filename_, 'rb') as infile:
 		meta = common.get_metadata(infile)
-		if meta['file_version'] != 3:
+		if meta['file_version'] != 4:
 			print('Unsupported file version:', meta['file_version'])
 			continue
 		if meta['geometry_id'] != 1:

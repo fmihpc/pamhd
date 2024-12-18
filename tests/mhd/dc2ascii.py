@@ -66,7 +66,7 @@ def convert(inname, verbose):
 	for i in range(len(metadata['cells'])):
 		sim_data[metadata['cells'][i]] = sim_data_[i]
 
-	if metadata['file_version'] != 3:
+	if metadata['file_version'] != 4:
 		exit('Unsupported file version: ' + str(metadata['file_version']))
 	if verbose:
 		print('Simulation step:', metadata['sim_step'])
@@ -87,9 +87,11 @@ def convert(inname, verbose):
 			print(name, 'start in file:', metadata['var_data_start'])
 
 	outfile.write(
-		  "# MHD data created by PAMHD\n"
+		  "# Data created by PAMHD\n"
 		+ "# Adiabatic index: " + str(metadata['adiabatic_index'])
 		+ "\n# Vacuum permeability: " + str(metadata['vacuum_permeability'])
+		+ "\n# Proton mass: " + str(metadata['proton_mass'])
+		+ "\n# Particle temperature to energy ratio (Boltzmann constant): " + str(metadata['particle_temp_nrj_ratio'])
 		+ "\n# Simulation time: " + str(metadata['sim_time'])
 		+ "\n# Simulation step: " + str(metadata['sim_step']) + "\n"
 		+ "# Format of each line (lines are ordered randomly):\n"
@@ -107,6 +109,9 @@ def convert(inname, verbose):
 	if 'ref lvls' in metadata['var_data_start']: outfile.write("# Minimum and maximum target refinement level\n")
 	if 'substep ' in metadata['var_data_start']: outfile.write("# Temporal substepping period\n")
 	if 'timestep' in metadata['var_data_start']: outfile.write("# Cell's maximum allowed timestep\n")
+	if 'volE    ' in metadata['var_data_start']: outfile.write("# x, y and z components of volume electric field (V/m)\n")
+	if 'volJ    ' in metadata['var_data_start']: outfile.write("# x, y and z components of volume electric current density (A/m^2)\n")
+	if 'nr ipart' in metadata['var_data_start']: outfile.write("# number of particles (staying) in cell\n")
 
 	for i in range(len(metadata['cells'])):
 		cell_id = metadata['cells'][i]
@@ -161,6 +166,17 @@ def convert(inname, verbose):
 
 		if 'timestep' in sim_data[cell_id]:
 			outfile.write(str(sim_data[cell_id]['timestep']) + ' ')
+
+		if 'volE    ' in sim_data[cell_id]:
+			E = sim_data[cell_id]['volE    ']
+			outfile.write(str(E[0]) + ' ' + str(E[1]) + ' ' + str(E[2]) + ' ')
+
+		if 'volJ    ' in sim_data[cell_id]:
+			J = sim_data[cell_id]['volJ    ']
+			outfile.write(str(J[0]) + ' ' + str(J[1]) + ' ' + str(J[2]) + ' ')
+
+		if 'nr ipart' in sim_data[cell_id]:
+			outfile.write(str(sim_data[cell_id]['nr ipart']) + ' ')
 
 		outfile.write('\n')
 

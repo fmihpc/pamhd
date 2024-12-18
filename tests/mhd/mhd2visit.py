@@ -324,7 +324,7 @@ for filename_ in args.files:
 	if filename_.endswith('.dc'):
 		with open(filename_, 'rb') as infile:
 			data = common.get_metadata(infile)
-			if data['file_version'] != 3:
+			if data['file_version'] != 4:
 				print('Unsupported file version:', data['file_version'])
 				continue
 			if data['geometry_id'] != 1:

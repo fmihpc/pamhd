@@ -736,7 +736,7 @@ int main(int argc, char* argv[])
 				cout << "Saving particles at time " << simulation_time << endl;
 			}
 
-			constexpr uint64_t file_version = 1;
+			constexpr uint64_t file_version = 4;
 			if (
 				not pamhd::particle::save(
 					boost::filesystem::canonical(
@@ -748,12 +748,7 @@ int main(int argc, char* argv[])
 					simulation_time,
 					0,
 					0,
-					options_particle.boltzmann,
-					pamhd::particle::Electric_Field(),
-					pamhd::Magnetic_Field(),
-					pamhd::Electric_Current_Density(),
-					pamhd::particle::Nr_Particles_Internal(),
-					pamhd::particle::Particles_Internal()
+					options_particle.boltzmann
 				)
 			) {
 				std::cerr <<  __FILE__ << "(" << __LINE__ << "): Couldn't save particle result." << std::endl;

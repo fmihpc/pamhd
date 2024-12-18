@@ -603,7 +603,7 @@ int main(int argc, char* argv[])
 	}
 
 	size_t simulation_step = 0;
-	constexpr uint64_t file_version = 3;
+	constexpr uint64_t file_version = 4;
 	if (options_mhd.save_n >= 0) {
 		if (rank == 0) {
 			cout << "Saving MHD at time " << simulation_time << endl;

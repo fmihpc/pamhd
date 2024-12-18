@@ -99,18 +99,19 @@ template <class Grid> bool save_staggered(
 		allowed_variables.cbegin(), allowed_variables.cend(),
 		std::inserter(variables, variables.begin())
 	);
+	const uint8_t nr_var_offsets = variables.size();
+	vector<uint64_t> variable_offsets(nr_var_offsets, 0);
 
 	const vector<double> simulation_parameters{
 		simulation_time,
 		adiabatic_index,
 		proton_mass,
-		vacuum_permeability
+		vacuum_permeability,
+		-1
 	};
 	const int nr_sim_params = simulation_parameters.size();
 
-	const uint8_t nr_var_offsets = variables.size();
 	const vector<int> counts{1, 1, nr_sim_params, 1, nr_var_offsets};
-	vector<uint64_t> variable_offsets(nr_var_offsets, 0);
 	const vector<MPI_Aint> displacements{
 		0,
 		reinterpret_cast<char*>(const_cast<uint64_t*>(&simulation_step))
@@ -149,7 +150,7 @@ template <class Grid> bool save_staggered(
 	std::ostringstream step_string;
 	step_string << std::setw(9) << std::setfill('0') << simulation_step;
 
-	// make sure data if written in same order to all files
+	// make sure data is written in same order to all files
 	vector<uint64_t> cells = grid.get_cells();
 
 	// assume transfer of all variables has been switched off
@@ -179,8 +180,7 @@ template <class Grid> bool save_staggered(
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
-			outsize, header, cells, false, false, false
-		);
+			outsize, header, cells, false, false, false);
 		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
 	}
 
@@ -326,7 +326,7 @@ template <class Grid> bool save_staggered(
 		}
 		MPI_File_write_at(
 			outfile,
-			8 * (1+1+4) + 1,
+			8 * (1+1+nr_sim_params) + 1,
 			(void*)variable_offsets.data(),
 			variable_offsets.size(),
 			MPI_UINT64_T,
