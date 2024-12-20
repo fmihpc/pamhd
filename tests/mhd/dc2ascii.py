@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 '''
-Converts output of MHD test program of PAMHD to ASCII format.
+Converts output from MHD test program of PAMHD to ASCII format.
 
 Copyright 2015, 2016 Ilja Honkonen
 Copyright 2024 Finnish Meteorological Institute
@@ -37,8 +37,12 @@ Author(s): Ilja Honkonen
 
 from importlib.util import module_from_spec, spec_from_file_location
 from os.path import dirname, isfile, join
+from pathlib import Path
 from sys import modules
-spec = spec_from_file_location('common', join(dirname(__file__), 'common.py'))
+spec = spec_from_file_location(
+	'common',
+	join(Path(__file__).parent.parent.absolute(), 'common.py')
+)
 common = module_from_spec(spec)
 modules['common'] = common
 spec.loader.exec_module(common)
@@ -51,10 +55,11 @@ except Exception as e:
 
 
 def convert(inname, verbose):
-	if not isfile(inname):
-		raise Exception('Given path (' + inname + ') is not a file.')
-
-	infile = open(inname, 'rb')
+	try:
+		infile = open(inname, 'rb')
+	except Exception as e:
+		print("Couldn't open file", inname, 'for reading:', e)
+		exit(1)
 
 	if verbose:
 		print('Converting file', inname)
@@ -187,5 +192,6 @@ if __name__ == '__main__':
 	for arg in sys.argv[1:]:
 		if arg == '--verbose':
 			verbose = True
-		else:
-			convert(arg, verbose)
+			break
+	for arg in sys.argv[1:]:
+		convert(arg, verbose)

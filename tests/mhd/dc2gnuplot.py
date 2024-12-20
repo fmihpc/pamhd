@@ -37,8 +37,12 @@ Author(s): Ilja Honkonen
 
 from importlib.util import module_from_spec, spec_from_file_location
 from os.path import dirname, isfile, join
+from pathlib import Path
 from sys import modules
-spec = spec_from_file_location('common', join(dirname(__file__), 'common.py'))
+spec = spec_from_file_location(
+	'common',
+	join(Path(__file__).parent.parent.absolute(), 'common.py')
+)
 common = module_from_spec(spec)
 modules['common'] = common
 spec.loader.exec_module(common)
