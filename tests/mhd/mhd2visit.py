@@ -2,7 +2,7 @@
 '''
 Program for plotting MHD output of PAMHD using VisIt.
 
-Copyright 2024 Finnish Meteorological Institute
+Copyright 2024, 2025 Finnish Meteorological Institute
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -30,8 +30,12 @@ from argparse import ArgumentParser
 from imp import load_source
 from os import _exit
 from os.path import basename, dirname, join
+from pathlib import Path
 from sys import argv, stdout
-common = load_source('common', join(dirname(__file__), 'common.py'))
+common = load_source(
+	'common',
+	join(Path(__file__).absolute().parent.parent, 'common.py')
+)
 
 DefineScalarExpression('number_density', 'mass_density / 1.67262192369e-21')
 DefineScalarExpression('V', 'velocity_magnitude')
