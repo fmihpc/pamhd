@@ -2,7 +2,8 @@
 MHD test program of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2019, 2022, 2023, 2024 Finnish Meteorological Institute
+Copyright 2018, 2019, 2022, 2023,
+          2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -83,48 +84,42 @@ using Grid = dccrg::Dccrg<
 
 // returns reference to background magnetic field on cell faces
 const auto Bg_B = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::Bg_Magnetic_Field()];
-	};
+	return cell_data[pamhd::Bg_Magnetic_Field()];
+};
 
 // returns reference to total mass density in given cell
 const auto Mas = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Mass_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Mass_Density()];
+};
 const auto Mom = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Momentum_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Momentum_Density()];
+};
 const auto Nrj = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Total_Energy_Density()];
-	};
+	return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Total_Energy_Density()];
+};
 const auto Mag = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()];
-	};
+	return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()];
+};
 const auto Face_B = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::Face_Magnetic_Field()];
-	};
+	return cell_data[pamhd::Face_Magnetic_Field()];
+};
 const auto Face_dB = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::Face_dB()];
 };
 // divergence of magnetic field
 const auto Mag_div = [](Cell& cell_data)->auto&{
-		return cell_data[pamhd::Magnetic_Field_Divergence()];
-	};
+	return cell_data[pamhd::Magnetic_Field_Divergence()];
+};
 
-// solver info variable for boundary logic
-const auto Sol_Info = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::Solver_Info()];
-	};
-// returns 1 for normal cell, -1 for dont_solve and 0 otherwise
-const auto Sol_Info2 = [](Cell& cell_data)->int {
-		const auto info = cell_data[pamhd::mhd::Solver_Info()];
-		if (info == 0) {
-			return 1;
-		}
-		if ((info & pamhd::mhd::Solver_Info::dont_solve) > 0) {
-			return -1;
-		}
-		return 0;
-	};
+/*! Solver info variable for boundary logic
+
+-1 for cells not to be read nor written
+0 for read-only cells
+1 for read-write cells
+*/
+const auto SInfo = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::mhd::Solver_Info()];
+};
 
 const auto Substep = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::mhd::Substepping_Period()];
@@ -536,7 +531,7 @@ int main(int argc, char* argv[])
 	pamhd::mhd::update_B_consistency(
 		0, grid.local_cells(),
 		Mas, Mom, Nrj, Mag, Face_B,
-		Sol_Info2, Substep,
+		SInfo, Substep,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		false // fluid not initialized yet
@@ -569,13 +564,13 @@ int main(int argc, char* argv[])
 
 	Cell::set_transfer_all(true, pamhd::mhd::Solver_Info());
 	pamhd::mhd::set_solver_info<pamhd::mhd::Solver_Info>(
-		grid, boundaries, geometries, Sol_Info
+		grid, boundaries, geometries, SInfo
 	);
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(false, pamhd::mhd::Solver_Info());
 
 	Cell::set_transfer_all(true, pamhd::mhd::Face_Boundary_Type());
-	pamhd::mhd::classify_faces(grid, Sol_Info2, FInfo);
+	pamhd::mhd::classify_faces(grid, SInfo, FInfo);
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(false, pamhd::mhd::Face_Boundary_Type());
 
@@ -585,7 +580,7 @@ int main(int argc, char* argv[])
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		Mas, Mom, Nrj, Mag,
-		Face_B, Sol_Info2, FInfo, Substep
+		Face_B, SInfo, FInfo, Substep
 	);
 
 	// final init with timestep of 0
@@ -595,7 +590,7 @@ int main(int argc, char* argv[])
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		Mas, Mom, Nrj, Mag, Face_B, Face_dB, Bg_B,
-		Mas_fs, Mom_fs, Nrj_fs, Mag_fs, Sol_Info2,
+		Mas_fs, Mom_fs, Nrj_fs, Mag_fs, SInfo,
 		Timestep, Substep, Substep_Min, Substep_Max, Max_v
 	);
 	if (rank == 0) {
@@ -640,7 +635,7 @@ int main(int argc, char* argv[])
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			Mas, Mom, Nrj, Mag, Face_B, Face_dB, Bg_B,
-			Mas_fs, Mom_fs, Nrj_fs, Mag_fs, Sol_Info2,
+			Mas_fs, Mom_fs, Nrj_fs, Mag_fs, SInfo,
 			Timestep, Substep, Substep_Min, Substep_Max, Max_v
 		);
 		if (rank == 0) {
@@ -664,8 +659,8 @@ int main(int argc, char* argv[])
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
 				Mas, Mom, Nrj, Mag, Face_B, Bg_B,
-				Sol_Info, Sol_Info2,
-				FInfo, Ref_min, Ref_max, Substep, Max_v
+				SInfo, FInfo, Ref_min, Ref_max,
+				Substep, Max_v
 			);
 		}
 
@@ -675,12 +670,12 @@ int main(int argc, char* argv[])
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			Mas, Mom, Nrj, Mag,
-			Face_B, Sol_Info2, FInfo, Substep
+			Face_B, SInfo, FInfo, Substep
 		);
 
 		const auto avg_div = pamhd::math::get_divergence_staggered(
 			grid.local_cells(), grid,
-			Face_B, Mag_div, Sol_Info2
+			Face_B, Mag_div, SInfo
 		);
 		if (rank == 0) {
 			cout << " average divergence " << avg_div << endl;

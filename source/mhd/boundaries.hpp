@@ -60,71 +60,14 @@ namespace pamhd {
 namespace mhd {
 
 
-// as set_solver_info() below but for magnetic field only
-// TODO: remove magnetic field from set_solver_info()
-template<
-	class Solver_Info,
-	class Grid,
-	class Boundaries,
-	class Boundary_Geometries,
-	class Solver_Info_Getter
-> void set_solver_info_magnetic(
-	Grid& grid,
-	Boundaries& boundaries,
-	const Boundary_Geometries& geometries,
-	const Solver_Info_Getter& Sol_Info
-) try {
-	using std::runtime_error;
-	using std::to_string;
-
-	boundaries.classify(grid, geometries, Sol_Info);
-
-	for (const auto& cell: grid.cells) {
-		Sol_Info(*cell.data) = 0;
-	}
-
-	// magnetic field
-	constexpr pamhd::Magnetic_Field B{};
-	for (const auto& cell: boundaries.get_value_boundary_cells(B)) {
-		auto* const cell_data = grid[cell];
-		if (cell_data == nullptr) {
-			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-		}
-		Sol_Info(*cell_data) |= Solver_Info::magnetic_field_bdy;
-	}
-	for (const auto& item: boundaries.get_copy_boundary_cells(B)) {
-		auto* const cell_data = grid[item[0]];
-		if (cell_data == nullptr) {
-			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-		}
-		Sol_Info(*cell_data) |= Solver_Info::magnetic_field_bdy;
-	}
-	const std::set<uint64_t> dont_solve_mag(
-		boundaries.get_dont_solve_cells(B).cbegin(),
-		boundaries.get_dont_solve_cells(B).cend()
-	);
-
-	// don't solve cells in which no variable is solved
-	for (auto& cell: dont_solve_mag) {
-		auto* const cell_data = grid[cell];
-		if (cell_data == nullptr) {
-			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-		}
-		Sol_Info(*cell_data) |= Solver_Info::dont_solve;
-	}
-
-	grid.update_copies_of_remote_neighbors();
-} catch (const std::exception& e) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
-} catch (...) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
-}
-
-
 /*!
 Prepares boundary information needed for MHD solver about each simulation cell.
 
-MPI transfer of Sol_Info variable must be switched on before calling this.
+MPI transfer of SInfo variable must be switched on before calling this.
+
+1 means normal read-write cell
+0 means boundary read-only cell
+-1 means dont_solve cell that's not to be read nor written
 */
 template<
 	class Solver_Info,
@@ -136,15 +79,15 @@ template<
 	Grid& grid,
 	Boundaries& boundaries,
 	const Boundary_Geometries& geometries,
-	const Solver_Info_Getter& Sol_Info
+	const Solver_Info_Getter& SInfo
 ) try {
 	using std::runtime_error;
 	using std::to_string;
 
-	boundaries.classify(grid, geometries, Sol_Info);
+	boundaries.classify(grid, geometries, SInfo);
 
 	for (const auto& cell: grid.cells) {
-		Sol_Info(*cell.data) = 0;
+		SInfo(*cell.data) = 1;
 	}
 
 	// number density
@@ -154,14 +97,14 @@ template<
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		Sol_Info(*cell_data) |= Solver_Info::mass_density_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(N)) {
 		auto* const cell_data = grid[item[0]];
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		Sol_Info(*cell_data) |= Solver_Info::mass_density_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_mass(
 		boundaries.get_dont_solve_cells(N).cbegin(),
@@ -175,14 +118,14 @@ template<
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		Sol_Info(*cell_data) |= Solver_Info::velocity_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(V)) {
 		auto* const cell_data = grid[item[0]];
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		Sol_Info(*cell_data) |= Solver_Info::velocity_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_velocity(
 		boundaries.get_dont_solve_cells(V).cbegin(),
@@ -196,14 +139,14 @@ template<
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		Sol_Info(*cell_data) |= Solver_Info::pressure_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(P)) {
 		auto* const cell_data = grid[item[0]];
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		Sol_Info(*cell_data) |= Solver_Info::pressure_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_pressure(
 		boundaries.get_dont_solve_cells(P).cbegin(),
@@ -217,14 +160,14 @@ template<
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		Sol_Info(*cell_data) |= Solver_Info::magnetic_field_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(B)) {
 		auto* const cell_data = grid[item[0]];
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		Sol_Info(*cell_data) |= Solver_Info::magnetic_field_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_mag(
 		boundaries.get_dont_solve_cells(B).cbegin(),
@@ -268,13 +211,13 @@ template<
 		);
 	}
 
-	// don't solve cells in which no variable is solved
+	// don't solve cells
 	for (auto& cell: dont_solve_mass) {
 		auto* const cell_data = grid[cell];
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		Sol_Info(*cell_data) |= Solver_Info::dont_solve;
+		SInfo(*cell_data) = -1;
 	}
 
 	grid.update_copies_of_remote_neighbors();

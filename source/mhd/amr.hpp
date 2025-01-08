@@ -570,7 +570,6 @@ template<
 	class Face_Magnetic_Field_Getter,
 	class Background_Magnetic_Field_Getter,
 	class Solver_Info_Getter,
-	class Solver_Info_Getter2,
 	class Face_Info_Getter,
 	class Target_Refinement_Level_Min_Getter,
 	class Target_Refinement_Level_Max_Getter,
@@ -594,7 +593,6 @@ template<
 	const Face_Magnetic_Field_Getter Face_B,
 	const Background_Magnetic_Field_Getter Bg_B_Getter,
 	const Solver_Info_Getter SInfo,
-	const Solver_Info_Getter2 SInfo2,
 	const Face_Info_Getter FInfo,
 	const Target_Refinement_Level_Min_Getter Ref_min,
 	const Target_Refinement_Level_Max_Getter Ref_max,
@@ -607,7 +605,7 @@ template<
 
 	pamhd::mhd::set_minmax_refinement_level(
 		grid.local_cells(), grid, options_mhd,
-		Mas, Mom, Nrj, Mag, SInfo2, Ref_min, Ref_max,
+		Mas, Mom, Nrj, Mag, SInfo, Ref_min, Ref_max,
 		adiabatic_index, vacuum_permeability, proton_mass);
 
 	Grid::cell_data_type::set_transfer_all(true,
@@ -666,7 +664,7 @@ template<
 	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Solver_Info());
 
 	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Face_Boundary_Type());
-	pamhd::mhd::classify_faces(grid, SInfo2, FInfo);
+	pamhd::mhd::classify_faces(grid, SInfo, FInfo);
 	grid.update_copies_of_remote_neighbors();
 	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Face_Boundary_Type());
 
