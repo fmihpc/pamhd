@@ -11,6 +11,8 @@
 	"vacuum-permeability": 1,
 	"proton-mass": 1,
 	"mhd-time-step-factor": 0.5,
+	"substep-min": 0,
+	"substep-max": 3,
 	"grid-options": {
 		"periodic": "{true, true, true}",
 		"cells": "{1, 20, 20}",
