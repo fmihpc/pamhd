@@ -42,6 +42,7 @@ Author(s): Ilja Honkonen
 #include "set"
 #include "stdexcept"
 #include "string"
+#include "tuple"
 #include "type_traits"
 
 #include "grid/options.hpp"
@@ -159,10 +160,12 @@ template<class Data_Type> struct Face_Type {
 
 	#ifdef MPI_VERSION
 	std::tuple<void*, int, MPI_Datatype> get_mpi_datatype() const {
+		using std::array;
 		using std::is_same_v;
 		using std::make_tuple;
+		using std::runtime_error;
 
-		if constexpr (is_same_v<Data_Type, double>) {
+		if        constexpr (is_same_v<Data_Type, double>) {
 			return make_tuple((void*) this->face.data(), this->face.size(), MPI_DOUBLE);
 		} else if constexpr (is_same_v<Data_Type, float>) {
 			return make_tuple((void*) this->face.data(), this->face.size(), MPI_FLOAT);
@@ -200,10 +203,10 @@ template<class Data_Type> struct Face_Type {
 			return make_tuple((void*) this->face.data(), this->face.size(), MPI_CXX_BOOL);
 		#ifdef EIGEN_WORLD_VERSION
 		} else if constexpr (is_same_v<Data_Type, Eigen::Vector3d>) {
-			std::array<void*, nr_faces> addresses;
-			std::array<int, nr_faces> counts;
-			std::array<MPI_Datatype, nr_faces> datatypes;
-			std::array<MPI_Aint, nr_faces> displacements;
+			array<void*, nr_faces> addresses;
+			array<int, nr_faces> counts;
+			array<MPI_Datatype, nr_faces> datatypes;
+			array<MPI_Aint, nr_faces> displacements;
 
 			MPI_Datatype final_datatype = MPI_DATATYPE_NULL;
 			for (size_t i = 0; i < nr_faces; i++) {
@@ -222,12 +225,51 @@ template<class Data_Type> struct Face_Type {
 				&final_datatype
 			);
 			if (result != MPI_SUCCESS) {
-				throw std::runtime_error("Couldn't create MPI datatype for MHD flux");
+				throw runtime_error("Couldn't create MPI datatype for MHD flux");
 			}
-			return std::make_tuple(addresses[0], 1, final_datatype);
+			return make_tuple(addresses[0], 1, final_datatype);
 		#endif
-		} else {
-			static_assert(false, "Unsupported face item type for MPI");
+		} else { // assume Data_Type has get_mpi_datatype()
+			array<void*, nr_faces> addresses;
+			array<int, nr_faces> counts;
+			array<MPI_Datatype, nr_faces> datatypes;
+			array<MPI_Aint, nr_faces> displacements;
+
+			MPI_Datatype final_datatype = MPI_DATATYPE_NULL;
+			for (size_t i = 0; i < nr_faces; i++) {
+				std::tie(
+					addresses[i],
+					counts[i],
+					datatypes[i]
+				) = this->face[i].get_mpi_datatype();
+				displacements[i]
+					= static_cast<char*>(addresses[i])
+					- static_cast<char*>(addresses[0]);
+			}
+			auto result = MPI_Type_create_struct(
+				int(counts.size()),
+				counts.data(),
+				displacements.data(),
+				datatypes.data(),
+				&final_datatype
+			);
+			if (result != MPI_SUCCESS) {
+				throw runtime_error("Couldn't create MPI datatype for MHD flux");
+			}
+
+			// free user-defined component datatypes
+			for (size_t i = 0; i < nr_faces; i++) {
+				if (datatypes[i] == MPI_DATATYPE_NULL) {
+					continue;
+				}
+				int combiner = -1, tmp1 = -1, tmp2 = -1, tmp3 = -1;
+				MPI_Type_get_envelope(datatypes[i], &tmp1, &tmp2, &tmp3, &combiner);
+				if (combiner != MPI_COMBINER_NAMED) {
+					MPI_Type_free(&datatypes[i]);
+				}
+			}
+
+			return make_tuple(addresses[0], 1, final_datatype);
 		}
 	}
 	#endif

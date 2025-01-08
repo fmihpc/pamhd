@@ -80,19 +80,14 @@ template <
 	using std::runtime_error;
 	using std::to_string;
 
-	const auto
-		Mag_fnx = get<0>(Mag_f), Mag_fpx = get<1>(Mag_f),
-		Mag_fny = get<2>(Mag_f), Mag_fpy = get<3>(Mag_f),
-		Mag_fnz = get<4>(Mag_f), Mag_fpz = get<5>(Mag_f);
-
 	// set default magnetic field
 	for (const auto& cell: grid.local_cells()) {
-		Mag_fnx(*cell.data) =
-		Mag_fny(*cell.data) =
-		Mag_fnz(*cell.data) =
-		Mag_fpx(*cell.data) =
-		Mag_fpy(*cell.data) =
-		Mag_fpz(*cell.data) = {0, 0, 0};
+		Mag_f(*cell.data, -1) =
+		Mag_f(*cell.data, +1) =
+		Mag_f(*cell.data, -2) =
+		Mag_f(*cell.data, +2) =
+		Mag_f(*cell.data, -3) =
+		Mag_f(*cell.data, +3) = {0, 0, 0};
 
 		const auto [rx, ry, rz] = grid.geometry.get_center(cell.id);
 		const auto [sx, sy, sz] = grid.geometry.get_min(cell.id);

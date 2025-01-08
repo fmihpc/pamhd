@@ -238,20 +238,6 @@ template <
 	using std::tie;
 	using std::to_string;
 
-	const auto
-		Mas_fnx = get<0>(Mas_f), Mas_fpx = get<1>(Mas_f),
-		Mas_fny = get<2>(Mas_f), Mas_fpy = get<3>(Mas_f),
-		Mas_fnz = get<4>(Mas_f), Mas_fpz = get<5>(Mas_f),
-		Mom_fnx = get<0>(Mom_f), Mom_fpx = get<1>(Mom_f),
-		Mom_fny = get<2>(Mom_f), Mom_fpy = get<3>(Mom_f),
-		Mom_fnz = get<4>(Mom_f), Mom_fpz = get<5>(Mom_f),
-		Nrj_fnx = get<0>(Nrj_f), Nrj_fpx = get<1>(Nrj_f),
-		Nrj_fny = get<2>(Nrj_f), Nrj_fpy = get<3>(Nrj_f),
-		Nrj_fnz = get<4>(Nrj_f), Nrj_fpz = get<5>(Nrj_f),
-		Mag_fnx = get<0>(Mag_f), Mag_fpx = get<1>(Mag_f),
-		Mag_fny = get<2>(Mag_f), Mag_fpy = get<3>(Mag_f),
-		Mag_fnz = get<4>(Mag_f), Mag_fpz = get<5>(Mag_f);
-
 	const pamhd::mhd::Mass_Density mas_int{};
 	const pamhd::mhd::Momentum_Density mom_int{};
 	const pamhd::mhd::Total_Energy_Density nrj_int{};
@@ -331,17 +317,17 @@ template <
 
 			if (fn == +1) {
 				if (cell.is_local) {
-					Mas_fpx(*cell.data) += cfac * flux[mas_int];
-					Mom_fpx(*cell.data) += cfac * flux[mom_int];
-					Nrj_fpx(*cell.data) += cfac * flux[nrj_int];
-					Mag_fpx(*cell.data) += cfac * flux[mag_int];
+					Mas_f(*cell.data, +1) += cfac * flux[mas_int];
+					Mom_f(*cell.data, +1) += cfac * flux[mom_int];
+					Nrj_f(*cell.data, +1) += cfac * flux[nrj_int];
+					Mag_f(*cell.data, +1) += cfac * flux[mag_int];
 				}
 
 				if (neighbor.is_local) {
-					Mas_fnx(*neighbor.data) += nfac * flux[mas_int];
-					Mom_fnx(*neighbor.data) += nfac * flux[mom_int];
-					Nrj_fnx(*neighbor.data) += nfac * flux[nrj_int];
-					Mag_fnx(*neighbor.data) += nfac * flux[mag_int];
+					Mas_f(*neighbor.data, -1) += nfac * flux[mas_int];
+					Mom_f(*neighbor.data, -1) += nfac * flux[mom_int];
+					Nrj_f(*neighbor.data, -1) += nfac * flux[nrj_int];
+					Mag_f(*neighbor.data, -1) += nfac * flux[mag_int];
 				}
 
 				assign_face_dBs_fx(
@@ -352,17 +338,17 @@ template <
 
 			if (fn == +2) {
 				if (cell.is_local) {
-					Mas_fpy(*cell.data) += cfac * flux[mas_int];
-					Mom_fpy(*cell.data) += cfac * flux[mom_int];
-					Nrj_fpy(*cell.data) += cfac * flux[nrj_int];
-					Mag_fpy(*cell.data) += cfac * flux[mag_int];
+					Mas_f(*cell.data, +2) += cfac * flux[mas_int];
+					Mom_f(*cell.data, +2) += cfac * flux[mom_int];
+					Nrj_f(*cell.data, +2) += cfac * flux[nrj_int];
+					Mag_f(*cell.data, +2) += cfac * flux[mag_int];
 				}
 
 				if (neighbor.is_local) {
-					Mas_fny(*neighbor.data) += nfac * flux[mas_int];
-					Mom_fny(*neighbor.data) += nfac * flux[mom_int];
-					Nrj_fny(*neighbor.data) += nfac * flux[nrj_int];
-					Mag_fny(*neighbor.data) += nfac * flux[mag_int];
+					Mas_f(*neighbor.data, -2) += nfac * flux[mas_int];
+					Mom_f(*neighbor.data, -2) += nfac * flux[mom_int];
+					Nrj_f(*neighbor.data, -2) += nfac * flux[nrj_int];
+					Mag_f(*neighbor.data, -2) += nfac * flux[mag_int];
 				}
 
 				assign_face_dBs_fy(
@@ -373,17 +359,17 @@ template <
 
 			if (fn == +3) {
 				if (cell.is_local) {
-					Mas_fpz(*cell.data) += cfac * flux[mas_int];
-					Mom_fpz(*cell.data) += cfac * flux[mom_int];
-					Nrj_fpz(*cell.data) += cfac * flux[nrj_int];
-					Mag_fpz(*cell.data) += cfac * flux[mag_int];
+					Mas_f(*cell.data, +3) += cfac * flux[mas_int];
+					Mom_f(*cell.data, +3) += cfac * flux[mom_int];
+					Nrj_f(*cell.data, +3) += cfac * flux[nrj_int];
+					Mag_f(*cell.data, +3) += cfac * flux[mag_int];
 				}
 
 				if (neighbor.is_local) {
-					Mas_fnz(*neighbor.data) += nfac * flux[mas_int];
-					Mom_fnz(*neighbor.data) += nfac * flux[mom_int];
-					Nrj_fnz(*neighbor.data) += nfac * flux[nrj_int];
-					Mag_fnz(*neighbor.data) += nfac * flux[mag_int];
+					Mas_f(*neighbor.data, -3) += nfac * flux[mas_int];
+					Mom_f(*neighbor.data, -3) += nfac * flux[mom_int];
+					Nrj_f(*neighbor.data, -3) += nfac * flux[nrj_int];
+					Mag_f(*neighbor.data, -3) += nfac * flux[mag_int];
 				}
 
 				assign_face_dBs_fz(
@@ -1400,20 +1386,6 @@ template <
 	using std::runtime_error;
 	using std::to_string;
 
-	const auto
-		Mas_fnx = get<0>(Mas_f), Mas_fpx = get<1>(Mas_f),
-		Mas_fny = get<2>(Mas_f), Mas_fpy = get<3>(Mas_f),
-		Mas_fnz = get<4>(Mas_f), Mas_fpz = get<5>(Mas_f),
-		Mom_fnx = get<0>(Mom_f), Mom_fpx = get<1>(Mom_f),
-		Mom_fny = get<2>(Mom_f), Mom_fpy = get<3>(Mom_f),
-		Mom_fnz = get<4>(Mom_f), Mom_fpz = get<5>(Mom_f),
-		Nrj_fnx = get<0>(Nrj_f), Nrj_fpx = get<1>(Nrj_f),
-		Nrj_fny = get<2>(Nrj_f), Nrj_fpy = get<3>(Nrj_f),
-		Nrj_fnz = get<4>(Nrj_f), Nrj_fpz = get<5>(Nrj_f),
-		Mag_fnx = get<0>(Mag_f), Mag_fpx = get<1>(Mag_f),
-		Mag_fny = get<2>(Mag_f), Mag_fpy = get<3>(Mag_f),
-		Mag_fnz = get<4>(Mag_f), Mag_fpz = get<5>(Mag_f);
-
 	for (const auto& cell: cells) {
 		if (SInfo(*cell.data) > 0) {
 			if (current_substep % Substep(*cell.data) != 0) {
@@ -1422,18 +1394,18 @@ template <
 
 			const auto [dx, dy, dz] = grid.geometry.get_length(cell.id);
 
-			Mas(*cell.data) += (Mas_fnx(*cell.data) - Mas_fpx(*cell.data)) / dx;
-			Mas(*cell.data) += (Mas_fny(*cell.data) - Mas_fpy(*cell.data)) / dy;
-			Mas(*cell.data) += (Mas_fnz(*cell.data) - Mas_fpz(*cell.data)) / dz;
-			Mom(*cell.data) += (Mom_fnx(*cell.data) - Mom_fpx(*cell.data)) / dx;
-			Nrj(*cell.data) += (Nrj_fnx(*cell.data) - Nrj_fpx(*cell.data)) / dx;
-			Mag(*cell.data) += (Mag_fnx(*cell.data) - Mag_fpx(*cell.data)) / dx;
-			Mom(*cell.data) += (Mom_fny(*cell.data) - Mom_fpy(*cell.data)) / dy;
-			Nrj(*cell.data) += (Nrj_fny(*cell.data) - Nrj_fpy(*cell.data)) / dy;
-			Mag(*cell.data) += (Mag_fny(*cell.data) - Mag_fpy(*cell.data)) / dy;
-			Mom(*cell.data) += (Mom_fnz(*cell.data) - Mom_fpz(*cell.data)) / dz;
-			Nrj(*cell.data) += (Nrj_fnz(*cell.data) - Nrj_fpz(*cell.data)) / dz;
-			Mag(*cell.data) += (Mag_fnz(*cell.data) - Mag_fpz(*cell.data)) / dz;
+			Mas(*cell.data) += (Mas_f(*cell.data, -1) - Mas_f(*cell.data, +1)) / dx;
+			Mas(*cell.data) += (Mas_f(*cell.data, -2) - Mas_f(*cell.data, +2)) / dy;
+			Mas(*cell.data) += (Mas_f(*cell.data, -3) - Mas_f(*cell.data, +3)) / dz;
+			Mom(*cell.data) += (Mom_f(*cell.data, -1) - Mom_f(*cell.data, +1)) / dx;
+			Nrj(*cell.data) += (Nrj_f(*cell.data, -1) - Nrj_f(*cell.data, +1)) / dx;
+			Mag(*cell.data) += (Mag_f(*cell.data, -1) - Mag_f(*cell.data, +1)) / dx;
+			Mom(*cell.data) += (Mom_f(*cell.data, -2) - Mom_f(*cell.data, +2)) / dy;
+			Nrj(*cell.data) += (Nrj_f(*cell.data, -2) - Nrj_f(*cell.data, +2)) / dy;
+			Mag(*cell.data) += (Mag_f(*cell.data, -2) - Mag_f(*cell.data, +2)) / dy;
+			Mom(*cell.data) += (Mom_f(*cell.data, -3) - Mom_f(*cell.data, +3)) / dz;
+			Nrj(*cell.data) += (Nrj_f(*cell.data, -3) - Nrj_f(*cell.data, +3)) / dz;
+			Mag(*cell.data) += (Mag_f(*cell.data, -3) - Mag_f(*cell.data, +3)) / dz;
 
 			const std::array<double, 3> area{dy*dz, dx*dz, dx*dy};
 			for (size_t dim: {0, 1, 2}) {
@@ -1442,32 +1414,12 @@ template <
 			}
 		}
 
-		Mas_fnx(*cell.data) =
-		Mas_fny(*cell.data) =
-		Mas_fnz(*cell.data) =
-		Mas_fpx(*cell.data) =
-		Mas_fpy(*cell.data) =
-		Mas_fpz(*cell.data) =
-		Nrj_fnx(*cell.data) =
-		Nrj_fny(*cell.data) =
-		Nrj_fnz(*cell.data) =
-		Nrj_fpx(*cell.data) =
-		Nrj_fpy(*cell.data) =
-		Nrj_fpz(*cell.data) = 0;
-
-		Mom_fnx(*cell.data) =
-		Mom_fny(*cell.data) =
-		Mom_fnz(*cell.data) =
-		Mom_fpx(*cell.data) =
-		Mom_fpy(*cell.data) =
-		Mom_fpz(*cell.data) =
-		Mag_fnx(*cell.data) =
-		Mag_fny(*cell.data) =
-		Mag_fnz(*cell.data) =
-		Mag_fpx(*cell.data) =
-		Mag_fpy(*cell.data) =
-		Mag_fpz(*cell.data) = {0, 0, 0};
-
+		for (int dir: {-3,-2,-1,+1,+2,+3}) {
+			Mas_f(*cell.data, dir) =
+			Nrj_f(*cell.data, dir) = 0;
+			Mom_f(*cell.data, dir) =
+			Mag_f(*cell.data, dir) = {0, 0, 0};
+		}
 		Face_dB(*cell.data) = {0, 0, 0, 0, 0, 0};
 	}
 } catch (const std::exception& e) {
@@ -1652,10 +1604,10 @@ template <
 	const Face_Magnetic_Field_Getter Face_B,
 	const Face_dB_Getter Face_dB,
 	const Background_Magnetic_Field_Getter Bg_B,
-	const Mass_Density_Flux_Getters Mas_fs,
-	const Momentum_Density_Flux_Getters Mom_fs,
-	const Total_Energy_Density_Flux_Getters Nrj_fs,
-	const Magnetic_Field_Flux_Getters Mag_fs,
+	const Mass_Density_Flux_Getters Mas_f,
+	const Momentum_Density_Flux_Getters Mom_f,
+	const Total_Energy_Density_Flux_Getters Nrj_f,
+	const Magnetic_Field_Flux_Getters Mag_f,
 	const Solver_Info_Getter SInfo,
 	const Timestep_Getter Timestep,
 	const Substepping_Period_Getter Substep,
@@ -1716,7 +1668,7 @@ template <
 			solver, grid.inner_cells(), grid, substep,
 			adiabatic_index, vacuum_permeability, sub_dt,
 			Mas, Mom, Nrj, Mag, Face_dB, Bg_B,
-			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
+			Mas_f, Mom_f, Nrj_f, Mag_f,
 			SInfo, Substep, Max_v
 		);
 
@@ -1726,7 +1678,7 @@ template <
 			solver, grid.outer_cells(), grid, substep,
 			adiabatic_index, vacuum_permeability, sub_dt,
 			Mas, Mom, Nrj, Mag, Face_dB, Bg_B,
-			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
+			Mas_f, Mom_f, Nrj_f, Mag_f,
 			SInfo, Substep, Max_v
 		);
 
@@ -1736,7 +1688,7 @@ template <
 			solver, grid.remote_cells(), grid, substep,
 			adiabatic_index, vacuum_permeability, sub_dt,
 			Mas, Mom, Nrj, Mag, Face_dB, Bg_B,
-			Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
+			Mas_f, Mom_f, Nrj_f, Mag_f,
 			SInfo, Substep, Max_v
 		);
 		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
@@ -1745,7 +1697,7 @@ template <
 			grid.local_cells(), grid,
 			substep, Face_B, Face_dB, SInfo,
 			Substep, Mas, Mom, Nrj, Mag,
-			Mas_fs, Mom_fs, Nrj_fs, Mag_fs
+			Mas_f, Mom_f, Nrj_f, Mag_f
 		);
 
 		Grid::cell_data_type::set_transfer_all(true,

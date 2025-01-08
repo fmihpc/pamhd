@@ -403,17 +403,6 @@ template <
 ) {
 	using std::get;
 
-	const auto
-		Mas_fnx = get<0>(Mas_f), Mas_fpx = get<1>(Mas_f),
-		Mas_fny = get<2>(Mas_f), Mas_fpy = get<3>(Mas_f),
-		Mas_fnz = get<4>(Mas_f), Mas_fpz = get<5>(Mas_f),
-		Mom_fnx = get<0>(Mom_f), Mom_fpx = get<1>(Mom_f),
-		Mom_fny = get<2>(Mom_f), Mom_fpy = get<3>(Mom_f),
-		Mom_fnz = get<4>(Mom_f), Mom_fpz = get<5>(Mom_f),
-		Nrj_fnx = get<0>(Nrj_f), Nrj_fpx = get<1>(Nrj_f),
-		Nrj_fny = get<2>(Nrj_f), Nrj_fpy = get<3>(Nrj_f),
-		Nrj_fnz = get<4>(Nrj_f), Nrj_fpz = get<5>(Nrj_f);
-
 	if (verbose and grid.get_rank() == 0) {
 		std::cout << "Setting default MHD state... ";
 		std::cout.flush();
@@ -422,24 +411,24 @@ template <
 	// set default state
 	for (const auto& cell: grid.local_cells()) {
 		// zero fluxes
-		Mas_fnx(*cell.data) =
-		Mas_fpx(*cell.data) =
-		Mas_fny(*cell.data) =
-		Mas_fpy(*cell.data) =
-		Mas_fnz(*cell.data) =
-		Mas_fpz(*cell.data) =
-		Nrj_fnx(*cell.data) =
-		Nrj_fpx(*cell.data) =
-		Nrj_fny(*cell.data) =
-		Nrj_fpy(*cell.data) =
-		Nrj_fnz(*cell.data) =
-		Nrj_fpz(*cell.data) = 0;
-		Mom_fnx(*cell.data) =
-		Mom_fpx(*cell.data) =
-		Mom_fny(*cell.data) =
-		Mom_fpy(*cell.data) =
-		Mom_fnz(*cell.data) =
-		Mom_fpz(*cell.data) = {0, 0, 0};
+		Mas_f(*cell.data, -1) =
+		Mas_f(*cell.data, +1) =
+		Mas_f(*cell.data, -2) =
+		Mas_f(*cell.data, +2) =
+		Mas_f(*cell.data, -3) =
+		Mas_f(*cell.data, +3) =
+		Nrj_f(*cell.data, -1) =
+		Nrj_f(*cell.data, +1) =
+		Nrj_f(*cell.data, -2) =
+		Nrj_f(*cell.data, +2) =
+		Nrj_f(*cell.data, -3) =
+		Nrj_f(*cell.data, +3) = 0;
+		Mom_f(*cell.data, -1) =
+		Mom_f(*cell.data, +1) =
+		Mom_f(*cell.data, -2) =
+		Mom_f(*cell.data, +2) =
+		Mom_f(*cell.data, -3) =
+		Mom_f(*cell.data, +3) = {0, 0, 0};
 
 		const auto c = grid.geometry.get_center(cell.id);
 		const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);

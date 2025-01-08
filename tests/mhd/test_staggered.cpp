@@ -107,7 +107,7 @@ const auto Face_dB = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::Face_dB()];
 };
 // divergence of magnetic field
-const auto Mag_div = [](Cell& cell_data)->auto&{
+const auto Div_B = [](Cell& cell_data)->auto&{
 	return cell_data[pamhd::Magnetic_Field_Divergence()];
 };
 
@@ -141,93 +141,18 @@ const auto Max_v = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::mhd::Max_Velocity()];
 };
 
-// flux of mass density through positive x face of cell
-const auto Mas_pfx = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::mhd::Mass_Density()];
-	};
-const auto Mas_nfx = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](0, 0)[pamhd::mhd::Mass_Density()];
-	};
-const auto Mas_pfy = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](1, 1)[pamhd::mhd::Mass_Density()];
-	};
-const auto Mas_nfy = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](1, 0)[pamhd::mhd::Mass_Density()];
-	};
-const auto Mas_pfz = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](2, 1)[pamhd::mhd::Mass_Density()];
-	};
-const auto Mas_nfz = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](2, 0)[pamhd::mhd::Mass_Density()];
-	};
-const auto Mom_pfx = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::mhd::Momentum_Density()];
-	};
-const auto Mom_nfx = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](0, 0)[pamhd::mhd::Momentum_Density()];
-	};
-const auto Mom_pfy = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](1, 1)[pamhd::mhd::Momentum_Density()];
-	};
-const auto Mom_nfy = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](1, 0)[pamhd::mhd::Momentum_Density()];
-	};
-const auto Mom_pfz = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](2, 1)[pamhd::mhd::Momentum_Density()];
-	};
-const auto Mom_nfz = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](2, 0)[pamhd::mhd::Momentum_Density()];
-	};
-const auto Nrj_pfx = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::mhd::Total_Energy_Density()];
-	};
-const auto Nrj_nfx = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](0, 0)[pamhd::mhd::Total_Energy_Density()];
-	};
-const auto Nrj_pfy = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](1, 1)[pamhd::mhd::Total_Energy_Density()];
-	};
-const auto Nrj_nfy = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](1, 0)[pamhd::mhd::Total_Energy_Density()];
-	};
-const auto Nrj_pfz = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](2, 1)[pamhd::mhd::Total_Energy_Density()];
-	};
-const auto Nrj_nfz = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](2, 0)[pamhd::mhd::Total_Energy_Density()];
-	};
-const auto Mag_pfx = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::Magnetic_Field()];
-	};
-const auto Mag_nfx = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](0, 0)[pamhd::Magnetic_Field()];
-	};
-const auto Mag_pfy = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](1, 1)[pamhd::Magnetic_Field()];
-	};
-const auto Mag_nfy = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](1, 0)[pamhd::Magnetic_Field()];
-	};
-const auto Mag_pfz = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](2, 1)[pamhd::Magnetic_Field()];
-	};
-const auto Mag_nfz = [](Cell& cell_data)->auto& {
-		return cell_data[pamhd::mhd::MHD_Flux()](2, 0)[pamhd::Magnetic_Field()];
-	};
-
-// collections of above to shorten function arguments
-const auto Mas_fs = std::make_tuple(
-	Mas_nfx, Mas_pfx, Mas_nfy, Mas_pfy, Mas_nfz, Mas_pfz
-);
-const auto Mom_fs = std::make_tuple(
-	Mom_nfx, Mom_pfx, Mom_nfy, Mom_pfy, Mom_nfz, Mom_pfz
-);
-const auto Nrj_fs = std::make_tuple(
-	Nrj_nfx, Nrj_pfx, Nrj_nfy, Nrj_pfy, Nrj_nfz, Nrj_pfz
-);
-const auto Mag_fs = std::make_tuple(
-	Mag_nfx, Mag_pfx, Mag_nfy, Mag_pfy, Mag_nfz, Mag_pfz
-);
+const auto Mas_f = [](Cell& cell_data, const int dir)->auto& {
+	return cell_data[pamhd::mhd::MHD_Flux()](dir)[pamhd::mhd::Mass_Density()];
+};
+const auto Mom_f = [](Cell& cell_data, const int dir)->auto& {
+	return cell_data[pamhd::mhd::MHD_Flux()](dir)[pamhd::mhd::Momentum_Density()];
+};
+const auto Nrj_f = [](Cell& cell_data, const int dir)->auto& {
+	return cell_data[pamhd::mhd::MHD_Flux()](dir)[pamhd::mhd::Total_Energy_Density()];
+};
+const auto Mag_f = [](Cell& cell_data, const int dir)->auto& {
+	return cell_data[pamhd::mhd::MHD_Flux()](dir)[pamhd::Magnetic_Field()];
+};
 
 const auto FInfo = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::mhd::Face_Boundary_Type()];
@@ -508,7 +433,6 @@ int main(int argc, char* argv[])
 	if (rank == 0) {
 		cout << "Initializing MHD... " << endl;
 	}
-
 	pamhd::mhd::initialize_magnetic_field_staggered<pamhd::Magnetic_Field>(
 		geometries,
 		initial_conditions,
@@ -516,7 +440,7 @@ int main(int argc, char* argv[])
 		grid,
 		simulation_time,
 		options_sim.vacuum_permeability,
-		Face_B, Mag_fs, Bg_B
+		Face_B, Mag_f, Bg_B
 	);
 	Cell::set_transfer_all(true,
 		pamhd::Face_Magnetic_Field(),
@@ -543,7 +467,7 @@ int main(int argc, char* argv[])
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
-	pamhd::mhd::initialize_fluid(
+	pamhd::mhd::initialize_fluid_staggered(
 		geometries,
 		initial_conditions,
 		grid,
@@ -553,7 +477,7 @@ int main(int argc, char* argv[])
 		options_sim.proton_mass,
 		true,
 		Mas, Mom, Nrj, Mag,
-		Mas_pfx, Mom_pfx, Nrj_pfx
+		Mas_f, Mom_f, Nrj_f
 	);
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
@@ -590,7 +514,7 @@ int main(int argc, char* argv[])
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		Mas, Mom, Nrj, Mag, Face_B, Face_dB, Bg_B,
-		Mas_fs, Mom_fs, Nrj_fs, Mag_fs, SInfo,
+		Mas_f, Mom_f, Nrj_f, Mag_f, SInfo,
 		Timestep, Substep, Substep_Min, Substep_Max, Max_v
 	);
 	if (rank == 0) {
@@ -635,7 +559,7 @@ int main(int argc, char* argv[])
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			Mas, Mom, Nrj, Mag, Face_B, Face_dB, Bg_B,
-			Mas_fs, Mom_fs, Nrj_fs, Mag_fs, SInfo,
+			Mas_f, Mom_f, Nrj_f, Mag_f, SInfo,
 			Timestep, Substep, Substep_Min, Substep_Max, Max_v
 		);
 		if (rank == 0) {
@@ -675,7 +599,7 @@ int main(int argc, char* argv[])
 
 		const auto avg_div = pamhd::math::get_divergence_staggered(
 			grid.local_cells(), grid,
-			Face_B, Mag_div, SInfo
+			Face_B, Div_B, SInfo
 		);
 		if (rank == 0) {
 			cout << " average divergence " << avg_div << endl;
