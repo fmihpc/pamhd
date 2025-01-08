@@ -2,7 +2,7 @@
 '''
 Prints basic information about test program output files.
 
-Copyright 2024 Finnish Meteorological Institute
+Copyright 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -36,8 +36,12 @@ Author(s): Ilja Honkonen
 
 from importlib.util import module_from_spec, spec_from_file_location
 from os.path import dirname, isfile, join
+from pathlib import Path
 from sys import argv, modules
-spec = spec_from_file_location('common', join(dirname(__file__), 'common.py'))
+spec = spec_from_file_location(
+	'common',
+	join(Path(__file__).absolute().parent.parent, 'common.py')
+)
 common = module_from_spec(spec)
 modules['common'] = common
 spec.loader.exec_module(common)
