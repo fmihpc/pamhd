@@ -223,13 +223,13 @@ template <class Grid> bool save_staggered(
 	if (variables.count("mhd info") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Solver_Info());
+		Grid::cell_data_type::set_transfer_all(true, pamhd::Solver_Info());
 		const string varname = "mhd info";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Solver_Info());
+		Grid::cell_data_type::set_transfer_all(false, pamhd::Solver_Info());
 	}
 
 	if (variables.count("ref lvls") > 0) {
@@ -477,13 +477,13 @@ template <class Grid> bool save(
 	if (variables.count("mhd info") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Solver_Info());
+		Grid::cell_data_type::set_transfer_all(true, pamhd::Solver_Info());
 		const string varname = "mhd info";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Solver_Info());
+		Grid::cell_data_type::set_transfer_all(false, pamhd::Solver_Info());
 	}
 
 	if (variables.count("volume B") > 0) {

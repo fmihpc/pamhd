@@ -656,12 +656,12 @@ template<
 			cell.id);
 	}
 
-	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Solver_Info());
-	pamhd::mhd::set_solver_info<pamhd::mhd::Solver_Info>(
+	Grid::cell_data_type::set_transfer_all(true, pamhd::Solver_Info());
+	pamhd::mhd::set_solver_info<pamhd::Solver_Info>(
 		grid, boundaries, geometries, SInfo
 	);
 	grid.update_copies_of_remote_neighbors();
-	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Solver_Info());
+	Grid::cell_data_type::set_transfer_all(false, pamhd::Solver_Info());
 
 	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Face_Boundary_Type());
 	pamhd::mhd::classify_faces(grid, SInfo, FInfo);

@@ -118,7 +118,7 @@ const auto Div_B = [](Cell& cell_data)->auto&{
 1 for read-write cells
 */
 const auto SInfo = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::Solver_Info()];
+	return cell_data[pamhd::Solver_Info()];
 };
 
 const auto Substep = [](Cell& cell_data)->auto& {
@@ -486,12 +486,12 @@ int main(int argc, char* argv[])
 	Classify cells & faces into normal, boundary and dont_solve
 	*/
 
-	Cell::set_transfer_all(true, pamhd::mhd::Solver_Info());
-	pamhd::mhd::set_solver_info<pamhd::mhd::Solver_Info>(
+	Cell::set_transfer_all(true, pamhd::Solver_Info());
+	pamhd::mhd::set_solver_info<pamhd::Solver_Info>(
 		grid, boundaries, geometries, SInfo
 	);
 	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, pamhd::mhd::Solver_Info());
+	Cell::set_transfer_all(false, pamhd::Solver_Info());
 
 	Cell::set_transfer_all(true, pamhd::mhd::Face_Boundary_Type());
 	pamhd::mhd::classify_faces(grid, SInfo, FInfo);

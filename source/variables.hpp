@@ -154,6 +154,18 @@ struct Resistivity {
 };
 
 
+/*!
+Information for solver(s) on how to handle a simulation cell.
+
+-1 means dont_solve cell that's neither read nor written
+0 means boundary read-only cell
+1 means normal read-write cell
+*/
+struct Solver_Info {
+	using data_type = int;
+};
+
+
 } // namespace
 
 #endif // ifndef PAMHD_VARIABLES_HPP

@@ -119,32 +119,6 @@ struct Number_Density2 {
 	static const std::string get_option_help() { return {"Plasma number density, second population (protons / m^3)"}; }
 };
 
-/*!
-Information for MHD solver on how to handle a simulation cell.
-
-Dont solve cells are ignored by MHD solver. In other cells
-fluxes are calculated normally but the flux of a variable
-is only applied if the cell isn't a value or copy boundary
-of that variable.
-*/
-struct Solver_Info {
-	using data_type = int;
-
-	/*!
-	Corresponding bit of this variable is set when a cell is
-	of a boundary type for a variable.
-	*/
-	static const int
-		dont_solve = 1 << 0,
-		mass_density_bdy = 1 << 1,
-		velocity_bdy = 1 << 2,
-		pressure_bdy = 1 << 3,
-		magnetic_field_bdy = 1 << 4,
-		mass_density2_bdy = 1 << 5,
-		velocity2_bdy = 1 << 6,
-		pressure2_bdy = 1 << 7;
-};
-
 //! Conservative hydrodynamic variables
 using HD_Conservative = gensimcell::Cell<
 	gensimcell::Always_Transfer,
@@ -206,7 +180,7 @@ using Cell = gensimcell::Cell<
 	gensimcell::Optional_Transfer,
 	pamhd::mhd::HD_State_Conservative,
 	pamhd::Electric_Current_Density,
-	pamhd::mhd::Solver_Info,
+	pamhd::Solver_Info,
 	pamhd::MPI_Rank,
 	pamhd::Resistivity,
 	pamhd::Magnetic_Field,
@@ -232,7 +206,7 @@ using Cell2 = gensimcell::Cell<
 	pamhd::mhd::HD_State_Conservative,
 	pamhd::mhd::HD2_State_Conservative,
 	pamhd::Electric_Current_Density,
-	pamhd::mhd::Solver_Info,
+	pamhd::Solver_Info,
 	pamhd::MPI_Rank,
 	pamhd::Resistivity,
 	pamhd::Magnetic_Field,
@@ -287,7 +261,7 @@ struct Timestep {
 using Cell_Staggered = gensimcell::Cell<
 	gensimcell::Optional_Transfer,
 	pamhd::mhd::MHD_State_Conservative,
-	pamhd::mhd::Solver_Info,
+	pamhd::Solver_Info,
 	pamhd::MPI_Rank,
 	pamhd::Bg_Magnetic_Field,
 	pamhd::Magnetic_Field_Divergence,
