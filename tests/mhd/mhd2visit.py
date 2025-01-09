@@ -29,12 +29,12 @@ Author(s): Ilja Honkonen
 from argparse import ArgumentParser
 from imp import load_source
 from os import _exit
-from os.path import basename, dirname, join
+from os.path import basename, dirname, join, realpath
 from pathlib import Path
 from sys import argv, stdout
 common = load_source(
 	'common',
-	join(Path(__file__).absolute().parent.parent, 'common.py')
+	join(Path(realpath(__file__)).parent.parent, 'common.py')
 )
 
 DefineScalarExpression('number_density', 'mass_density / 1.67262192369e-21')

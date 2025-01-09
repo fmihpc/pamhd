@@ -35,12 +35,12 @@ Author(s): Ilja Honkonen
 '''
 
 from importlib.util import module_from_spec, spec_from_file_location
-from os.path import dirname, isfile, join
+from os.path import dirname, isfile, join, realpath
 from pathlib import Path
 from sys import argv, modules
 spec = spec_from_file_location(
 	'common',
-	join(Path(__file__).absolute().parent.parent, 'common.py')
+	join(Path(realpath(__file__)).parent.parent, 'common.py')
 )
 common = module_from_spec(spec)
 modules['common'] = common
