@@ -72,13 +72,13 @@ template<class Vector> std::pair<Vector, Vector> propagate(
 		f2 = 2 * f1 / (1 + f1*f1 * B_mag*B_mag);
 
 	const Vector
-		new_position = position + time_step * velocity,
+		new_pos = position + time_step * velocity,
 		v1 = velocity + coeff * electric_field,
 		v2 = v1 + f1 * v1.cross(magnetic_field),
 		v3 = v1 + f2 * v2.cross(magnetic_field),
-		v_n = v3 + coeff * electric_field;
+		new_vel = v3 + coeff * electric_field;
 
-	return std::make_pair(new_position, v_n);
+	return std::make_pair(new_pos, new_vel);
 }
 
 

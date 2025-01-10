@@ -2,7 +2,7 @@
 Tests parallel particle solver of PAMHD in 3 dimensions with periodic grid.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019 Finnish Meteorological Institute
+Copyright 2019, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #include "array"
@@ -55,55 +58,54 @@ using Grid = dccrg::Dccrg<Cell, dccrg::Cartesian_Geometry>;
 
 
 // returns reference to magnetic field for propagating particles
-const auto Mag
-	= [](Cell& cell_data)->typename pamhd::Magnetic_Field::data_type&{
-		return cell_data[pamhd::Magnetic_Field()];
-	};
+const auto Mag = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::Magnetic_Field()];
+};
 // electric field for propagating particles
-const auto Ele
-	= [](Cell& cell_data)->typename pamhd::particle::Electric_Field::data_type&{
-		return cell_data[pamhd::particle::Electric_Field()];
-	};
-const auto Part_Int
-	= [](Cell& cell_data)->typename pamhd::particle::Particles_Internal::data_type&{
-		return cell_data[pamhd::particle::Particles_Internal()];
-	};
+const auto Ele = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::particle::Electric_Field()];
+};
+const auto Part_Int = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::particle::Particles_Internal()];
+};
 // particles moving to another cell
-const auto Part_Ext
-	= [](Cell& cell_data)->typename pamhd::particle::Particles_External::data_type&{
-		return cell_data[pamhd::particle::Particles_External()];
-	};
+const auto Part_Ext = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::particle::Particles_External()];
+};
 // number of particles in above list, for allocating memory for arriving particles
-const auto Nr_Ext
-	= [](Cell& cell_data)->typename pamhd::particle::Nr_Particles_External::data_type&{
-		return cell_data[pamhd::particle::Nr_Particles_External()];
-	};
-const auto Sol_Info
-	= [](Cell& cell_data)->typename pamhd::particle::Solver_Info::data_type&{
-		return cell_data[pamhd::particle::Solver_Info()];
-	};
+const auto Nr_Ext = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::particle::Nr_Particles_External()];
+};
+const auto SInfo = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::Solver_Info()];
+};
 
 // given a particle these return references to particle's parameters
-const auto Part_Pos
-	= [](pamhd::particle::Particle_Internal& particle)->typename pamhd::particle::Position::data_type&{
-		return particle[pamhd::particle::Position()];
-	};
-const auto Part_Vel
-	= [](pamhd::particle::Particle_Internal& particle)->typename pamhd::particle::Velocity::data_type&{
-		return particle[pamhd::particle::Velocity()];
-	};
-const auto Part_C2M
-	= [](pamhd::particle::Particle_Internal& particle)->typename pamhd::particle::Charge_Mass_Ratio::data_type&{
-		return particle[pamhd::particle::Charge_Mass_Ratio()];
-	};
-const auto Part_Mas
-	= [](pamhd::particle::Particle_Internal& particle)->typename pamhd::particle::Mass::data_type&{
-		return particle[pamhd::particle::Mass()];
-	};
-const auto Part_Des
-	= [](pamhd::particle::Particle_External& particle)->typename pamhd::particle::Destination_Cell::data_type&{
-		return particle[pamhd::particle::Destination_Cell()];
-	};
+const auto Part_Pos = [](
+	pamhd::particle::Particle_Internal& particle
+)->auto& {
+	return particle[pamhd::particle::Position()];
+};
+const auto Part_Vel = [](
+	pamhd::particle::Particle_Internal& particle
+)->auto& {
+	return particle[pamhd::particle::Velocity()];
+};
+const auto Part_C2M = [](
+	pamhd::particle::Particle_Internal& particle
+)->auto& {
+	return particle[pamhd::particle::Charge_Mass_Ratio()];
+};
+const auto Part_Mas = [](
+	pamhd::particle::Particle_Internal& particle
+)->auto& {
+	return particle[pamhd::particle::Mass()];
+};
+const auto Part_Des = [](
+	pamhd::particle::Particle_External& particle
+)->auto& {
+	return particle[pamhd::particle::Destination_Cell()];
+};
 
 int main(int argc, char* argv[])
 {
@@ -207,7 +209,7 @@ int main(int argc, char* argv[])
 			Part_C2M,
 			Part_Mas,
 			Part_Des,
-			Sol_Info
+			SInfo
 		);
 	};
 

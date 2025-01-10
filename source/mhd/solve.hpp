@@ -2,7 +2,8 @@
 Solves the MHD part of PAMHD using an external flux function.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2019, 2023, 2024 Finnish Meteorological Institute
+Copyright 2018, 2019, 2023,
+          2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +30,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_MHD_SOLVE_HPP
@@ -88,7 +92,7 @@ template <
 	const Momentum_Density_Flux_Getter Mom_f,
 	const Total_Energy_Density_Flux_Getter Nrj_f,
 	const Magnetic_Field_Flux_Getter Mag_f,
-	const Solver_Info_Getter Sol_Info
+	const Solver_Info_Getter SInfo
 ) try {
 	using std::get;
 	using std::to_string;
@@ -107,7 +111,7 @@ template <
 	double max_dt = std::numeric_limits<double>::max();
 
 	for (const auto& cell: cells) {
-		if ((Sol_Info(*cell.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
+		if (SInfo(*cell.data) < 0) {
 			continue;
 		}
 
@@ -153,7 +157,7 @@ template <
 				continue;
 			}
 
-			if ((Sol_Info(*neighbor.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
+			if (SInfo(*cell.data) < 0) {
 				continue;
 			}
 
@@ -271,8 +275,8 @@ template <
 				std::cerr <<  __FILE__ << "(" << __LINE__ << ") "
 					<< "Solution failed between cells " << cell.id
 					<< " and " << neighbor.id
-					<< " of boundary type " << Sol_Info(*cell.data)
-					<< " and " << Sol_Info(*neighbor.data)
+					<< " of boundary type " << SInfo(*cell.data)
+					<< " and " << SInfo(*neighbor.data)
 					<< " at " << grid.geometry.get_center(cell.id)
 					<< " and " << grid.geometry.get_center(neighbor.id)
 					<< " in direction " << neighbor_dir
@@ -363,13 +367,13 @@ template <
 	const Momentum_Density_Flux_Getter Mom_f,
 	const Total_Energy_Density_Flux_Getter Nrj_f,
 	const Magnetic_Field_Flux_Getter Mag_f,
-	const Solver_Info_Getter Sol_Info,
+	const Solver_Info_Getter SInfo,
 	const bool check_new_state = true
 ) try {
 	using std::to_string;
 
 	for (const auto& cell: grid.local_cells()) {
-		if ((Sol_Info(*cell.data) & Solver_Info::dont_solve) > 0) {
+		if (SInfo(*cell.data) < 0) {
 			Mas_f(*cell.data)    =
 			Mom_f(*cell.data)[0] =
 			Mom_f(*cell.data)[1] =
@@ -384,14 +388,14 @@ template <
 		const auto length = grid.geometry.get_length(cell.id);
 		const double inverse_volume = 1.0 / (length[0] * length[1] * length[2]);
 
-		if (check_new_state and (Sol_Info(*cell.data) & Solver_Info::mass_density_bdy) == 0) {
+		if (check_new_state and SInfo(*cell.data) > 0) {
 			Mas(*cell.data) += Mas_f(*cell.data) * inverse_volume;
 
 			if (Mas(*cell.data) <= 0) {
 				const auto c = grid.geometry.get_center(cell.id);
 				throw std::domain_error(
 					"New state in cell " + to_string(cell.id)
-					+ " of type " + to_string(Sol_Info(*cell.data))
+					+ " of type " + to_string(SInfo(*cell.data))
 					+ " at (" + to_string(c[0]) + ", "
 					+ to_string(c[1]) + ", " + to_string(c[2])
 					+ ") has non-positive mass density: "
@@ -402,24 +406,18 @@ template <
 		}
 		Mas_f(*cell.data) = 0;
 
-		if ((Sol_Info(*cell.data) & Solver_Info::velocity_bdy) == 0) {
+		if (SInfo(*cell.data) > 0) {
 			Mom(*cell.data) += Mom_f(*cell.data) * inverse_volume;
+			Mag(*cell.data) += Mag_f(*cell.data) * inverse_volume;
+			Nrj(*cell.data) += Nrj_f(*cell.data) * inverse_volume;
 		}
 		Mom_f(*cell.data)[0] =
 		Mom_f(*cell.data)[1] =
-		Mom_f(*cell.data)[2] = 0;
-
-		if ((Sol_Info(*cell.data) & Solver_Info::magnetic_field_bdy) == 0) {
-			Mag(*cell.data) += Mag_f(*cell.data) * inverse_volume;
-		}
+		Mom_f(*cell.data)[2] =
 		Mag_f(*cell.data)[0] =
 		Mag_f(*cell.data)[1] =
-		Mag_f(*cell.data)[2] = 0;
-
-		if ((Sol_Info(*cell.data) & Solver_Info::pressure_bdy) == 0) {
-			Nrj(*cell.data) += Nrj_f(*cell.data) * inverse_volume;
-		}
-		Nrj_f(*cell.data) = 0;
+		Mag_f(*cell.data)[2] =
+		Nrj_f(*cell.data)    = 0;
 
 		const auto pressure = get_pressure(
 			Mas(*cell.data),

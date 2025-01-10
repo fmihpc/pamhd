@@ -116,7 +116,7 @@ template<
 	Target_In_List_Getter List_Target,
 	Accumulation_List_Length_Getter List_Len,
 	Accumulation_List_Getter Accu_List,
-	Solver_Info_Getter Sol_Info,
+	Solver_Info_Getter SInfo,
 	const bool clear_at_start = true
 ) {
 	const auto
@@ -129,7 +129,7 @@ template<
 	};
 
 	for (const auto& cell: cells) {
-		if ((Sol_Info(*cell.data) & pamhd::particle::Solver_Info::dont_solve) > 0) {
+		if (SInfo(*cell.data) < 0) {
 			Bulk_Val(*cell.data) = {};
 			continue;
 		}
@@ -207,7 +207,7 @@ template<
 				}
 
 				// don't accumulate into dont_solve cells
-				if ((Sol_Info(*neighbor.data) & pamhd::particle::Solver_Info::dont_solve) > 0) {
+				if (SInfo(*neighbor.data) < 0) {
 					continue;
 				}
 
@@ -293,7 +293,7 @@ template<
 	Target_In_List_Getter List_Target,
 	Accumulation_List_Length_Getter List_Len,
 	Accumulation_List_Getter Accu_List,
-	Solver_Info_Getter Sol_Info,
+	Solver_Info_Getter SInfo,
 	const bool clear_at_start = true
 ) {
 	const auto
@@ -306,7 +306,7 @@ template<
 	};
 
 	for (const auto& cell: cells) {
-		if ((Sol_Info(*cell.data) & pamhd::particle::Solver_Info::dont_solve) > 0) {
+		if (SInfo(*cell.data) < 0) {
 			Bulk_Val(*cell.data) = {};
 			continue;
 		}
@@ -387,7 +387,7 @@ template<
 				}
 
 				// don't accumulate into dont_solve cells
-				if ((Sol_Info(*neighbor.data) & pamhd::particle::Solver_Info::dont_solve) > 0) {
+				if (SInfo(*neighbor.data) < 0) {
 					continue;
 				}
 
@@ -482,7 +482,7 @@ template<
 	Value_In_List_Getter Value_In_List,
 	Target_In_List_Getter Target_In_List,
 	Accumulation_List_Getter Accu_List,
-	Solver_Info_Getter Sol_Info
+	Solver_Info_Getter SInfo
 ) {
 	for (const auto& remote_cell_id: grid.get_remote_cells_on_process_boundary()) {
 		auto* const source_data = grid[remote_cell_id];
@@ -491,7 +491,7 @@ template<
 			abort();
 		}
 
-		if ((Sol_Info(*source_data) & pamhd::particle::Solver_Info::dont_solve) > 0) {
+		if (SInfo(*source_data) < 0) {
 			continue;
 		}
 
@@ -524,7 +524,7 @@ template<
 	Value_In_List_Getter Value_In_List,
 	Target_In_List_Getter Target_In_List,
 	Accumulation_List_Getter Accu_List,
-	Solver_Info_Getter Sol_Info
+	Solver_Info_Getter SInfo
 ) {
 	for (const auto& remote_cell_id: grid.get_remote_cells_on_process_boundary()) {
 		auto* const source_data = grid[remote_cell_id];
@@ -533,7 +533,7 @@ template<
 			abort();
 		}
 
-		if ((Sol_Info(*source_data) & pamhd::particle::Solver_Info::dont_solve) > 0) {
+		if (SInfo(*source_data) < 0) {
 			continue;
 		}
 
@@ -585,29 +585,29 @@ template<
 	class Solver_Info_Getter
 > void accumulate_mhd_data(
 	Grid& grid,
-	Particles_Getter Particles,
-	Particle_Position_Getter Particle_Position,
-	Particle_Mass_Getter Particle_Mass,
-	Particle_Species_Mass_Getter Particle_Species_Mass,
-	Particle_Velocity_Getter Particle_Velocity,
-	Particle_Relative_Kinetic_Energy_Getter Particle_Relative_Kinetic_Energy,
-	Number_Of_Particles_Getter Number_Of_Particles,
-	Particle_Weight_Getter Particle_Weight,
-	Bulk_Mass_Getter Bulk_Mass,
-	Bulk_Momentum_Getter Bulk_Momentum,
-	Bulk_Relative_Kinetic_Energy_Getter Bulk_Relative_Kinetic_Energy,
-	Bulk_Velocity_Getter Bulk_Velocity,
-	Number_Of_Particles_In_List_Getter Accu_List_Number_Of_Particles,
-	Bulk_Mass_In_List_Getter Accu_List_Bulk_Mass,
-	Bulk_Momentum_In_List_Getter Accu_List_Bulk_Velocity,
-	Bulk_Relative_Kinetic_Energy_In_List_Getter Accu_List_Bulk_Relative_Kinetic_Energy,
-	Target_In_List_Getter Accu_List_Target,
-	Accumulation_List_Length_Getter Accu_List_Length,
-	Accumulation_List_Getter Accu_List,
-	Accumulation_List_Length_Variable accu_list_len_var,
-	Accumulation_List_Variable accu_list_var,
-	Bulk_Velocity_Variable bulk_vel_var,
-	Solver_Info_Getter Sol_Info
+	const Particles_Getter& Particles,
+	const Particle_Position_Getter& Particle_Position,
+	const Particle_Mass_Getter& Particle_Mass,
+	const Particle_Species_Mass_Getter& Particle_Species_Mass,
+	const Particle_Velocity_Getter& Particle_Velocity,
+	const Particle_Relative_Kinetic_Energy_Getter& Particle_Relative_Kinetic_Energy,
+	const Number_Of_Particles_Getter& Number_Of_Particles,
+	const Particle_Weight_Getter& Particle_Weight,
+	const Bulk_Mass_Getter& Bulk_Mass,
+	const Bulk_Momentum_Getter& Bulk_Momentum,
+	const Bulk_Relative_Kinetic_Energy_Getter& Bulk_Relative_Kinetic_Energy,
+	const Bulk_Velocity_Getter& Bulk_Velocity,
+	const Number_Of_Particles_In_List_Getter& Accu_List_Number_Of_Particles,
+	const Bulk_Mass_In_List_Getter& Accu_List_Bulk_Mass,
+	const Bulk_Momentum_In_List_Getter& Accu_List_Bulk_Velocity,
+	const Bulk_Relative_Kinetic_Energy_In_List_Getter& Accu_List_Bulk_Relative_Kinetic_Energy,
+	const Target_In_List_Getter& Accu_List_Target,
+	const Accumulation_List_Length_Getter& Accu_List_Length,
+	const Accumulation_List_Getter& Accu_List,
+	const Accumulation_List_Length_Variable& accu_list_len_var,
+	const Accumulation_List_Variable& accu_list_var,
+	const Bulk_Velocity_Variable& bulk_vel_var,
+	const Solver_Info_Getter& SInfo
 ) {
 	for (const auto& cell: grid.local_cells()) {
 		Bulk_Mass(*cell.data) = 0;
@@ -627,7 +627,7 @@ template<
 		Accu_List_Target,
 		Accu_List_Length,
 		Accu_List,
-		Sol_Info
+		SInfo
 	);
 	accumulate_weighted(
 		grid.outer_cells(),
@@ -641,7 +641,7 @@ template<
 		Accu_List_Target,
 		Accu_List_Length,
 		Accu_List,
-		Sol_Info,
+		SInfo,
 		false // keep previous data in accumulation lists
 	);
 
@@ -659,7 +659,7 @@ template<
 		Accu_List_Target,
 		Accu_List_Length,
 		Accu_List,
-		Sol_Info,
+		SInfo,
 		false
 	);
 	accumulate_weighted(
@@ -674,7 +674,7 @@ template<
 		Accu_List_Target,
 		Accu_List_Length,
 		Accu_List,
-		Sol_Info,
+		SInfo,
 		false
 	);
 
@@ -699,7 +699,7 @@ template<
 		Accu_List_Bulk_Mass,
 		Accu_List_Target,
 		Accu_List,
-		Sol_Info
+		SInfo
 	);
 	accumulate_weighted_from_remote_neighbors(
 		grid,
@@ -707,7 +707,7 @@ template<
 		Accu_List_Bulk_Velocity,
 		Accu_List_Target,
 		Accu_List,
-		Sol_Info
+		SInfo
 	);
 
 	grid.wait_remote_neighbor_copy_update_sends();
@@ -763,7 +763,7 @@ template<
 		Accu_List_Target,
 		Accu_List_Length,
 		Accu_List,
-		Sol_Info
+		SInfo
 	);
 	accumulate(
 		grid.outer_cells(),
@@ -776,7 +776,7 @@ template<
 		Accu_List_Target,
 		Accu_List_Length,
 		Accu_List,
-		Sol_Info,
+		SInfo,
 		false
 	);
 
@@ -798,7 +798,7 @@ template<
 		Accu_List_Target,
 		Accu_List_Length,
 		Accu_List,
-		Sol_Info,
+		SInfo,
 		false
 	);
 	accumulate(
@@ -812,7 +812,7 @@ template<
 		Accu_List_Target,
 		Accu_List_Length,
 		Accu_List,
-		Sol_Info,
+		SInfo,
 		false
 	);
 
@@ -837,7 +837,7 @@ template<
 		Accu_List_Number_Of_Particles,
 		Accu_List_Target,
 		Accu_List,
-		Sol_Info
+		SInfo
 	);
 	accumulate_from_remote_neighbors(
 		grid,
@@ -845,7 +845,7 @@ template<
 		Accu_List_Bulk_Relative_Kinetic_Energy,
 		Accu_List_Target,
 		Accu_List,
-		Sol_Info
+		SInfo
 	);
 
 	grid.wait_remote_neighbor_copy_update_sends();
@@ -885,10 +885,10 @@ template<
 	MHD_Momentum_Getter MHD_Momentum,
 	MHD_Energy_Getter MHD_Energy,
 	MHD_Magnetic_Field_Getter MHD_Magnetic_Field,
-	Solver_Info_Getter Sol_Info
+	Solver_Info_Getter SInfo
 ) {
 	for (const auto& cell: grid.local_cells()) {
-		if ((Sol_Info(*cell.data) & pamhd::particle::Solver_Info::dont_solve) > 0) {
+		if (SInfo(*cell.data) < 0) {
 			MHD_Mass(*cell.data) = 0;
 			MHD_Momentum(*cell.data) = {0, 0, 0};
 			MHD_Energy(*cell.data) = 0;

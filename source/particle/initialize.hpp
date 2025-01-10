@@ -167,7 +167,7 @@ template<
 	const Boundary_Nr_Particles_Getter Bdy_Nr_Par,
 	const Boundary_Charge_To_Mass_Ratio_Getter Bdy_C2M,
 	const Boundary_Species_Mass_Getter Bdy_SpM,
-	const Solver_Info_Getter Sol_Info
+	const Solver_Info_Getter SInfo
 ) {
 	if (verbose && grid.get_rank() == 0) {
 		std::cout << "Setting initial particle state... ";
@@ -250,7 +250,7 @@ template<
 				abort();
 			}
 
-			if ((Sol_Info(*cell_data) & Solver_Info::dont_solve) > 0) {
+			if (SInfo(*cell_data) < 0) {
 				continue;
 			}
 
@@ -288,7 +288,7 @@ template<
 				abort();
 			}
 
-			if ((Sol_Info(*cell_data) & Solver_Info::dont_solve) > 0) {
+			if (SInfo(*cell_data) < 0) {
 				continue;
 			}
 
@@ -326,7 +326,7 @@ template<
 				abort();
 			}
 
-			if ((Sol_Info(*cell_data) & Solver_Info::dont_solve) > 0) {
+			if (SInfo(*cell_data) < 0) {
 				continue;
 			}
 
@@ -364,7 +364,7 @@ template<
 				abort();
 			}
 
-			if ((Sol_Info(*cell_data) & Solver_Info::dont_solve) > 0) {
+			if (SInfo(*cell_data) < 0) {
 				continue;
 			}
 
@@ -402,7 +402,7 @@ template<
 				abort();
 			}
 
-			if ((Sol_Info(*cell_data) & Solver_Info::dont_solve) > 0) {
+			if (SInfo(*cell_data) < 0) {
 				continue;
 			}
 
@@ -440,7 +440,7 @@ template<
 				abort();
 			}
 
-			if ((Sol_Info(*cell_data) & Solver_Info::dont_solve) > 0) {
+			if (SInfo(*cell_data) < 0) {
 				continue;
 			}
 
@@ -462,7 +462,7 @@ template<
 	}
 
 	for (const auto& cell: grid.local_cells()) {
-		if ((Sol_Info(*cell.data) & Solver_Info::dont_solve) > 0) {
+		if (SInfo(*cell.data) < 0) {
 			continue;
 		}
 

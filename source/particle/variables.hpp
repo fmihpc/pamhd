@@ -151,6 +151,20 @@ struct Nr_Particles_External {
 };
 
 
+//! max velocity of particles within cell
+struct Max_Velocity {
+	using data_type = double;
+};
+
+//! max linear acceleration of particles within cell
+struct Max_Acceleration {
+	using data_type = double;
+};
+
+struct Max_Gyrofrequency {
+	using data_type = double;
+};
+
 struct Electric_Field {
 	using data_type = Eigen::Vector3d;
 	static const std::string get_name() { return {"electric field"}; }
@@ -287,7 +301,7 @@ dccrg uses to save the file.
 using Cell_test_particle = gensimcell::Cell<
 	gensimcell::Optional_Transfer,
 	pamhd::Electric_Current_Density, // output compatible with regular model
-	pamhd::particle::Solver_Info,
+	pamhd::Solver_Info,
 	pamhd::MPI_Rank,
 	pamhd::Magnetic_Field,
 	pamhd::particle::Electric_Field,
@@ -313,8 +327,7 @@ using Cell_hyb_particle = gensimcell::Cell<
 	gensimcell::Optional_Transfer,
 	pamhd::mhd::HD_State_Conservative,
 	pamhd::Electric_Current_Density,
-	pamhd::particle::Solver_Info,
-	pamhd::mhd::Solver_Info,
+	pamhd::Solver_Info,
 	pamhd::MPI_Rank,
 	pamhd::Resistivity,
 	pamhd::Magnetic_Field,
@@ -357,7 +370,7 @@ using Cell_hyb_particle_staggered = gensimcell::Cell<
 	pamhd::grid::Target_Refinement_Level_Max,
 	pamhd::grid::Target_Refinement_Level_Min,
 	pamhd::mhd::MHD_State_Conservative,
-	pamhd::mhd::Solver_Info,
+	pamhd::Solver_Info,
 	pamhd::mhd::Face_Boundary_Type,
 	pamhd::mhd::Timestep,
 	pamhd::mhd::Substepping_Period,
@@ -365,9 +378,11 @@ using Cell_hyb_particle_staggered = gensimcell::Cell<
 	pamhd::mhd::Substep_Max,
 	pamhd::mhd::Max_Velocity,
 	pamhd::mhd::MHD_Flux,
-	pamhd::particle::Solver_Info,
 	pamhd::particle::Electric_Field,
 	pamhd::particle::Number_Of_Particles,
+	pamhd::particle::Max_Velocity,
+	pamhd::particle::Max_Acceleration,
+	pamhd::particle::Max_Gyrofrequency,
 	pamhd::particle::Bdy_Number_Density,
 	pamhd::particle::Bdy_Velocity,
 	pamhd::particle::Bdy_Temperature,

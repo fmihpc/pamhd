@@ -2,7 +2,7 @@
 Propagates test particles (0 mass) in prescribed electric and magnetic fields.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019, 2024 Finnish Meteorological Institute
+Copyright 2019, 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -31,7 +31,10 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-Copy boundaries have no effect in this program and shouldn't be used in config file.
+Author(s): Ilja Honkonen
+
+Copy boundaries have no effect in this program and shouldn't
+be used in config file.
 */
 
 #include "array"
@@ -89,90 +92,82 @@ const auto Bg_B = [](Cell& cell_data)->auto& {
 };
 
 // returns reference to magnetic field for propagating particles
-const auto Mag
-	= [](Cell& cell_data)->typename pamhd::Magnetic_Field::data_type&{
-		return cell_data[pamhd::Magnetic_Field()];
-	};
+const auto Mag = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::Magnetic_Field()];
+};
 // electric field for propagating particles
-const auto Ele
-	= [](Cell& cell_data)->typename pamhd::particle::Electric_Field::data_type&{
-		return cell_data[pamhd::particle::Electric_Field()];
-	};
+const auto Ele = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::particle::Electric_Field()];
+};
 // list of particles in cell not moving to another cell
-const auto Part_Int
-	= [](Cell& cell_data)->typename pamhd::particle::Particles_Internal::data_type&{
-		return cell_data[pamhd::particle::Particles_Internal()];
-	};
+const auto Part_Int = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::particle::Particles_Internal()];
+};
 // particles moving to another cell
-const auto Part_Ext
-	= [](Cell& cell_data)->typename pamhd::particle::Particles_External::data_type&{
-		return cell_data[pamhd::particle::Particles_External()];
-	};
+const auto Part_Ext = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::particle::Particles_External()];
+};
 // number of particles in above list, for allocating memory for arriving particles
-const auto Nr_Ext
-	= [](Cell& cell_data)->typename pamhd::particle::Nr_Particles_External::data_type&{
-		return cell_data[pamhd::particle::Nr_Particles_External()];
-	};
+const auto Nr_Ext = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::particle::Nr_Particles_External()];
+};
 
 // solver info variable for boundary logic
-const auto Sol_Info
-	= [](Cell& cell_data)->typename pamhd::particle::Solver_Info::data_type&{
-		return cell_data[pamhd::particle::Solver_Info()];
-	};
+const auto SInfo = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::Solver_Info()];
+};
 
 // references to initial condition & boundary data of cell
-const auto Bdy_N
-	= [](Cell& cell_data)->typename pamhd::particle::Bdy_Number_Density::data_type&{
-		return cell_data[pamhd::particle::Bdy_Number_Density()];
-	};
-const auto Bdy_V
-	= [](Cell& cell_data)->typename pamhd::particle::Bdy_Velocity::data_type&{
-		return cell_data[pamhd::particle::Bdy_Velocity()];
-	};
-const auto Bdy_T
-	= [](Cell& cell_data)->typename pamhd::particle::Bdy_Temperature::data_type&{
-		return cell_data[pamhd::particle::Bdy_Temperature()];
-	};
-const auto Bdy_Nr_Par
-	= [](Cell& cell_data)->typename pamhd::particle::Bdy_Nr_Particles_In_Cell::data_type&{
-		return cell_data[pamhd::particle::Bdy_Nr_Particles_In_Cell()];
-	};
-const auto Bdy_SpM
-	= [](Cell& cell_data)->typename pamhd::particle::Bdy_Species_Mass::data_type&{
-		return cell_data[pamhd::particle::Bdy_Species_Mass()];
-	};
-const auto Bdy_C2M
-	= [](Cell& cell_data)->typename pamhd::particle::Bdy_Charge_Mass_Ratio::data_type&{
-		return cell_data[pamhd::particle::Bdy_Charge_Mass_Ratio()];
-	};
+const auto Bdy_N = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::particle::Bdy_Number_Density()];
+};
+const auto Bdy_V = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::particle::Bdy_Velocity()];
+};
+const auto Bdy_T = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::particle::Bdy_Temperature()];
+};
+const auto Bdy_Nr_Par = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::particle::Bdy_Nr_Particles_In_Cell()];
+};
+const auto Bdy_SpM = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::particle::Bdy_Species_Mass()];
+};
+const auto Bdy_C2M = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::particle::Bdy_Charge_Mass_Ratio()];
+};
 
 // given a particle these return references to particle's parameters
-const auto Part_Pos
-	= [](pamhd::particle::Particle_Internal& particle)->typename pamhd::particle::Position::data_type&{
-		return particle[pamhd::particle::Position()];
-	};
-const auto Part_Vel
-	= [](pamhd::particle::Particle_Internal& particle)->typename pamhd::particle::Velocity::data_type&{
-		return particle[pamhd::particle::Velocity()];
-	};
-const auto Part_C2M
-	= [](pamhd::particle::Particle_Internal& particle)->typename pamhd::particle::Charge_Mass_Ratio::data_type&{
-		return particle[pamhd::particle::Charge_Mass_Ratio()];
-	};
-const auto Part_Mas
-	= [](pamhd::particle::Particle_Internal& particle)->typename pamhd::particle::Mass::data_type&{
-		return particle[pamhd::particle::Mass()];
-	};
-const auto Part_Des
-	= [](pamhd::particle::Particle_External& particle)->typename pamhd::particle::Destination_Cell::data_type&{
-		return particle[pamhd::particle::Destination_Cell()];
-	};
+const auto Part_Pos = [](
+	pamhd::particle::Particle_Internal& particle
+)->auto& {
+	return particle[pamhd::particle::Position()];
+};
+const auto Part_Vel = [](
+	pamhd::particle::Particle_Internal& particle
+)->auto& {
+	return particle[pamhd::particle::Velocity()];
+};
+const auto Part_C2M = [](
+	pamhd::particle::Particle_Internal& particle
+)->auto& {
+	return particle[pamhd::particle::Charge_Mass_Ratio()];
+};
+const auto Part_Mas = [](
+	pamhd::particle::Particle_Internal& particle
+)->auto& {
+	return particle[pamhd::particle::Mass()];
+};
+const auto Part_Des = [](
+	pamhd::particle::Particle_External& particle
+)->auto& {
+	return particle[pamhd::particle::Destination_Cell()];
+};
 // unused
 pamhd::Magnetic_Field::data_type zero_mag_flux = {0, 0, 0};
-const auto Mag_f
-	= [](Cell& cell_data)->typename pamhd::Magnetic_Field::data_type&{
-		return zero_mag_flux;
-	};
+const auto Mag_f = [](Cell& cell_data)->auto& {
+	return zero_mag_flux;
+};
 
 
 int main(int argc, char* argv[])
@@ -447,7 +442,7 @@ int main(int argc, char* argv[])
 			Bdy_Nr_Par,
 			Bdy_SpM,
 			Bdy_C2M,
-			Sol_Info
+			SInfo
 		);
 	next_particle_id += nr_particles_created * grid.get_comm_size();
 
@@ -472,7 +467,7 @@ int main(int argc, char* argv[])
 			next_particle_id,
 			grid.get_comm_size(),
 			true,
-			Sol_Info,
+			SInfo,
 			Ele,
 			Mag,
 			Part_Int,
@@ -493,22 +488,11 @@ int main(int argc, char* argv[])
 	Classify cells into normal, boundary and dont_solve
 	*/
 
-	Cell::set_transfer_all(true, pamhd::particle::Solver_Info());
-	pamhd::particle::set_solver_info<pamhd::particle::Solver_Info>(
-		grid, boundaries, geometries, Sol_Info
+	Cell::set_transfer_all(true, pamhd::Solver_Info());
+	pamhd::particle::set_solver_info<pamhd::Solver_Info>(
+		grid, boundaries, geometries, SInfo
 	);
-	Cell::set_transfer_all(false, pamhd::particle::Solver_Info());
-	// make lists from above for divergence removal functions
-	std::vector<uint64_t> solve_cells, bdy_cells, skip_cells;
-	for (const auto& cell: grid.cells) {
-		if ((Sol_Info(*cell.data) & pamhd::particle::Solver_Info::dont_solve) > 0) {
-			skip_cells.push_back(cell.id);
-		} else if (Sol_Info(*cell.data) > 0) {
-			bdy_cells.push_back(cell.id);
-		} else {
-			solve_cells.push_back(cell.id);
-		}
-	}
+	Cell::set_transfer_all(false, pamhd::Solver_Info());
 
 
 	size_t simulated_steps = 0;
@@ -587,7 +571,7 @@ int main(int argc, char* argv[])
 				Part_C2M,\
 				Part_Mas,\
 				Part_Des,\
-				Sol_Info\
+				SInfo\
 			)
 
 		switch (particle_stepper) {
@@ -706,7 +690,7 @@ int main(int argc, char* argv[])
 				next_particle_id,
 				grid.get_comm_size(),
 				false,
-				Sol_Info,
+				SInfo,
 				Ele,
 				Mag,
 				Part_Int,

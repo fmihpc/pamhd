@@ -111,9 +111,9 @@ second value is given fraction of gyro period.
 Assumes all simulation cells are cubes of given length.
 */
 template<class Vector> std::pair<double, double> get_step_size(
-	const double gyro_period_fraction,
-	const double cell_length,
-	const double charge_to_mass_ratio,
+	const double& gyro_period_fraction,
+	const double& cell_length,
+	const double& charge_to_mass_ratio,
 	const Vector& velocity,
 	const Vector& electric_field,
 	const Vector& magnetic_field

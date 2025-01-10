@@ -312,6 +312,7 @@ tests/particle/test_staggered.exe: \
   source/particle/accumulate_dccrg.hpp \
   source/particle/accumulation_variables.hpp \
   source/particle/options.hpp \
+  source/particle/solve_dccrg.hpp \
   source/particle/splitter.hpp \
   source/math/staggered.hpp \
   source/mhd/boundaries.hpp \

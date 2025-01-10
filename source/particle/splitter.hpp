@@ -175,16 +175,15 @@ template<
 	const size_t min_particles,
 	std::mt19937_64& random_source,
 	Grid& grid,
-	const Particles_Getter Particles,
-	const Particle_Position_Getter Part_Pos,
-	const Particle_Mass_Getter Part_Mas,
-	const Solver_Info_Getter Sol_Info,
-	const unsigned int normal_cell
+	const Particles_Getter& Particles,
+	const Particle_Position_Getter& Part_Pos,
+	const Particle_Mass_Getter& Part_Mas,
+	const Solver_Info_Getter& SInfo
 ) {
 	using std::to_string;
 
 	for (const auto& cell: grid.local_cells()) {
-		if (Sol_Info(*cell.data) != normal_cell) {
+		if (SInfo(*cell.data) < 1) {
 			continue;
 		}
 
