@@ -293,7 +293,7 @@ int main(int argc, char* argv[])
 	using PI = Particles_Internal;
 	using DC = Destination_Cell;
 
-	for (size_t step = 0; step < 1; step++) {
+	for (size_t step = 0; step < 10; step++) {
 		solve(grid_x.outer_cells(), grid_x);
 		solve(grid_y.outer_cells(), grid_y);
 		solve(grid_z.outer_cells(), grid_z);
