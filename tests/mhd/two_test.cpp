@@ -88,8 +88,8 @@ const auto Bg_B = [](Cell& cell_data)->auto& {
 };
 
 // solver info variable for boundary logic
-const auto Sol_Info = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::Solver_Info()];
+const auto SInfo = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::Solver_Info()];
 };
 
 // field before divergence removal in case removal fails
@@ -453,17 +453,17 @@ int main(int argc, char* argv[])
 	Classify cells into normal, boundary and dont_solve
 	*/
 
-	Cell::set_transfer_all(true, pamhd::mhd::Solver_Info());
-	pamhd::mhd::N_set_solver_info<pamhd::mhd::Solver_Info>(
-		grid, boundaries, geometries, Sol_Info
+	Cell::set_transfer_all(true, pamhd::Solver_Info());
+	pamhd::mhd::N_set_solver_info<pamhd::Solver_Info>(
+		grid, boundaries, geometries, SInfo
 	);
-	Cell::set_transfer_all(false, pamhd::mhd::Solver_Info());
+	Cell::set_transfer_all(false, pamhd::Solver_Info());
 	// make lists from above for divergence removal functions
 	std::vector<uint64_t> solve_cells, bdy_cells, skip_cells;
 	for (const auto& cell: grid.cells) {
-		if ((Sol_Info(*cell.data) & pamhd::mhd::Solver_Info::dont_solve) > 0) {
+		if (SInfo(*cell.data) < 0) {
 			skip_cells.push_back(cell.id);
-		} else if (Sol_Info(*cell.data) > 0) {
+		} else if (SInfo(*cell.data) == 0) {
 			bdy_cells.push_back(cell.id);
 		} else {
 			solve_cells.push_back(cell.id);
@@ -524,7 +524,7 @@ int main(int argc, char* argv[])
 			grid,
 			Mag,
 			Cur,
-			Sol_Info
+			SInfo
 		);
 		for (const auto& cell: grid.inner_cells()) {
 			Cur(*cell.data) /= options_sim.vacuum_permeability;
@@ -546,7 +546,7 @@ int main(int argc, char* argv[])
 			std::make_pair(Mom1_f, Mom2_f),
 			std::make_pair(Nrj1_f, Nrj2_f),
 			Mag_f,
-			Sol_Info
+			SInfo
 		);
 		max_dt_mhd = min(solve_max_dt, max_dt_mhd);
 
@@ -567,7 +567,7 @@ int main(int argc, char* argv[])
 			std::make_pair(Mom1_f, Mom2_f),
 			std::make_pair(Nrj1_f, Nrj2_f),
 			Mag_f,
-			Sol_Info
+			SInfo
 		);
 		max_dt_mhd = min(solve_max_dt, max_dt_mhd);
 
@@ -576,7 +576,7 @@ int main(int argc, char* argv[])
 			grid,
 			Mag,
 			Cur,
-			Sol_Info
+			SInfo
 		);
 		for (const auto& cell: grid.outer_cells()) {
 			Cur(*cell.data) /= options_sim.vacuum_permeability;
@@ -601,7 +601,7 @@ int main(int argc, char* argv[])
 			grid,
 			Cur,
 			Mag_res,
-			Sol_Info
+			SInfo
 		);
 		for (const auto& cell: grid.inner_cells()) {
 			const auto c = grid.geometry.get_center(cell.id);
@@ -626,7 +626,7 @@ int main(int argc, char* argv[])
 			grid,
 			Cur,
 			Mag_res,
-			Sol_Info
+			SInfo
 		);
 		for (const auto& cell: grid.outer_cells()) {
 			const auto c = grid.geometry.get_center(cell.id);
@@ -660,7 +660,7 @@ int main(int argc, char* argv[])
 			std::make_pair(Mom1_f, Mom2_f),
 			std::make_pair(Nrj1_f, Nrj2_f),
 			Mag_f,
-			Sol_Info
+			SInfo
 		);
 
 		simulation_time += time_step;
@@ -701,7 +701,7 @@ int main(int argc, char* argv[])
 					{
 						return cell_data[pamhd::Scalar_Potential_Gradient()];
 					},
-					Sol_Info,
+					SInfo,
 					options_div_B.poisson_iterations_max,
 					options_div_B.poisson_iterations_min,
 					options_div_B.poisson_norm_stop,
@@ -721,7 +721,7 @@ int main(int argc, char* argv[])
 					grid,
 					Mag,
 					Mag_div,
-					Sol_Info
+					SInfo
 				);
 
 			// restore old B

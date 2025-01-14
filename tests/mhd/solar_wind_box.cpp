@@ -115,7 +115,7 @@ const auto Mag_div = [](Cell& cell_data)->auto&{
 
 // solver info variable for boundary logic
 const auto SInfo = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::Solver_Info()];
+	return cell_data[pamhd::Solver_Info()];
 };
 
 const auto Substep = [](Cell& cell_data)->auto& {
@@ -136,93 +136,18 @@ const auto Max_v = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::mhd::Max_Velocity()];
 };
 
-// flux of mass density through positive x face of cell
-const auto Mas_pfx = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::mhd::Mass_Density()];
+const auto Mas_f = [](Cell& cell_data, const int dir)->auto& {
+	return cell_data[pamhd::mhd::MHD_Flux()](dir)[pamhd::mhd::Mass_Density()];
 };
-const auto Mas_nfx = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](0, 0)[pamhd::mhd::Mass_Density()];
+const auto Mom_f = [](Cell& cell_data, const int dir)->auto& {
+	return cell_data[pamhd::mhd::MHD_Flux()](dir)[pamhd::mhd::Momentum_Density()];
 };
-const auto Mas_pfy = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](1, 1)[pamhd::mhd::Mass_Density()];
+const auto Nrj_f = [](Cell& cell_data, const int dir)->auto& {
+	return cell_data[pamhd::mhd::MHD_Flux()](dir)[pamhd::mhd::Total_Energy_Density()];
 };
-const auto Mas_nfy = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](1, 0)[pamhd::mhd::Mass_Density()];
+const auto Mag_f = [](Cell& cell_data, const int dir)->auto& {
+	return cell_data[pamhd::mhd::MHD_Flux()](dir)[pamhd::Magnetic_Field()];
 };
-const auto Mas_pfz = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](2, 1)[pamhd::mhd::Mass_Density()];
-};
-const auto Mas_nfz = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](2, 0)[pamhd::mhd::Mass_Density()];
-};
-const auto Mom_pfx = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::mhd::Momentum_Density()];
-};
-const auto Mom_nfx = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](0, 0)[pamhd::mhd::Momentum_Density()];
-};
-const auto Mom_pfy = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](1, 1)[pamhd::mhd::Momentum_Density()];
-};
-const auto Mom_nfy = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](1, 0)[pamhd::mhd::Momentum_Density()];
-};
-const auto Mom_pfz = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](2, 1)[pamhd::mhd::Momentum_Density()];
-};
-const auto Mom_nfz = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](2, 0)[pamhd::mhd::Momentum_Density()];
-};
-const auto Nrj_pfx = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::mhd::Total_Energy_Density()];
-};
-const auto Nrj_nfx = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](0, 0)[pamhd::mhd::Total_Energy_Density()];
-};
-const auto Nrj_pfy = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](1, 1)[pamhd::mhd::Total_Energy_Density()];
-};
-const auto Nrj_nfy = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](1, 0)[pamhd::mhd::Total_Energy_Density()];
-};
-const auto Nrj_pfz = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](2, 1)[pamhd::mhd::Total_Energy_Density()];
-};
-const auto Nrj_nfz = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](2, 0)[pamhd::mhd::Total_Energy_Density()];
-};
-const auto Mag_pfx = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](0, 1)[pamhd::Magnetic_Field()];
-};
-const auto Mag_nfx = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](0, 0)[pamhd::Magnetic_Field()];
-};
-const auto Mag_pfy = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](1, 1)[pamhd::Magnetic_Field()];
-};
-const auto Mag_nfy = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](1, 0)[pamhd::Magnetic_Field()];
-};
-const auto Mag_pfz = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](2, 1)[pamhd::Magnetic_Field()];
-};
-const auto Mag_nfz = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](2, 0)[pamhd::Magnetic_Field()];
-};
-
-// collections of above to shorten function arguments
-const auto Mas_fs = std::make_tuple(
-	Mas_nfx, Mas_pfx, Mas_nfy, Mas_pfy, Mas_nfz, Mas_pfz
-);
-const auto Mom_fs = std::make_tuple(
-	Mom_nfx, Mom_pfx, Mom_nfy, Mom_pfy, Mom_nfz, Mom_pfz
-);
-const auto Nrj_fs = std::make_tuple(
-	Nrj_nfx, Nrj_pfx, Nrj_nfy, Nrj_pfy, Nrj_nfz, Nrj_pfz
-);
-const auto Mag_fs = std::make_tuple(
-	Mag_nfx, Mag_pfx, Mag_nfy, Mag_pfy, Mag_nfz, Mag_pfz
-);
 
 const auto Ref_min = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::grid::Target_Refinement_Level_Min()];
@@ -714,7 +639,7 @@ int main(int argc, char* argv[]) {
 	Cell::set_transfer_all(true,
 		pamhd::grid::Target_Refinement_Level_Min(),
 		pamhd::grid::Target_Refinement_Level_Max(),
-		pamhd::mhd::Solver_Info()
+		pamhd::Solver_Info()
 	);
 	prepare_grid(
 		options_sw.inner_bdy_radius,
@@ -729,7 +654,7 @@ int main(int argc, char* argv[]) {
 	Cell::set_transfer_all(false,
 		pamhd::grid::Target_Refinement_Level_Min(),
 		pamhd::grid::Target_Refinement_Level_Max(),
-		pamhd::mhd::Solver_Info()
+		pamhd::Solver_Info()
 	);
 	if (rank == 0) {
 		cout << "done" << endl;
@@ -834,7 +759,7 @@ int main(int argc, char* argv[]) {
 		pamhd::Face_Magnetic_Field(),
 		pamhd::mhd::MHD_State_Conservative(),
 		pamhd::Bg_Magnetic_Field(),
-		pamhd::mhd::Solver_Info()
+		pamhd::Solver_Info()
 	);
 	initialize_plasma(
 		grid, simulation_time,
@@ -880,7 +805,7 @@ int main(int argc, char* argv[]) {
 		pamhd::Face_Magnetic_Field(),
 		pamhd::mhd::MHD_State_Conservative(),
 		pamhd::Bg_Magnetic_Field(),
-		pamhd::mhd::Solver_Info()
+		pamhd::Solver_Info()
 	);
 
 	if (rank == 0) {
@@ -894,7 +819,7 @@ int main(int argc, char* argv[]) {
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		Mas, Mom, Nrj, Mag, Face_B, Face_dB, Bg_B,
-		Mas_fs, Mom_fs, Nrj_fs, Mag_fs, SInfo,
+		Mas_f, Mom_f, Nrj_f, Mag_f, SInfo,
 		Timestep, Substep, Substep_Min, Substep_Max, Max_v
 	);
 	size_t simulation_step = 0;
@@ -935,7 +860,7 @@ int main(int argc, char* argv[]) {
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			Mas, Mom, Nrj, Mag, Face_B, Face_dB, Bg_B,
-			Mas_fs, Mom_fs, Nrj_fs, Mag_fs, SInfo,
+			Mas_f, Mom_f, Nrj_f, Mag_f, SInfo,
 			Timestep, Substep, Substep_Min, Substep_Max, Max_v
 		);
 		if (rank == 0) {
@@ -959,7 +884,7 @@ int main(int argc, char* argv[]) {
 			pamhd::Face_Magnetic_Field(),
 			pamhd::mhd::MHD_State_Conservative(),
 			pamhd::Bg_Magnetic_Field(),
-			pamhd::mhd::Solver_Info()
+			pamhd::Solver_Info()
 		);
 		apply_boundaries(
 			grid, simulation_time, document,
@@ -984,7 +909,7 @@ int main(int argc, char* argv[]) {
 			pamhd::Face_Magnetic_Field(),
 			pamhd::mhd::MHD_State_Conservative(),
 			pamhd::Bg_Magnetic_Field(),
-			pamhd::mhd::Solver_Info()
+			pamhd::Solver_Info()
 		);
 
 		if (

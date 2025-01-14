@@ -66,12 +66,12 @@ template<
 	dccrg::Dccrg<Cell_Data, Geometry>& grid,
 	Boundaries& boundaries,
 	const Boundary_Geometries& geometries,
-	const Solver_Info_Getter& Sol_Info
+	const Solver_Info_Getter& SInfo
 ) {
-	boundaries.classify(grid, geometries, Sol_Info);
+	boundaries.classify(grid, geometries, SInfo);
 
 	for (const auto& cell: grid.cells) {
-		Sol_Info(*cell.data) = 0;
+		SInfo(*cell.data) = 1;
 	}
 
 	// number densities
@@ -82,7 +82,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		Sol_Info(*cell_data) |= Solver_Info::mass_density_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(N)) {
 		auto* const cell_data = grid[item[0]];
@@ -90,7 +90,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		Sol_Info(*cell_data) |= Solver_Info::mass_density_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_mass(
 		boundaries.get_dont_solve_cells(N).cbegin(),
@@ -104,7 +104,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		Sol_Info(*cell_data) |= Solver_Info::mass_density2_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(N2)) {
 		auto* const cell_data = grid[item[0]];
@@ -112,7 +112,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		Sol_Info(*cell_data) |= Solver_Info::mass_density2_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_mass2(
 		boundaries.get_dont_solve_cells(N2).cbegin(),
@@ -127,7 +127,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		Sol_Info(*cell_data) |= Solver_Info::velocity_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(V)) {
 		auto* const cell_data = grid[item[0]];
@@ -135,7 +135,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		Sol_Info(*cell_data) |= Solver_Info::velocity_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_velocity(
 		boundaries.get_dont_solve_cells(V).cbegin(),
@@ -149,7 +149,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		Sol_Info(*cell_data) |= Solver_Info::velocity2_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(V2)) {
 		auto* const cell_data = grid[item[0]];
@@ -157,7 +157,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		Sol_Info(*cell_data) |= Solver_Info::velocity2_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_velocity2(
 		boundaries.get_dont_solve_cells(V2).cbegin(),
@@ -172,7 +172,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		Sol_Info(*cell_data) |= Solver_Info::pressure_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(P)) {
 		auto* const cell_data = grid[item[0]];
@@ -180,7 +180,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		Sol_Info(*cell_data) |= Solver_Info::pressure_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_pressure(
 		boundaries.get_dont_solve_cells(P).cbegin(),
@@ -194,7 +194,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		Sol_Info(*cell_data) |= Solver_Info::pressure2_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(P2)) {
 		auto* const cell_data = grid[item[0]];
@@ -202,7 +202,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		Sol_Info(*cell_data) |= Solver_Info::pressure2_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_pressure2(
 		boundaries.get_dont_solve_cells(P2).cbegin(),
@@ -217,7 +217,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		Sol_Info(*cell_data) |= Solver_Info::magnetic_field_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(B)) {
 		auto* const cell_data = grid[item[0]];
@@ -225,7 +225,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		Sol_Info(*cell_data) |= Solver_Info::magnetic_field_bdy;
+		SInfo(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_mag(
 		boundaries.get_dont_solve_cells(B).cbegin(),
@@ -312,7 +312,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		Sol_Info(*cell_data) |= Solver_Info::dont_solve;
+		SInfo(*cell_data) = -1;
 	}
 
 	grid.update_copies_of_remote_neighbors();

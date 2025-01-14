@@ -123,16 +123,16 @@ const auto Cur = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::Electric_Current_Density()];
 };
 // solver info variable for boundary logic
-const auto Sol_Info = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::Solver_Info()];
+const auto SInfo = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::Solver_Info()];
 };
 // returns 1 for normal cell, -1 for dont_solve and 0 otherwise
-const auto Sol_Info2 = [](Cell& cell_data)->int {
-	const auto info = cell_data[pamhd::mhd::Solver_Info()];
+const auto SInfo2 = [](Cell& cell_data)->int {
+	const auto info = cell_data[pamhd::Solver_Info()];
 	if (info == 0) {
 		return 1;
 	}
-	if ((info & pamhd::mhd::Solver_Info::dont_solve) > 0) {
+	if ((info & 1) > 0) {
 		return -1;
 	}
 	return 0;
@@ -459,7 +459,7 @@ int main(int argc, char* argv[])
 		boundaries,
 		geometries,
 		simulation_time,
-		Mas, Mom, Nrj, Mag, Sol_Info2,
+		Mas, Mom, Nrj, Mag, SInfo2,
 		options_sim.proton_mass,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability
@@ -472,11 +472,11 @@ int main(int argc, char* argv[])
 	Classify cells into normal, boundary and dont_solve
 	*/
 
-	Cell::set_transfer_all(true, pamhd::mhd::Solver_Info());
-	pamhd::mhd::set_solver_info<pamhd::mhd::Solver_Info>(
-		grid, boundaries, geometries, Sol_Info
+	Cell::set_transfer_all(true, pamhd::Solver_Info());
+	pamhd::mhd::set_solver_info<pamhd::Solver_Info>(
+		grid, boundaries, geometries, SInfo
 	);
-	Cell::set_transfer_all(false, pamhd::mhd::Solver_Info());
+	Cell::set_transfer_all(false, pamhd::Solver_Info());
 
 	size_t simulated_steps = 0;
 	while (simulation_time < time_end) {
@@ -532,13 +532,13 @@ int main(int argc, char* argv[])
 			grid,
 			Mag,
 			Cur,
-			Sol_Info
+			SInfo
 		);
 		for (const auto& cell: grid.inner_cells()) {
 			Cur(*cell.data) /= options_sim.vacuum_permeability;
 		}
 
-		double solve_max_dt = pamhd::mhd::solve<pamhd::mhd::Solver_Info>(
+		double solve_max_dt = pamhd::mhd::solve<pamhd::Solver_Info>(
 			mhd_solver,
 			grid.inner_cells(),
 			grid,
@@ -547,13 +547,13 @@ int main(int argc, char* argv[])
 			options_sim.vacuum_permeability,
 			Mas, Mom, Nrj, Mag, Bg_B,
 			Mas_f, Mom_f, Nrj_f, Mag_f,
-			Sol_Info
+			SInfo
 		);
 		max_dt_mhd = min(solve_max_dt, max_dt_mhd);
 
 		grid.wait_remote_neighbor_copy_update_receives();
 
-		solve_max_dt = pamhd::mhd::solve<pamhd::mhd::Solver_Info>(
+		solve_max_dt = pamhd::mhd::solve<pamhd::Solver_Info>(
 			mhd_solver,
 			grid.outer_cells(),
 			grid,
@@ -562,7 +562,7 @@ int main(int argc, char* argv[])
 			options_sim.vacuum_permeability,
 			Mas, Mom, Nrj, Mag, Bg_B,
 			Mas_f, Mom_f, Nrj_f, Mag_f,
-			Sol_Info
+			SInfo
 		);
 		max_dt_mhd = min(solve_max_dt, max_dt_mhd);
 
@@ -571,7 +571,7 @@ int main(int argc, char* argv[])
 			grid,
 			Mag,
 			Cur,
-			Sol_Info
+			SInfo
 		);
 		for (const auto& cell: grid.outer_cells()) {
 			Cur(*cell.data) /= options_sim.vacuum_permeability;
@@ -595,7 +595,7 @@ int main(int argc, char* argv[])
 			grid,
 			Cur,
 			Mag_res,
-			Sol_Info
+			SInfo
 		);
 		for (const auto& cell: grid.inner_cells()) {
 			const auto c = grid.geometry.get_center(cell.id);
@@ -620,7 +620,7 @@ int main(int argc, char* argv[])
 			grid,
 			Cur,
 			Mag_res,
-			Sol_Info
+			SInfo
 		);
 		for (const auto& cell: grid.outer_cells()) {
 			const auto c = grid.geometry.get_center(cell.id);
@@ -641,14 +641,14 @@ int main(int argc, char* argv[])
 		Cell::set_transfer_all(false, pamhd::Electric_Current_Density());
 
 
-		pamhd::mhd::apply_fluxes<pamhd::mhd::Solver_Info>(
+		pamhd::mhd::apply_fluxes<pamhd::Solver_Info>(
 			grid,
 			options_mhd.min_pressure,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			Mas, Mom, Nrj, Mag,
 			Mas_f, Mom_f, Nrj_f, Mag_f,
-			Sol_Info
+			SInfo
 		);
 
 		simulation_time += time_step;
@@ -689,7 +689,7 @@ int main(int argc, char* argv[])
 					{
 						return cell_data[pamhd::Scalar_Potential_Gradient()];
 					},
-					Sol_Info,
+					SInfo,
 					options_div_B.poisson_iterations_max,
 					options_div_B.poisson_iterations_min,
 					options_div_B.poisson_norm_stop,
@@ -709,7 +709,7 @@ int main(int argc, char* argv[])
 					grid,
 					Mag,
 					Mag_div,
-					Sol_Info
+					SInfo
 				);
 
 			// restore old B
@@ -767,7 +767,7 @@ int main(int argc, char* argv[])
 			boundaries,
 			geometries,
 			simulation_time,
-			Mas, Mom, Nrj, Mag, Sol_Info2,
+			Mas, Mom, Nrj, Mag, SInfo2,
 			options_sim.proton_mass,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability
