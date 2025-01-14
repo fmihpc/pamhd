@@ -2,15 +2,6 @@ TESTS_MHD_EXECUTABLES = \
   tests/mhd/reference.exe \
   tests/mhd/reference_staggered.exe \
   tests/mhd/two_reference.exe \
-  tests/mhd/mhd2ascii.exe \
-  tests/mhd/mhd2ascii_staggered.exe \
-  tests/mhd/mhd2gnuplot.exe \
-  tests/mhd/mhd2gnuplot_staggered.exe \
-  tests/mhd/mhd2vtk.exe \
-  tests/mhd/mhd2vtk_staggered.exe \
-  tests/mhd/2mhd2gnuplot.exe \
-  tests/mhd/mhd_extract.exe \
-  tests/mhd/2mhd_extract.exe \
   tests/mhd/test.exe \
   tests/mhd/test_staggered.exe \
   tests/mhd/solar_wind_box.exe \
@@ -163,86 +154,6 @@ tests/mhd/two_reference.exe: \
   tests/mhd/two_reference.cpp \
   $(TEST_MHD_COMMON_DEPS)
 	@printf "CXX $<\n" && $(CXX) $(TEST_MHD_COMPILE_COMMOM)
-
-tests/mhd/mhd2ascii.exe: \
-  tests/mhd/mhd2ascii.cpp \
-  $(TEST_MHD_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM) \
-	  $(DCCRG_CPPFLAGS) \
-	  $(ZOLTAN_CPPFLAGS) \
-	  $(ZOLTAN_LDFLAGS) \
-	  $(ZOLTAN_LIBS)
-
-tests/mhd/mhd2ascii_staggered.exe: \
-  tests/mhd/mhd2ascii_staggered.cpp \
-  $(TEST_MHD_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM) \
-	  $(DCCRG_CPPFLAGS) \
-	  $(ZOLTAN_CPPFLAGS) \
-	  $(ZOLTAN_LDFLAGS) \
-	  $(ZOLTAN_LIBS)
-
-tests/mhd/mhd2gnuplot.exe: \
-  tests/mhd/mhd2gnuplot.cpp \
-  $(TEST_MHD_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM) \
-	  $(DCCRG_CPPFLAGS) \
-	  $(PRETTYPRINT_CPPFLAGS) \
-	  $(ZOLTAN_CPPFLAGS) \
-	  $(ZOLTAN_LDFLAGS) \
-	  $(ZOLTAN_LIBS)
-
-tests/mhd/mhd2gnuplot_staggered.exe: \
-  tests/mhd/mhd2gnuplot_staggered.cpp \
-  $(TEST_MHD_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM) \
-	  $(DCCRG_CPPFLAGS) \
-	  $(PRETTYPRINT_CPPFLAGS) \
-	  $(ZOLTAN_CPPFLAGS) \
-	  $(ZOLTAN_LDFLAGS) \
-	  $(ZOLTAN_LIBS)
-
-tests/mhd/mhd2vtk.exe: \
-  tests/mhd/mhd2vtk.cpp \
-  $(TEST_MHD_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM) \
-	  $(DCCRG_CPPFLAGS) \
-	  $(ZOLTAN_CPPFLAGS) \
-	  $(ZOLTAN_LDFLAGS) \
-	  $(ZOLTAN_LIBS)
-
-tests/mhd/mhd2vtk_staggered.exe: \
-  tests/mhd/mhd2vtk_staggered.cpp \
-  $(TEST_MHD_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM) \
-	  $(DCCRG_CPPFLAGS) \
-	  $(ZOLTAN_CPPFLAGS) \
-	  $(ZOLTAN_LDFLAGS) \
-	  $(ZOLTAN_LIBS)
-
-tests/mhd/2mhd2gnuplot.exe: \
-  tests/mhd/2mhd2gnuplot.cpp \
-  $(TEST_MHD_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM) \
-	  $(DCCRG_CPPFLAGS) \
-	  $(PRETTYPRINT_CPPFLAGS) \
-	  $(ZOLTAN_CPPFLAGS) \
-	  $(ZOLTAN_LDFLAGS) \
-	  $(ZOLTAN_LIBS)
-
-tests/mhd/mhd_extract.exe: \
-  tests/mhd/mhd_extract.cpp \
-  tests/mhd/project_makefile \
-  $(ENVIRONMENT_MAKEFILE) \
-  Makefile
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM)
-
-tests/mhd/2mhd_extract.exe: \
-  tests/mhd/2mhd_extract.cpp \
-  tests/mhd/project_makefile \
-  $(ENVIRONMENT_MAKEFILE) \
-  Makefile
-	@printf "MPICXX $<\n" && $(MPICXX) $(TEST_MHD_COMPILE_COMMOM)
 
 tests/mhd/test.exe: \
   tests/mhd/test.cpp \
