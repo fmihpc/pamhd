@@ -91,6 +91,18 @@ def convert(inname, verbose):
 		raise Exception('Particle data not found in file ' + inname)
 	# track byte offset of cell's particle data
 	offset = metadata['var_data_start']['ipart   ']
+	outfile.write(
+		'# Particle data created by PAMHD\n'
+		+ '# Simulation time: ' + str(metadata['sim_time']) + '\n'
+		+ '# Simulation step: ' + str(metadata['sim_step']) + '\n'
+		+ '# Format of each line (lines are ordered randomly):\n'
+		+ '# x, y and z components of particle position (m)\n'
+		+ '# x, y and z components of particle velocity (m/s)\n'
+		+ '# mass of particle (kg)\n'
+		+ '# mass of particle species (kg)\n'
+		+ '# charge to mass ratio of particle (C/kg)\n'
+		+ '# particle id\n'
+	)
 	for i in range(len(metadata['cells'])):
 		infile.seek(i*8 + metadata['var_data_start']['nr ipart'], 0)
 		nr_ipart = int(fromfile(infile, dtype = 'uint64', count = 1)[0])
