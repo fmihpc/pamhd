@@ -5,7 +5,7 @@ ENVIRONMENT_MAKEFILE = makefiles/homedir
 #
 # The lines below are not intended to be modified by users
 #
-CXXFLAGS = -std=c++20 -W -Wall -Wextra -pedantic -O3 -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-deprecated-enum-enum-conversion
+CXXFLAGS = -std=c++20 -W -Wall -Wextra -pedantic -O3
 CPPFLAGS = -I source
 include $(ENVIRONMENT_MAKEFILE)
 
