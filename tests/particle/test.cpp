@@ -38,7 +38,6 @@ for explanation of items identical to ones in those files
 #include "vector"
 
 #include "boost/filesystem.hpp"
-#include "boost/numeric/odeint.hpp"
 #include "dccrg.hpp"
 #include "dccrg_cartesian_geometry.hpp"
 #include "Eigen/Core" // must be included before gensimcell.hpp
@@ -81,7 +80,6 @@ for explanation of items identical to ones in those files
 
 
 using namespace std;
-namespace odeint = boost::numeric::odeint;
 
 // counter for assigning unique id to particles
 unsigned long long int next_particle_id;
@@ -441,25 +439,6 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	const int particle_stepper = [&](){
-		if (options_particle.solver == "euler") {
-			return 0;
-		} else if (options_particle.solver == "midpoint") {
-			return 1;
-		} else if (options_particle.solver == "rk4") {
-			return 2;
-		} else if (options_particle.solver == "rkck54") {
-			return 3;
-		} else if (options_particle.solver == "rkf78") {
-			return 4;
-		} else {
-			std::cerr <<  __FILE__ << "(" << __LINE__ << "): "
-				<< "Unsupported solver: " << options_particle.solver
-				<< ", should be one of: euler, (modified) midpoint, rk4 (runge_kutta4), rkck54 (runge_kutta_cash_karp54), rkf78 (runge_kutta_fehlberg78), see http://www.boost.org/doc/libs/release/libs/numeric/odeint/doc/html/boost_numeric_odeint/odeint_in_detail/steppers.html#boost_numeric_odeint.odeint_in_detail.steppers.stepper_overview"
-				<< std::endl;
-			abort();
-		}
-	}();
 
 	using geometry_id_t = unsigned int;
 
@@ -973,53 +952,15 @@ int main(int argc, char* argv[])
 				<< " s with time step " << time_step << " s" << endl;
 		}
 
-		// TODO: don't use preprocessor
-		#define SOLVE_WITH_STEPPER(given_type, given_cells) \
-			pamhd::particle::solve<\
-				given_type\
-			>(\
-				time_step,\
-				given_cells,\
-				grid,\
-				background_B,\
-				options_sim.vacuum_permeability,\
-				true,\
-				J_m_V,\
-				Mag,\
-				Nr_Ext,\
-				Part_Int,\
-				Part_Ext,\
-				Part_Pos,\
-				Part_Vel,\
-				Part_C2M,\
-				Part_Mas,\
-				Part_Des,\
-				SInfo\
-			)
-
 		std::pair<double, double> particle_max_dt{0, 0};
-
-		// outer cells
-		switch (particle_stepper) {
-		case 0:
-			particle_max_dt = SOLVE_WITH_STEPPER(odeint::euler<pamhd::particle::state_t>, grid.outer_cells());
-			break;
-		case 1:
-			particle_max_dt = SOLVE_WITH_STEPPER(odeint::modified_midpoint<pamhd::particle::state_t>, grid.outer_cells());
-			break;
-		case 2:
-			particle_max_dt = SOLVE_WITH_STEPPER(odeint::runge_kutta4<pamhd::particle::state_t>, grid.outer_cells());
-			break;
-		case 3:
-			particle_max_dt = SOLVE_WITH_STEPPER(odeint::runge_kutta_cash_karp54<pamhd::particle::state_t>, grid.outer_cells());
-			break;
-		case 4:
-			particle_max_dt = SOLVE_WITH_STEPPER(odeint::runge_kutta_fehlberg78<pamhd::particle::state_t>, grid.outer_cells());
-			break;
-		default:
-			std::cerr <<  __FILE__ << "(" << __LINE__ << "): " << particle_stepper << std::endl;
-			abort();
-		}
+		// outer particles
+		particle_max_dt = pamhd::particle::solve(
+			time_step, grid.outer_cells(), grid,
+			background_B, options_sim.vacuum_permeability,
+			true, J_m_V, Mag, Nr_Ext, Part_Int,
+			Part_Ext, Part_Pos, Part_Vel, Part_C2M,
+			Part_Mas, Part_Des, SInfo
+		);
 		max_dt_particle_flight = min(particle_max_dt.first, max_dt_particle_flight);
 		max_dt_particle_gyro = min(particle_max_dt.second, max_dt_particle_gyro);
 
@@ -1055,27 +996,13 @@ int main(int argc, char* argv[])
 		max_dt_mhd = min(solve_max_dt, max_dt_mhd);
 
 		// inner particles
-		switch (particle_stepper) {
-		case 0:
-			particle_max_dt = SOLVE_WITH_STEPPER(odeint::euler<pamhd::particle::state_t>, grid.inner_cells());
-			break;
-		case 1:
-			particle_max_dt = SOLVE_WITH_STEPPER(odeint::modified_midpoint<pamhd::particle::state_t>, grid.inner_cells());
-			break;
-		case 2:
-			particle_max_dt = SOLVE_WITH_STEPPER(odeint::runge_kutta4<pamhd::particle::state_t>, grid.inner_cells());
-			break;
-		case 3:
-			particle_max_dt = SOLVE_WITH_STEPPER(odeint::runge_kutta_cash_karp54<pamhd::particle::state_t>, grid.inner_cells());
-			break;
-		case 4:
-			particle_max_dt = SOLVE_WITH_STEPPER(odeint::runge_kutta_fehlberg78<pamhd::particle::state_t>, grid.inner_cells());
-			break;
-		default:
-			std::cerr <<  __FILE__ << "(" << __LINE__ << "): " << particle_stepper << std::endl;
-			abort();
-		}
-		#undef SOLVE_WITH_STEPPER
+		particle_max_dt = pamhd::particle::solve(
+			time_step, grid.inner_cells(), grid,
+			background_B, options_sim.vacuum_permeability,
+			true, J_m_V, Mag, Nr_Ext, Part_Int,
+			Part_Ext, Part_Pos, Part_Vel, Part_C2M,
+			Part_Mas, Part_Des, SInfo
+		);
 		max_dt_particle_flight = min(particle_max_dt.first, max_dt_particle_flight);
 		max_dt_particle_gyro = min(particle_max_dt.second, max_dt_particle_gyro);
 

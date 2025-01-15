@@ -39,7 +39,6 @@ Author(s): Ilja Honkonen
 #include "cstdlib"
 #include "iostream"
 
-#include "boost/numeric/odeint.hpp"
 #include "dccrg.hpp"
 #include "dccrg_cartesian_geometry.hpp"
 #include "Eigen/Core" // must be included before gensimcell
@@ -261,26 +260,11 @@ int main(int argc, char* argv[])
 		const auto& cells,
 		Grid& grid
 	) {
-		pamhd::particle::solve<
-			boost::numeric::odeint::runge_kutta_fehlberg78<pamhd::particle::state_t>
-		>(
-			1.0,
-			cells,
-			grid,
-			bg_B,
-			1,
-			false,
-			Ele,
-			Mag,
-			Nr_Ext,
-			Part_Int,
-			Part_Ext,
-			Part_Pos,
-			Part_Vel,
-			Part_C2M,
-			Part_Mas,
-			Part_Des,
-			SInfo
+		pamhd::particle::solve(
+			1.0, cells, grid, bg_B, 1, false,
+			Ele, Mag, Nr_Ext, Part_Int, Part_Ext,
+			Part_Pos, Part_Vel, Part_C2M,
+			Part_Mas, Part_Des, SInfo
 		);
 	};
 

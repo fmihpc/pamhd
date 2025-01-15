@@ -2,7 +2,7 @@
 Particle propagator of PAMHD for DCCRG grid.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019, 2024 Finnish Meteorological Institute
+Copyright 2019, 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,12 +29,16 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_PARTICLE_SOLVE_DCCRG_HPP
 #define PAMHD_PARTICLE_SOLVE_DCCRG_HPP
 
 
+#include "cstdlib"
 #include "exception"
 #include "type_traits"
 #include "utility"
@@ -44,8 +48,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Eigen/Geometry"
 #include "prettyprint.hpp"
 
+#include "accumulate_dccrg.hpp"
 #include "common.hpp"
+#include "divergence/remove.hpp"
 #include "interpolate.hpp"
+#include "mhd/solve_staggered.hpp"
+#include "particle/solve.hpp"
 #include "variables.hpp"
 
 
@@ -54,106 +62,10 @@ namespace particle {
 
 
 /*!
-State type used in boost::numeric::odeint particle propagation.
-state[0] = particle position, state[1] = velocity
-*/
-using state_t = std::array<Eigen::Vector3d, 2>;
-
-
-/*!
-Object given to boost::numeric::odeint to propagate a particle.
-
-Interpolates electric and magnetic fields from given values to
-particle position at each call to operator().
-*/
-class Particle_Propagator
-{
-private:
-
-	const double& charge_to_mass_ratio;
-
-	const Eigen::Vector3d
-		&data_start, &data_end;
-
-	const std::array<Eigen::Vector3d, 27>
-		&current_minus_velocity, &magnetic_field;
-
-	bool E_is_derived;
-
-	const Eigen::Vector3d bg_B;
-
-public:
-
-	/*!
-	Arguments except charge to mass ratio are passed to interpolate().
-
-	If given_E_is_derived == true then E is interpolated by interpolating
-	J - V and B to particle position from which E = (J-V) x B, otherwise
-	E is interpolated directly by assuming E = J-V.
-	*/
-	Particle_Propagator(
-		const double& given_charge_to_mass_ratio,
-		const Eigen::Vector3d& given_data_start,
-		const Eigen::Vector3d& given_data_end,
-		const std::array<Eigen::Vector3d, 27>& given_current_minus_velocity,
-		const std::array<Eigen::Vector3d, 27>& given_magnetic_field,
-		const bool given_E_is_derived,
-		const Eigen::Vector3d given_bg_B = {0, 0, 0}
-	) :
-		charge_to_mass_ratio(given_charge_to_mass_ratio),
-		data_start(given_data_start),
-		data_end(given_data_end),
-		current_minus_velocity(given_current_minus_velocity),
-		magnetic_field(given_magnetic_field),
-		E_is_derived(given_E_is_derived),
-		bg_B(given_bg_B)
-	{}
-
-	void operator()(
-		const state_t& state,
-		state_t& change,
-		const double
-	) const {
-		const auto
-			B_at_pos
-				= interpolate(
-					state[0],
-					this->data_start,
-					this->data_end,
-					this->magnetic_field
-				),
-			E_at_pos = [&](){
-				if (this->E_is_derived) {
-					const auto J_m_V_at_pos = interpolate(
-						state[0],
-						this->data_start,
-						this->data_end,
-						this->current_minus_velocity
-					);
-					return J_m_V_at_pos.cross(B_at_pos + this->bg_B);
-				} else {
-					return interpolate(
-						state[0],
-						this->data_start,
-						this->data_end,
-						this->current_minus_velocity
-					);
-				}
-			}();
-
-		change[0] = state[1];
-		change[1]
-			= this->charge_to_mass_ratio
-			* (E_at_pos + state[1].cross(B_at_pos + this->bg_B));
-	};
-};
-
-
-/*!
 Propagates particles in given cells for a given amount of time.
 
 Returns the longest allowed time step for given cells
-and their neighbors. Particles which propagate outside of the
+and their neighbors. Particles which end up outside of the
 cell in which they are stored are moved to the External_Particles_T
 list of their previous cell and added to Particle_Destinations_T
 information.
@@ -162,7 +74,6 @@ Assumes grid was initialized with neighbhorhood size of 1 and
 maximum refinement level of 0.
 */
 template<
-	class Stepper,
 	class Cell_Iterator,
 	class Grid,
 	class Background_Magnetic_Field,
@@ -195,33 +106,22 @@ template<
 	const Particle_Charge_Mass_Ratio_Getter Part_C2M,
 	const Particle_Mass_Getter Part_Mas,
 	const Particle_Destination_Cell_Getter Part_Des,
-	const Solver_Info_Getter Sol_Info
+	const Solver_Info_Getter SInfo
 ) {
-	namespace odeint = boost::numeric::odeint;
 	using std::abs;
 	using std::isnan;
 	using std::is_same;
 	using std::max;
 	using std::min;
 
-	static_assert(
-		is_same<Stepper, odeint::euler<state_t>>::value
-		or is_same<Stepper, odeint::modified_midpoint<state_t>>::value
-		or is_same<Stepper, odeint::runge_kutta4<state_t>>::value
-		or is_same<Stepper, odeint::runge_kutta_cash_karp54<state_t>>::value
-		or is_same<Stepper, odeint::runge_kutta_fehlberg78<state_t>>::value,
-		"Only odeint steppers without internal state are supported."
-	);
 	if (grid.get_maximum_refinement_level() > 0) {
 		throw std::runtime_error("Only maximum refinement level 0 supported.");
 	}
 
 
-	Stepper stepper;
 	std::pair<double, double> max_time_step{std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
 	for (const auto& cell: cells) {
-
-		if ((Sol_Info(*cell.data) & pamhd::particle::Solver_Info::dont_solve) > 0) {
+		if (SInfo(*cell.data) < 0) {
 			Part_Int(*cell.data).clear();
 			Part_Ext(*cell.data).clear();
 			continue;
@@ -267,6 +167,10 @@ template<
 			};
 
 		// calculate max length of time step for next step from cell-centered values
+		const Eigen::Vector3d B_centered = Mag(*cell.data) + bg_B.get_background_field(
+			{cell_center[0], cell_center[1], cell_center[2]},
+			vacuum_permeability
+		);
 		const auto E_centered = [&](){
 			if (E_is_derived_quantity) {
 				return JmV(*cell.data).cross(Mag(*cell.data));
@@ -274,13 +178,9 @@ template<
 				return JmV(*cell.data);
 			}
 		}();
-		const decltype(E_centered) B_centered = Mag(*cell.data) + bg_B.get_background_field(
-			{cell_center[0], cell_center[1], cell_center[2]},
-			vacuum_permeability
-		);
 
-		for (size_t i = 0; i < Part_Int(*cell.data).size(); i++) {
-			auto particle = Part_Int(*cell.data)[i]; // reference faster?
+		for (size_t part_i = 0; part_i < Part_Int(*cell.data).size(); part_i++) {
+			auto particle = Part_Int(*cell.data)[part_i]; // reference faster?
 
 			// TODO check accurately only for most restrictive particle(s) in each cell?
 			const auto step_size
@@ -298,16 +198,6 @@ template<
 			max_time_step.first = min(step_size.first, max_time_step.first);
 			max_time_step.second = min(step_size.second, max_time_step.second);
 
-			const Particle_Propagator propagator(
-				Part_C2M(particle),
-				interpolation_start,
-				interpolation_end,
-				current_minus_velocities,
-				magnetic_fields,
-				E_is_derived_quantity,
-				bg_B.get_background_field(Part_Pos(particle), vacuum_permeability)
-			);
-
 			// propagate for dt with substeps at most 1/32 of gyroperiod
 			const int substeps
 				= [&dt, &step_size](){
@@ -320,21 +210,54 @@ template<
 					}
 				}();
 
-			state_t state{{Part_Pos(particle), Part_Vel(particle)}};
-			for (int i = 0; i < substeps; i++) {
-				stepper.do_step(propagator, state, 0.0, dt / substeps);
+			auto pos = Part_Pos(particle);
+			auto vel = Part_Vel(particle);
+			for (int substep = 0; substep < substeps; substep++) {
+				const Eigen::Vector3d B_at_pos
+					= interpolate(
+						pos,
+						interpolation_start,
+						interpolation_end,
+						magnetic_fields)
+					+ bg_B.get_background_field(
+						pos, vacuum_permeability);
+				const Eigen::Matrix<double,3,1> E_at_pos = [&](){
+					if (E_is_derived_quantity) {
+						const auto J_m_V_at_pos = interpolate(
+							pos,
+							interpolation_start,
+							interpolation_end,
+							current_minus_velocities
+						);
+						return J_m_V_at_pos.cross(B_at_pos);
+					} else {
+						return interpolate(
+							pos,
+							interpolation_start,
+							interpolation_end,
+							current_minus_velocities
+						);
+					}
+				}();
+				std::tie(
+					pos,
+					vel
+				) = propagate(
+					pos,
+					vel,
+					E_at_pos,
+					B_at_pos,
+					Part_C2M(particle),
+					dt / substeps
+				);
 			}
-			Part_Vel(Part_Int(*cell.data)[i]) = state[1];
+			Part_Vel(Part_Int(*cell.data)[part_i]) = vel;
 
 			// take into account periodic grid
-			const std::array<double, 3> real_pos
-				= grid.geometry.get_real_coordinate({{
-					state[0][0],
-					state[0][1],
-					state[0][2]
-				}});
+			const auto real_pos
+				= grid.geometry.get_real_coordinate({{pos[0], pos[1], pos[2]}});
 
-			Part_Pos(Part_Int(*cell.data)[i]) = {
+			Part_Pos(Part_Int(*cell.data)[part_i]) = {
 				real_pos[0],
 				real_pos[1],
 				real_pos[2]
@@ -347,8 +270,8 @@ template<
 				or isnan(real_pos[2])
 			) {
 
-				Part_Int(*cell.data).erase(Part_Int(*cell.data).begin() + i);
-				i--;
+				Part_Int(*cell.data).erase(Part_Int(*cell.data).begin() + part_i);
+				part_i--;
 
 			// move to ext list if particle outside of current cell
 			} else if (
@@ -386,12 +309,12 @@ template<
 					Part_Ext(*cell.data).resize(index + 1);
 					assign(
 						Part_Ext(*cell.data)[index],
-						Part_Int(*cell.data)[i]
+						Part_Int(*cell.data)[part_i]
 					);
 					Part_Des(Part_Ext(*cell.data)[index]) = destination;
 
-					Part_Int(*cell.data).erase(Part_Int(*cell.data).begin() + i);
-					i--;
+					Part_Int(*cell.data).erase(Part_Int(*cell.data).begin() + part_i);
+					part_i--;
 
 				} else {
 
@@ -489,6 +412,367 @@ template<
 		(*cell.data)[Nr_Particles_External_T()] = 0;
 		(*cell.data)[Particles_External_T()].clear();
 	}
+}
+
+
+//! returns length of timestep taken
+double timestep(
+	const auto& simulation_time,
+	auto& grid,
+	auto& options_mhd,
+	const auto& Part_Int,
+	const auto& Part_Pos,
+	const auto& Part_Mas,
+	const auto& Part_Mas_Cell,
+	const auto& Part_SpM,
+	const auto& Part_SpM_Cell,
+	const auto& Part_Vel,
+	const auto& Part_Vel_Cell,
+	const auto& Part_Ekin,
+	const auto& Nr_Particles,
+	const auto& Part_Nr,
+	const auto& Bulk_Mass_Getter,
+	const auto& Bulk_Momentum_Getter,
+	const auto& Bulk_Relative_Velocity2_Getter,
+	const auto& Bulk_Velocity_Getter,
+	const auto& Accu_List_Number_Of_Particles_Getter,
+	const auto& Accu_List_Bulk_Mass_Getter,
+	const auto& Accu_List_Bulk_Velocity_Getter,
+	const auto& Accu_List_Bulk_Relative_Velocity2_Getter,
+	const auto& Accu_List_Target_Getter,
+	const auto& Accu_List_Length_Getter,
+	const auto& Accu_List_Getter,
+	const auto& Nr_Accumulated_To_Cells_Getter,
+	const auto& Accumulated_To_Cells_Getter,
+	const auto& Bulk_Velocity,
+	const auto& SInfo,
+	const auto& adiabatic_index,
+	const auto& vacuum_permeability,
+	const auto& boltzmann,
+	const auto& min_pressure,
+	const auto& Mas,
+	const auto& Mom,
+	const auto& Nrj,
+	const auto& Vol_B,
+	const auto& Vol_J,
+	const auto& J_m_V,
+	const auto& Vol_E,
+	const auto& Nr_Ext,
+	const auto& Part_Ext,
+	const auto& Part_C2M,
+	const auto& Part_Des,
+	const auto& Face_dB,
+	const auto& Bg_B,
+	const auto& Mas_fs,
+	const auto& Mom_fs,
+	const auto& Nrj_fs,
+	const auto& Mag_fs,
+	const auto& Substep,
+	const auto& Substep_Min,
+	const auto& Substep_Max,
+	const auto& Max_v,
+	const auto& Face_B,
+	const auto& background_B,
+	const auto& mhd_solver,
+	const auto& Timestep,
+	const auto& max_time_step,
+	const auto& time_step_factor
+) try {
+	using std::cerr;
+	using std::cout;
+	using std::endl;
+	using std::min;
+
+	using Cell = std::remove_reference_t<decltype(grid)>::cell_data_type;
+
+
+	pamhd::mhd::set_minmax_substepping_period(
+		simulation_time,
+		grid,
+		options_mhd,
+		Substep_Min,
+		Substep_Max
+	);
+
+	Cell::set_transfer_all(true, pamhd::mhd::Max_Velocity());
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false, pamhd::mhd::Max_Velocity());
+
+	const double sub_dt = set_minmax_substepping_period(
+		grid,
+		max_time_step,
+		time_step_factor,
+		SInfo,
+		Timestep,
+		Substep_Min,
+		Substep_Max,
+		Max_v
+	);
+
+	Cell::set_transfer_all(true, pamhd::mhd::Substepping_Period());
+	restrict_substepping_period(
+		grid,
+		Substep,
+		Substep_Max,
+		SInfo
+	);
+
+	const int max_substep = update_substeps(grid, SInfo, Substep);
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false, pamhd::mhd::Substepping_Period());
+	if (max_substep > 1) {
+		std::cerr << "Substep > 1 (level > 0) not supported." << std::endl;
+		MPI_Finalize();
+		exit(EXIT_FAILURE);
+	}
+	if (grid.get_rank() == 0) {
+		std::cout
+			<< "Substep: " << sub_dt << ", largest substep period: "
+			<< max_substep << std::endl;
+	}
+
+	double total_dt = 0;
+	for (int substep = 1; substep <= max_substep; substep += 1) {
+		total_dt += sub_dt;
+
+		try {
+			pamhd::particle::accumulate_mhd_data(
+				grid, Part_Int, Part_Pos, Part_Mas_Cell,
+				Part_SpM_Cell, Part_Vel_Cell, Part_Ekin,
+				Nr_Particles, Part_Nr, Bulk_Mass_Getter,
+				Bulk_Momentum_Getter,
+				Bulk_Relative_Velocity2_Getter,
+				Bulk_Velocity_Getter,
+				Accu_List_Number_Of_Particles_Getter,
+				Accu_List_Bulk_Mass_Getter,
+				Accu_List_Bulk_Velocity_Getter,
+				Accu_List_Bulk_Relative_Velocity2_Getter,
+				Accu_List_Target_Getter,
+				Accu_List_Length_Getter,
+				Accu_List_Getter,
+				Nr_Accumulated_To_Cells_Getter,
+				Accumulated_To_Cells_Getter,
+				Bulk_Velocity, SInfo
+			);
+		} catch (const std::exception& e) {
+			cerr << __FILE__ "(" << __LINE__ << ": "
+				<< "Couldn't accumulate MHD data from particles: " << e.what()
+				<< endl;
+			abort();
+		}
+
+		// B required for E calculation
+		Cell::set_transfer_all(true, pamhd::mhd::MHD_State_Conservative());
+		grid.start_remote_neighbor_copy_updates();
+
+		try {
+			pamhd::particle::fill_mhd_fluid_values(
+				grid, adiabatic_index, vacuum_permeability,
+				boltzmann, min_pressure, Nr_Particles,
+				Bulk_Mass_Getter, Bulk_Momentum_Getter,
+				Bulk_Relative_Velocity2_Getter,
+				Part_Int, Mas, Mom, Nrj, Vol_B, SInfo
+			);
+		} catch (const std::exception& e) {
+			cerr << __FILE__ "(" << __LINE__ << ": "
+				<< "Couldn't fill MHD fluid values: " << e.what()
+				<< endl;
+			abort();
+		}
+
+		// inner J for E = (J - V) x B
+		pamhd::divergence::get_curl(
+			grid.inner_cells(), grid, Vol_B, Vol_J, SInfo
+		);
+		// not included in get_curl above
+		for (const auto& cell: grid.inner_cells()) {
+			Vol_J(*cell.data) /= vacuum_permeability;
+		}
+
+		grid.wait_remote_neighbor_copy_update_receives();
+
+		// outer J for E = (J - V) x B
+		pamhd::divergence::get_curl(
+			grid.outer_cells(), grid, Vol_B, Vol_J, SInfo
+		);
+		for (const auto& cell: grid.outer_cells()) {
+			Vol_J(*cell.data) /= vacuum_permeability;
+		}
+
+		grid.wait_remote_neighbor_copy_update_sends();
+		Cell::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
+
+		// inner E = (J - V) x B
+		for (const auto& cell: grid.inner_cells()) {
+			J_m_V(*cell.data) = Vol_J(*cell.data) - pamhd::mhd::get_velocity(Mom(*cell.data), Mas(*cell.data));
+			// calculate electric field for output file
+			Vol_E(*cell.data) = J_m_V(*cell.data).cross(Vol_B(*cell.data));
+		}
+
+		// outer E = (J - V) x B
+		for (const auto& cell: grid.outer_cells()) {
+			J_m_V(*cell.data) = Vol_J(*cell.data) - pamhd::mhd::get_velocity(Mom(*cell.data), Mas(*cell.data));
+			Vol_E(*cell.data) = J_m_V(*cell.data).cross(Vol_B(*cell.data));
+		}
+
+		Cell::set_transfer_all(true, pamhd::particle::Current_Minus_Velocity());
+		grid.update_copies_of_remote_neighbors();
+		Cell::set_transfer_all(false, pamhd::particle::Current_Minus_Velocity());
+
+
+		double
+			max_dt_particle_flight = std::numeric_limits<double>::max(),
+			max_dt_particle_gyro = std::numeric_limits<double>::max();
+
+		std::pair<double, double> particle_max_dt{0, 0};
+
+		// outer particles
+		particle_max_dt = pamhd::particle::solve(
+			sub_dt, grid.outer_cells(), grid,
+			background_B, vacuum_permeability,
+			true, J_m_V, Vol_B, Nr_Ext,
+			Part_Int, Part_Ext, Part_Pos,
+			Part_Vel, Part_C2M, Part_Mas,
+			Part_Des, SInfo
+		);
+
+		max_dt_particle_flight = min(particle_max_dt.first, max_dt_particle_flight);
+		max_dt_particle_gyro = min(particle_max_dt.second, max_dt_particle_gyro);
+
+		Cell::set_transfer_all(
+			true,
+			pamhd::mhd::MHD_State_Conservative(),
+			pamhd::particle::Nr_Particles_External()
+		);
+		grid.start_remote_neighbor_copy_updates();
+
+		// inner MHD
+		pamhd::mhd::get_fluxes(
+			mhd_solver, grid.inner_cells(), grid, 1,
+			adiabatic_index, vacuum_permeability,
+			sub_dt, Mas, Mom, Nrj, Vol_B, Face_dB,
+			Bg_B, Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
+			SInfo, Substep, Max_v
+		);
+
+		// inner particles
+		particle_max_dt = pamhd::particle::solve(
+			sub_dt, grid.inner_cells(), grid,
+			background_B, vacuum_permeability,
+			true, J_m_V, Vol_B, Nr_Ext,
+			Part_Int, Part_Ext, Part_Pos,
+			Part_Vel, Part_C2M, Part_Mas,
+			Part_Des, SInfo
+		);
+		max_dt_particle_flight = min(particle_max_dt.first, max_dt_particle_flight);
+		max_dt_particle_gyro = min(particle_max_dt.second, max_dt_particle_gyro);
+
+		grid.wait_remote_neighbor_copy_update_receives();
+
+		// outer MHD
+		pamhd::mhd::get_fluxes(
+			mhd_solver, grid.outer_cells(), grid, 1,
+			adiabatic_index, vacuum_permeability,
+			sub_dt, Mas, Mom, Nrj, Vol_B, Face_dB,
+			Bg_B, Mas_fs, Mom_fs, Nrj_fs, Mag_fs,
+			SInfo, Substep, Max_v
+		);
+
+		pamhd::particle::resize_receiving_containers<
+			pamhd::particle::Nr_Particles_External,
+			pamhd::particle::Particles_External
+		>(grid.remote_cells(), grid);
+
+		grid.wait_remote_neighbor_copy_update_sends();
+		Cell::set_transfer_all(
+			false,
+			pamhd::mhd::MHD_State_Conservative(),
+			pamhd::particle::Nr_Particles_External()
+		);
+
+		pamhd::mhd::update_mhd_state(
+			grid.local_cells(), grid,
+			substep, Face_B, Face_dB, SInfo,
+			Substep, Mas, Mom, Nrj, Vol_B,
+			Mas_fs, Mom_fs, Nrj_fs, Mag_fs
+		);
+
+		Cell::set_transfer_all(true,
+			pamhd::Face_Magnetic_Field(),
+			// update pressure for B consistency calculation
+			pamhd::mhd::MHD_State_Conservative()
+		);
+		grid.update_copies_of_remote_neighbors();
+
+		// constant thermal pressure when updating vol B after solution
+		pamhd::mhd::update_B_consistency(
+			substep, grid.local_cells(),
+			Mas, Mom, Nrj, Vol_B, Face_B,
+			SInfo, Substep,
+			adiabatic_index,
+			vacuum_permeability,
+			true
+		);
+
+		grid.update_copies_of_remote_neighbors();
+		Cell::set_transfer_all(false,
+			pamhd::Face_Magnetic_Field(),
+			pamhd::mhd::MHD_State_Conservative()
+		);
+
+		Cell::set_transfer_all(true, pamhd::particle::Particles_External());
+		grid.start_remote_neighbor_copy_updates();
+
+		pamhd::particle::incorporate_external_particles<
+			pamhd::particle::Nr_Particles_Internal,
+			pamhd::particle::Particles_Internal,
+			pamhd::particle::Particles_External,
+			pamhd::particle::Destination_Cell
+		>(grid.inner_cells(), grid);
+
+		grid.wait_remote_neighbor_copy_update_receives();
+
+		pamhd::particle::incorporate_external_particles<
+			pamhd::particle::Nr_Particles_Internal,
+			pamhd::particle::Particles_Internal,
+			pamhd::particle::Particles_External,
+			pamhd::particle::Destination_Cell
+		>(grid.outer_cells(), grid);
+
+		pamhd::particle::remove_external_particles<
+			pamhd::particle::Nr_Particles_External,
+			pamhd::particle::Particles_External
+		>(grid.inner_cells(), grid);
+
+		grid.wait_remote_neighbor_copy_update_sends();
+		Cell::set_transfer_all(false, pamhd::particle::Particles_External());
+
+		pamhd::particle::remove_external_particles<
+			pamhd::particle::Nr_Particles_External,
+			pamhd::particle::Particles_External
+		>(grid.outer_cells(), grid);
+
+
+		Cell::set_transfer_all(true, pamhd::mhd::MHD_Flux());
+		grid.update_copies_of_remote_neighbors();
+		Cell::set_transfer_all(false, pamhd::mhd::MHD_Flux());
+
+		Cell::set_transfer_all(true,
+			// update pressure for B consistency calculation
+			pamhd::mhd::MHD_State_Conservative()
+		);
+		grid.update_copies_of_remote_neighbors();
+		Cell::set_transfer_all(false,
+			pamhd::mhd::MHD_State_Conservative()
+		);
+	}
+
+	return total_dt;
+
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
 
 

@@ -29,7 +29,6 @@ Author(s): Ilja Honkonen
 #include "utility"
 #include "vector"
 
-#include "boost/numeric/odeint.hpp"
 #include "dccrg.hpp"
 #include "dccrg_cartesian_geometry.hpp"
 #include "Eigen/Core" // must be included before gensimcell
@@ -270,28 +269,13 @@ int main(int argc, char* argv[])
 
 		max_dt = std::numeric_limits<double>::max();
 
-		auto solve_max_dt
-			= pamhd::particle::solve<
-				boost::numeric::odeint::runge_kutta_fehlberg78<pamhd::particle::state_t>
-			>(
-				time_step,
-				grid.outer_cells(),
-				grid,
-				bg_B,
-				1.2566370614359173e-06,
-				false,
-				Ele,
-				Mag,
-				Nr_Ext,
-				Part_Int,
-				Part_Ext,
-				Part_Pos,
-				Part_Vel,
-				Part_C2M,
-				Part_Mas,
-				Part_Des,
-				SInfo
-			);
+		auto solve_max_dt = pamhd::particle::solve(
+			time_step, grid.outer_cells(), grid,
+			bg_B, 1.2566370614359173e-06,
+			false, Ele, Mag, Nr_Ext,
+			Part_Int, Part_Ext, Part_Pos, Part_Vel,
+			Part_C2M, Part_Mas, Part_Des, SInfo
+		);
 		max_dt = std::min(std::min(solve_max_dt.first, solve_max_dt.second), max_dt);
 
 		Cell::set_transfer_all(
@@ -302,28 +286,13 @@ int main(int argc, char* argv[])
 		);
 		grid.start_remote_neighbor_copy_updates();
 
-		solve_max_dt
-			= pamhd::particle::solve<
-				boost::numeric::odeint::runge_kutta_fehlberg78<pamhd::particle::state_t>
-			>(
-				time_step,
-				grid.inner_cells(),
-				grid,
-				bg_B,
-				1.2566370614359173e-06,
-				false,
-				Ele,
-				Mag,
-				Nr_Ext,
-				Part_Int,
-				Part_Ext,
-				Part_Pos,
-				Part_Vel,
-				Part_C2M,
-				Part_Mas,
-				Part_Des,
-				SInfo
-			);
+		solve_max_dt = pamhd::particle::solve(
+			time_step, grid.inner_cells(), grid,
+			bg_B, 1.2566370614359173e-06,
+			false, Ele, Mag, Nr_Ext,
+			Part_Int, Part_Ext, Part_Pos, Part_Vel,
+			Part_C2M, Part_Mas, Part_Des, SInfo
+		);
 		max_dt = std::min(std::min(solve_max_dt.first, solve_max_dt.second), max_dt);
 
 		simulation_time += time_step;
