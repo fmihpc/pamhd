@@ -552,16 +552,17 @@ int main(int argc, char* argv[])
 		simulation_step++;
 
 		// don't step over the final simulation time
-		double until_end = time_end - simulation_time;
-		const double dt = pamhd::mhd::timestep(
-			mhd_solver, grid, options_mhd, simulation_time,
-			until_end, options_mhd.time_step_factor,
-			options_sim.adiabatic_index,
-			options_sim.vacuum_permeability,
-			Mas, Mom, Nrj, Mag, Face_B, Face_dB, Bg_B,
-			Mas_f, Mom_f, Nrj_f, Mag_f, SInfo,
-			Timestep, Substep, Substep_Min, Substep_Max, Max_v
-		);
+		const double
+			until_end = time_end - simulation_time,
+			dt = pamhd::mhd::timestep(
+				mhd_solver, grid, options_mhd, simulation_time,
+				until_end, options_mhd.time_step_factor,
+				options_sim.adiabatic_index,
+				options_sim.vacuum_permeability,
+				Mas, Mom, Nrj, Mag, Face_B, Face_dB, Bg_B,
+				Mas_f, Mom_f, Nrj_f, Mag_f, SInfo,
+				Timestep, Substep, Substep_Min, Substep_Max, Max_v
+			);
 		if (rank == 0) {
 			cout << "Solved MHD at time " << simulation_time
 				<< " s with time step " << dt << " s" << flush;
