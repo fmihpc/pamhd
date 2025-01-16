@@ -296,10 +296,13 @@ template<
 	Solver_Info_Getter SInfo,
 	const bool clear_at_start = true
 ) {
+	using std::is_same_v;
+	using Eigen::Vector3d;
+
 	const auto
 		grid_start = grid.geometry.get_start(),
 		grid_end = grid.geometry.get_end();
-	const Eigen::Vector3d grid_len{
+	const Vector3d grid_len{
 		grid_end[0] - grid_start[0],
 		grid_end[1] - grid_start[1],
 		grid_end[2] - grid_start[2]
@@ -307,12 +310,24 @@ template<
 
 	for (const auto& cell: cells) {
 		if (SInfo(*cell.data) < 0) {
-			Bulk_Val(*cell.data) = {};
+			using bulk_val_t = std::remove_reference_t<
+				decltype(Bulk_Val(*cell.data))>;
+			if constexpr (is_same_v<bulk_val_t, Vector3d>) {
+				Bulk_Val(*cell.data) = Vector3d::Zero();
+			} else if constexpr (
+				is_same_v<bulk_val_t, std::pair<Vector3d, double>>
+			) {
+				Bulk_Val(*cell.data) = {Vector3d::Zero(), 0};
+			} else {
+				Bulk_Val(*cell.data) = {};
+			}
 			continue;
 		}
 
-		Eigen::Vector3d cell_min, cell_max, cell_length, cell_center;
-		std::tie(cell_min, cell_max, cell_length, cell_center) = get_cell_geometry(cell.id, grid.geometry);
+		Vector3d cell_min, cell_max, cell_length, cell_center;
+		std::tie(
+			cell_min, cell_max, cell_length, cell_center
+		) = get_cell_geometry(cell.id, grid.geometry);
 
 		if (clear_at_start) {
 			Accu_List(*cell.data).clear();
@@ -320,7 +335,7 @@ template<
 
 		for (auto& particle: Part(*cell.data)) {
 			auto& position = Part_Pos(particle);
-			const Eigen::Vector3d
+			const Vector3d
 				value_box_min{
 					position[0] - cell_length[0] / 2,
 					position[1] - cell_length[1] / 2,
@@ -349,7 +364,7 @@ template<
 			// accumulate to neighbors
 			for (const auto& neighbor: cell.neighbors_of) {
 
-				Eigen::Vector3d neigh_min, neigh_max, neigh_length, neigh_center;
+				Vector3d neigh_min, neigh_max, neigh_length, neigh_center;
 				std::tie(neigh_min, neigh_max, neigh_length, neigh_center) = get_cell_geometry(neighbor.id, grid.geometry);
 
 				// handle periodic grid
