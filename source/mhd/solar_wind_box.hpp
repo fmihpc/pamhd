@@ -1,7 +1,7 @@
 /*
 MHD parts of solar wind box program.
 
-Copyright 2024 Finnish Meteorological Institute
+Copyright 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -250,6 +250,303 @@ template<
 			vacuum_permeability
 		);
 	}
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
+
+
+template<
+	class JSON,
+	class Cells,
+	class Mass_Density_Getter,
+	class Momentum_Density_Getter,
+	class Energy_Density_Getter,
+	class Volume_Magnetic_Field_Getter,
+	class Face_Magnetic_Field_Getter
+> void apply_solar_wind_boundaries(
+	const JSON& json,
+	const Cells& solar_wind_cells,
+	const int& solar_wind_dir,
+	const double& sim_time,
+	const double& adiabatic_index,
+	const double& vacuum_permeability,
+	const double& proton_mass,
+	const Mass_Density_Getter& Mas,
+	const Momentum_Density_Getter& Mom,
+	const Energy_Density_Getter& Nrj,
+	const Volume_Magnetic_Field_Getter& Vol_B,
+	const Face_Magnetic_Field_Getter& Face_B
+) try {
+	const auto [
+		mass, pressure, velocity, magnetic_field
+	] = pamhd::mhd::get_solar_wind_parameters(
+		json, sim_time, proton_mass
+	);
+	for (const auto& cell: solar_wind_cells) {
+		Mas(*cell.data) = mass;
+		Mom(*cell.data) = {
+			mass*velocity[0],
+			mass*velocity[1],
+			mass*velocity[2]
+		};
+		// prevent div(B) at solar wind boundary
+		if (solar_wind_dir != abs(1)) {
+			Vol_B(*cell.data)[0]   =
+			Face_B(*cell.data)(-1) =
+			Face_B(*cell.data)(+1) = magnetic_field[0];
+		}
+		if (solar_wind_dir != abs(2)) {
+			Vol_B(*cell.data)[1]   =
+			Face_B(*cell.data)(-2) =
+			Face_B(*cell.data)(+2) = magnetic_field[1];
+		}
+		if (solar_wind_dir != abs(3)) {
+			Vol_B(*cell.data)[2]   =
+			Face_B(*cell.data)(-3) =
+			Face_B(*cell.data)(+3) = magnetic_field[2];
+		}
+		Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
+			mass, velocity, pressure, magnetic_field,
+			adiabatic_index, vacuum_permeability
+		);
+	}
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
+
+
+template<
+	class Grid,
+	class JSON,
+	class SW_Cells,
+	class Face_Cells,
+	class Edge_Cells,
+	class Vert_Cells,
+	class Planet_Cells,
+	class Mass_Density_Getter,
+	class Momentum_Density_Getter,
+	class Energy_Density_Getter,
+	class Volume_Magnetic_Field_Getter,
+	class Face_Magnetic_Field_Getter,
+	class Solver_Info_Getter
+> void apply_boundaries(
+	Grid& grid,
+	const double& sim_time,
+	const JSON& json,
+	const int& solar_wind_dir,
+	const SW_Cells& solar_wind_cells,
+	const Face_Cells& face_cells,
+	const Edge_Cells& edge_cells,
+	const Vert_Cells& vert_cells,
+	const Planet_Cells& planet_cells,
+	const double& adiabatic_index,
+	const double& vacuum_permeability,
+	const double& proton_mass,
+	const Mass_Density_Getter& Mas,
+	const Momentum_Density_Getter& Mom,
+	const Energy_Density_Getter& Nrj,
+	const Volume_Magnetic_Field_Getter& Vol_B,
+	const Face_Magnetic_Field_Getter& Face_B,
+	const Solver_Info_Getter& SInfo
+) try {
+	// boundary and normal cell share face
+	for (int dir: {-3,-2,-1,+1,+2,+3}) {
+		for (const auto& cell: face_cells(dir)) {
+			for (const auto& neighbor: cell.neighbors_of) {
+				const auto& fn = neighbor.face_neighbor;
+				if (fn != -dir) continue;
+				Mas(*cell.data) = Mas(*neighbor.data);
+				Mom(*cell.data) = Mom(*neighbor.data);
+				Nrj(*cell.data) = Nrj(*neighbor.data);
+				Vol_B(*cell.data) = Vol_B(*neighbor.data);
+				for (int dir2: {-3,-2,-1,+1,+2,+3}) {
+					if (dir2 == fn or dir2 == -fn) {
+						Face_B(*cell.data)(dir2) = Face_B(*neighbor.data)(-fn);
+					} else {
+						Face_B(*cell.data)(dir2) = Face_B(*neighbor.data)(dir2);
+					}
+				}
+			}
+		}
+	}
+
+	// boundary and normal cell share edge
+	for (int dim: {0, 1, 2})
+	for (int dir1: {-1, +1})
+	for (int dir2: {-1, +1}) {
+		for (const auto& cell: edge_cells(dim, dir1, dir2)) {
+			for (const auto& neighbor: cell.neighbors_of) {
+				const auto& en = neighbor.edge_neighbor;
+				if (en[0] != dim or en[1] != -dir1 or en[2] != -dir2) continue;
+				Mas(*cell.data) = Mas(*neighbor.data);
+				Mom(*cell.data) = Mom(*neighbor.data);
+				Nrj(*cell.data) = Nrj(*neighbor.data);
+				Vol_B(*cell.data) = Vol_B(*neighbor.data);
+				if (dim == 0) {
+					Face_B(*cell.data)(-1) = Face_B(*neighbor.data)(-1);
+					Face_B(*cell.data)(+1) = Face_B(*neighbor.data)(+1);
+					if (dir1 < 0) {
+						Face_B(*cell.data)(-2) =
+						Face_B(*cell.data)(+2) = Face_B(*neighbor.data)(-2);
+					} else {
+						Face_B(*cell.data)(-2) =
+						Face_B(*cell.data)(+2) = Face_B(*neighbor.data)(+2);
+					}
+					if (dir2 < 0) {
+						Face_B(*cell.data)(-3) =
+						Face_B(*cell.data)(+3) = Face_B(*neighbor.data)(-3);
+					} else {
+						Face_B(*cell.data)(-3) =
+						Face_B(*cell.data)(+3) = Face_B(*neighbor.data)(+3);
+					}
+				}
+				if (dim == 1) {
+					Face_B(*cell.data)(-2) = Face_B(*neighbor.data)(-2);
+					Face_B(*cell.data)(+2) = Face_B(*neighbor.data)(+2);
+					if (dir1 < 0) {
+						Face_B(*cell.data)(-1) =
+						Face_B(*cell.data)(+1) = Face_B(*neighbor.data)(-1);
+					} else {
+						Face_B(*cell.data)(-1) =
+						Face_B(*cell.data)(+1) = Face_B(*neighbor.data)(+1);
+					}
+					if (dir2 < 0) {
+						Face_B(*cell.data)(-3) =
+						Face_B(*cell.data)(+3) = Face_B(*neighbor.data)(-3);
+					} else {
+						Face_B(*cell.data)(-3) =
+						Face_B(*cell.data)(+3) = Face_B(*neighbor.data)(+3);
+					}
+				}
+				if (dim == 2) {
+					Face_B(*cell.data)(-3) = Face_B(*neighbor.data)(-3);
+					Face_B(*cell.data)(+3) = Face_B(*neighbor.data)(+3);
+					if (dir1 < 0) {
+						Face_B(*cell.data)(-1) =
+						Face_B(*cell.data)(+1) = Face_B(*neighbor.data)(-1);
+					} else {
+						Face_B(*cell.data)(-1) =
+						Face_B(*cell.data)(+1) = Face_B(*neighbor.data)(+1);
+					}
+					if (dir2 < 0) {
+						Face_B(*cell.data)(-2) =
+						Face_B(*cell.data)(+2) = Face_B(*neighbor.data)(-2);
+					} else {
+						Face_B(*cell.data)(-2) =
+						Face_B(*cell.data)(+2) = Face_B(*neighbor.data)(+2);
+					}
+				}
+			}
+		}
+	}
+
+	// boundary and normal cell share vertex
+	for (const auto& cell: vert_cells) {
+		for (const auto& neighbor: cell.neighbors_of) {
+			const auto& fn = neighbor.face_neighbor;
+			if (fn != 0) continue;
+			const auto& en = neighbor.edge_neighbor;
+			if (en[0] >= 0) continue;
+
+			Mas(*cell.data) = Mas(*neighbor.data);
+			Mom(*cell.data) = Mom(*neighbor.data);
+			Nrj(*cell.data) = Nrj(*neighbor.data);
+			Vol_B(*cell.data) = Vol_B(*neighbor.data);
+			if (neighbor.x < 0) {
+				Face_B(*cell.data)(-1) =
+				Face_B(*cell.data)(+1) = Face_B(*neighbor.data)(+1);
+			} else {
+				Face_B(*cell.data)(-1) =
+				Face_B(*cell.data)(+1) = Face_B(*neighbor.data)(-1);
+			}
+			if (neighbor.y < 0) {
+				Face_B(*cell.data)(-2) =
+				Face_B(*cell.data)(+2) = Face_B(*neighbor.data)(+2);
+			} else {
+				Face_B(*cell.data)(-2) =
+				Face_B(*cell.data)(+2) = Face_B(*neighbor.data)(-2);
+			}
+			if (neighbor.z < 0) {
+				Face_B(*cell.data)(-3) =
+				Face_B(*cell.data)(+3) = Face_B(*neighbor.data)(+3);
+			} else {
+				Face_B(*cell.data)(-3) =
+				Face_B(*cell.data)(+3) = Face_B(*neighbor.data)(-3);
+			}
+		}
+	}
+
+	// planetary boundary cells
+	for (const auto& cell: planet_cells) {
+		Mas(*cell.data) = proton_mass * 1e9;
+		Mom(*cell.data) = {0, 0, 0};
+		Vol_B(*cell.data) = {0, 0, 0};
+		Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
+			Mas(*cell.data),
+			Mom(*cell.data),
+			1e-11,
+			Vol_B(*cell.data),
+			adiabatic_index,
+			vacuum_permeability
+		);
+		Face_B(*cell.data)(-1) =
+		Face_B(*cell.data)(+1) =
+		Face_B(*cell.data)(-2) =
+		Face_B(*cell.data)(+2) =
+		Face_B(*cell.data)(-3) =
+		Face_B(*cell.data)(+3) = 0;
+
+		pamhd::grid::Face_Type<bool> have_value{false, false, false, false, false, false};
+		// corrections to Face_B from normal neighbors
+		for (const auto& neighbor: cell.neighbors_of) {
+			if (SInfo(*neighbor.data) < 1) continue;
+
+			const auto& fn = neighbor.face_neighbor;
+			const auto& en = neighbor.edge_neighbor;
+
+			if (fn != 0) {
+				Face_B(*cell.data)(fn) = Face_B(*neighbor.data)(-fn);
+				have_value(fn) = true;
+			} else if (en[0] >= 0) {
+				// TODO
+			} else {
+				// TODO
+			}
+		}
+		for (int dir: {-3,-2,-1,+1,+2,+3}) {
+			if (not have_value(dir)) {
+				if (have_value(-dir)) {
+					Face_B(*cell.data)(dir) = Face_B(*cell.data)(-dir);
+				} else {
+				}
+			}
+		}
+		Vol_B(*cell.data) = {
+			0.5*(Face_B(*cell.data)(-1) + Face_B(*cell.data)(+1)),
+			0.5*(Face_B(*cell.data)(-2) + Face_B(*cell.data)(+2)),
+			0.5*(Face_B(*cell.data)(-3) + Face_B(*cell.data)(+3))
+		};
+		Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
+			Mas(*cell.data),
+			Mom(*cell.data),
+			1e-11,
+			Vol_B(*cell.data),
+			adiabatic_index,
+			vacuum_permeability
+		);
+	}
+
+	apply_solar_wind_boundaries(
+		json, solar_wind_cells, solar_wind_dir, sim_time,
+		adiabatic_index, vacuum_permeability, proton_mass,
+		Mas, Mom, Nrj, Vol_B, Face_B
+	);
+	grid.update_copies_of_remote_neighbors();
+
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
