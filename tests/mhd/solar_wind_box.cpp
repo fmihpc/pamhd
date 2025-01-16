@@ -45,7 +45,6 @@ Author(s): Ilja Honkonen
 #include "rapidjson/error/en.h"
 
 #include "background_magnetic_field.hpp"
-#include "solar_wind_box_options.hpp"
 #include "boundaries/geometries.hpp"
 #include "boundaries/multivariable_boundaries.hpp"
 #include "boundaries/multivariable_initial_conditions.hpp"
@@ -69,6 +68,7 @@ Author(s): Ilja Honkonen
 #include "mhd/solve_staggered.hpp"
 #include "mhd/variables.hpp"
 #include "simulation_options.hpp"
+#include "solar_wind_box_options.hpp"
 #include "variables.hpp"
 
 
@@ -110,11 +110,16 @@ const auto Face_dB = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::Face_dB()];
 };
 // divergence of magnetic field
-const auto Mag_div = [](Cell& cell_data)->auto&{
+const auto Div_B = [](Cell& cell_data)->auto&{
 	return cell_data[pamhd::Magnetic_Field_Divergence()];
 };
 
-// solver info variable for boundary logic
+/*! Solver info variable for boundary logic
+
+-1 for cells not to be read nor written
+0 for read-only cells
+1 for read-write cells
+*/
 const auto SInfo = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::Solver_Info()];
 };
@@ -159,7 +164,6 @@ const auto Ref_max = [](Cell& cell_data)->auto& {
 
 
 int main(int argc, char* argv[]) {
-	using std::abs;
 	using std::ceil;
 	using std::cerr;
 	using std::cout;
@@ -533,10 +537,6 @@ int main(int argc, char* argv[]) {
 		pamhd::Solver_Info()
 	);
 
-	if (rank == 0) {
-		cout << "Done initializing MHD" << endl;
-	}
-
 	// final init with timestep of 0
 	pamhd::mhd::timestep(
 		mhd_solver, grid, options_mhd, options_sim.time_start,
@@ -547,8 +547,12 @@ int main(int argc, char* argv[]) {
 		Mas_f, Mom_f, Nrj_f, Mag_f, SInfo,
 		Timestep, Substep, Substep_Min, Substep_Max, Max_v
 	);
+	if (rank == 0) {
+		cout << "Done initializing MHD" << endl;
+	}
+
 	size_t simulation_step = 0;
-	constexpr uint64_t file_version = 3;
+	constexpr uint64_t file_version = 4;
 	if (options_mhd.save_n >= 0) {
 		if (rank == 0) {
 			cout << "Saving MHD at time " << simulation_time << endl;
@@ -597,7 +601,7 @@ int main(int argc, char* argv[]) {
 
 		const auto avg_div = pamhd::math::get_divergence_staggered(
 			grid.local_cells(), grid,
-			Face_B, Mag_div, SInfo
+			Face_B, Div_B, SInfo
 		);
 		if (rank == 0) {
 			cout << " average divergence " << avg_div << endl;

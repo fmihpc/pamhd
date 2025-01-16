@@ -2,8 +2,8 @@
 MHD test program of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2019, 2022, 2023,
-          2024, 2025 Finnish Meteorological Institute
+Copyright 2018, 2019, 2022,
+          2023, 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -97,7 +97,7 @@ const auto Mom = [](Cell& cell_data)->auto& {
 const auto Nrj = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Total_Energy_Density()];
 };
-const auto Mag = [](Cell& cell_data)->auto& {
+const auto Vol_B = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()];
 };
 const auto Face_B = [](Cell& cell_data)->auto& {
@@ -124,11 +124,9 @@ const auto SInfo = [](Cell& cell_data)->auto& {
 const auto Substep = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::mhd::Substepping_Period()];
 };
-
 const auto Substep_Min = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::mhd::Substep_Min()];
 };
-
 const auto Substep_Max = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::mhd::Substep_Max()];
 };
@@ -164,8 +162,8 @@ const auto Ref_max = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::grid::Target_Refinement_Level_Max()];
 };
 
-int main(int argc, char* argv[])
-{
+
+int main(int argc, char* argv[]) {
 	using std::ceil;
 	using std::cerr;
 	using std::cout;
@@ -195,7 +193,7 @@ int main(int argc, char* argv[])
 		abort();
 	}
 
-	// intialize Zoltan
+	// initialize Zoltan
 	float zoltan_version;
 	if (Zoltan_Initialize(argc, argv, &zoltan_version) != ZOLTAN_OK) {
 		cerr << "Zoltan_Initialize failed." << endl;
@@ -239,10 +237,13 @@ int main(int argc, char* argv[])
 	rapidjson::Document document;
 	document.Parse(json.c_str());
 	if (document.HasParseError()) {
-		cerr << "Couldn't parse json data in file " << argv[1]
-			<< " at character position " << document.GetErrorOffset()
-			<< ": " << rapidjson::GetParseError_En(document.GetParseError())
-			<< endl;
+		if (rank == 0) {
+			cerr << "Couldn't parse json data in file "
+				<< argv[1] << " at character position "
+				<< document.GetErrorOffset() << ": "
+				<< rapidjson::GetParseError_En(document.GetParseError())
+				<< endl;
+		}
 		MPI_Finalize();
 		return EXIT_FAILURE;
 	}
@@ -454,7 +455,7 @@ int main(int argc, char* argv[])
 
 	pamhd::mhd::update_B_consistency(
 		0, grid.local_cells(),
-		Mas, Mom, Nrj, Mag, Face_B,
+		Mas, Mom, Nrj, Vol_B, Face_B,
 		SInfo, Substep,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
@@ -476,7 +477,7 @@ int main(int argc, char* argv[])
 		options_sim.vacuum_permeability,
 		options_sim.proton_mass,
 		true,
-		Mas, Mom, Nrj, Mag,
+		Mas, Mom, Nrj, Vol_B,
 		Mas_f, Mom_f, Nrj_f
 	);
 	grid.update_copies_of_remote_neighbors();
@@ -503,7 +504,7 @@ int main(int argc, char* argv[])
 		simulation_time, options_sim.proton_mass,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
-		Mas, Mom, Nrj, Mag,
+		Mas, Mom, Nrj, Vol_B,
 		Face_B, SInfo, FInfo, Substep
 	);
 
@@ -513,7 +514,7 @@ int main(int argc, char* argv[])
 		0, options_mhd.time_step_factor,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
-		Mas, Mom, Nrj, Mag, Face_B, Face_dB, Bg_B,
+		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 		Mas_f, Mom_f, Nrj_f, Mag_f, SInfo,
 		Timestep, Substep, Substep_Min, Substep_Max, Max_v
 	);
@@ -559,7 +560,7 @@ int main(int argc, char* argv[])
 				until_end, options_mhd.time_step_factor,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
-				Mas, Mom, Nrj, Mag, Face_B, Face_dB, Bg_B,
+				Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 				Mas_f, Mom_f, Nrj_f, Mag_f, SInfo,
 				Timestep, Substep, Substep_Min, Substep_Max, Max_v
 			);
@@ -583,7 +584,7 @@ int main(int argc, char* argv[])
 				simulation_time, options_sim.proton_mass,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
-				Mas, Mom, Nrj, Mag, Face_B, Bg_B,
+				Mas, Mom, Nrj, Vol_B, Face_B, Bg_B,
 				SInfo, FInfo, Ref_min, Ref_max,
 				Substep, Max_v
 			);
@@ -594,7 +595,7 @@ int main(int argc, char* argv[])
 			simulation_time, options_sim.proton_mass,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
-			Mas, Mom, Nrj, Mag,
+			Mas, Mom, Nrj, Vol_B,
 			Face_B, SInfo, FInfo, Substep
 		);
 
