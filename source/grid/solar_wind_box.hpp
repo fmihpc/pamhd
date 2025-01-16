@@ -156,6 +156,10 @@ template<
 		if (indices[2] == 0) z = -1;
 		else if (indices[2] == end_indices[2] - len) z = +1;
 
+		if (len0[0] == 1) x = 0;
+		if (len0[1] == 1) y = 0;
+		if (len0[2] == 1) z = 0;
+
 		if (x != 0 and y != 0 and z != 0) {
 			vert_bdy.push_back(cell);
 		} else if (y < 0 and z < 0) {
@@ -357,7 +361,7 @@ template<
 }
 
 
-/*! Prepares grid for MHD initialization
+/*! Prepares grid for physics initialization
 
 -maximally refines inner boundary cells + their normal neighbors
 -sets default minimum and maximum target refinement levels
@@ -447,6 +451,7 @@ template<
 		int min_distance = 1 << 30; // from outer wall
 		// FIXME: assumes neighborhood size of 3
 		for (auto dim: {0, 1, 2}) {
+			if (len0[dim] == 1) continue;
 			min_distance = min(min(min_distance,
 				int(indices[dim] / indices0)),
 				int((end_indices[dim]-indices[dim]-1) / indices0));
