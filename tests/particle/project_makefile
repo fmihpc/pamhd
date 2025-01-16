@@ -2,8 +2,6 @@ TESTS_PARTICLE_EXECUTABLES = \
   tests/particle/solve1.exe \
   tests/particle/common.exe \
   tests/particle/dipole.exe \
-  tests/particle/odeint.exe \
-  tests/particle/dipole_odeint.exe \
   tests/particle/create_particles.exe \
   tests/particle/calculate_moments.exe \
   tests/particle/velocity.exe \
@@ -32,8 +30,6 @@ TESTS_PARTICLE_TESTS = \
   tests/particle/solve1.tst \
   tests/particle/common.tst \
   tests/particle/dipole.tst \
-  tests/particle/odeint.tst \
-  tests/particle/dipole_odeint.tst \
   tests/particle/create_particles.tst \
   tests/particle/calculate_moments.tst \
   tests/particle/velocity.tst \
@@ -121,30 +117,10 @@ tests/particle/common.exe: \
   $(TEST_PARTICLE_COMMON_DEPS)
 	@printf "MPICXX $<\n" && $(MPICXX) -DDONT_USE_MPI $(TEST_PARTICLE_COMMON_COMPILE)
 
-tests/particle/odeint.exe: \
-  tests/particle/odeint.cpp \
-  $(TEST_PARTICLE_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX) -DDONT_USE_MPI $(TEST_PARTICLE_COMMON_COMPILE) \
-	  $(BOOST_LDFLAGS) \
-	  $(BOOST_LIBS) \
-	  -Wno-unused-variable \
-	  -Wno-unused-parameter \
-	  -Wno-unused-function
-
 tests/particle/dipole.exe: \
   tests/particle/dipole.cpp \
   $(TEST_PARTICLE_COMMON_DEPS)
 	@printf "CXX $<\n" && $(CXX) $(TEST_PARTICLE_COMMON_COMPILE)
-
-tests/particle/dipole_odeint.exe: \
-  tests/particle/dipole_odeint.cpp \
-  $(TEST_PARTICLE_COMMON_DEPS)
-	@printf "CXX $<\n" && $(CXX) $(TEST_PARTICLE_COMMON_COMPILE) \
-	  $(BOOST_LDFLAGS) \
-	  $(BOOST_LIBS) \
-	  -Wno-unused-variable \
-	  -Wno-unused-parameter \
-	  -Wno-unused-function
 
 tests/particle/create_particles.exe: \
   tests/particle/create_particles.cpp \
