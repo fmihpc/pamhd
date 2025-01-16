@@ -498,7 +498,7 @@ double timestep(
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(false, pamhd::mhd::Max_Velocity());
 
-	const double sub_dt = set_minmax_substepping_period(
+	const double sub_dt = pamhd::mhd::set_minmax_substepping_period(
 		grid,
 		max_time_step,
 		time_step_factor,

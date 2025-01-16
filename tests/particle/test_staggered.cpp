@@ -927,14 +927,34 @@ int main(int argc, char* argv[])
 	);
 
 	// final init with timestep of 0
-	pamhd::mhd::timestep(
-		mhd_solver, grid, options_mhd, options_sim.time_start,
-		0, options_mhd.time_step_factor,
+	pamhd::particle::timestep(
+		options_sim.time_start, grid, options_mhd, Part_Int,
+		Part_Pos, Part_Mas, Part_Mas_Cell, Part_SpM,
+		Part_SpM_Cell, Part_Vel, Part_Vel_Cell, Part_Ekin,
+		Nr_Particles, Part_Nr, Bulk_Mass_Getter,
+		Bulk_Momentum_Getter,
+		Bulk_Relative_Velocity2_Getter,
+		Bulk_Velocity_Getter,
+		Accu_List_Number_Of_Particles_Getter,
+		Accu_List_Bulk_Mass_Getter,
+		Accu_List_Bulk_Velocity_Getter,
+		Accu_List_Bulk_Relative_Velocity2_Getter,
+		Accu_List_Target_Getter,
+		Accu_List_Length_Getter,
+		Accu_List_Getter,
+		pamhd::particle::Nr_Accumulated_To_Cells(),
+		pamhd::particle::Accumulated_To_Cells(),
+		pamhd::particle::Bulk_Velocity(), SInfo,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
-		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
-		Mas_f, Mom_f, Nrj_f, Mag_f, SInfo,
-		Timestep, Substep, Substep_Min, Substep_Max, Max_v
+		options_particle.boltzmann,
+		options_mhd.min_pressure,
+		Mas, Mom, Nrj, Vol_B, Vol_J, J_m_V, Vol_E, Nr_Ext,
+		Part_Ext, Part_C2M, Part_Des, Face_dB, Bg_B,
+		Mas_f, Mom_f, Nrj_f, Mag_f, Substep, Substep_Min,
+		Substep_Max, Max_v, Face_B, background_B,
+		mhd_solver, Timestep, 0,
+		options_mhd.time_step_factor
 	);
 	if (rank == 0) {
 		cout << "Done initializing" << endl;
@@ -988,7 +1008,7 @@ int main(int argc, char* argv[])
 				Substep_Max, Max_v, Face_B, background_B,
 				mhd_solver, Timestep, until_end,
 				options_mhd.time_step_factor
-		);
+			);
 
 		if (rank == 0) {
 			cout << "Solution calculated at time " << simulation_time
