@@ -35,7 +35,6 @@ Author(s): Ilja Honkonen
 #include "vector"
 
 #include "boost/filesystem.hpp"
-#include "boost/lexical_cast.hpp"
 #include "dccrg.hpp"
 #include "dccrg_cartesian_geometry.hpp"
 #include "Eigen/Core" // must be included before gensimcell.hpp
@@ -282,8 +281,8 @@ int main(int argc, char* argv[]) {
 		pamhd::mhd::Velocity,
 		pamhd::mhd::Pressure,
 		pamhd::Magnetic_Field
-	> initial_conditions;
-	initial_conditions.set(document);
+	> initial_conditions_mhd;
+	initial_conditions_mhd.set(document);
 
 	pamhd::boundaries::Multivariable_Boundaries<
 		uint64_t,
@@ -292,8 +291,8 @@ int main(int argc, char* argv[]) {
 		pamhd::mhd::Velocity,
 		pamhd::mhd::Pressure,
 		pamhd::Magnetic_Field
-	> boundaries;
-	boundaries.set(document);
+	> boundaries_mhd;
+	boundaries_mhd.set(document);
 
 	pamhd::Background_Magnetic_Field<
 		double,
@@ -336,7 +335,7 @@ int main(int argc, char* argv[]) {
 		.set_initial_length(number_of_cells)
 		.set_neighborhood_length(neighborhood_size)
 		.set_periodic(periodic[0], periodic[1], periodic[2])
-		.set_load_balancing_method(options_sim.lb_name)
+		.set_load_balancing_method(options_sim.lb_name.c_str())
 		.set_maximum_refinement_level(options_grid.get_max_ref_lvl())
 		.initialize(comm);
 
@@ -436,7 +435,7 @@ int main(int argc, char* argv[]) {
 	}
 	pamhd::mhd::initialize_magnetic_field_staggered<pamhd::Magnetic_Field>(
 		geometries,
-		initial_conditions,
+		initial_conditions_mhd,
 		background_B,
 		grid,
 		simulation_time,
@@ -470,7 +469,7 @@ int main(int argc, char* argv[]) {
 
 	pamhd::mhd::initialize_fluid_staggered(
 		geometries,
-		initial_conditions,
+		initial_conditions_mhd,
 		grid,
 		simulation_time,
 		options_sim.adiabatic_index,
@@ -489,7 +488,7 @@ int main(int argc, char* argv[]) {
 
 	Cell::set_transfer_all(true, pamhd::Solver_Info());
 	pamhd::mhd::set_solver_info<pamhd::Solver_Info>(
-		grid, boundaries, geometries, SInfo
+		grid, boundaries_mhd, geometries, SInfo
 	);
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(false, pamhd::Solver_Info());
@@ -500,7 +499,7 @@ int main(int argc, char* argv[]) {
 	Cell::set_transfer_all(false, pamhd::mhd::Face_Boundary_Type());
 
 	pamhd::mhd::apply_boundaries(
-		grid, geometries, boundaries,
+		grid, geometries, boundaries_mhd,
 		simulation_time, options_sim.proton_mass,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
@@ -580,7 +579,7 @@ int main(int argc, char* argv[]) {
 			pamhd::mhd::adapt_grid(
 				grid,
 				options_grid, options_mhd,
-				geometries, boundaries, background_B,
+				geometries, boundaries_mhd, background_B,
 				simulation_time, options_sim.proton_mass,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
@@ -591,7 +590,7 @@ int main(int argc, char* argv[]) {
 		}
 
 		pamhd::mhd::apply_boundaries(
-			grid, geometries, boundaries,
+			grid, geometries, boundaries_mhd,
 			simulation_time, options_sim.proton_mass,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
