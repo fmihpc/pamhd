@@ -2,7 +2,7 @@
 Variables of PAMHD common to several test programs.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2023, 2024 Finnish Meteorological Institute
+Copyright 2023, 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -94,6 +94,7 @@ Magnetic field stored on cell's faces.
 Component of magnetic field normal to the face is stored for each face.
 */
 struct Face_Magnetic_Field {
+	//static bool is_stale;
 	using data_type = pamhd::grid::Face_Type<double>;
 	static const std::string get_name() { return {"magnetic field on faces"}; }
 	static const std::string get_option_name() { return {"face-b"}; }
@@ -110,10 +111,6 @@ struct Edge_Electric_Field {
 	static const std::string get_name() { return {"electric field on edges"}; }
 	static const std::string get_option_name() { return {"edge-e"}; }
 	static const std::string get_option_help() { return {"electric field on cell edges parallel to cell edges"}; }
-};
-
-struct Nr_Edge_Items {
-	using data_type = pamhd::grid::Edge_Type<int>;
 };
 
 struct MPI_Rank {

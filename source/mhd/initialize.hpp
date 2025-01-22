@@ -2,7 +2,7 @@
 Initializes the MHD solution of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019, 2024 Finnish Meteorological Institute
+Copyright 2019, 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -94,15 +94,15 @@ template <
 		Mag(*cell.data) = magnetic_field;
 
 		const auto cell_end = grid.geometry.get_max(cell.id);
-		Bg_B(*cell.data)(0, 1) = bg_B.get_background_field(
+		Bg_B.data(*cell.data)(0, 1) = bg_B.get_background_field(
 			{cell_end[0], c[1], c[2]},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(1, 1) = bg_B.get_background_field(
+		Bg_B.data(*cell.data)(1, 1) = bg_B.get_background_field(
 			{c[0], cell_end[1], c[2]},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(2, 1) = bg_B.get_background_field(
+		Bg_B.data(*cell.data)(2, 1) = bg_B.get_background_field(
 			{c[0], c[1], cell_end[2]},
 			vacuum_permeability
 		);
@@ -377,6 +377,7 @@ template <
 	class Geometries,
 	class Init_Cond,
 	class Grid,
+	class MHD_Getter,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
@@ -388,20 +389,23 @@ template <
 	const Geometries& geometries,
 	Init_Cond& initial_conditions,
 	Grid& grid,
-	const double time,
-	const double adiabatic_index,
-	const double vacuum_permeability,
-	const double proton_mass,
-	const bool verbose,
-	const Mass_Density_Getter Mas,
-	const Momentum_Density_Getter Mom,
-	const Total_Energy_Density_Getter Nrj,
-	const Magnetic_Field_Getter Mag,
-	const Mass_Density_Flux_Getter Mas_f,
-	const Momentum_Density_Flux_Getter Mom_f,
-	const Total_Energy_Density_Flux_Getter Nrj_f
+	const double& time,
+	const double& adiabatic_index,
+	const double& vacuum_permeability,
+	const double& proton_mass,
+	const bool& verbose,
+	const MHD_Getter& MHD,
+	const Mass_Density_Getter& Mas,
+	const Momentum_Density_Getter& Mom,
+	const Total_Energy_Density_Getter& Nrj,
+	const Magnetic_Field_Getter& Mag,
+	const Mass_Density_Flux_Getter& Mas_f,
+	const Momentum_Density_Flux_Getter& Mom_f,
+	const Total_Energy_Density_Flux_Getter& Nrj_f
 ) {
 	using std::get;
+
+	using Cell = Grid::cell_data_type;
 
 	if (verbose and grid.get_rank() == 0) {
 		std::cout << "Setting default MHD state... ";
@@ -598,6 +602,10 @@ template <
 			}
 		}
 	}
+
+	Cell::set_transfer_all(true, MHD.type());
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false, MHD.type());
 
 	if (verbose and grid.get_rank() == 0) {
 		std::cout << "done" << std::endl;

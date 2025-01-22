@@ -2,7 +2,8 @@
 Functions for working with divergence of vector field.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2019, 2022, 2023, 2024 Finnish Meteorological Institute
+Copyright 2018, 2019, 2022,
+          2023, 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -70,18 +71,18 @@ template <
 	double local_divergence = 0, global_divergence = 0;
 	uint64_t local_calculated_cells = 0, global_calculated_cells = 0;
 	for (const auto& cell: cells) {
-		if (Cell_Type(*cell.data) <= 0) {
+		if (Cell_Type.data(*cell.data) <= 0) {
 			continue;
 		}
 		local_calculated_cells++;
 
 		const auto cell_length = grid.geometry.get_length(cell.id);
-		auto& div = Divergence(*cell.data);
+		auto& div = Divergence.data(*cell.data);
 		div = 0.0;
 
 		for (auto dim: {0, 1, 2})
 		for (auto side: {-1, +1}) {
-			div += side * Face_Var(*cell.data)(dim, side) / cell_length[dim];
+			div += side * Face_Var.data(*cell.data)(dim, side) / cell_length[dim];
 		}
 		local_divergence += std::abs(div);
 	}

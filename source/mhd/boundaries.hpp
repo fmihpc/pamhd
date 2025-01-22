@@ -2,7 +2,7 @@
 Handles boundary logic of MHD part of PAMHD.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2023, 2024 Finnish Meteorological Institute
+Copyright 2023, 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -61,16 +61,17 @@ namespace mhd {
 
 
 /*!
-Prepares boundary information needed for MHD solver about each simulation cell.
+Prepares boundary information needed for solver(s)
+about each simulation cell.
 
-MPI transfer of SInfo variable must be switched on before calling this.
+MPI transfer of variable returned by SInfo must be
+switched on before calling this.
 
 1 means normal read-write cell
 0 means boundary read-only cell
 -1 means dont_solve cell that's not to be read nor written
 */
 template<
-	class Solver_Info,
 	class Grid,
 	class Boundaries,
 	class Boundary_Geometries,
@@ -84,10 +85,13 @@ template<
 	using std::runtime_error;
 	using std::to_string;
 
+	using Cell = Grid::cell_data_type;
+	Cell::set_transfer_all(true, SInfo.type());
+
 	boundaries.classify(grid, geometries, SInfo);
 
 	for (const auto& cell: grid.cells) {
-		SInfo(*cell.data) = 1;
+		SInfo.data(*cell.data) = 1;
 	}
 
 	// number density
@@ -97,14 +101,14 @@ template<
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(N)) {
 		auto* const cell_data = grid[item[0]];
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_mass(
 		boundaries.get_dont_solve_cells(N).cbegin(),
@@ -118,14 +122,14 @@ template<
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(V)) {
 		auto* const cell_data = grid[item[0]];
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_velocity(
 		boundaries.get_dont_solve_cells(V).cbegin(),
@@ -139,14 +143,14 @@ template<
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(P)) {
 		auto* const cell_data = grid[item[0]];
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_pressure(
 		boundaries.get_dont_solve_cells(P).cbegin(),
@@ -160,14 +164,14 @@ template<
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(B)) {
 		auto* const cell_data = grid[item[0]];
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_mag(
 		boundaries.get_dont_solve_cells(B).cbegin(),
@@ -217,10 +221,12 @@ template<
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo(*cell_data) = -1;
+		SInfo.data(*cell_data) = -1;
 	}
 
 	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false, SInfo.type());
+
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
@@ -250,6 +256,11 @@ template<
 	using std::sqrt;
 	using std::to_string;
 
+	using Cell = Grid::cell_data_type;
+	Cell::set_transfer_all(true, Face_B.type(), FInfo.type());
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false, Face_B.type(), FInfo.type());
+
 	constexpr pamhd::Magnetic_Field B{};
 	for (
 		size_t i = 0;
@@ -277,13 +288,13 @@ template<
 				return value_bdy.get_data(t, c[0], c[1], c[2], r, lat, lon);
 			};
 
-			const auto& finfo = FInfo(*cell_data);
+			const auto& finfo = FInfo.data(*cell_data);
 			for (auto dim: {0, 1, 2})
 			for (auto side: {-1, +1}) {
 				if (finfo(dim, side) == 0) {
 					auto r = c;
 					r[dim] += side * len[dim]/2;
-					Face_B(*cell_data)(dim, side) = get_B(r)[dim];
+					Face_B.data(*cell_data)(dim, side) = get_B(r)[dim];
 				}
 			}
 		}
@@ -298,8 +309,8 @@ template<
 	for (const auto& cell: grid.local_cells()) {
 		if (cp_bdy_cells.count(cell.id) == 0) continue;
 
-		auto& c_face_b = Face_B(*cell.data);
-		const auto& cfinfo = FInfo(*cell.data);
+		auto& c_face_b = Face_B.data(*cell.data);
+		const auto& cfinfo = FInfo.data(*cell.data);
 
 		pamhd::grid::Face_Type<int> nr_values{0, 0, 0, 0, 0, 0};
 		for (auto dim: {0, 1, 2}) {
@@ -350,13 +361,13 @@ template<
 		}
 
 		for (const auto& neighbor: cell.neighbors_of) {
-			auto& n_face_b = Face_B(*neighbor.data);
+			auto& n_face_b = Face_B.data(*neighbor.data);
 
 			const auto& fn = neighbor.face_neighbor;
 			const auto& en = neighbor.edge_neighbor;
 			if (fn == 0 and en[0] < 0) continue;
 
-			const auto& nfinfo = FInfo(*neighbor.data);
+			const auto& nfinfo = FInfo.data(*neighbor.data);
 
 			if (fn != 0) {
 				for (auto dir: {-3,-2,-1,+1,+2,+3}) {
@@ -610,6 +621,10 @@ template<
 			}
 		}
 	}
+	Cell::set_transfer_all(true, Face_B.type());
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false, Face_B.type());
+
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
@@ -712,6 +727,7 @@ template<
 	class Grid,
 	class Boundaries,
 	class Boundary_Geometries,
+	class MHD_Getter,
 	class Mass_Getter,
 	class Momentum_Getter,
 	class Energy_Getter,
@@ -722,17 +738,23 @@ template<
 	Boundaries& boundaries,
 	const Boundary_Geometries& bdy_geoms,
 	const double simulation_time,
+	const MHD_Getter& MHD,
 	const Mass_Getter& Mas,
 	const Momentum_Getter& Mom,
 	const Energy_Getter& Nrj,
 	const Magnetic_Field_Getter& Mag,
 	const Cell_Info_Getter& CInfo,
-	const double proton_mass,
-	const double adiabatic_index,
-	const double vacuum_permeability
+	const double& proton_mass,
+	const double& adiabatic_index,
+	const double& vacuum_permeability
 ) try {
 	using std::runtime_error;
 	using std::to_string;
+
+	using Cell = Grid::cell_data_type;
+	Cell::set_transfer_all(true, MHD.type(), CInfo.type());
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false, CInfo.type());
 
 	std::set<uint64_t> cp_bdy_cells;
 
@@ -782,7 +804,7 @@ template<
 		pamhd::mhd::Number_Density::data_type
 			source_f_value = 0, source_e_value = 0;
 		for (const auto& neighbor: cell.neighbors_of) {
-			if (CInfo(*neighbor.data) < 1) continue;
+			if (CInfo.data(*neighbor.data) < 1) continue;
 			if (neighbor.face_neighbor != 0) {
 				source_f_value += Mas(*neighbor.data);
 				nr_face_values++;
@@ -843,7 +865,7 @@ template<
 		pamhd::mhd::Velocity::data_type
 			source_f_value{0, 0, 0}, source_e_value{0, 0, 0};
 		for (const auto& neighbor: cell.neighbors_of) {
-			if (CInfo(*neighbor.data) < 1) continue;
+			if (CInfo.data(*neighbor.data) < 1) continue;
 			if (neighbor.face_neighbor != 0) {
 				source_f_value += pamhd::mhd::get_velocity(
 					Mom(*neighbor.data),
@@ -920,7 +942,7 @@ template<
 		pamhd::mhd::Pressure::data_type
 			source_f_value = 0, source_e_value = 0;
 		for (const auto& neighbor: cell.neighbors_of) {
-			if (CInfo(*neighbor.data) < 1) continue;
+			if (CInfo.data(*neighbor.data) < 1) continue;
 			if (neighbor.face_neighbor != 0) {
 				source_f_value += pamhd::mhd::get_pressure(
 					Mas(*neighbor.data),
@@ -970,6 +992,9 @@ template<
 			);
 		}
 	}
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false, MHD.type());
+
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
@@ -982,8 +1007,6 @@ template<
 Types: normal cell/face == 1, boundary == 0, dont_solve == -1.
 
 CInfo must be set for cells.
-
-Update of FInfo variable between processes must be enabled.
 */
 template <
 	class Grid,
@@ -999,33 +1022,37 @@ template <
 	using std::runtime_error;
 	using std::to_string;
 
+	using Cell = Grid::cell_data_type;
+	Cell::set_transfer_all(true, CInfo.type(), FInfo.type());
+	grid.update_copies_of_remote_neighbors();
+
 	const std::array<int, 6> all_dirs{-3,-2,-1,+1,+2,+3};
 
 	// face(s) sharing edge(s) with normal cell(s) is normal
 	for (const auto& cell: grid.local_cells()) {
-		auto& finfo = FInfo(*cell.data);
+		auto& cfinfo = FInfo.data(*cell.data);
 
 		for (auto dir: all_dirs) {
-			finfo(dir) = -99;
+			cfinfo(dir) = -99;
 		}
 
-		const auto& ccinfo = CInfo(*cell.data);
+		const auto& ccinfo = CInfo.data(*cell.data);
 		if (ccinfo == 1) {
 			for (auto dir: all_dirs) {
-				finfo(dir) = 1;
+				cfinfo(dir) = 1;
 			}
 			continue;
 		}
 
 		for (const auto& neighbor: cell.neighbors_of) {
-			const auto& ncinfo = CInfo(*neighbor.data);
+			const auto& ncinfo = CInfo.data(*neighbor.data);
 			if (ncinfo < 1) continue;
 
 			const auto& fn = neighbor.face_neighbor;
 			if (fn != 0) {
 				for (auto dir: all_dirs) {
 					if (dir == -fn) continue;
-					finfo(dir) = 1;
+					cfinfo(dir) = 1;
 				}
 			}
 			const auto& en = neighbor.edge_neighbor;
@@ -1034,14 +1061,14 @@ template <
 					dir1 = 1 + std::min((en[0] + 1) % 3, (en[0] + 2) % 3),
 					dir2 = 1 + std::max((en[0] + 1) % 3, (en[0] + 2) % 3);
 				if (en[1] < 0) {
-					finfo(-dir1) = 1;
+					cfinfo(-dir1) = 1;
 				} else {
-					finfo(+dir1) = 1;
+					cfinfo(+dir1) = 1;
 				}
 				if (en[2] < 0) {
-					finfo(-dir2) = 1;
+					cfinfo(-dir2) = 1;
 				} else {
-					finfo(+dir2) = 1;
+					cfinfo(+dir2) = 1;
 				}
 			}
 		}
@@ -1050,12 +1077,12 @@ template <
 	grid.update_copies_of_remote_neighbors();
 
 	for (const auto& cell: grid.local_cells()) {
-		const auto& cfinfo = FInfo(*cell.data);
+		const auto& cfinfo = FInfo.data(*cell.data);
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
 			const auto& en = neighbor.edge_neighbor;
 			if (fn != 0 and en[0] < 0) continue;
-			const auto& nfinfo = FInfo(*neighbor.data);
+			const auto& nfinfo = FInfo.data(*neighbor.data);
 			if (fn != 0) {
 				if (cfinfo(fn) != nfinfo(-fn)) {
 					throw runtime_error(
@@ -1078,7 +1105,7 @@ template <
 	for (const auto& cell: grid.local_cells()) {
 		// if even one cell face is normal other faces are boundary
 		bool has_normal_face = false;
-		auto& cfinfo = FInfo(*cell.data);
+		auto& cfinfo = FInfo.data(*cell.data);
 		for (auto dir: all_dirs) {
 			if (cfinfo(dir) == 1) {
 				has_normal_face = true;
@@ -1096,9 +1123,9 @@ template <
 
 	// as above but for neighboring cells
 	for (const auto& cell: grid.local_cells()) {
-		auto& cfinfo = FInfo(*cell.data);
+		auto& cfinfo = FInfo.data(*cell.data);
 		for (const auto& neighbor: cell.neighbors_of) {
-			const auto& nfinfo = FInfo(*neighbor.data);
+			const auto& nfinfo = FInfo.data(*neighbor.data);
 			const auto& fn = neighbor.face_neighbor;
 			if (fn != 0) {
 				for (auto dir: all_dirs) {
@@ -1145,13 +1172,14 @@ template <
 
 	// rest are dont_solve
 	for (const auto& cell: grid.local_cells()) {
-		auto& cfinfo = FInfo(*cell.data);
+		auto& cfinfo = FInfo.data(*cell.data);
 		for (auto dir: all_dirs) {
 			if (cfinfo(dir) < -1) cfinfo(dir) = -1;
 		}
 	}
-
 	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false, CInfo.type(), FInfo.type());
+
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
@@ -1168,14 +1196,14 @@ template <
 	const Cell_Info_Getter& CInfo
 ) try {
 	for (const auto& cell: grid.local_cells()) {
-		const auto& ccinfo = CInfo(*cell.data);
+		const auto& ccinfo = CInfo.data(*cell.data);
 		if (ccinfo < 1) {
 			grid.dont_refine(cell.id);
 			grid.dont_unrefine(cell.id);
 			continue;
 		}
 		for (const auto& neighbor: cell.neighbors_of) {
-			const auto& ncinfo = CInfo(*neighbor.data);
+			const auto& ncinfo = CInfo.data(*neighbor.data);
 			if (ncinfo < 1) {
 				grid.dont_refine(cell.id);
 				grid.dont_unrefine(cell.id);
@@ -1192,6 +1220,7 @@ template<
 	class Grid,
 	class Geometries,
 	class Boundaries,
+	class MHD_Getter,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
@@ -1204,60 +1233,35 @@ template<
 	Grid& grid,
 	Geometries& geometries,
 	Boundaries& boundaries,
-	const double simulation_time,
-	const double proton_mass,
-	const double adiabatic_index,
-	const double vacuum_permeability,
-	const Mass_Density_Getter Mas,
-	const Momentum_Density_Getter Mom,
-	const Total_Energy_Density_Getter Nrj,
-	const Magnetic_Field_Getter Mag,
-	const Face_Magnetic_Field_Getter Face_B,
-	const Solver_Info_Getter SInfo,
-	const Face_Info_Getter FInfo,
-	const Substepping_Period_Getter Substep
+	const double& simulation_time,
+	const double& proton_mass,
+	const double& adiabatic_index,
+	const double& vacuum_permeability,
+	const MHD_Getter& MHD,
+	const Mass_Density_Getter& Mas,
+	const Momentum_Density_Getter& Mom,
+	const Total_Energy_Density_Getter& Nrj,
+	const Magnetic_Field_Getter& Mag,
+	const Face_Magnetic_Field_Getter& Face_B,
+	const Solver_Info_Getter& SInfo,
+	const Face_Info_Getter& FInfo,
+	const Substepping_Period_Getter& Substep
 ) try {
 	pamhd::mhd::apply_fluid_boundaries(
-		grid,
-		boundaries,
-		geometries,
-		simulation_time,
-		Mas, Mom, Nrj, Mag, SInfo,
-		proton_mass,
-		adiabatic_index,
-		vacuum_permeability
+		grid, boundaries, geometries, simulation_time,
+		MHD, Mas, Mom, Nrj, Mag, SInfo, proton_mass,
+		adiabatic_index, vacuum_permeability
 	);
-	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::MHD_State_Conservative());
-	grid.update_copies_of_remote_neighbors();
-	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
 
 	pamhd::mhd::apply_magnetic_field_boundaries_staggered(
-		grid,
-		boundaries,
-		geometries,
-		simulation_time,
-		Face_B, FInfo
+		grid, boundaries, geometries,
+		simulation_time, Face_B, FInfo
 	);
-	Grid::cell_data_type::set_transfer_all(true, pamhd::Face_Magnetic_Field());
-	grid.update_copies_of_remote_neighbors();
-	Grid::cell_data_type::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
 	pamhd::mhd::update_B_consistency(
-		0, grid.local_cells(),
-		Mas, Mom, Nrj, Mag, Face_B,
-		SInfo, Substep,
-		adiabatic_index,
-		vacuum_permeability,
-		true
-	);
-	Grid::cell_data_type::set_transfer_all(true,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::mhd::MHD_State_Conservative()
-	);
-	grid.update_copies_of_remote_neighbors();
-	Grid::cell_data_type::set_transfer_all(false,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::mhd::MHD_State_Conservative()
+		0, grid.local_cells(), grid, MHD,
+		Mas, Mom, Nrj, Mag, Face_B, SInfo, Substep,
+		adiabatic_index, vacuum_permeability, true
 	);
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());

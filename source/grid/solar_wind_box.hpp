@@ -1,7 +1,7 @@
 /*
 Grid parts of solar wind box program.
 
-Copyright 2024 Finnish Meteorological Institute
+Copyright 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -288,7 +288,7 @@ template<
 	for (const auto& cell: grid.local_cells()) {
 		const auto [inside, outside]
 			= at_inner_boundary(inner_bdy_radius, cell.id, grid);
-		if (inside and outside and SInfo(*cell.data) == 0) {
+		if (inside and outside and SInfo.data(*cell.data) == 0) {
 			planet_cells.push_back(cell);
 		}
 	}
@@ -393,11 +393,11 @@ template<
 	const auto mrlvl = grid.get_maximum_refinement_level();
 	for (const auto& cell: grid.local_cells()) {
 		if (max_ref_cells.count(cell.id) > 0) {
-			Ref_min(*cell.data) = mrlvl;
+			Ref_min.data(*cell.data) = mrlvl;
 		} else {
-			Ref_min(*cell.data) = 0;
+			Ref_min.data(*cell.data) = 0;
 		}
-		Ref_max(*cell.data) = mrlvl;
+		Ref_max.data(*cell.data) = mrlvl;
 	}
 
 	// classify cells around inner boundary
@@ -405,10 +405,10 @@ template<
 		const auto [inside, outside]
 			= at_inner_boundary(inner_bdy_radius, cell.id, grid);
 		if (inside) {
-			SInfo(*cell.data) = 0;
+			SInfo.data(*cell.data) = 0;
 			if (outside and grid.get_refinement_level(cell.id) < mrlvl) throw runtime_error(__FILE__"(" + to_string(__LINE__) + "): " + to_string(cell.id));
 		} else if (outside) {
-			SInfo(*cell.data) = 1;
+			SInfo.data(*cell.data) = 1;
 		} else {
 			throw runtime_error(
 				__FILE__"(" + to_string(__LINE__)
@@ -420,7 +420,7 @@ template<
 
 	// classify dont_solve cells
 	for (const auto& cell: grid.local_cells()) {
-		if (SInfo(*cell.data) != 0) continue;
+		if (SInfo.data(*cell.data) != 0) continue;
 		bool have_normal = false;
 		for (const auto& neighbor: cell.neighbors_of) {
 			if (
@@ -429,13 +429,13 @@ template<
 			) {
 				continue;
 			}
-			if (SInfo(*neighbor.data) == 1) {
+			if (SInfo.data(*neighbor.data) == 1) {
 				have_normal = true;
 				break;
 			}
 		}
 		if (not have_normal) {
-			SInfo(*cell.data) = -1;
+			SInfo.data(*cell.data) = -1;
 		}
 	}
 	grid.update_copies_of_remote_neighbors();
@@ -457,21 +457,21 @@ template<
 				int((end_indices[dim]-indices[dim]-1) / indices0));
 		}
 		const auto rlvl = grid.get_refinement_level(cell.id);
-		if (min_distance < 1) SInfo(*cell.data) = 0;
+		if (min_distance < 1) SInfo.data(*cell.data) = 0;
 		if (min_distance < 2) {
-			Ref_max(*cell.data) = 0;
+			Ref_max.data(*cell.data) = 0;
 			if (rlvl > 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + "): " + to_string(cell.id));
 		} else if (min_distance < 5) {
-			Ref_max(*cell.data) = 1;
+			Ref_max.data(*cell.data) = 1;
 			if (rlvl > 1) throw runtime_error(__FILE__"(" + to_string(__LINE__) + "): " + to_string(cell.id));
 		} else if (min_distance < 7) {
-			Ref_max(*cell.data) = 2;
+			Ref_max.data(*cell.data) = 2;
 			if (rlvl > 2) throw runtime_error(__FILE__"(" + to_string(__LINE__) + "): " + to_string(cell.id));
 		} else {
-			Ref_max(*cell.data) = min_distance - 4;
+			Ref_max.data(*cell.data) = min_distance - 4;
 			if (rlvl > min_distance-4) throw runtime_error(__FILE__"(" + to_string(__LINE__) + "): " + to_string(cell.id));
 		}
-		Ref_max(*cell.data) = min(mrlvl, Ref_max(*cell.data));
+		Ref_max.data(*cell.data) = min(mrlvl, Ref_max.data(*cell.data));
 	}
 
 } catch (const std::exception& e) {
@@ -497,11 +497,11 @@ template <
 
 	for (const auto& cell: grid.local_cells()) {
 		const auto ref_lvl = grid.get_refinement_level(cell.id);
-		if (ref_lvl < Ref_min(*cell.data)) {
+		if (ref_lvl < Ref_min.data(*cell.data)) {
 			grid.refine_completely(cell.id);
-		} else if (ref_lvl == Ref_min(*cell.data)) {
+		} else if (ref_lvl == Ref_min.data(*cell.data)) {
 			grid.dont_unrefine(cell.id);
-		} else if (ref_lvl > Ref_max(*cell.data)) {
+		} else if (ref_lvl > Ref_max.data(*cell.data)) {
 			grid.unrefine_completely(cell.id);
 		}
 	}
@@ -511,7 +511,7 @@ template <
 		if (cell_data == nullptr) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		auto* const parent_data = grid[grid.get_parent(cell)];
 		if (parent_data == nullptr) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		SInfo(*cell_data) = SInfo(*parent_data);
+		SInfo.data(*cell_data) = SInfo.data(*parent_data);
 	}
 	const auto removed_cells = grid.get_removed_cells();
 	for (auto cell: removed_cells) {
@@ -520,7 +520,7 @@ template <
 		const auto parent = grid.mapping.get_parent(cell);
 		auto* const parent_data = grid[parent];
 		if (parent_data == nullptr) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		SInfo(*parent_data) = SInfo(*removed_data);
+		SInfo.data(*parent_data) = SInfo.data(*removed_data);
 	}
 }
 

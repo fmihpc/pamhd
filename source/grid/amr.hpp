@@ -1,7 +1,7 @@
 /*
 Grid stuff related to adaptive mesh refinement of PAMHD.
 
-Copyright 2023, 2024 Finnish Meteorological Institute
+Copyright 2023, 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -300,7 +300,7 @@ template <
 	const Faces_Getter& Faces
 ) {
 	for (const auto& cell: cells) {
-		Faces(*cell.data) = {true, true, true, true, true, true};
+		Faces.data(*cell.data) = {true, true, true, true, true, true};
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto n = neighbor.face_neighbor;
 			if (n == 0) {
@@ -311,10 +311,10 @@ template <
 			}
 			if (neighbor.relative_size > 0) {
 				// smaller neighbor always has priority
-				Faces(*cell.data)(n) = false;
+				Faces.data(*cell.data)(n) = false;
 				continue;
 			}
-			if (n < 0) Faces(*cell.data)(n) = false;
+			if (n < 0) Faces.data(*cell.data)(n) = false;
 		}
 	}
 }
@@ -444,105 +444,6 @@ template<class Data_Type> struct Edge_Type {
 	#endif
 };
 
-/*! Records which of cell's edges are primary.
-
-\see Edge_Type for further info.
-*/
-struct Is_Primary_Edge {
-	using data_type = Edge_Type<bool>;
-};
-
-
-/*! Updates Is_Primary_Edge variable of given cells.
-*/
-template <
-	class Cells,
-	class Grid,
-	class Edges_Getter
-> void update_primary_edges(
-	const Cells& cells,
-	const Grid& grid,
-	const Edges_Getter& Edges
-) {
-	if (grid.get_neighborhood_length() == 0) {
-		throw std::domain_error(
-			__FILE__ "(" + std::to_string(__LINE__)
-			+ "): Neighborhood length must be at least 1");
-	}
-	for (const auto& cell: cells) {
-		Edges(*cell.data) = {
-			true, true, true, true, // x-directed edges: -y,-z;-y,+z,...
-			true, true, true, true, // y-directed edges: -x,-z;-x,+z,...
-			true, true, true, true};// ...
-
-		for (const auto& neighbor: cell.neighbors_of) {
-			const auto& fn = neighbor.face_neighbor;
-			const auto& en = neighbor.edge_neighbor;
-
-			if (fn != 0 and en[0] >= 0) {
-				throw std::runtime_error(__FILE__"(" + std::to_string(__LINE__) + ")");
-			}
-
-			if (neighbor.relative_size < 0) {
-				continue; // larger neighbor never has priority
-			}
-
-			if (fn == -1) {
-				// this or another neighbor has priority
-				Edges(*cell.data)(1,-1,-1) =
-				Edges(*cell.data)(1,-1,+1) =
-				Edges(*cell.data)(2,-1,-1) =
-				Edges(*cell.data)(2,-1,+1) = false;
-				continue;
-			}
-			if (fn == +1 and neighbor.relative_size > 0) {
-				// only smaller neighbors have priority
-				Edges(*cell.data)(1,+1,-1) =
-				Edges(*cell.data)(1,+1,+1) =
-				Edges(*cell.data)(2,+1,-1) =
-				Edges(*cell.data)(2,+1,+1) = false;
-				continue;
-			}
-			if (fn == -2) {
-				Edges(*cell.data)(0,-1,-1) =
-				Edges(*cell.data)(0,-1,+1) =
-				Edges(*cell.data)(2,-1,-1) =
-				Edges(*cell.data)(2,+1,-1) = false;
-				continue;
-			}
-			if (fn == +2 and neighbor.relative_size > 0) {
-				Edges(*cell.data)(0,+1,-1) =
-				Edges(*cell.data)(0,+1,+1) =
-				Edges(*cell.data)(2,-1,+1) =
-				Edges(*cell.data)(2,+1,+1) = false;
-				continue;
-			}
-			if (fn == -3) {
-				Edges(*cell.data)(0,-1,-1) =
-				Edges(*cell.data)(0,+1,-1) =
-				Edges(*cell.data)(1,-1,-1) =
-				Edges(*cell.data)(1,+1,-1) = false;
-				continue;
-			}
-			if (fn == +3 and neighbor.relative_size > 0) {
-				Edges(*cell.data)(0,-1,+1) =
-				Edges(*cell.data)(0,+1,+1) =
-				Edges(*cell.data)(1,-1,+1) =
-				Edges(*cell.data)(1,+1,+1) = false;
-				continue;
-			}
-
-			if (en[0] < 0) {
-				continue;
-			}
-
-			if (neighbor.relative_size > 0 or en[1] == -1) {
-				Edges(*cell.data)(en[0], en[1], en[2]) = false;
-			}
-		}
-	}
-}
-
 
 //! Returns smallest [0] and largest [1] refinement level for given cell.
 std::array<int, 2> get_target_refinement_level(
@@ -610,8 +511,8 @@ template<
 			if (parent_data == nullptr) {
 				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
 			}
-			RLMin(*cell_data) = RLMin(*parent_data);
-			RLMax(*cell_data) = RLMax(*parent_data);
+			RLMin.data(*cell_data) = RLMin.data(*parent_data);
+			RLMax.data(*cell_data) = RLMax.data(*parent_data);
 		}
 	}
 };
@@ -650,8 +551,8 @@ template<
 			if (parent_data == nullptr) {
 				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
 			}
-			RLMin(*parent_data) = 999;
-			RLMax(*parent_data) = 0;
+			RLMin.data(*parent_data) = 999;
+			RLMax.data(*parent_data) = 0;
 		}
 
 		// parent's refinement range spans all of childrens'
@@ -665,8 +566,8 @@ template<
 			if (parent_data == nullptr) {
 				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
 			}
-			RLMin(*parent_data) = std::min(RLMin(*removed_cell_data), RLMin(*parent_data));
-			RLMax(*parent_data) = std::max(RLMax(*removed_cell_data), RLMax(*parent_data));
+			RLMin.data(*parent_data) = std::min(RLMin.data(*removed_cell_data), RLMin.data(*parent_data));
+			RLMax.data(*parent_data) = std::max(RLMax.data(*removed_cell_data), RLMax.data(*parent_data));
 		}
 	}
 };
@@ -701,6 +602,7 @@ template <
 	const int max_rounds = 1 << 30
 ) {
 	#ifdef MPI_VERSION
+	using Cell = Grid::cell_data_type;
 	MPI_Comm comm = grid.get_communicator();
 	#endif
 	for (
@@ -710,11 +612,11 @@ template <
 	) {
 		for (const auto& cell: grid.local_cells()) {
 			const auto ref_lvl = grid.get_refinement_level(cell.id);
-			if (ref_lvl < RLMin(*cell.data)) {
+			if (ref_lvl < RLMin.data(*cell.data)) {
 				grid.refine_completely(cell.id);
-			} else if (ref_lvl == RLMin(*cell.data)) {
+			} else if (ref_lvl == RLMin.data(*cell.data)) {
 				grid.dont_unrefine(cell.id);
-			} else if (ref_lvl > RLMax(*cell.data)) {
+			} else if (ref_lvl > RLMax.data(*cell.data)) {
 				grid.unrefine_completely(cell.id);
 			}
 		}
@@ -737,6 +639,9 @@ template <
 	}
 	#ifdef MPI_VERSION
 	MPI_Comm_free(&comm);
+	Cell::set_transfer_all(true, RLMin.type(), RLMax.type());
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false, RLMin.type(), RLMax.type());
 	#endif
 }
 
@@ -767,13 +672,13 @@ template <
 		const auto [rlmin, rlmax] = get_target_refinement_level(options, sim_time, c);
 		if (clamped) {
 			const auto
-				prev_min = RLMin(*cell.data),
-				prev_max = RLMax(*cell.data);
-			RLMin(*cell.data) = clamp(rlmin, prev_min, prev_max);
-			RLMax(*cell.data) = clamp(rlmax, prev_min, prev_max);
+				prev_min = RLMin.data(*cell.data),
+				prev_max = RLMax.data(*cell.data);
+			RLMin.data(*cell.data) = clamp(rlmin, prev_min, prev_max);
+			RLMax.data(*cell.data) = clamp(rlmax, prev_min, prev_max);
 		} else {
-			RLMin(*cell.data) = rlmin;
-			RLMax(*cell.data) = rlmax;
+			RLMin.data(*cell.data) = rlmin;
+			RLMax.data(*cell.data) = rlmax;
 		}
 	}
 }

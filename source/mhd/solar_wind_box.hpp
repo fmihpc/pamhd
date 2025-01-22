@@ -211,27 +211,27 @@ template<
 		const auto [sx, sy, sz] = grid.geometry.get_min(cell.id);
 		const auto [ex, ey, ez] = grid.geometry.get_max(cell.id);
 
-		Bg_B(*cell.data)(-1) = background_B.get_background_field(
+		Bg_B.data(*cell.data)(-1) = background_B.get_background_field(
 			{sx, ry, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(+1) = background_B.get_background_field(
+		Bg_B.data(*cell.data)(+1) = background_B.get_background_field(
 			{ex, ry, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(-2) = background_B.get_background_field(
+		Bg_B.data(*cell.data)(-2) = background_B.get_background_field(
 			{rx, sy, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(+2) = background_B.get_background_field(
+		Bg_B.data(*cell.data)(+2) = background_B.get_background_field(
 			{rx, ey, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(-3) = background_B.get_background_field(
+		Bg_B.data(*cell.data)(-3) = background_B.get_background_field(
 			{rx, ry, sz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(+3) = background_B.get_background_field(
+		Bg_B.data(*cell.data)(+3) = background_B.get_background_field(
 			{rx, ry, ez},
 			vacuum_permeability
 		);
@@ -239,8 +239,8 @@ template<
 		Mas(*cell.data) = mass;
 		Mom(*cell.data)   =
 		Vol_B(*cell.data) = {0, 0, 0};
-		Face_B(*cell.data)  =
-		Face_dB(*cell.data) = {0, 0, 0, 0, 0, 0};
+		Face_B.data(*cell.data)  =
+		Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
 		Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
 			Mas(*cell.data),
 			Mom(*cell.data),
@@ -294,18 +294,18 @@ template<
 		// prevent div(B) at solar wind boundary
 		if (solar_wind_dir != abs(1)) {
 			Vol_B(*cell.data)[0]   =
-			Face_B(*cell.data)(-1) =
-			Face_B(*cell.data)(+1) = magnetic_field[0];
+			Face_B.data(*cell.data)(-1) =
+			Face_B.data(*cell.data)(+1) = magnetic_field[0];
 		}
 		if (solar_wind_dir != abs(2)) {
 			Vol_B(*cell.data)[1]   =
-			Face_B(*cell.data)(-2) =
-			Face_B(*cell.data)(+2) = magnetic_field[1];
+			Face_B.data(*cell.data)(-2) =
+			Face_B.data(*cell.data)(+2) = magnetic_field[1];
 		}
 		if (solar_wind_dir != abs(3)) {
 			Vol_B(*cell.data)[2]   =
-			Face_B(*cell.data)(-3) =
-			Face_B(*cell.data)(+3) = magnetic_field[2];
+			Face_B.data(*cell.data)(-3) =
+			Face_B.data(*cell.data)(+3) = magnetic_field[2];
 		}
 		Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
 			mass, velocity, pressure, magnetic_field,
@@ -365,9 +365,9 @@ template<
 				Vol_B(*cell.data) = Vol_B(*neighbor.data);
 				for (int dir2: {-3,-2,-1,+1,+2,+3}) {
 					if (dir2 == fn or dir2 == -fn) {
-						Face_B(*cell.data)(dir2) = Face_B(*neighbor.data)(-fn);
+						Face_B.data(*cell.data)(dir2) = Face_B.data(*neighbor.data)(-fn);
 					} else {
-						Face_B(*cell.data)(dir2) = Face_B(*neighbor.data)(dir2);
+						Face_B.data(*cell.data)(dir2) = Face_B.data(*neighbor.data)(dir2);
 					}
 				}
 			}
@@ -387,57 +387,57 @@ template<
 				Nrj(*cell.data) = Nrj(*neighbor.data);
 				Vol_B(*cell.data) = Vol_B(*neighbor.data);
 				if (dim == 0) {
-					Face_B(*cell.data)(-1) = Face_B(*neighbor.data)(-1);
-					Face_B(*cell.data)(+1) = Face_B(*neighbor.data)(+1);
+					Face_B.data(*cell.data)(-1) = Face_B.data(*neighbor.data)(-1);
+					Face_B.data(*cell.data)(+1) = Face_B.data(*neighbor.data)(+1);
 					if (dir1 < 0) {
-						Face_B(*cell.data)(-2) =
-						Face_B(*cell.data)(+2) = Face_B(*neighbor.data)(-2);
+						Face_B.data(*cell.data)(-2) =
+						Face_B.data(*cell.data)(+2) = Face_B.data(*neighbor.data)(-2);
 					} else {
-						Face_B(*cell.data)(-2) =
-						Face_B(*cell.data)(+2) = Face_B(*neighbor.data)(+2);
+						Face_B.data(*cell.data)(-2) =
+						Face_B.data(*cell.data)(+2) = Face_B.data(*neighbor.data)(+2);
 					}
 					if (dir2 < 0) {
-						Face_B(*cell.data)(-3) =
-						Face_B(*cell.data)(+3) = Face_B(*neighbor.data)(-3);
+						Face_B.data(*cell.data)(-3) =
+						Face_B.data(*cell.data)(+3) = Face_B.data(*neighbor.data)(-3);
 					} else {
-						Face_B(*cell.data)(-3) =
-						Face_B(*cell.data)(+3) = Face_B(*neighbor.data)(+3);
+						Face_B.data(*cell.data)(-3) =
+						Face_B.data(*cell.data)(+3) = Face_B.data(*neighbor.data)(+3);
 					}
 				}
 				if (dim == 1) {
-					Face_B(*cell.data)(-2) = Face_B(*neighbor.data)(-2);
-					Face_B(*cell.data)(+2) = Face_B(*neighbor.data)(+2);
+					Face_B.data(*cell.data)(-2) = Face_B.data(*neighbor.data)(-2);
+					Face_B.data(*cell.data)(+2) = Face_B.data(*neighbor.data)(+2);
 					if (dir1 < 0) {
-						Face_B(*cell.data)(-1) =
-						Face_B(*cell.data)(+1) = Face_B(*neighbor.data)(-1);
+						Face_B.data(*cell.data)(-1) =
+						Face_B.data(*cell.data)(+1) = Face_B.data(*neighbor.data)(-1);
 					} else {
-						Face_B(*cell.data)(-1) =
-						Face_B(*cell.data)(+1) = Face_B(*neighbor.data)(+1);
+						Face_B.data(*cell.data)(-1) =
+						Face_B.data(*cell.data)(+1) = Face_B.data(*neighbor.data)(+1);
 					}
 					if (dir2 < 0) {
-						Face_B(*cell.data)(-3) =
-						Face_B(*cell.data)(+3) = Face_B(*neighbor.data)(-3);
+						Face_B.data(*cell.data)(-3) =
+						Face_B.data(*cell.data)(+3) = Face_B.data(*neighbor.data)(-3);
 					} else {
-						Face_B(*cell.data)(-3) =
-						Face_B(*cell.data)(+3) = Face_B(*neighbor.data)(+3);
+						Face_B.data(*cell.data)(-3) =
+						Face_B.data(*cell.data)(+3) = Face_B.data(*neighbor.data)(+3);
 					}
 				}
 				if (dim == 2) {
-					Face_B(*cell.data)(-3) = Face_B(*neighbor.data)(-3);
-					Face_B(*cell.data)(+3) = Face_B(*neighbor.data)(+3);
+					Face_B.data(*cell.data)(-3) = Face_B.data(*neighbor.data)(-3);
+					Face_B.data(*cell.data)(+3) = Face_B.data(*neighbor.data)(+3);
 					if (dir1 < 0) {
-						Face_B(*cell.data)(-1) =
-						Face_B(*cell.data)(+1) = Face_B(*neighbor.data)(-1);
+						Face_B.data(*cell.data)(-1) =
+						Face_B.data(*cell.data)(+1) = Face_B.data(*neighbor.data)(-1);
 					} else {
-						Face_B(*cell.data)(-1) =
-						Face_B(*cell.data)(+1) = Face_B(*neighbor.data)(+1);
+						Face_B.data(*cell.data)(-1) =
+						Face_B.data(*cell.data)(+1) = Face_B.data(*neighbor.data)(+1);
 					}
 					if (dir2 < 0) {
-						Face_B(*cell.data)(-2) =
-						Face_B(*cell.data)(+2) = Face_B(*neighbor.data)(-2);
+						Face_B.data(*cell.data)(-2) =
+						Face_B.data(*cell.data)(+2) = Face_B.data(*neighbor.data)(-2);
 					} else {
-						Face_B(*cell.data)(-2) =
-						Face_B(*cell.data)(+2) = Face_B(*neighbor.data)(+2);
+						Face_B.data(*cell.data)(-2) =
+						Face_B.data(*cell.data)(+2) = Face_B.data(*neighbor.data)(+2);
 					}
 				}
 			}
@@ -457,25 +457,25 @@ template<
 			Nrj(*cell.data) = Nrj(*neighbor.data);
 			Vol_B(*cell.data) = Vol_B(*neighbor.data);
 			if (neighbor.x < 0) {
-				Face_B(*cell.data)(-1) =
-				Face_B(*cell.data)(+1) = Face_B(*neighbor.data)(+1);
+				Face_B.data(*cell.data)(-1) =
+				Face_B.data(*cell.data)(+1) = Face_B.data(*neighbor.data)(+1);
 			} else {
-				Face_B(*cell.data)(-1) =
-				Face_B(*cell.data)(+1) = Face_B(*neighbor.data)(-1);
+				Face_B.data(*cell.data)(-1) =
+				Face_B.data(*cell.data)(+1) = Face_B.data(*neighbor.data)(-1);
 			}
 			if (neighbor.y < 0) {
-				Face_B(*cell.data)(-2) =
-				Face_B(*cell.data)(+2) = Face_B(*neighbor.data)(+2);
+				Face_B.data(*cell.data)(-2) =
+				Face_B.data(*cell.data)(+2) = Face_B.data(*neighbor.data)(+2);
 			} else {
-				Face_B(*cell.data)(-2) =
-				Face_B(*cell.data)(+2) = Face_B(*neighbor.data)(-2);
+				Face_B.data(*cell.data)(-2) =
+				Face_B.data(*cell.data)(+2) = Face_B.data(*neighbor.data)(-2);
 			}
 			if (neighbor.z < 0) {
-				Face_B(*cell.data)(-3) =
-				Face_B(*cell.data)(+3) = Face_B(*neighbor.data)(+3);
+				Face_B.data(*cell.data)(-3) =
+				Face_B.data(*cell.data)(+3) = Face_B.data(*neighbor.data)(+3);
 			} else {
-				Face_B(*cell.data)(-3) =
-				Face_B(*cell.data)(+3) = Face_B(*neighbor.data)(-3);
+				Face_B.data(*cell.data)(-3) =
+				Face_B.data(*cell.data)(+3) = Face_B.data(*neighbor.data)(-3);
 			}
 		}
 	}
@@ -493,23 +493,23 @@ template<
 			adiabatic_index,
 			vacuum_permeability
 		);
-		Face_B(*cell.data)(-1) =
-		Face_B(*cell.data)(+1) =
-		Face_B(*cell.data)(-2) =
-		Face_B(*cell.data)(+2) =
-		Face_B(*cell.data)(-3) =
-		Face_B(*cell.data)(+3) = 0;
+		Face_B.data(*cell.data)(-1) =
+		Face_B.data(*cell.data)(+1) =
+		Face_B.data(*cell.data)(-2) =
+		Face_B.data(*cell.data)(+2) =
+		Face_B.data(*cell.data)(-3) =
+		Face_B.data(*cell.data)(+3) = 0;
 
 		pamhd::grid::Face_Type<bool> have_value{false, false, false, false, false, false};
 		// corrections to Face_B from normal neighbors
 		for (const auto& neighbor: cell.neighbors_of) {
-			if (SInfo(*neighbor.data) < 1) continue;
+			if (SInfo.data(*neighbor.data) < 1) continue;
 
 			const auto& fn = neighbor.face_neighbor;
 			const auto& en = neighbor.edge_neighbor;
 
 			if (fn != 0) {
-				Face_B(*cell.data)(fn) = Face_B(*neighbor.data)(-fn);
+				Face_B.data(*cell.data)(fn) = Face_B.data(*neighbor.data)(-fn);
 				have_value(fn) = true;
 			} else if (en[0] >= 0) {
 				// TODO
@@ -520,15 +520,15 @@ template<
 		for (int dir: {-3,-2,-1,+1,+2,+3}) {
 			if (not have_value(dir)) {
 				if (have_value(-dir)) {
-					Face_B(*cell.data)(dir) = Face_B(*cell.data)(-dir);
+					Face_B.data(*cell.data)(dir) = Face_B.data(*cell.data)(-dir);
 				} else {
 				}
 			}
 		}
 		Vol_B(*cell.data) = {
-			0.5*(Face_B(*cell.data)(-1) + Face_B(*cell.data)(+1)),
-			0.5*(Face_B(*cell.data)(-2) + Face_B(*cell.data)(+2)),
-			0.5*(Face_B(*cell.data)(-3) + Face_B(*cell.data)(+3))
+			0.5*(Face_B.data(*cell.data)(-1) + Face_B.data(*cell.data)(+1)),
+			0.5*(Face_B.data(*cell.data)(-2) + Face_B.data(*cell.data)(+2)),
+			0.5*(Face_B.data(*cell.data)(-3) + Face_B.data(*cell.data)(+3))
 		};
 		Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
 			Mas(*cell.data),

@@ -199,13 +199,13 @@ template <
 
 				switch (neighbor_dir) {
 				case 1:
-					bg_face_b = get_rotated_vector(Bg_B(*cell.data)(-1), 1);
+					bg_face_b = get_rotated_vector(Bg_B.data(*cell.data)(-1), 1);
 					break;
 				case 2:
-					bg_face_b = get_rotated_vector(Bg_B(*cell.data)(-2), 2);
+					bg_face_b = get_rotated_vector(Bg_B.data(*cell.data)(-2), 2);
 					break;
 				case 3:
-					bg_face_b = get_rotated_vector(Bg_B(*cell.data)(-3), 3);
+					bg_face_b = get_rotated_vector(Bg_B.data(*cell.data)(-3), 3);
 					break;
 				default:
 					abort();
@@ -223,13 +223,13 @@ template <
 
 				switch (neighbor_dir) {
 				case -1:
-					bg_face_b = get_rotated_vector(Bg_B(*neighbor.data)(-1), 1);
+					bg_face_b = get_rotated_vector(Bg_B.data(*neighbor.data)(-1), 1);
 					break;
 				case -2:
-					bg_face_b = get_rotated_vector(Bg_B(*neighbor.data)(-2), 2);
+					bg_face_b = get_rotated_vector(Bg_B.data(*neighbor.data)(-2), 2);
 					break;
 				case -3:
-					bg_face_b = get_rotated_vector(Bg_B(*neighbor.data)(-3), 3);
+					bg_face_b = get_rotated_vector(Bg_B.data(*neighbor.data)(-3), 3);
 					break;
 				default:
 					abort();

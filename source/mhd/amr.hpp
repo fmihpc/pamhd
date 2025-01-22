@@ -1,7 +1,7 @@
 /*
 Adaptive mesh refinement logic of MHD part of PAMHD
 
-Copyright 2023, 2024 Finnish Meteorological Institute
+Copyright 2023, 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -86,8 +86,8 @@ template <
 	const Mass_Density_Getter& Mas,
 	const Momentum_Density_Getter& Mom,
 	const Total_Energy_Density_Getter& Nrj,
-	const Volume_Magnetic_Field_Getter& Mag,
-	const Solver_Info_Getter& Solver_Info,
+	const Volume_Magnetic_Field_Getter& Vol_B,
+	const Solver_Info_Getter& SInfo,
 	const Target_Refinement_Level_Min_Getter& RLMin,
 	const Target_Refinement_Level_Max_Getter& RLMax,
 	const double& adiabatic_index,
@@ -108,19 +108,19 @@ template <
 	for (const auto& cell: cells) {
 
 		bool skip = false;
-		if (Solver_Info(*cell.data) <= 0) {
+		if (SInfo.data(*cell.data) <= 0) {
 			skip = true;
 		} else {
 			for (const auto& neighbor: cell.neighbors_of) {
-				if (Solver_Info(*neighbor.data) <= 0) {
+				if (SInfo.data(*neighbor.data) <= 0) {
 					skip = true;
 					break;
 				}
 			}
 		}
 		if (skip) {
-			RLMin(*cell.data) =
-			RLMax(*cell.data) = grid.get_refinement_level(cell.id);
+			RLMin.data(*cell.data) =
+			RLMax.data(*cell.data) = grid.get_refinement_level(cell.id);
 			continue;
 		}
 
@@ -135,10 +135,10 @@ template <
 		const auto
 			cpre = max(options_mhd.pressure_min_mrg, get_pressure(
 				Mas(*cell.data), Mom(*cell.data), Nrj(*cell.data),
-				Mag(*cell.data), adiabatic_index, vacuum_permeability)),
+				Vol_B(*cell.data), adiabatic_index, vacuum_permeability)),
 			cmas = max(Mas(*cell.data) / proton_mass, options_mhd.number_density_min_mrg),
 			cvel = max((Mom(*cell.data) / Mas(*cell.data)).norm(), options_mhd.vel_min_mrg),
-			cmag = max(Mag(*cell.data).norm(), options_mhd.mag_min_mrg);
+			cmag = max(Vol_B(*cell.data).norm(), options_mhd.mag_min_mrg);
 
 		// maximum relative gradients w.r.t. neighbors
 		double
@@ -147,7 +147,7 @@ template <
 			mrg_pre = 0,
 			mrg_mag = 0;
 		for (const auto& neighbor: cell.neighbors_of) {
-			if (Solver_Info(*neighbor.data) <= 0) {
+			if (SInfo.data(*neighbor.data) <= 0) {
 				continue;
 			}
 
@@ -159,10 +159,10 @@ template <
 			const auto
 				npre = max(options_mhd.pressure_min_mrg, get_pressure(
 					Mas(*neighbor.data), Mom(*neighbor.data), Nrj(*neighbor.data),
-					Mag(*neighbor.data), adiabatic_index, vacuum_permeability)),
+					Vol_B(*neighbor.data), adiabatic_index, vacuum_permeability)),
 				nmas = max(Mas(*neighbor.data) / proton_mass, options_mhd.number_density_min_mrg),
 				nvel = max((Mom(*neighbor.data) / Mas(*neighbor.data)).norm(), options_mhd.vel_min_mrg),
-				nmag = max(Mag(*neighbor.data).norm(), options_mhd.mag_min_mrg);
+				nmag = max(Vol_B(*neighbor.data).norm(), options_mhd.mag_min_mrg);
 
 			const auto len = [&](){
 				switch (neighbor.face_neighbor) {
@@ -198,13 +198,13 @@ template <
 			mrg_mag / options_mhd.mag_mrl_at);
 
 		const auto
-			prev_min = RLMin(*cell.data),
-			prev_max = RLMax(*cell.data);
-		RLMin(*cell.data) = clamp(
-			max(int(round(tgt_ref_lvl-0.25)), RLMin(*cell.data)),
+			prev_min = RLMin.data(*cell.data),
+			prev_max = RLMax.data(*cell.data);
+		RLMin.data(*cell.data) = clamp(
+			max(int(round(tgt_ref_lvl-0.25)), RLMin.data(*cell.data)),
 			prev_min, prev_max);
-		RLMax(*cell.data) = clamp(
-			min(int(round(tgt_ref_lvl+0.25)), RLMax(*cell.data)),
+		RLMax.data(*cell.data) = clamp(
+			min(int(round(tgt_ref_lvl+0.25)), RLMax.data(*cell.data)),
 			prev_min, prev_max);
 	}
 } catch (const std::exception& e) {
@@ -285,9 +285,9 @@ template <
 			}
 			Mas(*cell_data) = Mas(*parent_data);
 			Mom(*cell_data) = Mom(*parent_data);
-			RLMin(*cell_data) = RLMin(*parent_data);
-			RLMax(*cell_data) = RLMax(*parent_data);
-			Max_v(*cell_data) = Max_v(*parent_data);
+			RLMin.data(*cell_data) = RLMin.data(*parent_data);
+			RLMax.data(*cell_data) = RLMax.data(*parent_data);
+			Max_v.data(*cell_data) = Max_v.data(*parent_data);
 
 			// inherit thermal pressure
 			const double parent_pressure = [&](){
@@ -318,12 +318,12 @@ template <
 						return +1;
 					}
 				}();
-				Face_B(*cell_data)(dim, side) = Face_B(*parent_data)(dim, side);
-				Face_B(*cell_data)(dim, -side) = Vol_B(*parent_data)[dim];
+				Face_B.data(*cell_data)(dim, side) = Face_B.data(*parent_data)(dim, side);
+				Face_B.data(*cell_data)(dim, -side) = Vol_B(*parent_data)[dim];
 			}
 
 			for (auto dim: {0, 1, 2}) {
-				Vol_B(*cell_data)[dim] = 0.5 * (Face_B(*cell_data)(dim, -1) + Face_B(*cell_data)(dim, +1));
+				Vol_B(*cell_data)[dim] = 0.5 * (Face_B.data(*cell_data)(dim, -1) + Face_B.data(*cell_data)(dim, +1));
 			}
 			Nrj(*cell_data) = get_total_energy_density(
 				Mas(*cell_data),
@@ -337,27 +337,27 @@ template <
 			const auto [rx, ry, rz] = grid.geometry.get_center(new_cell_id);
 			const auto [sx, sy, sz] = grid.geometry.get_min(new_cell_id);
 			const auto [ex, ey, ez] = grid.geometry.get_max(new_cell_id);
-			Bg_B(*cell_data)(0, -1) = bg_B.get_background_field(
+			Bg_B.data(*cell_data)(0, -1) = bg_B.get_background_field(
 				{sx, ry, rz},
 				vacuum_permeability
 			);
-			Bg_B(*cell_data)(0, +1) = bg_B.get_background_field(
+			Bg_B.data(*cell_data)(0, +1) = bg_B.get_background_field(
 				{ex, ry, rz},
 				vacuum_permeability
 			);
-			Bg_B(*cell_data)(1, -1) = bg_B.get_background_field(
+			Bg_B.data(*cell_data)(1, -1) = bg_B.get_background_field(
 				{rx, sy, rz},
 				vacuum_permeability
 			);
-			Bg_B(*cell_data)(1, +1) = bg_B.get_background_field(
+			Bg_B.data(*cell_data)(1, +1) = bg_B.get_background_field(
 				{rx, ey, rz},
 				vacuum_permeability
 			);
-			Bg_B(*cell_data)(2, -1) = bg_B.get_background_field(
+			Bg_B.data(*cell_data)(2, -1) = bg_B.get_background_field(
 				{rx, ry, sz},
 				vacuum_permeability
 			);
-			Bg_B(*cell_data)(2, +1) = bg_B.get_background_field(
+			Bg_B.data(*cell_data)(2, +1) = bg_B.get_background_field(
 				{rx, ry, ez},
 				vacuum_permeability
 			);
@@ -436,13 +436,13 @@ template <
 			if (parent_data == nullptr) {
 				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
 			}
-			RLMin(*parent_data) = 999;
-			RLMax(*parent_data) = 0;
-			Max_v(*parent_data) = {-1, -1, -1, -1, -1, -1};
+			RLMin.data(*parent_data) = 999;
+			RLMax.data(*parent_data) = 0;
+			Max_v.data(*parent_data) = {-1, -1, -1, -1, -1, -1};
 			Mas(*parent_data) =
 			Nrj(*parent_data) = 0;
 			Mom(*parent_data) = {0, 0, 0};
-			Face_B(*parent_data) = {0, 0, 0, 0, 0, 0};
+			Face_B.data(*parent_data) = {0, 0, 0, 0, 0, 0};
 		}
 
 		// average parents' plasma parameters from their children, etc
@@ -467,13 +467,13 @@ template <
 			}
 
 			// all children included
-			RLMin(*parent_data) = min(RLMin(*parent_data),
-				RLMin(*removed_cell_data));
-			RLMax(*parent_data) = max(RLMax(*parent_data),
-				RLMax(*removed_cell_data));
+			RLMin.data(*parent_data) = min(RLMin.data(*parent_data),
+				RLMin.data(*removed_cell_data));
+			RLMax.data(*parent_data) = max(RLMax.data(*parent_data),
+				RLMax.data(*removed_cell_data));
 			for (int dir: {-3,-2,-1,+1,+2,+3}) {
-				Max_v(*parent_data)(dir) = max(Max_v(*parent_data)(dir),
-					Max_v(*removed_cell_data)(dir));
+				Max_v.data(*parent_data)(dir) = max(Max_v.data(*parent_data)(dir),
+					Max_v.data(*removed_cell_data)(dir));
 			}
 			Mas(*parent_data) += Mas(*removed_cell_data) / 8;
 			Mom(*parent_data) += Mom(*removed_cell_data) / 8;
@@ -503,33 +503,33 @@ template <
 						return +1;
 					}
 				}();
-				Face_B(*parent_data)(dim, side) += Face_B(*removed_cell_data)(dim, side) / 4;
+				Face_B.data(*parent_data)(dim, side) += Face_B.data(*removed_cell_data)(dim, side) / 4;
 			}
 
 			const auto [rx, ry, rz] = grid.geometry.get_center(parent_id);
 			const auto [sx, sy, sz] = grid.geometry.get_min(parent_id);
 			const auto [ex, ey, ez] = grid.geometry.get_max(parent_id);
-			Bg_B(*parent_data)(0, -1) = bg_B.get_background_field(
+			Bg_B.data(*parent_data)(0, -1) = bg_B.get_background_field(
 				{sx, ry, rz},
 				vacuum_permeability
 			);
-			Bg_B(*parent_data)(0, +1) = bg_B.get_background_field(
+			Bg_B.data(*parent_data)(0, +1) = bg_B.get_background_field(
 				{ex, ry, rz},
 				vacuum_permeability
 			);
-			Bg_B(*parent_data)(1, -1) = bg_B.get_background_field(
+			Bg_B.data(*parent_data)(1, -1) = bg_B.get_background_field(
 				{rx, sy, rz},
 				vacuum_permeability
 			);
-			Bg_B(*parent_data)(1, +1) = bg_B.get_background_field(
+			Bg_B.data(*parent_data)(1, +1) = bg_B.get_background_field(
 				{rx, ey, rz},
 				vacuum_permeability
 			);
-			Bg_B(*parent_data)(2, -1) = bg_B.get_background_field(
+			Bg_B.data(*parent_data)(2, -1) = bg_B.get_background_field(
 				{rx, ry, sz},
 				vacuum_permeability
 			);
-			Bg_B(*parent_data)(2, +1) = bg_B.get_background_field(
+			Bg_B.data(*parent_data)(2, +1) = bg_B.get_background_field(
 				{rx, ry, ez},
 				vacuum_permeability
 			);
@@ -542,7 +542,7 @@ template <
 			}
 
 			for (auto dim: {0, 1, 2}) {
-				Vol_B(*parent_data)[dim] = 0.5 * (Face_B(*parent_data)(dim, -1) + Face_B(*parent_data)(dim, +1));
+				Vol_B(*parent_data)[dim] = 0.5 * (Face_B.data(*parent_data)(dim, -1) + Face_B.data(*parent_data)(dim, +1));
 			}
 
 			Nrj(*parent_data) = get_total_energy_density(
@@ -563,10 +563,11 @@ template<
 	class Geometries,
 	class Boundaries,
 	class Background_B,
+	class MHD_Getter,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
-	class Magnetic_Field_Getter,
+	class Volume_Magnetic_Field_Getter,
 	class Face_Magnetic_Field_Getter,
 	class Background_Magnetic_Field_Getter,
 	class Solver_Info_Getter,
@@ -582,69 +583,58 @@ template<
 	Geometries& geometries,
 	Boundaries& boundaries,
 	const Background_B& bg_B,
-	const double simulation_time,
-	const double proton_mass,
-	const double adiabatic_index,
-	const double vacuum_permeability,
-	const Mass_Density_Getter Mas,
-	const Momentum_Density_Getter Mom,
-	const Total_Energy_Density_Getter Nrj,
-	const Magnetic_Field_Getter Mag,
-	const Face_Magnetic_Field_Getter Face_B,
-	const Background_Magnetic_Field_Getter Bg_B_Getter,
-	const Solver_Info_Getter SInfo,
-	const Face_Info_Getter FInfo,
-	const Target_Refinement_Level_Min_Getter Ref_min,
-	const Target_Refinement_Level_Max_Getter Ref_max,
-	const Substepping_Period_Getter Substep,
-	const Maximum_Signal_Speed_Getter Max_v
+	const double& simulation_time,
+	const double& proton_mass,
+	const double& adiabatic_index,
+	const double& vacuum_permeability,
+	const MHD_Getter& MHD,
+	const Mass_Density_Getter& Mas,
+	const Momentum_Density_Getter& Mom,
+	const Total_Energy_Density_Getter& Nrj,
+	const Volume_Magnetic_Field_Getter& Vol_B,
+	const Face_Magnetic_Field_Getter& Face_B,
+	const Background_Magnetic_Field_Getter& Bg_B,
+	const Solver_Info_Getter& SInfo,
+	const Face_Info_Getter& FInfo,
+	const Target_Refinement_Level_Min_Getter& Ref_min,
+	const Target_Refinement_Level_Max_Getter& Ref_max,
+	const Substepping_Period_Getter& Substep,
+	const Maximum_Signal_Speed_Getter& Max_v
 ) try {
+	using Cell = Grid::cell_data_type;
+
 	pamhd::grid::set_minmax_refinement_level(
 		grid.local_cells(), grid, options_grid,
 		simulation_time, Ref_min, Ref_max, false);
 
 	pamhd::mhd::set_minmax_refinement_level(
 		grid.local_cells(), grid, options_mhd,
-		Mas, Mom, Nrj, Mag, SInfo, Ref_min, Ref_max,
+		Mas, Mom, Nrj, Vol_B, SInfo, Ref_min, Ref_max,
 		adiabatic_index, vacuum_permeability, proton_mass);
 
-	Grid::cell_data_type::set_transfer_all(true,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::mhd::MHD_State_Conservative(),
-		pamhd::grid::Target_Refinement_Level_Min(),
-		pamhd::grid::Target_Refinement_Level_Max()
-	);
+	Cell::set_transfer_all(true, Face_B.type(), MHD.type());
 	pamhd::grid::adapt_grid(
 		grid, Ref_min, Ref_max,
 		pamhd::mhd::New_Cells_Handler(
-			Mas, Mom, Nrj, Face_B, Mag, Bg_B_Getter,
+			Mas, Mom, Nrj, Face_B, Vol_B, Bg_B,
 			bg_B, Ref_min, Ref_max, Max_v,
 			adiabatic_index, vacuum_permeability),
 		pamhd::mhd::Removed_Cells_Handler(
-			Mas, Mom, Nrj, Face_B, Mag, Bg_B_Getter,
+			Mas, Mom, Nrj, Face_B, Vol_B, Bg_B,
 			bg_B, Ref_min, Ref_max, Max_v,
-			adiabatic_index, vacuum_permeability));
-	Grid::cell_data_type::set_transfer_all(false,
-		pamhd::grid::Target_Refinement_Level_Min(),
-		pamhd::grid::Target_Refinement_Level_Max()
+			adiabatic_index, vacuum_permeability)
 	);
-	Grid::cell_data_type::set_transfer_all(true,
-		pamhd::Bg_Magnetic_Field()
-	);
+	Cell::set_transfer_all(true, Bg_B.type());
 	grid.update_copies_of_remote_neighbors();
-	Grid::cell_data_type::set_transfer_all(false,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::mhd::MHD_State_Conservative(),
-		pamhd::Bg_Magnetic_Field()
-	);
+	Cell::set_transfer_all(false, Face_B.type(), MHD.type(), Bg_B.type());
 
 	for (const auto& cell: grid.local_cells()) {
 		(*cell.data)[pamhd::MPI_Rank()] = grid.get_rank();
-		Substep(*cell.data) = 1;
+		Substep.data(*cell.data) = 1;
 	}
-	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Substepping_Period());
+	Cell::set_transfer_all(true, Substep.type());
 	grid.update_copies_of_remote_neighbors();
-	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Substepping_Period());
+	Cell::set_transfer_all(false, Substep.type());
 
 	for (const auto& gid: geometries.get_geometry_ids()) {
 		geometries.clear_cells(gid);
@@ -656,34 +646,16 @@ template<
 			cell.id);
 	}
 
-	Grid::cell_data_type::set_transfer_all(true, pamhd::Solver_Info());
-	pamhd::mhd::set_solver_info<pamhd::Solver_Info>(
-		grid, boundaries, geometries, SInfo
-	);
-	grid.update_copies_of_remote_neighbors();
-	Grid::cell_data_type::set_transfer_all(false, pamhd::Solver_Info());
-
-	Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Face_Boundary_Type());
+	pamhd::mhd::set_solver_info( grid, boundaries, geometries, SInfo);
 	pamhd::mhd::classify_faces(grid, SInfo, FInfo);
-	grid.update_copies_of_remote_neighbors();
-	Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Face_Boundary_Type());
 
 	pamhd::mhd::update_B_consistency(
-		0, grid.local_cells(),
-		Mas, Mom, Nrj, Mag, Face_B,
+		0, grid.local_cells(), grid,
+		MHD, Mas, Mom, Nrj, Vol_B, Face_B,
 		SInfo, Substep,
 		adiabatic_index,
 		vacuum_permeability,
 		true
-	);
-	Grid::cell_data_type::set_transfer_all(true,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::mhd::MHD_State_Conservative()
-	);
-	grid.update_copies_of_remote_neighbors();
-	Grid::cell_data_type::set_transfer_all(false,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::mhd::MHD_State_Conservative()
 	);
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());

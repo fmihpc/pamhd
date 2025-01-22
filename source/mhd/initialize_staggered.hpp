@@ -2,7 +2,7 @@
 Initializes staggered MHD solution of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019, 2023, 2024 Finnish Meteorological Institute
+Copyright 2019, 2023, 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -62,6 +62,7 @@ template <
 	class Background_Magnetic_Field,
 	class Grid,
 	class Face_Magnetic_Field_Getter,
+	class MHD_Getter,
 	class Magnetic_Field_Flux_Getters,
 	class Background_Magnetic_Field_Getter
 > void initialize_magnetic_field_staggered(
@@ -69,16 +70,21 @@ template <
 	Init_Cond& initial_conditions,
 	const Background_Magnetic_Field& bg_B,
 	Grid& grid,
-	const double time,
-	const double vacuum_permeability,
-	const Face_Magnetic_Field_Getter Face_B,
-	const Magnetic_Field_Flux_Getters Mag_f,
-	const Background_Magnetic_Field_Getter Bg_B
+	const double& time,
+	const double& vacuum_permeability,
+	const Face_Magnetic_Field_Getter& Face_B,
+	const MHD_Getter& MHD,
+	const Magnetic_Field_Flux_Getters& Mag_f,
+	const Background_Magnetic_Field_Getter& Bg_B
 ) {
 	using std::get;
 	using std::make_tuple;
 	using std::runtime_error;
 	using std::to_string;
+
+	using Cell = Grid::cell_data_type;
+
+	Cell::set_transfer_all(true, MHD.type(), Bg_B.type(), Face_B.type());
 
 	// set default magnetic field
 	for (const auto& cell: grid.local_cells()) {
@@ -93,27 +99,27 @@ template <
 		const auto [sx, sy, sz] = grid.geometry.get_min(cell.id);
 		const auto [ex, ey, ez] = grid.geometry.get_max(cell.id);
 
-		Bg_B(*cell.data)(-1) = bg_B.get_background_field(
+		Bg_B.data(*cell.data)(-1) = bg_B.get_background_field(
 			{sx, ry, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(+1) = bg_B.get_background_field(
+		Bg_B.data(*cell.data)(+1) = bg_B.get_background_field(
 			{ex, ry, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(-2) = bg_B.get_background_field(
+		Bg_B.data(*cell.data)(-2) = bg_B.get_background_field(
 			{rx, sy, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(+2) = bg_B.get_background_field(
+		Bg_B.data(*cell.data)(+2) = bg_B.get_background_field(
 			{rx, ey, rz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(-3) = bg_B.get_background_field(
+		Bg_B.data(*cell.data)(-3) = bg_B.get_background_field(
 			{rx, ry, sz},
 			vacuum_permeability
 		);
-		Bg_B(*cell.data)(+3) = bg_B.get_background_field(
+		Bg_B.data(*cell.data)(+3) = bg_B.get_background_field(
 			{rx, ry, ez},
 			vacuum_permeability
 		);
@@ -158,7 +164,7 @@ template <
 				);
 
 			const size_t dim = std::abs(dir) - 1;
-			Face_B(*cell.data)(dir) = magnetic_field[dim];
+			Face_B.data(*cell.data)(dir) = magnetic_field[dim];
 		}
 	}
 
@@ -221,10 +227,13 @@ template <
 					);
 
 				const size_t dim = std::abs(dir) - 1;
-				Face_B(*cell_data)(dir) = magnetic_field[dim];
+				Face_B.data(*cell_data)(dir) = magnetic_field[dim];
 			}
 		}
 	}
+
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false, MHD.type(), Bg_B.type(), Face_B.type());
 }
 
 }} // namespaces

@@ -2,7 +2,7 @@
 Class for handling boundaries of one simulation variable.
 
 Copyright 2016, 2017 Ilja Honkonen
-Copyright 2019 Finnish Meteorological Institute
+Copyright 2019, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -111,7 +111,7 @@ public:
 
 		// cell types for internal use
 		constexpr typename std::remove_reference<
-			decltype(Cell_Type(*grid[0]))
+			decltype(Cell_Type.data(*grid[0]))
 		>::type
 			normal_cell{1},
 			dont_solve_cell{2},
@@ -123,7 +123,7 @@ public:
 
 		// all cells are normal by default
 		for (const auto& cell: grid.local_cells()) {
-			Cell_Type(*cell.data) = normal_cell;
+			Cell_Type.data(*cell.data) = normal_cell;
 		}
 
 		// value boundary cells
@@ -136,7 +136,7 @@ public:
 						"No data for cell " + to_string(cell_id)
 					);
 				}
-				Cell_Type(*cell_data) = value_bdy_cell;
+				Cell_Type.data(*cell_data) = value_bdy_cell;
 			}
 		}
 
@@ -150,10 +150,10 @@ public:
 						"No data for cell " + to_string(cell_id)
 					);
 				}
-				if (Cell_Type(*cell_data) != normal_cell) {
+				if (Cell_Type.data(*cell_data) != normal_cell) {
 					continue;
 				}
-				Cell_Type(*cell_data) = copy_bdy_cell;
+				Cell_Type.data(*cell_data) = copy_bdy_cell;
 			}
 		}
 
@@ -162,7 +162,7 @@ public:
 
 		// turn boundary cells without normal neighbors into dont_solve
 		for (const auto& cell: grid.local_cells()) {
-			if (Cell_Type(*cell.data) == normal_cell) {
+			if (Cell_Type.data(*cell.data) == normal_cell) {
 				continue;
 			}
 
@@ -173,14 +173,14 @@ public:
 					continue;
 				}
 
-				if (Cell_Type(*neighbor.data) == normal_cell) {
+				if (Cell_Type.data(*neighbor.data) == normal_cell) {
 					has_normal_neighbor = true;
 					break;
 				}
 			}
 
 			if (not has_normal_neighbor) {
-				Cell_Type(*cell.data) = dont_solve_cell;
+				Cell_Type.data(*cell.data) = dont_solve_cell;
 			}
 		}
 
@@ -189,20 +189,20 @@ public:
 
 		// get sources of copy boundary cells
 		for (const auto& cell: grid.local_cells()) {
-			if (Cell_Type(*cell.data) != copy_bdy_cell) {
+			if (Cell_Type.data(*cell.data) != copy_bdy_cell) {
 				continue;
 			}
 
 			std::vector<decltype(cell.id)> source{cell.id};
 			for (const auto& neighbor: cell.neighbors_of) {
-				if (Cell_Type(*neighbor.data) == normal_cell) {
+				if (Cell_Type.data(*neighbor.data) == normal_cell) {
 					source.push_back(neighbor.id);
 				}
 			}
 
 			// turn copy cell without sources into dont solve
 			if (source.size() < 2) {
-				Cell_Type(*cell.data) = dont_solve_cell;
+				Cell_Type.data(*cell.data) = dont_solve_cell;
 			} else {
 				this->copy_boundaries.push_back_source(source);
 			}
@@ -212,7 +212,7 @@ public:
 		grid.update_copies_of_remote_neighbors();
 
 		for (const auto& cell: grid.local_cells()) {
-			switch (Cell_Type(*cell.data)) {
+			switch (Cell_Type.data(*cell.data)) {
 				case dont_solve_cell:
 					this->dont_solve_cells.push_back(cell.id);
 					break;

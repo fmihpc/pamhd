@@ -2,7 +2,7 @@
 MHD variables and cell class of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2023, 2024 Finnish Meteorological Institute
+Copyright 2023, 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -232,6 +232,7 @@ using MHD_Conservative = gensimcell::Cell<
 
 //! Current state of simulation cell
 struct MHD_State_Conservative {
+	//static bool is_stale;
 	using data_type = MHD_Conservative;
 };
 
@@ -242,10 +243,6 @@ struct MHD_Flux {
 
 struct Face_Boundary_Type {
 	using data_type = pamhd::grid::Face_Type<int>;
-};
-
-struct Edge_Boundary_Type {
-	using data_type = pamhd::grid::Edge_Type<int>;
 };
 
 //! maximum wave velocity away from cell faces
@@ -268,8 +265,6 @@ using Cell_Staggered = gensimcell::Cell<
 	pamhd::mhd::MHD_Flux,
 	pamhd::Face_Magnetic_Field,
 	pamhd::Face_dB,
-	pamhd::grid::Is_Primary_Face,
-	pamhd::grid::Is_Primary_Edge,
 	pamhd::grid::Target_Refinement_Level_Max,
 	pamhd::grid::Target_Refinement_Level_Min,
 	pamhd::mhd::Face_Boundary_Type,

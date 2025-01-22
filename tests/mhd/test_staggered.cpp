@@ -65,6 +65,7 @@ Author(s): Ilja Honkonen
 #include "mhd/solve_staggered.hpp"
 #include "mhd/variables.hpp"
 #include "simulation_options.hpp"
+#include "variable_getter.hpp"
 #include "variables.hpp"
 
 
@@ -81,34 +82,29 @@ using Grid = dccrg::Dccrg<
 		pamhd::grid::Neighbor_Is_Local>
 >;
 
-// returns reference to background magnetic field on cell faces
-const auto Bg_B = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::Bg_Magnetic_Field()];
-};
+const auto Bg_B = pamhd::Variable_Getter<pamhd::Bg_Magnetic_Field>();
 
-// returns reference to total mass density in given cell
+const auto MHD = pamhd::Variable_Getter<pamhd::mhd::MHD_State_Conservative>();
+//bool pamhd::mhd::MHD_State_Conservative::is_stale = true;
 const auto Mas = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Mass_Density()];
+	return MHD.data(cell_data)[pamhd::mhd::Mass_Density()];
 };
 const auto Mom = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Momentum_Density()];
+	return MHD.data(cell_data)[pamhd::mhd::Momentum_Density()];
 };
 const auto Nrj = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Total_Energy_Density()];
+	return MHD.data(cell_data)[pamhd::mhd::Total_Energy_Density()];
 };
 const auto Vol_B = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()];
+	return MHD.data(cell_data)[pamhd::Magnetic_Field()];
 };
-const auto Face_B = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::Face_Magnetic_Field()];
-};
-const auto Face_dB = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::Face_dB()];
-};
-// divergence of magnetic field
-const auto Div_B = [](Cell& cell_data)->auto&{
-	return cell_data[pamhd::Magnetic_Field_Divergence()];
-};
+
+const auto Face_B = pamhd::Variable_Getter<pamhd::Face_Magnetic_Field>();
+//bool pamhd::Face_Magnetic_Field::is_stale = true;
+
+const auto Face_dB = pamhd::Variable_Getter<pamhd::Face_dB>();
+
+const auto Div_B = pamhd::Variable_Getter<pamhd::Magnetic_Field_Divergence>();
 
 /*! Solver info variable for boundary logic
 
@@ -116,50 +112,37 @@ const auto Div_B = [](Cell& cell_data)->auto&{
 0 for read-only cells
 1 for read-write cells
 */
-const auto SInfo = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::Solver_Info()];
-};
+const auto SInfo = pamhd::Variable_Getter<pamhd::Solver_Info>();
 
-const auto Substep = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::Substepping_Period()];
-};
-const auto Substep_Min = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::Substep_Min()];
-};
-const auto Substep_Max = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::Substep_Max()];
-};
+const auto Substep = pamhd::Variable_Getter<pamhd::mhd::Substepping_Period>();
 
-const auto Timestep = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::Timestep()];
-};
+const auto Substep_Min = pamhd::Variable_Getter<pamhd::mhd::Substep_Min>();
 
-const auto Max_v = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::Max_Velocity()];
-};
+const auto Substep_Max = pamhd::Variable_Getter<pamhd::mhd::Substep_Max>();
 
+const auto Timestep = pamhd::Variable_Getter<pamhd::mhd::Timestep>();
+
+const auto Max_v = pamhd::Variable_Getter<pamhd::mhd::Max_Velocity>();
+
+const auto MHDF = pamhd::Variable_Getter<pamhd::mhd::MHD_Flux>();
 const auto Mas_f = [](Cell& cell_data, const int dir)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](dir)[pamhd::mhd::Mass_Density()];
+	return MHDF.data(cell_data)(dir)[pamhd::mhd::Mass_Density()];
 };
 const auto Mom_f = [](Cell& cell_data, const int dir)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](dir)[pamhd::mhd::Momentum_Density()];
+	return MHDF.data(cell_data)(dir)[pamhd::mhd::Momentum_Density()];
 };
 const auto Nrj_f = [](Cell& cell_data, const int dir)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](dir)[pamhd::mhd::Total_Energy_Density()];
+	return MHDF.data(cell_data)(dir)[pamhd::mhd::Total_Energy_Density()];
 };
 const auto Mag_f = [](Cell& cell_data, const int dir)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](dir)[pamhd::Magnetic_Field()];
+	return MHDF.data(cell_data)(dir)[pamhd::Magnetic_Field()];
 };
 
-const auto FInfo = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::mhd::Face_Boundary_Type()];
-};
-const auto Ref_min = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::grid::Target_Refinement_Level_Min()];
-};
-const auto Ref_max = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::grid::Target_Refinement_Level_Max()];
-};
+const auto FInfo = pamhd::Variable_Getter<pamhd::mhd::Face_Boundary_Type>();
+
+const auto Ref_min = pamhd::Variable_Getter<pamhd::grid::Target_Refinement_Level_Min>();
+
+const auto Ref_max = pamhd::Variable_Getter<pamhd::grid::Target_Refinement_Level_Max>();
 
 
 int main(int argc, char* argv[]) {
@@ -373,38 +356,30 @@ int main(int argc, char* argv[]) {
 		grid, Ref_min, Ref_max,
 		pamhd::grid::New_Cells_Handler(Ref_min, Ref_max),
 		pamhd::grid::Removed_Cells_Handler(Ref_min, Ref_max));
-	Cell::set_transfer_all(true,
-		pamhd::grid::Target_Refinement_Level_Min(),
-		pamhd::grid::Target_Refinement_Level_Max());
+	Cell::set_transfer_all(true, Ref_min.type(), Ref_max.type());
 	grid.balance_load();
-	Cell::set_transfer_all(false,
-		pamhd::grid::Target_Refinement_Level_Min(),
-		pamhd::grid::Target_Refinement_Level_Max());
+	Cell::set_transfer_all(false, Ref_min.type(), Ref_max.type());
 	if (rank == 0) {
 		cout << "done" << endl;
 	}
 
 	for (const auto& cell: grid.local_cells()) {
 		(*cell.data)[pamhd::MPI_Rank()] = rank;
-		Substep(*cell.data) = 1;
-		Max_v(*cell.data) = {-1, -1, -1, -1, -1, -1};
+		Substep.data(*cell.data) = 1;
+		Max_v.data(*cell.data) = {-1, -1, -1, -1, -1, -1};
 	}
 	pamhd::mhd::set_minmax_substepping_period(
 		options_sim.time_start, grid,
 		options_mhd, Substep_Min, Substep_Max);
 	Cell::set_transfer_all(true,
-		pamhd::mhd::Max_Velocity(),
-		pamhd::mhd::Substepping_Period(),
-		pamhd::mhd::Substep_Min(),
-		pamhd::mhd::Substep_Max(),
+		Max_v.type(), Substep.type(),
+		Substep_Min.type(), Substep_Max.type(),
 		pamhd::MPI_Rank()
 	);
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(false,
-		pamhd::mhd::Max_Velocity(),
-		pamhd::mhd::Substepping_Period(),
-		pamhd::mhd::Substep_Min(),
-		pamhd::mhd::Substep_Max(),
+		Max_v.type(), Substep.type(),
+		Substep_Min.type(), Substep_Max.type(),
 		pamhd::MPI_Rank()
 	);
 
@@ -440,70 +415,38 @@ int main(int argc, char* argv[]) {
 		grid,
 		simulation_time,
 		options_sim.vacuum_permeability,
-		Face_B, Mag_f, Bg_B
-	);
-	Cell::set_transfer_all(true,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::Bg_Magnetic_Field()
-	);
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::Bg_Magnetic_Field()
+		Face_B, MHD, Mag_f, Bg_B
 	);
 
 	pamhd::mhd::update_B_consistency(
-		0, grid.local_cells(),
-		Mas, Mom, Nrj, Vol_B, Face_B,
+		0, grid.local_cells(), grid,
+		MHD, Mas, Mom, Nrj, Vol_B, Face_B,
 		SInfo, Substep,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		false // fluid not initialized yet
 	);
-	Cell::set_transfer_all(true,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::mhd::MHD_State_Conservative()
-	);
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
 	pamhd::mhd::initialize_fluid_staggered(
-		geometries,
-		initial_conditions_mhd,
-		grid,
-		simulation_time,
+		geometries, initial_conditions_mhd,
+		grid, simulation_time,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
-		options_sim.proton_mass,
-		true,
-		Mas, Mom, Nrj, Vol_B,
+		options_sim.proton_mass, true,
+		MHD, Mas, Mom, Nrj, Vol_B,
 		Mas_f, Mom_f, Nrj_f
 	);
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
 
-	/*
-	Classify cells & faces into normal, boundary and dont_solve
-	*/
-
-	Cell::set_transfer_all(true, pamhd::Solver_Info());
-	pamhd::mhd::set_solver_info<pamhd::Solver_Info>(
-		grid, boundaries_mhd, geometries, SInfo
-	);
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, pamhd::Solver_Info());
-
-	Cell::set_transfer_all(true, pamhd::mhd::Face_Boundary_Type());
+	// classify cells & faces into normal, boundary and dont_solve
+	pamhd::mhd::set_solver_info(grid, boundaries_mhd, geometries, SInfo);
 	pamhd::mhd::classify_faces(grid, SInfo, FInfo);
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, pamhd::mhd::Face_Boundary_Type());
 
 	pamhd::mhd::apply_boundaries(
 		grid, geometries, boundaries_mhd,
 		simulation_time, options_sim.proton_mass,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
-		Mas, Mom, Nrj, Vol_B,
+		MHD, Mas, Mom, Nrj, Vol_B,
 		Face_B, SInfo, FInfo, Substep
 	);
 
@@ -513,9 +456,9 @@ int main(int argc, char* argv[]) {
 		0, options_mhd.time_step_factor,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
-		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
-		Mas_f, Mom_f, Nrj_f, Mag_f, SInfo,
-		Timestep, Substep, Substep_Min, Substep_Max, Max_v
+		MHD, Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
+		Mas_f, Mom_f, Nrj_f, Mag_f, SInfo, Timestep,
+		Substep, Substep_Min, Substep_Max, Max_v
 	);
 	if (rank == 0) {
 		cout << "Done initializing MHD" << endl;
@@ -551,17 +494,17 @@ int main(int argc, char* argv[]) {
 	while (simulation_time < time_end) {
 		simulation_step++;
 
-		// don't step over the final simulation time
 		const double
+			// don't step over the final simulation time
 			until_end = time_end - simulation_time,
 			dt = pamhd::mhd::timestep(
 				mhd_solver, grid, options_mhd, simulation_time,
 				until_end, options_mhd.time_step_factor,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
-				Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
-				Mas_f, Mom_f, Nrj_f, Mag_f, SInfo,
-				Timestep, Substep, Substep_Min, Substep_Max, Max_v
+				MHD, Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
+				Mas_f, Mom_f, Nrj_f, Mag_f, SInfo, Timestep,
+				Substep, Substep_Min, Substep_Max, Max_v
 			);
 		if (rank == 0) {
 			cout << "Solved MHD at time " << simulation_time
@@ -577,13 +520,12 @@ int main(int argc, char* argv[]) {
 				+= options_grid.amr_n
 				* ceil((simulation_time - next_amr) / options_grid.amr_n);
 			pamhd::mhd::adapt_grid(
-				grid,
-				options_grid, options_mhd,
+				grid, options_grid, options_mhd,
 				geometries, boundaries_mhd, background_B,
 				simulation_time, options_sim.proton_mass,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
-				Mas, Mom, Nrj, Vol_B, Face_B, Bg_B,
+				MHD, Mas, Mom, Nrj, Vol_B, Face_B, Bg_B,
 				SInfo, FInfo, Ref_min, Ref_max,
 				Substep, Max_v
 			);
@@ -594,7 +536,7 @@ int main(int argc, char* argv[]) {
 			simulation_time, options_sim.proton_mass,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
-			Mas, Mom, Nrj, Vol_B,
+			MHD, Mas, Mom, Nrj, Vol_B,
 			Face_B, SInfo, FInfo, Substep
 		);
 
@@ -605,9 +547,6 @@ int main(int argc, char* argv[]) {
 		if (rank == 0) {
 			cout << " average divergence " << avg_div << endl;
 		}
-		Cell::set_transfer_all(true, pamhd::Magnetic_Field_Divergence());
-		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false, pamhd::Magnetic_Field_Divergence());
 
 		if (
 			(options_mhd.save_n >= 0 and simulation_time >= time_end)
