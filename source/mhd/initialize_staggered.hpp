@@ -62,7 +62,6 @@ template <
 	class Background_Magnetic_Field,
 	class Grid,
 	class Face_Magnetic_Field_Getter,
-	class MHD_Getter,
 	class Magnetic_Field_Flux_Getters,
 	class Background_Magnetic_Field_Getter
 > void initialize_magnetic_field_staggered(
@@ -73,7 +72,6 @@ template <
 	const double& time,
 	const double& vacuum_permeability,
 	const Face_Magnetic_Field_Getter& Face_B,
-	const MHD_Getter& MHD,
 	const Magnetic_Field_Flux_Getters& Mag_f,
 	const Background_Magnetic_Field_Getter& Bg_B
 ) {
@@ -81,10 +79,6 @@ template <
 	using std::make_tuple;
 	using std::runtime_error;
 	using std::to_string;
-
-	using Cell = Grid::cell_data_type;
-
-	Cell::set_transfer_all(true, MHD.type(), Bg_B.type(), Face_B.type());
 
 	// set default magnetic field
 	for (const auto& cell: grid.local_cells()) {
@@ -167,6 +161,8 @@ template <
 			Face_B.data(*cell.data)(dir) = magnetic_field[dim];
 		}
 	}
+	Bg_B.type().is_stale = true;
+	Face_B.type().is_stale = true;
 
 	// set non-default magnetic field
 	for (
@@ -231,9 +227,6 @@ template <
 			}
 		}
 	}
-
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, MHD.type(), Bg_B.type(), Face_B.type());
 }
 
 }} // namespaces

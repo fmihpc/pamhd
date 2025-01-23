@@ -55,6 +55,7 @@ namespace grid {
 /*! Variable indicating minimum refinement level towards which grid cells should be refined.
 */
 struct Target_Refinement_Level_Min {
+	static bool is_stale;
 	using data_type = int;
 	static const std::string get_name() { return {"target minimum refinement level"}; }
 	static const std::string get_option_name() { return {"target-min-ref-lvl"}; }
@@ -62,6 +63,7 @@ struct Target_Refinement_Level_Min {
 };
 
 struct Target_Refinement_Level_Max {
+	static bool is_stale;
 	using data_type = int;
 	static const std::string get_name() { return {"target maximum refinement level"}; }
 	static const std::string get_option_name() { return {"target-max-ref-lvl"}; }
@@ -274,50 +276,6 @@ template<class Data_Type> struct Face_Type {
 	}
 	#endif
 };
-
-/*! Records which of cell's faces are primary.
-
-By default positive faces are primary, i.e. values in
-corresponding negative face of neighbor(s) in positive
-direction from cell are ignored.
-
-Faces of smaller neighbors are always primary.
-
-0 == -x, 1 == +x, ..., 5 == +z
-*/
-struct Is_Primary_Face {
-	using data_type = Face_Type<bool>;
-};
-
-
-/*! Updates Is_Primary_Face variable of given cells.
-*/
-template <
-	class Cells,
-	class Faces_Getter
-> void update_primary_faces(
-	const Cells& cells,
-	const Faces_Getter& Faces
-) {
-	for (const auto& cell: cells) {
-		Faces.data(*cell.data) = {true, true, true, true, true, true};
-		for (const auto& neighbor: cell.neighbors_of) {
-			const auto n = neighbor.face_neighbor;
-			if (n == 0) {
-				continue;
-			}
-			if (neighbor.relative_size < 0) {
-				continue; // larger neighbor never has priority
-			}
-			if (neighbor.relative_size > 0) {
-				// smaller neighbor always has priority
-				Faces.data(*cell.data)(n) = false;
-				continue;
-			}
-			if (n < 0) Faces.data(*cell.data)(n) = false;
-		}
-	}
-}
 
 
 /*! Common accessors for values stored on cell edges.

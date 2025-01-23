@@ -211,26 +211,26 @@ template <
 	class Substepping_Period_Getter,
 	class Max_Velocity_Getter
 > void get_fluxes(
-	const Solver solver,
+	const Solver& solver,
 	const Cell_Iter& cells,
 	Grid& grid,
-	const int current_substep,
-	const double adiabatic_index,
-	const double vacuum_permeability,
-	const double dt,
-	const Mass_Density_Getter Mas,
-	const Momentum_Density_Getter Mom,
-	const Total_Energy_Density_Getter Nrj,
-	const Magnetic_Field_Getter Vol_B,
-	const Face_dB_Getter Face_dB,
-	const Background_Magnetic_Field_Getter Bg_B,
-	const Mass_Density_Flux_Getters Mas_f,
-	const Momentum_Density_Flux_Getters Mom_f,
-	const Total_Energy_Density_Flux_Getters Nrj_f,
-	const Magnetic_Field_Flux_Getters Mag_f,
-	const Solver_Info_Getter SInfo,
-	const Substepping_Period_Getter Substep,
-	const Max_Velocity_Getter Max_v
+	const int& current_substep,
+	const double& adiabatic_index,
+	const double& vacuum_permeability,
+	const double& dt,
+	const Mass_Density_Getter& Mas,
+	const Momentum_Density_Getter& Mom,
+	const Total_Energy_Density_Getter& Nrj,
+	const Magnetic_Field_Getter& Vol_B,
+	const Face_dB_Getter& Face_dB,
+	const Background_Magnetic_Field_Getter& Bg_B,
+	const Mass_Density_Flux_Getters& Mas_f,
+	const Momentum_Density_Flux_Getters& Mom_f,
+	const Total_Energy_Density_Flux_Getters& Nrj_f,
+	const Magnetic_Field_Flux_Getters& Mag_f,
+	const Solver_Info_Getter& SInfo,
+	const Substepping_Period_Getter& Substep,
+	const Max_Velocity_Getter& Max_v
 ) try {
 	using std::abs;
 	using std::get;
@@ -1358,6 +1358,7 @@ template <
 	class Face_dB_Getter,
 	class Solver_Info_Getter,
 	class Substepping_Period_Getter,
+	class MHD_Getter,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
@@ -1369,19 +1370,20 @@ template <
 > void update_mhd_state(
 	const Cells& cells,
 	Grid& grid,
-	const int current_substep,
-	const Face_Magnetic_Field_Getter Face_B,
-	const Face_dB_Getter Face_dB,
-	const Solver_Info_Getter SInfo,
-	const Substepping_Period_Getter Substep,
-	const Mass_Density_Getter Mas,
-	const Momentum_Density_Getter Mom,
-	const Total_Energy_Density_Getter Nrj,
-	const Magnetic_Field_Getter Vol_B,
-	const Mass_Density_Flux_Getters Mas_f,
-	const Momentum_Density_Flux_Getters Mom_f,
-	const Total_Energy_Density_Flux_Getters Nrj_f,
-	const Magnetic_Field_Flux_Getters Mag_f
+	const int& current_substep,
+	const Face_Magnetic_Field_Getter& Face_B,
+	const Face_dB_Getter& Face_dB,
+	const Solver_Info_Getter& SInfo,
+	const Substepping_Period_Getter& Substep,
+	const MHD_Getter& MHD,
+	const Mass_Density_Getter& Mas,
+	const Momentum_Density_Getter& Mom,
+	const Total_Energy_Density_Getter& Nrj,
+	const Magnetic_Field_Getter& Vol_B,
+	const Mass_Density_Flux_Getters& Mas_f,
+	const Momentum_Density_Flux_Getters& Mom_f,
+	const Total_Energy_Density_Flux_Getters& Nrj_f,
+	const Magnetic_Field_Flux_Getters& Mag_f
 ) try {
 	using std::get;
 	using std::runtime_error;
@@ -1423,6 +1425,9 @@ template <
 		}
 		Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
 	}
+	MHD.type().is_stale = true;
+	Face_B.type().is_stale = true;
+
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
@@ -1465,7 +1470,7 @@ template <
 	const int current_substep,
 	const Cell_Iter& cells,
 	Grid& grid,
-	const MHD_Getter& /*MHD*/,
+	const MHD_Getter& MHD,
 	const Mass_Density_Getter& Mas,
 	const Momentum_Density_Getter& Mom,
 	const Total_Energy_Density_Getter& Nrj,
@@ -1482,18 +1487,18 @@ template <
 
 	using Cell = Grid::cell_data_type;
 
-	bool update_remote_copies = true;
-	/*if (Face_B.type().is_stale) {
-		update_remote_copies = true;
-		Face_B.type().is_stale = false;*/
+	bool update_copies = false;
+	if (Face_B.type().is_stale) {
+		update_copies = true;
 		Cell::set_transfer_all(true, Face_B.type());
-	/*}
+		Face_B.type().is_stale = false;
+	}
 	if (SInfo.type().is_stale) {
-		update_remote_copies = true;
-		SInfo.type().is_stale = false;*/
+		update_copies = true;
 		Cell::set_transfer_all(true, SInfo.type());
-	//}
-	if (update_remote_copies) {
+		SInfo.type().is_stale = false;
+	}
+	if (update_copies) {
 		grid.update_copies_of_remote_neighbors();
 	}
 	Cell::set_transfer_all(false, Face_B.type(), SInfo.type());
@@ -1536,7 +1541,7 @@ template <
 			);
 		}
 	}
-	//MHD.type().is_stale = true;
+	MHD.type().is_stale = true;
 
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
@@ -1557,8 +1562,6 @@ template <
 	const Solver_Info_Getter SInfo,
 	const Substepping_Period_Getter Substep
 ) try {
-	using Cell = Grid::cell_data_type;
-
 	int max_local = -1;
 	for (const auto& cell: grid.local_cells()) {
 		if (SInfo.data(*cell.data) < 0) {
@@ -1567,9 +1570,7 @@ template <
 		Substep.data(*cell.data) = 1 << Substep.data(*cell.data);
 		max_local = std::max(Substep.data(*cell.data), max_local);
 	}
-	Cell::set_transfer_all(true, Substep.type());
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, Substep.type());
+	Substep.type().is_stale = true;
 
 	int max_global = -1;
 	auto comm = grid.get_communicator();
@@ -1590,6 +1591,107 @@ template <
 	MPI_Comm_free(&comm);
 
 	return max_global;
+
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
+
+
+template <
+	class Solver,
+	class Grid,
+	class MHD_Getter,
+	class Mass_Density_Getter,
+	class Momentum_Density_Getter,
+	class Total_Energy_Density_Getter,
+	class Magnetic_Field_Getter,
+	class Face_dB_Getter,
+	class Background_Magnetic_Field_Getter,
+	class Mass_Density_Flux_Getters,
+	class Momentum_Density_Flux_Getters,
+	class Total_Energy_Density_Flux_Getters,
+	class Magnetic_Field_Flux_Getters,
+	class Solver_Info_Getter,
+	class Substepping_Period_Getter,
+	class Max_Velocity_Getter
+> void get_all_fluxes(
+	const double& sub_dt,
+	const Solver& solver,
+	Grid& grid,
+	const int& substep,
+	const double& adiabatic_index,
+	const double& vacuum_permeability,
+	const MHD_Getter& MHD,
+	const Mass_Density_Getter& Mas,
+	const Momentum_Density_Getter& Mom,
+	const Total_Energy_Density_Getter& Nrj,
+	const Magnetic_Field_Getter& Vol_B,
+	const Face_dB_Getter& Face_dB,
+	const Background_Magnetic_Field_Getter& Bg_B,
+	const Mass_Density_Flux_Getters& Mas_f,
+	const Momentum_Density_Flux_Getters& Mom_f,
+	const Total_Energy_Density_Flux_Getters& Nrj_f,
+	const Magnetic_Field_Flux_Getters& Mag_f,
+	const Solver_Info_Getter& SInfo,
+	const Substepping_Period_Getter& Substep,
+	const Max_Velocity_Getter& Max_v
+) try {
+	using Cell = Grid::cell_data_type;
+
+	bool update_copies = false;
+	if (MHD.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, MHD.type());
+		MHD.type().is_stale = false;
+	}
+	if (SInfo.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, SInfo.type());
+		SInfo.type().is_stale = false;
+	}
+	if (Substep.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, Substep.type());
+		Substep.type().is_stale = false;
+	}
+	if (update_copies) {
+		grid.start_remote_neighbor_copy_updates();
+	}
+	pamhd::mhd::get_fluxes(
+		solver, grid.inner_cells(), grid, substep,
+		adiabatic_index, vacuum_permeability, sub_dt,
+		Mas, Mom, Nrj, Vol_B, Face_dB, Bg_B,
+		Mas_f, Mom_f, Nrj_f, Mag_f,
+		SInfo, Substep, Max_v
+	);
+
+	if (update_copies) {
+		grid.wait_remote_neighbor_copy_update_receives();
+	}
+
+	pamhd::mhd::get_fluxes(
+		solver, grid.outer_cells(), grid, substep,
+		adiabatic_index, vacuum_permeability, sub_dt,
+		Mas, Mom, Nrj, Vol_B, Face_dB, Bg_B,
+		Mas_f, Mom_f, Nrj_f, Mag_f,
+		SInfo, Substep, Max_v
+	);
+
+	if (update_copies) {
+		grid.wait_remote_neighbor_copy_update_sends();
+	}
+
+	pamhd::mhd::get_fluxes(
+		solver, grid.remote_cells(), grid, substep,
+		adiabatic_index, vacuum_permeability, sub_dt,
+		Mas, Mom, Nrj, Vol_B, Face_dB, Bg_B,
+		Mas_f, Mom_f, Nrj_f, Mag_f,
+		SInfo, Substep, Max_v
+	);
+	Cell::set_transfer_all(false, MHD.type(), SInfo.type(), Substep.type());
+	Max_v.type().is_stale = true;
 
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
@@ -1648,83 +1750,41 @@ template <
 	const Substep_Max_Getter& Substep_Max,
 	const Max_Velocity_Getter& Max_v
 ) try {
-	using std::max;
-	using std::min;
-
-	using Cell = Grid::cell_data_type;
-
 	set_minmax_substepping_period(
-		simulation_time,
-		grid,
-		options_mhd,
-		Substep_Min,
-		Substep_Max
+		simulation_time, grid, options_mhd,
+		Substep_Min, Substep_Max
 	);
 
 	const double sub_dt = set_minmax_substepping_period(
-		grid,
-		max_time_step,
-		time_step_factor,
-		SInfo,
-		Timestep,
-		Substep_Min,
-		Substep_Max,
-		Max_v
+		grid, max_time_step, time_step_factor, SInfo,
+		Timestep, Substep_Min, Substep_Max, Max_v
 	);
 
 	restrict_substepping_period(
-		grid,
-		Substep,
-		Substep_Max,
-		SInfo
+		grid, Substep, Substep_Max, SInfo
 	);
 
 	const int max_substep = update_substeps(grid, SInfo, Substep);
-	if (grid.get_rank() == 0) {
-		std::cout
-			<< "Substep: " << sub_dt << ", largest substep period: "
-			<< max_substep << std::endl;
+	if (grid.get_rank() == 0) {std::cout
+		<< "Substep: " << sub_dt << ", largest substep period: "
+		<< max_substep << std::endl;
 	}
 
 	double total_dt = 0;
 	for (int substep = 1; substep <= max_substep; substep += 1) {
 		total_dt += sub_dt;
 
-		Cell::set_transfer_all(true, MHD.type());
-		grid.start_remote_neighbor_copy_updates();
-		pamhd::mhd::get_fluxes(
-			solver, grid.inner_cells(), grid, substep,
-			adiabatic_index, vacuum_permeability, sub_dt,
-			Mas, Mom, Nrj, Vol_B, Face_dB, Bg_B,
-			Mas_f, Mom_f, Nrj_f, Mag_f,
-			SInfo, Substep, Max_v
-		);
-
-		grid.wait_remote_neighbor_copy_update_receives();
-
-		pamhd::mhd::get_fluxes(
-			solver, grid.outer_cells(), grid, substep,
-			adiabatic_index, vacuum_permeability, sub_dt,
-			Mas, Mom, Nrj, Vol_B, Face_dB, Bg_B,
-			Mas_f, Mom_f, Nrj_f, Mag_f,
-			SInfo, Substep, Max_v
-		);
-
-		grid.wait_remote_neighbor_copy_update_sends();
-		Cell::set_transfer_all(false, MHD.type());
-
-		pamhd::mhd::get_fluxes(
-			solver, grid.remote_cells(), grid, substep,
-			adiabatic_index, vacuum_permeability, sub_dt,
-			Mas, Mom, Nrj, Vol_B, Face_dB, Bg_B,
-			Mas_f, Mom_f, Nrj_f, Mag_f,
-			SInfo, Substep, Max_v
+		get_all_fluxes(
+			sub_dt, solver, grid, substep, adiabatic_index,
+			vacuum_permeability, MHD, Mas, Mom, Nrj,
+			Vol_B, Face_dB, Bg_B, Mas_f, Mom_f, Nrj_f,
+			Mag_f, SInfo, Substep, Max_v
 		);
 
 		pamhd::mhd::update_mhd_state(
-			grid.local_cells(), grid,
-			substep, Face_B, Face_dB, SInfo,
-			Substep, Mas, Mom, Nrj, Vol_B,
+			grid.local_cells(), grid, substep,
+			Face_B, Face_dB, SInfo, Substep,
+			MHD, Mas, Mom, Nrj, Vol_B,
 			Mas_f, Mom_f, Nrj_f, Mag_f
 		);
 
@@ -1776,8 +1836,14 @@ template <
 		Substep.data(*cell.data) = Substep_Max.data(*cell.data);
 	}
 
-	auto comm = grid.get_communicator();
+	if (SInfo.type().is_stale) {
+		Cell::set_transfer_all(true, SInfo.type());
+		grid.update_copies_of_remote_neighbors();
+		Cell::set_transfer_all(false, SInfo.type());
+		SInfo.type().is_stale = false;
+	}
 
+	auto comm = grid.get_communicator();
 	Cell::set_transfer_all(true, Substep.type());
 	uint64_t modified_cells = 0;
 	do {
@@ -1818,7 +1884,7 @@ template <
 		}
 	} while (modified_cells > 0);
 	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(true, Substep.type());
+	Substep.type().is_stale = false;
 
 	MPI_Comm_free(&comm);
 
@@ -1867,6 +1933,8 @@ template <
 		}
 		min_substep_min_local = std::min(Substep_Min.data(*cell.data), min_substep_min_local);
 	}
+	Substep_Max.type().is_stale = true;
+	Substep_Min.type().is_stale = true;
 
 	int min_substep_min_global = std::numeric_limits<int>::max();
 	auto comm = grid.get_communicator();
@@ -1950,9 +2018,22 @@ template <
 		Timestep.data(*cell.data) = numeric_limits<double>::max();
 	}
 
-	Cell::set_transfer_all(true, Max_v.type(), SInfo.type());
-	grid.update_copies_of_remote_neighbors();
+	bool update_copies = false;
+	if (Max_v.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, Max_v.type());
+		Max_v.type().is_stale = false;
+	}
+	if (SInfo.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, SInfo.type());
+		SInfo.type().is_stale = false;
+	}
+	if (update_copies) {
+		grid.update_copies_of_remote_neighbors();
+	}
 	Cell::set_transfer_all(false, Max_v.type(), SInfo.type());
+
 	for (const auto& cell: grid.all_cells()) {
 		if (SInfo.data(*cell.data) < 0) {
 			continue;
@@ -1995,6 +2076,8 @@ template <
 			}
 		}
 	}
+	Timestep.type().is_stale = true;
+
 	for (const auto& cell: grid.local_cells()) {
 		if (SInfo.data(*cell.data) < 0) {
 			continue;
@@ -2036,9 +2119,11 @@ template <
 
 	if (max_dt <= smallest_dt_global) {
 		for (const auto& cell: grid.local_cells()) {
-			Substep_Min.data(*cell.data) =
-			Substep_Max.data(*cell.data) = 0;
+			Substep_Max.data(*cell.data) =
+			Substep_Min.data(*cell.data) = 0;
 		}
+		Substep_Max.type().is_stale = true;
+		Substep_Min.type().is_stale = true;
 		MPI_Comm_free(&comm);
 		return max_dt;
 	}
@@ -2095,6 +2180,8 @@ template <
 			Substep_Max.data(*cell.data) = 0;
 		}
 	}
+	Substep_Max.type().is_stale = true;
+	Substep_Min.type().is_stale = true;
 
 	return ret_val_global;
 

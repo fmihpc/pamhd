@@ -160,17 +160,20 @@ struct HD_Flux_Conservative {
 N == solved every Nth substep
 */
 struct Substepping_Period {
+	static bool is_stale;
 	using data_type = int;
 };
 
 //! Minimum substep period, solved no more often than every Nth substep
 struct Substep_Min {
+	static bool is_stale;
 	using data_type = int;
 	static const std::string get_name() { return {"Minimum substepping period"}; }
 };
 
 //! Maximum substep period, solved no less often than every Nth substep
 struct Substep_Max {
+	static bool is_stale;
 	using data_type = int;
 	static const std::string get_name() { return {"Maximum substepping period"}; }
 };
@@ -232,7 +235,7 @@ using MHD_Conservative = gensimcell::Cell<
 
 //! Current state of simulation cell
 struct MHD_State_Conservative {
-	//static bool is_stale;
+	static bool is_stale;
 	using data_type = MHD_Conservative;
 };
 
@@ -242,15 +245,18 @@ struct MHD_Flux {
 };
 
 struct Face_Boundary_Type {
+	static bool is_stale;
 	using data_type = pamhd::grid::Face_Type<int>;
 };
 
 //! maximum wave velocity away from cell faces
 struct Max_Velocity {
+	static bool is_stale;
 	using data_type = pamhd::grid::Face_Type<double>;
 };
 
 struct Timestep {
+	static bool is_stale;
 	using data_type = double;
 };
 

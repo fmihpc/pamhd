@@ -83,9 +83,11 @@ using Grid = dccrg::Dccrg<
 >;
 
 const auto Bg_B = pamhd::Variable_Getter<pamhd::Bg_Magnetic_Field>();
+bool pamhd::Bg_Magnetic_Field::is_stale = true;
 
 const auto MHD = pamhd::Variable_Getter<pamhd::mhd::MHD_State_Conservative>();
-//bool pamhd::mhd::MHD_State_Conservative::is_stale = true;
+bool pamhd::mhd::MHD_State_Conservative::is_stale = true;
+
 const auto Mas = [](Cell& cell_data)->auto& {
 	return MHD.data(cell_data)[pamhd::mhd::Mass_Density()];
 };
@@ -100,7 +102,7 @@ const auto Vol_B = [](Cell& cell_data)->auto& {
 };
 
 const auto Face_B = pamhd::Variable_Getter<pamhd::Face_Magnetic_Field>();
-//bool pamhd::Face_Magnetic_Field::is_stale = true;
+bool pamhd::Face_Magnetic_Field::is_stale = true;
 
 const auto Face_dB = pamhd::Variable_Getter<pamhd::Face_dB>();
 
@@ -113,16 +115,22 @@ const auto Div_B = pamhd::Variable_Getter<pamhd::Magnetic_Field_Divergence>();
 1 for read-write cells
 */
 const auto SInfo = pamhd::Variable_Getter<pamhd::Solver_Info>();
+bool pamhd::Solver_Info::is_stale = true;
 
 const auto Substep = pamhd::Variable_Getter<pamhd::mhd::Substepping_Period>();
+bool pamhd::mhd::Substepping_Period::is_stale = true;
 
 const auto Substep_Min = pamhd::Variable_Getter<pamhd::mhd::Substep_Min>();
+bool pamhd::mhd::Substep_Min::is_stale = true;
 
 const auto Substep_Max = pamhd::Variable_Getter<pamhd::mhd::Substep_Max>();
+bool pamhd::mhd::Substep_Max::is_stale = true;
 
 const auto Timestep = pamhd::Variable_Getter<pamhd::mhd::Timestep>();
+bool pamhd::mhd::Timestep::is_stale = true;
 
 const auto Max_v = pamhd::Variable_Getter<pamhd::mhd::Max_Velocity>();
+bool pamhd::mhd::Max_Velocity::is_stale = true;
 
 const auto MHDF = pamhd::Variable_Getter<pamhd::mhd::MHD_Flux>();
 const auto Mas_f = [](Cell& cell_data, const int dir)->auto& {
@@ -139,10 +147,13 @@ const auto Mag_f = [](Cell& cell_data, const int dir)->auto& {
 };
 
 const auto FInfo = pamhd::Variable_Getter<pamhd::mhd::Face_Boundary_Type>();
+bool pamhd::mhd::Face_Boundary_Type::is_stale = true;
 
 const auto Ref_min = pamhd::Variable_Getter<pamhd::grid::Target_Refinement_Level_Min>();
+bool pamhd::grid::Target_Refinement_Level_Min::is_stale = true;
 
 const auto Ref_max = pamhd::Variable_Getter<pamhd::grid::Target_Refinement_Level_Max>();
+bool pamhd::grid::Target_Refinement_Level_Max::is_stale = true;
 
 
 int main(int argc, char* argv[]) {
@@ -409,13 +420,9 @@ int main(int argc, char* argv[]) {
 		cout << "Initializing MHD... " << endl;
 	}
 	pamhd::mhd::initialize_magnetic_field_staggered<pamhd::Magnetic_Field>(
-		geometries,
-		initial_conditions_mhd,
-		background_B,
-		grid,
-		simulation_time,
-		options_sim.vacuum_permeability,
-		Face_B, MHD, Mag_f, Bg_B
+		geometries, initial_conditions_mhd, background_B,
+		grid, simulation_time, options_sim.vacuum_permeability,
+		Face_B, Mag_f, Bg_B
 	);
 
 	pamhd::mhd::update_B_consistency(

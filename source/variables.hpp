@@ -82,6 +82,7 @@ struct Magnetic_Field_Resistive {
 
 //! Background magnetic field vector at cell faces
 struct Bg_Magnetic_Field {
+	static bool is_stale;
 	using data_type = pamhd::grid::Face_Type<Eigen::Vector3d>;
 	static const std::string get_name() { return {"face background magnetic fields"}; }
 	static const std::string get_option_name() { return {"bg-b"}; }
@@ -94,7 +95,7 @@ Magnetic field stored on cell's faces.
 Component of magnetic field normal to the face is stored for each face.
 */
 struct Face_Magnetic_Field {
-	//static bool is_stale;
+	static bool is_stale;
 	using data_type = pamhd::grid::Face_Type<double>;
 	static const std::string get_name() { return {"magnetic field on faces"}; }
 	static const std::string get_option_name() { return {"face-b"}; }
@@ -159,6 +160,7 @@ Information for solver(s) on how to handle a simulation cell.
 1 means normal read-write cell
 */
 struct Solver_Info {
+	static bool is_stale;
 	using data_type = int;
 };
 

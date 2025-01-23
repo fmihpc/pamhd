@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_MHD_INITIALIZE_HPP
@@ -65,11 +68,11 @@ template <
 	Init_Cond& initial_conditions,
 	const Background_Magnetic_Field& bg_B,
 	Grid& grid,
-	const double time,
-	const double vacuum_permeability,
-	const Magnetic_Field_Getter Mag,
-	const Magnetic_Field_Flux_Getter Mag_f,
-	const Background_Magnetic_Field_Getter Bg_B
+	const double& time,
+	const double& vacuum_permeability,
+	const Magnetic_Field_Getter& Mag,
+	const Magnetic_Field_Flux_Getter& Mag_f,
+	const Background_Magnetic_Field_Getter& Bg_B
 ) {
 	// set default magnetic field
 	for (const auto& cell: grid.local_cells()) {
@@ -405,8 +408,6 @@ template <
 ) {
 	using std::get;
 
-	using Cell = Grid::cell_data_type;
-
 	if (verbose and grid.get_rank() == 0) {
 		std::cout << "Setting default MHD state... ";
 		std::cout.flush();
@@ -478,6 +479,7 @@ template <
 			Nrj(*cell.data) = 0;
 		}
 	}
+	MHD.type().is_stale = true;
 
 	if (verbose and grid.get_rank() == 0) {
 		std::cout << "done\nSetting non-default initial MHD state... ";
@@ -602,10 +604,6 @@ template <
 			}
 		}
 	}
-
-	Cell::set_transfer_all(true, MHD.type());
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, MHD.type());
 
 	if (verbose and grid.get_rank() == 0) {
 		std::cout << "done" << std::endl;
