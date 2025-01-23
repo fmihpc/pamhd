@@ -1781,7 +1781,7 @@ template <
 			Mag_f, SInfo, Substep, Max_v
 		);
 
-		pamhd::mhd::update_mhd_state(
+		update_mhd_state(
 			grid.local_cells(), grid, substep,
 			Face_B, Face_dB, SInfo, Substep,
 			MHD, Mas, Mom, Nrj, Vol_B,
@@ -1789,7 +1789,7 @@ template <
 		);
 
 		// constant thermal pressure when updating vol B after solution
-		pamhd::mhd::update_B_consistency(
+		update_B_consistency(
 			substep, grid.local_cells(), grid,
 			MHD, Mas, Mom, Nrj, Vol_B, Face_B,
 			SInfo, Substep,
