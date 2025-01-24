@@ -637,13 +637,13 @@ template<
 	class Grid,
 	class Boundaries,
 	class Boundary_Geometries,
-	class Magnetic_Field_Getter
+	class Volume_Magnetic_Field_Getter
 > void apply_magnetic_field_boundaries(
 	Grid& grid,
 	Boundaries& boundaries,
 	const Boundary_Geometries& bdy_geoms,
-	const double simulation_time,
-	const Magnetic_Field_Getter& Mag
+	const double& simulation_time,
+	const Volume_Magnetic_Field_Getter& Vol_B
 ) try {
 	using std::runtime_error;
 	using std::to_string;
@@ -676,7 +676,7 @@ template<
 				throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 			}
 
-			Mag(*cell_data) = magnetic_field;
+			Vol_B.data(*cell_data) = magnetic_field;
 		}
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(B)) {
@@ -691,7 +691,7 @@ template<
 				throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 			}
 
-			source_value += Mag(*source_data);
+			source_value += Vol_B.data(*source_data);
 		}
 		source_value /= item.size() - 1;
 
@@ -700,7 +700,7 @@ template<
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
 
-		Mag(*target_data) = source_value;
+		Vol_B.data(*target_data) = source_value;
 	}
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
@@ -727,22 +727,20 @@ template<
 	class Grid,
 	class Boundaries,
 	class Boundary_Geometries,
-	class MHD_Getter,
 	class Mass_Getter,
 	class Momentum_Getter,
 	class Energy_Getter,
-	class Magnetic_Field_Getter,
+	class Volume_Magnetic_Field_Getter,
 	class Cell_Info_Getter
 > void apply_fluid_boundaries(
 	Grid& grid,
 	Boundaries& boundaries,
 	const Boundary_Geometries& bdy_geoms,
 	const double simulation_time,
-	const MHD_Getter& MHD,
 	const Mass_Getter& Mas,
 	const Momentum_Getter& Mom,
 	const Energy_Getter& Nrj,
-	const Magnetic_Field_Getter& Mag,
+	const Volume_Magnetic_Field_Getter& Vol_B,
 	const Cell_Info_Getter& CInfo,
 	const double& proton_mass,
 	const double& adiabatic_index,
@@ -752,9 +750,25 @@ template<
 	using std::to_string;
 
 	using Cell = Grid::cell_data_type;
-	Cell::set_transfer_all(true, MHD.type(), CInfo.type());
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, CInfo.type());
+
+	bool update_copies = false;
+	if (Nrj.type().is_stale) {
+		update_copies = true;
+		// these become stale again below
+		Cell::set_transfer_all(true,
+			Mas.type(), Mom.type(), Nrj.type(), Vol_B.type());
+	}
+	if (CInfo.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, CInfo.type());
+		CInfo.type().is_stale = false;
+	}
+	if (update_copies) {
+		grid.update_copies_of_remote_neighbors();
+	}
+	Cell::set_transfer_all(false,
+		Mas.type(), Mom.type(), Nrj.type(),
+		Vol_B.type(), CInfo.type());
 
 	std::set<uint64_t> cp_bdy_cells;
 
@@ -788,7 +802,7 @@ template<
 				throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 			}
 
-			Mas(*cell_data) = mass_density;
+			Mas.data(*cell_data) = mass_density;
 		}
 	}
 
@@ -806,18 +820,18 @@ template<
 		for (const auto& neighbor: cell.neighbors_of) {
 			if (CInfo.data(*neighbor.data) < 1) continue;
 			if (neighbor.face_neighbor != 0) {
-				source_f_value += Mas(*neighbor.data);
+				source_f_value += Mas.data(*neighbor.data);
 				nr_face_values++;
 			}
 			if (neighbor.edge_neighbor[0] >= 0) {
-				source_e_value += Mas(*neighbor.data);
+				source_e_value += Mas.data(*neighbor.data);
 				nr_edge_values++;
 			}
 		}
 		if (nr_face_values > 0) {
-			Mas(*cell.data) = source_f_value / nr_face_values;
+			Mas.data(*cell.data) = source_f_value / nr_face_values;
 		} else if (nr_edge_values > 0) {
-			Mas(*cell.data) = source_e_value / nr_edge_values;
+			Mas.data(*cell.data) = source_e_value / nr_edge_values;
 		}
 	}
 
@@ -849,7 +863,7 @@ template<
 				throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 			}
 
-			Mom(*cell_data) = Mas(*cell_data) * velocity;
+			Mom.data(*cell_data) = Mas.data(*cell_data) * velocity;
 		}
 	}
 
@@ -868,23 +882,23 @@ template<
 			if (CInfo.data(*neighbor.data) < 1) continue;
 			if (neighbor.face_neighbor != 0) {
 				source_f_value += pamhd::mhd::get_velocity(
-					Mom(*neighbor.data),
-					Mas(*neighbor.data)
+					Mom.data(*neighbor.data),
+					Mas.data(*neighbor.data)
 				);
 				nr_face_values++;
 			}
 			if (neighbor.edge_neighbor[0] >= 0) {
 				source_e_value += pamhd::mhd::get_velocity(
-					Mom(*neighbor.data),
-					Mas(*neighbor.data)
+					Mom.data(*neighbor.data),
+					Mas.data(*neighbor.data)
 				);
 				nr_edge_values++;
 			}
 		}
 		if (nr_face_values > 0) {
-			Mom(*cell.data) = Mas(*cell.data) * source_f_value / nr_face_values;
+			Mom.data(*cell.data) = Mas.data(*cell.data) * source_f_value / nr_face_values;
 		} else if (nr_edge_values > 0) {
-			Mom(*cell.data) = Mas(*cell.data) * source_e_value / nr_edge_values;
+			Mom.data(*cell.data) = Mas.data(*cell.data) * source_e_value / nr_edge_values;
 		}
 	}
 
@@ -916,14 +930,14 @@ template<
 				throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 			}
 
-			Nrj(*cell_data) = pamhd::mhd::get_total_energy_density(
-				Mas(*cell_data),
+			Nrj.data(*cell_data) = pamhd::mhd::get_total_energy_density(
+				Mas.data(*cell_data),
 				pamhd::mhd::get_velocity(
-					Mom(*cell_data),
-					Mas(*cell_data)
+					Mom.data(*cell_data),
+					Mas.data(*cell_data)
 				),
 				pressure,
-				Mag(*cell_data),
+				Vol_B.data(*cell_data),
 				adiabatic_index,
 				vacuum_permeability
 			);
@@ -945,10 +959,10 @@ template<
 			if (CInfo.data(*neighbor.data) < 1) continue;
 			if (neighbor.face_neighbor != 0) {
 				source_f_value += pamhd::mhd::get_pressure(
-					Mas(*neighbor.data),
-					Mom(*neighbor.data),
-					Nrj(*neighbor.data),
-					Mag(*neighbor.data),
+					Mas.data(*neighbor.data),
+					Mom.data(*neighbor.data),
+					Nrj.data(*neighbor.data),
+					Vol_B.data(*neighbor.data),
 					adiabatic_index,
 					vacuum_permeability
 				);
@@ -956,10 +970,10 @@ template<
 			}
 			if (neighbor.edge_neighbor[0] >= 0) {
 				source_e_value += pamhd::mhd::get_pressure(
-					Mas(*neighbor.data),
-					Mom(*neighbor.data),
-					Nrj(*neighbor.data),
-					Mag(*neighbor.data),
+					Mas.data(*neighbor.data),
+					Mom.data(*neighbor.data),
+					Nrj.data(*neighbor.data),
+					Vol_B.data(*neighbor.data),
 					adiabatic_index,
 					vacuum_permeability
 				);
@@ -967,33 +981,31 @@ template<
 			}
 		}
 		if (nr_face_values > 0) {
-			Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
-				Mas(*cell.data),
+			Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
+				Mas.data(*cell.data),
 				pamhd::mhd::get_velocity(
-					Mom(*cell.data),
-					Mas(*cell.data)
+					Mom.data(*cell.data),
+					Mas.data(*cell.data)
 				),
 				source_f_value / nr_face_values,
-				Mag(*cell.data),
+				Vol_B.data(*cell.data),
 				adiabatic_index,
 				vacuum_permeability
 			);
 		} else if (nr_edge_values > 0) {
-			Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
-				Mas(*cell.data),
+			Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
+				Mas.data(*cell.data),
 				pamhd::mhd::get_velocity(
-					Mom(*cell.data),
-					Mas(*cell.data)
+					Mom.data(*cell.data),
+					Mas.data(*cell.data)
 				),
 				source_e_value / nr_edge_values,
-				Mag(*cell.data),
+				Vol_B.data(*cell.data),
 				adiabatic_index,
 				vacuum_permeability
 			);
 		}
 	}
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, MHD.type());
 
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
@@ -1179,6 +1191,8 @@ template <
 	}
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(false, CInfo.type(), FInfo.type());
+	CInfo.type().is_stale = false;
+	FInfo.type().is_stale = false;
 
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
@@ -1220,7 +1234,6 @@ template<
 	class Grid,
 	class Geometries,
 	class Boundaries,
-	class MHD_Getter,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
@@ -1237,7 +1250,6 @@ template<
 	const double& proton_mass,
 	const double& adiabatic_index,
 	const double& vacuum_permeability,
-	const MHD_Getter& MHD,
 	const Mass_Density_Getter& Mas,
 	const Momentum_Density_Getter& Mom,
 	const Total_Energy_Density_Getter& Nrj,
@@ -1249,7 +1261,7 @@ template<
 ) try {
 	pamhd::mhd::apply_fluid_boundaries(
 		grid, boundaries, geometries, simulation_time,
-		MHD, Mas, Mom, Nrj, Mag, SInfo, proton_mass,
+		Mas, Mom, Nrj, Mag, SInfo, proton_mass,
 		adiabatic_index, vacuum_permeability
 	);
 
@@ -1259,9 +1271,9 @@ template<
 	);
 
 	pamhd::mhd::update_B_consistency(
-		0, grid.local_cells(), grid, MHD,
-		Mas, Mom, Nrj, Mag, Face_B, SInfo, Substep,
-		adiabatic_index, vacuum_permeability, true
+		0, grid.local_cells(), grid, Mas, Mom, Nrj,
+		Mag, Face_B, SInfo, Substep, adiabatic_index,
+		vacuum_permeability, true
 	);
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());

@@ -85,21 +85,17 @@ using Grid = dccrg::Dccrg<
 const auto Bg_B = pamhd::Variable_Getter<pamhd::Bg_Magnetic_Field>();
 bool pamhd::Bg_Magnetic_Field::is_stale = true;
 
-const auto MHD = pamhd::Variable_Getter<pamhd::mhd::MHD_State_Conservative>();
-bool pamhd::mhd::MHD_State_Conservative::is_stale = true;
+const auto Mas = pamhd::Variable_Getter<pamhd::mhd::Mass_Density>();
+bool pamhd::mhd::Mass_Density::is_stale = true;
 
-const auto Mas = [](Cell& cell_data)->auto& {
-	return MHD.data(cell_data)[pamhd::mhd::Mass_Density()];
-};
-const auto Mom = [](Cell& cell_data)->auto& {
-	return MHD.data(cell_data)[pamhd::mhd::Momentum_Density()];
-};
-const auto Nrj = [](Cell& cell_data)->auto& {
-	return MHD.data(cell_data)[pamhd::mhd::Total_Energy_Density()];
-};
-const auto Vol_B = [](Cell& cell_data)->auto& {
-	return MHD.data(cell_data)[pamhd::Magnetic_Field()];
-};
+const auto Mom = pamhd::Variable_Getter<pamhd::mhd::Momentum_Density>();
+bool pamhd::mhd::Momentum_Density::is_stale = true;
+
+const auto Nrj = pamhd::Variable_Getter<pamhd::mhd::Total_Energy_Density>();
+bool pamhd::mhd::Total_Energy_Density::is_stale = true;
+
+const auto Vol_B = pamhd::Variable_Getter<pamhd::Magnetic_Field>();
+bool pamhd::Magnetic_Field::is_stale = true;
 
 const auto Face_B = pamhd::Variable_Getter<pamhd::Face_Magnetic_Field>();
 bool pamhd::Face_Magnetic_Field::is_stale = true;
@@ -427,7 +423,7 @@ int main(int argc, char* argv[]) {
 
 	pamhd::mhd::update_B_consistency(
 		0, grid.local_cells(), grid,
-		MHD, Mas, Mom, Nrj, Vol_B, Face_B,
+		Mas, Mom, Nrj, Vol_B, Face_B,
 		SInfo, Substep,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
@@ -440,7 +436,7 @@ int main(int argc, char* argv[]) {
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		options_sim.proton_mass, true,
-		MHD, Mas, Mom, Nrj, Vol_B,
+		Mas, Mom, Nrj, Vol_B,
 		Mas_f, Mom_f, Nrj_f
 	);
 
@@ -453,7 +449,7 @@ int main(int argc, char* argv[]) {
 		simulation_time, options_sim.proton_mass,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
-		MHD, Mas, Mom, Nrj, Vol_B,
+		Mas, Mom, Nrj, Vol_B,
 		Face_B, SInfo, FInfo, Substep
 	);
 
@@ -463,7 +459,7 @@ int main(int argc, char* argv[]) {
 		0, options_mhd.time_step_factor,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
-		MHD, Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
+		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 		Mas_f, Mom_f, Nrj_f, Mag_f, SInfo, Timestep,
 		Substep, Substep_Min, Substep_Max, Max_v
 	);
@@ -509,7 +505,7 @@ int main(int argc, char* argv[]) {
 				until_end, options_mhd.time_step_factor,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
-				MHD, Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
+				Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 				Mas_f, Mom_f, Nrj_f, Mag_f, SInfo, Timestep,
 				Substep, Substep_Min, Substep_Max, Max_v
 			);
@@ -532,7 +528,7 @@ int main(int argc, char* argv[]) {
 				simulation_time, options_sim.proton_mass,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
-				MHD, Mas, Mom, Nrj, Vol_B, Face_B, Bg_B,
+				Mas, Mom, Nrj, Vol_B, Face_B, Bg_B,
 				SInfo, FInfo, Ref_min, Ref_max,
 				Substep, Max_v
 			);
@@ -543,7 +539,7 @@ int main(int argc, char* argv[]) {
 			simulation_time, options_sim.proton_mass,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
-			MHD, Mas, Mom, Nrj, Vol_B,
+			Mas, Mom, Nrj, Vol_B,
 			Face_B, SInfo, FInfo, Substep
 		);
 

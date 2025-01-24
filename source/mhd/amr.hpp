@@ -124,21 +124,21 @@ template <
 			continue;
 		}
 
-		if (Mas(*cell.data) <= 0) {
+		if (Mas.data(*cell.data) <= 0) {
 			throw runtime_error(__FILE__ ":" + to_string(__LINE__));
 		}
-		if (Nrj(*cell.data) <= 0) {
+		if (Nrj.data(*cell.data) <= 0) {
 			throw runtime_error(__FILE__ ":" + to_string(__LINE__));
 		}
 
 		const auto [cdx, cdy, cdz] = grid.geometry.get_length(cell.id);
 		const auto
 			cpre = max(options_mhd.pressure_min_mrg, get_pressure(
-				Mas(*cell.data), Mom(*cell.data), Nrj(*cell.data),
-				Vol_B(*cell.data), adiabatic_index, vacuum_permeability)),
-			cmas = max(Mas(*cell.data) / proton_mass, options_mhd.number_density_min_mrg),
-			cvel = max((Mom(*cell.data) / Mas(*cell.data)).norm(), options_mhd.vel_min_mrg),
-			cmag = max(Vol_B(*cell.data).norm(), options_mhd.mag_min_mrg);
+				Mas.data(*cell.data), Mom.data(*cell.data), Nrj.data(*cell.data),
+				Vol_B.data(*cell.data), adiabatic_index, vacuum_permeability)),
+			cmas = max(Mas.data(*cell.data) / proton_mass, options_mhd.number_density_min_mrg),
+			cvel = max((Mom.data(*cell.data) / Mas.data(*cell.data)).norm(), options_mhd.vel_min_mrg),
+			cmag = max(Vol_B.data(*cell.data).norm(), options_mhd.mag_min_mrg);
 
 		// maximum relative gradients w.r.t. neighbors
 		double
@@ -158,11 +158,11 @@ template <
 			const auto [ndx, ndy, ndz] = grid.geometry.get_length(neighbor.id);
 			const auto
 				npre = max(options_mhd.pressure_min_mrg, get_pressure(
-					Mas(*neighbor.data), Mom(*neighbor.data), Nrj(*neighbor.data),
-					Vol_B(*neighbor.data), adiabatic_index, vacuum_permeability)),
-				nmas = max(Mas(*neighbor.data) / proton_mass, options_mhd.number_density_min_mrg),
-				nvel = max((Mom(*neighbor.data) / Mas(*neighbor.data)).norm(), options_mhd.vel_min_mrg),
-				nmag = max(Vol_B(*neighbor.data).norm(), options_mhd.mag_min_mrg);
+					Mas.data(*neighbor.data), Mom.data(*neighbor.data), Nrj.data(*neighbor.data),
+					Vol_B.data(*neighbor.data), adiabatic_index, vacuum_permeability)),
+				nmas = max(Mas.data(*neighbor.data) / proton_mass, options_mhd.number_density_min_mrg),
+				nvel = max((Mom.data(*neighbor.data) / Mas.data(*neighbor.data)).norm(), options_mhd.vel_min_mrg),
+				nmag = max(Vol_B.data(*neighbor.data).norm(), options_mhd.mag_min_mrg);
 
 			const auto len = [&](){
 				switch (neighbor.face_neighbor) {
@@ -283,8 +283,8 @@ template <
 			if (parent_data == nullptr) {
 				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
 			}
-			Mas(*cell_data) = Mas(*parent_data);
-			Mom(*cell_data) = Mom(*parent_data);
+			Mas.data(*cell_data) = Mas.data(*parent_data);
+			Mom.data(*cell_data) = Mom.data(*parent_data);
 			RLMin.data(*cell_data) = RLMin.data(*parent_data);
 			RLMax.data(*cell_data) = RLMax.data(*parent_data);
 			Max_v.data(*cell_data) = Max_v.data(*parent_data);
@@ -293,10 +293,10 @@ template <
 			const double parent_pressure = [&](){
 				try {
 					return get_pressure(
-						Mas(*parent_data),
-						Mom(*parent_data),
-						Nrj(*parent_data),
-						Vol_B(*parent_data),
+						Mas.data(*parent_data),
+						Mom.data(*parent_data),
+						Nrj.data(*parent_data),
+						Vol_B.data(*parent_data),
 						adiabatic_index,
 						vacuum_permeability
 					);
@@ -319,17 +319,17 @@ template <
 					}
 				}();
 				Face_B.data(*cell_data)(dim, side) = Face_B.data(*parent_data)(dim, side);
-				Face_B.data(*cell_data)(dim, -side) = Vol_B(*parent_data)[dim];
+				Face_B.data(*cell_data)(dim, -side) = Vol_B.data(*parent_data)[dim];
 			}
 
 			for (auto dim: {0, 1, 2}) {
-				Vol_B(*cell_data)[dim] = 0.5 * (Face_B.data(*cell_data)(dim, -1) + Face_B.data(*cell_data)(dim, +1));
+				Vol_B.data(*cell_data)[dim] = 0.5 * (Face_B.data(*cell_data)(dim, -1) + Face_B.data(*cell_data)(dim, +1));
 			}
-			Nrj(*cell_data) = get_total_energy_density(
-				Mas(*cell_data),
-				(Mom(*cell_data) / Mas(*cell_data)).eval(),
+			Nrj.data(*cell_data) = get_total_energy_density(
+				Mas.data(*cell_data),
+				(Mom.data(*cell_data) / Mas.data(*cell_data)).eval(),
 				parent_pressure,
-				Vol_B(*cell_data),
+				Vol_B.data(*cell_data),
 				adiabatic_index,
 				vacuum_permeability
 			);
@@ -439,9 +439,9 @@ template <
 			RLMin.data(*parent_data) = 999;
 			RLMax.data(*parent_data) = 0;
 			Max_v.data(*parent_data) = {-1, -1, -1, -1, -1, -1};
-			Mas(*parent_data) =
-			Nrj(*parent_data) = 0;
-			Mom(*parent_data) = {0, 0, 0};
+			Mas.data(*parent_data) =
+			Nrj.data(*parent_data) = 0;
+			Mom.data(*parent_data) = {0, 0, 0};
 			Face_B.data(*parent_data) = {0, 0, 0, 0, 0, 0};
 		}
 
@@ -458,7 +458,7 @@ template <
 				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
 			}
 
-			if (Mas(*removed_cell_data) <= 0) {
+			if (Mas.data(*removed_cell_data) <= 0) {
 				throw runtime_error(
 					__FILE__ "(" + to_string(__LINE__)
 					+ "): " + to_string(removed_cell_id) + ", "
@@ -475,15 +475,15 @@ template <
 				Max_v.data(*parent_data)(dir) = max(Max_v.data(*parent_data)(dir),
 					Max_v.data(*removed_cell_data)(dir));
 			}
-			Mas(*parent_data) += Mas(*removed_cell_data) / 8;
-			Mom(*parent_data) += Mom(*removed_cell_data) / 8;
+			Mas.data(*parent_data) += Mas.data(*removed_cell_data) / 8;
+			Mom.data(*parent_data) += Mom.data(*removed_cell_data) / 8;
 			// temporarily store pressure in energy density variable
 			try {
-				Nrj(*parent_data) += get_pressure(
-					Mas(*removed_cell_data),
-					Mom(*removed_cell_data),
-					Nrj(*removed_cell_data),
-					Vol_B(*removed_cell_data),
+				Nrj.data(*parent_data) += get_pressure(
+					Mas.data(*removed_cell_data),
+					Mom.data(*removed_cell_data),
+					Nrj.data(*removed_cell_data),
+					Vol_B.data(*removed_cell_data),
 					adiabatic_index,
 					vacuum_permeability
 				) / 8;
@@ -542,14 +542,14 @@ template <
 			}
 
 			for (auto dim: {0, 1, 2}) {
-				Vol_B(*parent_data)[dim] = 0.5 * (Face_B.data(*parent_data)(dim, -1) + Face_B.data(*parent_data)(dim, +1));
+				Vol_B.data(*parent_data)[dim] = 0.5 * (Face_B.data(*parent_data)(dim, -1) + Face_B.data(*parent_data)(dim, +1));
 			}
 
-			Nrj(*parent_data) = get_total_energy_density(
-				Mas(*parent_data),
-				(Mom(*parent_data) / Mas(*parent_data)).eval(),
-				Nrj(*parent_data),
-				Vol_B(*parent_data),
+			Nrj.data(*parent_data) = get_total_energy_density(
+				Mas.data(*parent_data),
+				(Mom.data(*parent_data) / Mas.data(*parent_data)).eval(),
+				Nrj.data(*parent_data),
+				Vol_B.data(*parent_data),
 				adiabatic_index,
 				vacuum_permeability
 			);
@@ -563,7 +563,6 @@ template<
 	class Geometries,
 	class Boundaries,
 	class Background_B,
-	class MHD_Getter,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
@@ -587,7 +586,6 @@ template<
 	const double& proton_mass,
 	const double& adiabatic_index,
 	const double& vacuum_permeability,
-	const MHD_Getter& MHD,
 	const Mass_Density_Getter& Mas,
 	const Momentum_Density_Getter& Mom,
 	const Total_Energy_Density_Getter& Nrj,
@@ -612,7 +610,9 @@ template<
 		Mas, Mom, Nrj, Vol_B, SInfo, Ref_min, Ref_max,
 		adiabatic_index, vacuum_permeability, proton_mass);
 
-	Cell::set_transfer_all(true, Face_B.type(), MHD.type());
+	Cell::set_transfer_all(true,
+		Mas.type(), Mom.type(), Nrj.type(),
+		Vol_B.type(), Face_B.type());
 	pamhd::grid::adapt_grid(
 		grid, Ref_min, Ref_max,
 		pamhd::mhd::New_Cells_Handler(
@@ -626,7 +626,15 @@ template<
 	);
 	Cell::set_transfer_all(true, Bg_B.type());
 	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, Face_B.type(), MHD.type(), Bg_B.type());
+	Cell::set_transfer_all(false,
+		Mas.type(), Mom.type(), Nrj.type(),
+		Vol_B.type(), Face_B.type(), Bg_B.type());
+	Mas.type().is_stale = false;
+	Mom.type().is_stale = false;
+	Nrj.type().is_stale = false;
+	Vol_B.type().is_stale = false;
+	Face_B.type().is_stale = false;
+	Bg_B.type().is_stale = false;
 
 	for (const auto& cell: grid.local_cells()) {
 		(*cell.data)[pamhd::MPI_Rank()] = grid.get_rank();
@@ -635,6 +643,7 @@ template<
 	Cell::set_transfer_all(true, Substep.type());
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(false, Substep.type());
+	Substep.type().is_stale = false;
 
 	for (const auto& gid: geometries.get_geometry_ids()) {
 		geometries.clear_cells(gid);
@@ -651,7 +660,7 @@ template<
 
 	pamhd::mhd::update_B_consistency(
 		0, grid.local_cells(), grid,
-		MHD, Mas, Mom, Nrj, Vol_B, Face_B,
+		Mas, Mom, Nrj, Vol_B, Face_B,
 		SInfo, Substep,
 		adiabatic_index,
 		vacuum_permeability,

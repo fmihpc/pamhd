@@ -60,7 +60,7 @@ template <
 	class Init_Cond,
 	class Background_Magnetic_Field,
 	class Grid,
-	class Magnetic_Field_Getter,
+	class Volume_Magnetic_Field_Getter,
 	class Magnetic_Field_Flux_Getter,
 	class Background_Magnetic_Field_Getter
 > void initialize_magnetic_field(
@@ -70,7 +70,7 @@ template <
 	Grid& grid,
 	const double& time,
 	const double& vacuum_permeability,
-	const Magnetic_Field_Getter& Mag,
+	const Volume_Magnetic_Field_Getter& Vol_B,
 	const Magnetic_Field_Flux_Getter& Mag_f,
 	const Background_Magnetic_Field_Getter& Bg_B
 ) {
@@ -94,7 +94,7 @@ template <
 				r, lat, lon
 			);
 
-		Mag(*cell.data) = magnetic_field;
+		Vol_B.data(*cell.data) = magnetic_field;
 
 		const auto cell_end = grid.geometry.get_max(cell.id);
 		Bg_B.data(*cell.data)(0, 1) = bg_B.get_background_field(
@@ -143,7 +143,7 @@ template <
 				abort();
 			}
 
-			Mag(*cell_data) = magnetic_field;
+			Vol_B.data(*cell_data) = magnetic_field;
 		}
 	}
 }
@@ -166,7 +166,7 @@ template <
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
-	class Magnetic_Field_Getter,
+	class Volume_Magnetic_Field_Getter,
 	class Mass_Density_Flux_Getter,
 	class Momentum_Density_Flux_Getter,
 	class Total_Energy_Density_Flux_Getter
@@ -182,7 +182,7 @@ template <
 	const Mass_Density_Getter Mas,
 	const Momentum_Density_Getter Mom,
 	const Total_Energy_Density_Getter Nrj,
-	const Magnetic_Field_Getter Mag,
+	const Volume_Magnetic_Field_Getter Vol_B,
 	const Mass_Density_Flux_Getter Mas_f,
 	const Momentum_Density_Flux_Getter Mom_f,
 	const Total_Energy_Density_Flux_Getter Nrj_f
@@ -230,19 +230,19 @@ template <
 				r, lat, lon
 			);
 
-		Mas(*cell.data) = mass_density;
-		Mom(*cell.data) = mass_density * velocity;
+		Mas.data(*cell.data) = mass_density;
+		Mom.data(*cell.data) = mass_density * velocity;
 		if (mass_density > 0 and pressure > 0) {
-			Nrj(*cell.data) = get_total_energy_density(
+			Nrj.data(*cell.data) = get_total_energy_density(
 				mass_density,
 				velocity,
 				pressure,
-				Mag(*cell.data),
+				Vol_B.data(*cell.data),
 				adiabatic_index,
 				vacuum_permeability
 			);
 		} else {
-			Nrj(*cell.data) = 0;
+			Nrj.data(*cell.data) = 0;
 		}
 	}
 
@@ -283,7 +283,7 @@ template <
 				abort();
 			}
 
-			Mas(*cell_data) = mass_density;
+			Mas.data(*cell_data) = mass_density;
 		}
 	}
 
@@ -319,7 +319,7 @@ template <
 				abort();
 			}
 
-			Mom(*cell_data) = Mas(*cell_data) * velocity;
+			Mom.data(*cell_data) = Mas.data(*cell_data) * velocity;
 		}
 	}
 
@@ -355,17 +355,17 @@ template <
 				abort();
 			}
 
-			if (Mas(*cell_data) > 0 and pressure > 0) {
-				Nrj(*cell_data) = get_total_energy_density(
-					Mas(*cell_data),
-					get_velocity(Mom(*cell_data), Mas(*cell_data)),
+			if (Mas.data(*cell_data) > 0 and pressure > 0) {
+				Nrj.data(*cell_data) = get_total_energy_density(
+					Mas.data(*cell_data),
+					get_velocity(Mom.data(*cell_data), Mas.data(*cell_data)),
 					pressure,
-					Mag(*cell_data),
+					Vol_B.data(*cell_data),
 					adiabatic_index,
 					vacuum_permeability
 				);
 			} else {
-				Nrj(*cell_data) = 0;
+				Nrj.data(*cell_data) = 0;
 			}
 		}
 	}
@@ -380,11 +380,10 @@ template <
 	class Geometries,
 	class Init_Cond,
 	class Grid,
-	class MHD_Getter,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
-	class Magnetic_Field_Getter,
+	class Volume_Magnetic_Field_Getter,
 	class Mass_Density_Flux_Getter,
 	class Momentum_Density_Flux_Getter,
 	class Total_Energy_Density_Flux_Getter
@@ -397,11 +396,10 @@ template <
 	const double& vacuum_permeability,
 	const double& proton_mass,
 	const bool& verbose,
-	const MHD_Getter& MHD,
 	const Mass_Density_Getter& Mas,
 	const Momentum_Density_Getter& Mom,
 	const Total_Energy_Density_Getter& Nrj,
-	const Magnetic_Field_Getter& Mag,
+	const Volume_Magnetic_Field_Getter& Vol_B,
 	const Mass_Density_Flux_Getter& Mas_f,
 	const Momentum_Density_Flux_Getter& Mom_f,
 	const Total_Energy_Density_Flux_Getter& Nrj_f
@@ -464,22 +462,21 @@ template <
 				r, lat, lon
 			);
 
-		Mas(*cell.data) = mass_density;
-		Mom(*cell.data) = mass_density * velocity;
+		Mas.data(*cell.data) = mass_density;
+		Mom.data(*cell.data) = mass_density * velocity;
 		if (mass_density > 0 and pressure > 0) {
-			Nrj(*cell.data) = get_total_energy_density(
+			Nrj.data(*cell.data) = get_total_energy_density(
 				mass_density,
 				velocity,
 				pressure,
-				Mag(*cell.data),
+				Vol_B.data(*cell.data),
 				adiabatic_index,
 				vacuum_permeability
 			);
 		} else {
-			Nrj(*cell.data) = 0;
+			Nrj.data(*cell.data) = 0;
 		}
 	}
-	MHD.type().is_stale = true;
 
 	if (verbose and grid.get_rank() == 0) {
 		std::cout << "done\nSetting non-default initial MHD state... ";
@@ -518,7 +515,7 @@ template <
 				abort();
 			}
 
-			Mas(*cell_data) = mass_density;
+			Mas.data(*cell_data) = mass_density;
 		}
 	}
 
@@ -554,7 +551,7 @@ template <
 				abort();
 			}
 
-			Mom(*cell_data) = Mas(*cell_data) * velocity;
+			Mom.data(*cell_data) = Mas.data(*cell_data) * velocity;
 		}
 	}
 
@@ -590,20 +587,24 @@ template <
 				abort();
 			}
 
-			if (Mas(*cell_data) > 0 and pressure > 0) {
-				Nrj(*cell_data) = get_total_energy_density(
-					Mas(*cell_data),
-					get_velocity(Mom(*cell_data), Mas(*cell_data)),
+			if (Mas.data(*cell_data) > 0 and pressure > 0) {
+				Nrj.data(*cell_data) = get_total_energy_density(
+					Mas.data(*cell_data),
+					get_velocity(Mom.data(*cell_data), Mas.data(*cell_data)),
 					pressure,
-					Mag(*cell_data),
+					Vol_B.data(*cell_data),
 					adiabatic_index,
 					vacuum_permeability
 				);
 			} else {
-				Nrj(*cell_data) = 0;
+				Nrj.data(*cell_data) = 0;
 			}
 		}
 	}
+
+	Mas.type().is_stale = true;
+	Mom.type().is_stale = true;
+	Nrj.type().is_stale = true;
 
 	if (verbose and grid.get_rank() == 0) {
 		std::cout << "done" << std::endl;

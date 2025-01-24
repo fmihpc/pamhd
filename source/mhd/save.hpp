@@ -84,6 +84,8 @@ template <class Grid> bool save_staggered(
 	using std::string;
 	using std::vector;
 
+	using Cell = Grid::cell_data_type;
+
 	std::set<string>
 		variables{},
 		allowed_variables{
@@ -175,67 +177,77 @@ template <class Grid> bool save_staggered(
 	if (variables.count("mhd") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::MHD_State_Conservative());
+		Cell::set_transfer_all(true,
+			pamhd::mhd::Mass_Density(),
+			pamhd::mhd::Momentum_Density(),
+			pamhd::mhd::Total_Energy_Density(),
+			pamhd::Magnetic_Field()
+		);
 		const string varname = "mhd     ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
+		Cell::set_transfer_all(false,
+			pamhd::mhd::Mass_Density(),
+			pamhd::mhd::Momentum_Density(),
+			pamhd::mhd::Total_Energy_Density(),
+			pamhd::Magnetic_Field()
+		);
 	}
 
 	if (variables.count("divfaceB") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::Magnetic_Field_Divergence());
+		Cell::set_transfer_all(true, pamhd::Magnetic_Field_Divergence());
 		const string varname = "divfaceB";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::Magnetic_Field_Divergence());
+		Cell::set_transfer_all(false, pamhd::Magnetic_Field_Divergence());
 	}
 
 	if (variables.count("bgB") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::Bg_Magnetic_Field());
+		Cell::set_transfer_all(true, pamhd::Bg_Magnetic_Field());
 		const string varname = "bgB     ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::Bg_Magnetic_Field());
+		Cell::set_transfer_all(false, pamhd::Bg_Magnetic_Field());
 	}
 
 	if (variables.count("rank") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::MPI_Rank());
+		Cell::set_transfer_all(true, pamhd::MPI_Rank());
 		const string varname = "rank    ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::MPI_Rank());
+		Cell::set_transfer_all(false, pamhd::MPI_Rank());
 	}
 
 	if (variables.count("mhd info") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::Solver_Info());
+		Cell::set_transfer_all(true, pamhd::Solver_Info());
 		const string varname = "mhd info";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::Solver_Info());
+		Cell::set_transfer_all(false, pamhd::Solver_Info());
 	}
 
 	if (variables.count("ref lvls") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true,
+		Cell::set_transfer_all(true,
 			pamhd::grid::Target_Refinement_Level_Min(),
 			pamhd::grid::Target_Refinement_Level_Max());
 		const string varname = "ref lvls";
@@ -243,7 +255,7 @@ template <class Grid> bool save_staggered(
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false,
+		Cell::set_transfer_all(false,
 			pamhd::grid::Target_Refinement_Level_Min(),
 			pamhd::grid::Target_Refinement_Level_Max());
 	}
@@ -251,73 +263,73 @@ template <class Grid> bool save_staggered(
 	if (variables.count("faceB") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::Face_Magnetic_Field());
+		Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
 		const string varname = "faceB   ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::Face_Magnetic_Field());
+		Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 	}
 
 	if (variables.count("fluxes") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::MHD_Flux());
+		Cell::set_transfer_all(true, pamhd::mhd::MHD_Flux());
 		const string varname = "fluxes  ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::MHD_Flux());
+		Cell::set_transfer_all(false, pamhd::mhd::MHD_Flux());
 	}
 
 	if (variables.count("substep") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Substepping_Period());
+		Cell::set_transfer_all(true, pamhd::mhd::Substepping_Period());
 		const string varname = "substep ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Substepping_Period());
+		Cell::set_transfer_all(false, pamhd::mhd::Substepping_Period());
 	}
 
 	if (variables.count("substmin") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Substep_Min());
+		Cell::set_transfer_all(true, pamhd::mhd::Substep_Min());
 		const string varname = "substmin";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Substep_Min());
+		Cell::set_transfer_all(false, pamhd::mhd::Substep_Min());
 	}
 
 	if (variables.count("substmax") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Substep_Max());
+		Cell::set_transfer_all(true, pamhd::mhd::Substep_Max());
 		const string varname = "substmax";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Substep_Max());
+		Cell::set_transfer_all(false, pamhd::mhd::Substep_Max());
 	}
 
 	if (variables.count("timestep") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::Timestep());
+		Cell::set_transfer_all(true, pamhd::mhd::Timestep());
 		const string varname = "timestep";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::Timestep());
+		Cell::set_transfer_all(false, pamhd::mhd::Timestep());
 	}
 
 	if (grid.get_rank() == 0) {
@@ -440,86 +452,86 @@ template <class Grid> bool save(
 	if (variables.count("hd") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::mhd::HD_State_Conservative());
+		Cell::set_transfer_all(true, pamhd::mhd::HD_State_Conservative());
 		const string varname = "hd      ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false
 		);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::mhd::HD_State_Conservative());
+		Cell::set_transfer_all(false, pamhd::mhd::HD_State_Conservative());
 	}
 
 	if (variables.count("bgB") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::Bg_Magnetic_Field());
+		Cell::set_transfer_all(true, pamhd::Bg_Magnetic_Field());
 		const string varname = "bgB     ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::Bg_Magnetic_Field());
+		Cell::set_transfer_all(false, pamhd::Bg_Magnetic_Field());
 	}
 
 	if (variables.count("rank") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::MPI_Rank());
+		Cell::set_transfer_all(true, pamhd::MPI_Rank());
 		const string varname = "rank    ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::MPI_Rank());
+		Cell::set_transfer_all(false, pamhd::MPI_Rank());
 	}
 
 	if (variables.count("mhd info") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::Solver_Info());
+		Cell::set_transfer_all(true, pamhd::Solver_Info());
 		const string varname = "mhd info";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::Solver_Info());
+		Cell::set_transfer_all(false, pamhd::Solver_Info());
 	}
 
 	if (variables.count("volume B") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::Magnetic_Field());
+		Cell::set_transfer_all(true, pamhd::Magnetic_Field());
 		const string varname = "volume B";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::Magnetic_Field());
+		Cell::set_transfer_all(false, pamhd::Magnetic_Field());
 	}
 
 	if (variables.count("res") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::Resistivity());
+		Cell::set_transfer_all(true, pamhd::Resistivity());
 		const string varname = "res     ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::Resistivity());
+		Cell::set_transfer_all(false, pamhd::Resistivity());
 	}
 
 	if (variables.count("Ecurrent") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::Electric_Current_Density());
+		Cell::set_transfer_all(true, pamhd::Electric_Current_Density());
 		const string varname = "Ecurrent";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::Electric_Current_Density());
+		Cell::set_transfer_all(false, pamhd::Electric_Current_Density());
 	}
 
 	if (grid.get_rank() == 0) {

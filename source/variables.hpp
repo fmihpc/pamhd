@@ -51,6 +51,7 @@ Variables used by magnetohydrodynamic (MHD) solver
 */
 
 struct Magnetic_Field {
+	static bool is_stale;
 	using data_type = Eigen::Vector3d;
 	static const std::string get_name() { return {"magnetic field"}; }
 	static const std::string get_option_name() { return {"magnetic-field"}; }
@@ -128,15 +129,9 @@ struct Magnetic_Field_Divergence {
 	static const std::string get_option_help() { return {"Divergence of plasma magnetic field (T/m)"}; }
 };
 
-struct Scalar_Potential_Gradient {
-	using data_type = Eigen::Vector3d;
-	static const std::string get_name() { return {"scalar potential gradient"}; }
-	static const std::string get_option_name() { return {"scalar-potential-gradient"}; }
-	static const std::string get_option_help() { return {"Gradient of scalar potential from Poisson's equation"}; }
-};
-
 //! J in J = ∇×B
 struct Electric_Current_Density {
+	static bool is_stale;
 	using data_type = Eigen::Vector3d;
 	static const std::string get_name() { return {"current density"}; }
 	static const std::string get_option_name() { return {"current-density"}; }

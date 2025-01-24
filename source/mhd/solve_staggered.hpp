@@ -103,15 +103,15 @@ template <
 	const pamhd::Magnetic_Field mag_int{};
 
 	detail::MHD state_neg, state_pos;
-	state_neg[mas_int] = Mas(*cell.data);
-	state_neg[mom_int] = get_rotated_vector(Mom(*cell.data), abs(dir));
-	state_neg[nrj_int] = Nrj(*cell.data);
-	state_neg[mag_int] = get_rotated_vector(Vol_B(*cell.data), abs(dir));
+	state_neg[mas_int] = Mas.data(*cell.data);
+	state_neg[mom_int] = get_rotated_vector(Mom.data(*cell.data), abs(dir));
+	state_neg[nrj_int] = Nrj.data(*cell.data);
+	state_neg[mag_int] = get_rotated_vector(Vol_B.data(*cell.data), abs(dir));
 
-	state_pos[mas_int] = Mas(*neighbor.data);
-	state_pos[mom_int] = get_rotated_vector(Mom(*neighbor.data), abs(dir));
-	state_pos[nrj_int] = Nrj(*neighbor.data);
-	state_pos[mag_int] = get_rotated_vector(Vol_B(*neighbor.data), abs(dir));
+	state_pos[mas_int] = Mas.data(*neighbor.data);
+	state_pos[mom_int] = get_rotated_vector(Mom.data(*neighbor.data), abs(dir));
+	state_pos[nrj_int] = Nrj.data(*neighbor.data);
+	state_pos[mag_int] = get_rotated_vector(Vol_B.data(*neighbor.data), abs(dir));
 
 	const Magnetic_Field::data_type bg_face_b
 		= get_rotated_vector(Bg_B.data(*cell.data)(dir), abs(dir));
@@ -164,14 +164,14 @@ template <
 			<< " and " << grid.geometry.get_center(neighbor.id)
 			<< " in direction " << dir
 			<< " with states (mass, momentum, total energy, magnetic field): "
-			<< Mas(*cell.data) << ", "
-			<< Mom(*cell.data) << ", "
-			<< Nrj(*cell.data) << ", "
-			<< Vol_B(*cell.data) << " and "
-			<< Mas(*neighbor.data) << ", "
-			<< Mom(*neighbor.data) << ", "
-			<< Nrj(*neighbor.data) << ", "
-			<< Vol_B(*neighbor.data)
+			<< Mas.data(*cell.data) << ", "
+			<< Mom.data(*cell.data) << ", "
+			<< Nrj.data(*cell.data) << ", "
+			<< Vol_B.data(*cell.data) << " and "
+			<< Mas.data(*neighbor.data) << ", "
+			<< Mom.data(*neighbor.data) << ", "
+			<< Nrj.data(*neighbor.data) << ", "
+			<< Vol_B.data(*neighbor.data)
 			<< " because: " << error.what()
 			<< std::endl;
 		abort();
@@ -1358,11 +1358,10 @@ template <
 	class Face_dB_Getter,
 	class Solver_Info_Getter,
 	class Substepping_Period_Getter,
-	class MHD_Getter,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
-	class Magnetic_Field_Getter,
+	class Volume_Magnetic_Field_Getter,
 	class Mass_Density_Flux_Getters,
 	class Momentum_Density_Flux_Getters,
 	class Total_Energy_Density_Flux_Getters,
@@ -1375,11 +1374,10 @@ template <
 	const Face_dB_Getter& Face_dB,
 	const Solver_Info_Getter& SInfo,
 	const Substepping_Period_Getter& Substep,
-	const MHD_Getter& MHD,
 	const Mass_Density_Getter& Mas,
 	const Momentum_Density_Getter& Mom,
 	const Total_Energy_Density_Getter& Nrj,
-	const Magnetic_Field_Getter& Vol_B,
+	const Volume_Magnetic_Field_Getter& Vol_B,
 	const Mass_Density_Flux_Getters& Mas_f,
 	const Momentum_Density_Flux_Getters& Mom_f,
 	const Total_Energy_Density_Flux_Getters& Nrj_f,
@@ -1397,18 +1395,18 @@ template <
 
 			const auto [dx, dy, dz] = grid.geometry.get_length(cell.id);
 
-			Mas(*cell.data) += (Mas_f(*cell.data, -1) - Mas_f(*cell.data, +1)) / dx;
-			Mas(*cell.data) += (Mas_f(*cell.data, -2) - Mas_f(*cell.data, +2)) / dy;
-			Mas(*cell.data) += (Mas_f(*cell.data, -3) - Mas_f(*cell.data, +3)) / dz;
-			Mom(*cell.data) += (Mom_f(*cell.data, -1) - Mom_f(*cell.data, +1)) / dx;
-			Nrj(*cell.data) += (Nrj_f(*cell.data, -1) - Nrj_f(*cell.data, +1)) / dx;
-			Vol_B(*cell.data) += (Mag_f(*cell.data, -1) - Mag_f(*cell.data, +1)) / dx;
-			Mom(*cell.data) += (Mom_f(*cell.data, -2) - Mom_f(*cell.data, +2)) / dy;
-			Nrj(*cell.data) += (Nrj_f(*cell.data, -2) - Nrj_f(*cell.data, +2)) / dy;
-			Vol_B(*cell.data) += (Mag_f(*cell.data, -2) - Mag_f(*cell.data, +2)) / dy;
-			Mom(*cell.data) += (Mom_f(*cell.data, -3) - Mom_f(*cell.data, +3)) / dz;
-			Nrj(*cell.data) += (Nrj_f(*cell.data, -3) - Nrj_f(*cell.data, +3)) / dz;
-			Vol_B(*cell.data) += (Mag_f(*cell.data, -3) - Mag_f(*cell.data, +3)) / dz;
+			Mas.data(*cell.data) += (Mas_f(*cell.data, -1) - Mas_f(*cell.data, +1)) / dx;
+			Mas.data(*cell.data) += (Mas_f(*cell.data, -2) - Mas_f(*cell.data, +2)) / dy;
+			Mas.data(*cell.data) += (Mas_f(*cell.data, -3) - Mas_f(*cell.data, +3)) / dz;
+			Mom.data(*cell.data) += (Mom_f(*cell.data, -1) - Mom_f(*cell.data, +1)) / dx;
+			Nrj.data(*cell.data) += (Nrj_f(*cell.data, -1) - Nrj_f(*cell.data, +1)) / dx;
+			Vol_B.data(*cell.data) += (Mag_f(*cell.data, -1) - Mag_f(*cell.data, +1)) / dx;
+			Mom.data(*cell.data) += (Mom_f(*cell.data, -2) - Mom_f(*cell.data, +2)) / dy;
+			Nrj.data(*cell.data) += (Nrj_f(*cell.data, -2) - Nrj_f(*cell.data, +2)) / dy;
+			Vol_B.data(*cell.data) += (Mag_f(*cell.data, -2) - Mag_f(*cell.data, +2)) / dy;
+			Mom.data(*cell.data) += (Mom_f(*cell.data, -3) - Mom_f(*cell.data, +3)) / dz;
+			Nrj.data(*cell.data) += (Nrj_f(*cell.data, -3) - Nrj_f(*cell.data, +3)) / dz;
+			Vol_B.data(*cell.data) += (Mag_f(*cell.data, -3) - Mag_f(*cell.data, +3)) / dz;
 
 			const std::array<double, 3> area{dy*dz, dx*dz, dx*dy};
 			for (size_t dim: {0, 1, 2}) {
@@ -1425,7 +1423,10 @@ template <
 		}
 		Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
 	}
-	MHD.type().is_stale = true;
+	Mas.type().is_stale = true;
+	Mom.type().is_stale = true;
+	Nrj.type().is_stale = true;
+	Vol_B.type().is_stale = true;
 	Face_B.type().is_stale = true;
 
 } catch (const std::exception& e) {
@@ -1458,7 +1459,6 @@ adjusted after averaging volume B.
 template <
 	class Cell_Iter,
 	class Grid,
-	class MHD_Getter,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
@@ -1470,7 +1470,6 @@ template <
 	const int current_substep,
 	const Cell_Iter& cells,
 	Grid& grid,
-	const MHD_Getter& MHD,
 	const Mass_Density_Getter& Mas,
 	const Momentum_Density_Getter& Mom,
 	const Total_Energy_Density_Getter& Nrj,
@@ -1506,12 +1505,12 @@ template <
 	for (const auto& cell: cells) {
 		if (SInfo.data(*cell.data) < 0) continue;
 		if (current_substep % Substep.data(*cell.data) != 0) continue;
-		if (constant_thermal_pressure and Mas(*cell.data) <= 0) continue;
+		if (constant_thermal_pressure and Mas.data(*cell.data) <= 0) continue;
 
 		const auto old_pressure = [&](){
 			if (constant_thermal_pressure) {
 				return pamhd::mhd::get_pressure(
-					Mas(*cell.data), Mom(*cell.data), Nrj(*cell.data), Vol_B(*cell.data),
+					Mas.data(*cell.data), Mom.data(*cell.data), Nrj.data(*cell.data), Vol_B.data(*cell.data),
 					adiabatic_index, vacuum_permeability);
 			} else {
 				return 0.0;
@@ -1531,17 +1530,20 @@ template <
 			}
 		}
 		for (size_t dim: {0, 1, 2}) {
-			Vol_B(*cell.data)[dim] = 0.5 * (c_face_b(dim, -1) + c_face_b(dim, +1));
+			Vol_B.data(*cell.data)[dim] = 0.5 * (c_face_b(dim, -1) + c_face_b(dim, +1));
 		}
 		if (constant_thermal_pressure) {
-			const auto vel = (Mom(*cell.data)/Mas(*cell.data)).eval();
-			Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
-				Mas(*cell.data), vel, old_pressure, Vol_B(*cell.data),
+			const auto vel = (Mom.data(*cell.data)/Mas.data(*cell.data)).eval();
+			Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
+				Mas.data(*cell.data), vel, old_pressure, Vol_B.data(*cell.data),
 				adiabatic_index, vacuum_permeability
 			);
 		}
 	}
-	MHD.type().is_stale = true;
+	if (constant_thermal_pressure) {
+		Nrj.type().is_stale = true;
+	}
+	Vol_B.type().is_stale = true;
 
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
@@ -1602,7 +1604,6 @@ template <
 template <
 	class Solver,
 	class Grid,
-	class MHD_Getter,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
@@ -1623,7 +1624,6 @@ template <
 	const int& substep,
 	const double& adiabatic_index,
 	const double& vacuum_permeability,
-	const MHD_Getter& MHD,
 	const Mass_Density_Getter& Mas,
 	const Momentum_Density_Getter& Mom,
 	const Total_Energy_Density_Getter& Nrj,
@@ -1641,10 +1641,14 @@ template <
 	using Cell = Grid::cell_data_type;
 
 	bool update_copies = false;
-	if (MHD.type().is_stale) {
+	if (Nrj.type().is_stale or Vol_B.type().is_stale) {
 		update_copies = true;
-		Cell::set_transfer_all(true, MHD.type());
-		MHD.type().is_stale = false;
+		Cell::set_transfer_all(true,
+			Mas.type(), Mom.type(), Nrj.type(), Vol_B.type());
+		Mas.type().is_stale = false;
+		Mom.type().is_stale = false;
+		Nrj.type().is_stale = false;
+		Vol_B.type().is_stale = false;
 	}
 	if (SInfo.type().is_stale) {
 		update_copies = true;
@@ -1690,7 +1694,9 @@ template <
 		Mas_f, Mom_f, Nrj_f, Mag_f,
 		SInfo, Substep, Max_v
 	);
-	Cell::set_transfer_all(false, MHD.type(), SInfo.type(), Substep.type());
+	Cell::set_transfer_all(false,
+		Mas.type(), Mom.type(), Nrj.type(),
+		Vol_B.type(), SInfo.type(), Substep.type());
 	Max_v.type().is_stale = true;
 
 } catch (const std::exception& e) {
@@ -1704,7 +1710,6 @@ template <
 template <
 	class Solver,
 	class Grid,
-	class MHD_Getter,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
@@ -1731,7 +1736,6 @@ template <
 	const double time_step_factor,
 	const double adiabatic_index,
 	const double vacuum_permeability,
-	const MHD_Getter& MHD,
 	const Mass_Density_Getter& Mas,
 	const Momentum_Density_Getter& Mom,
 	const Total_Energy_Density_Getter& Nrj,
@@ -1776,7 +1780,7 @@ template <
 
 		get_all_fluxes(
 			sub_dt, solver, grid, substep, adiabatic_index,
-			vacuum_permeability, MHD, Mas, Mom, Nrj,
+			vacuum_permeability, Mas, Mom, Nrj,
 			Vol_B, Face_dB, Bg_B, Mas_f, Mom_f, Nrj_f,
 			Mag_f, SInfo, Substep, Max_v
 		);
@@ -1784,14 +1788,14 @@ template <
 		update_mhd_state(
 			grid.local_cells(), grid, substep,
 			Face_B, Face_dB, SInfo, Substep,
-			MHD, Mas, Mom, Nrj, Vol_B,
+			Mas, Mom, Nrj, Vol_B,
 			Mas_f, Mom_f, Nrj_f, Mag_f
 		);
 
 		// constant thermal pressure when updating vol B after solution
 		update_B_consistency(
 			substep, grid.local_cells(), grid,
-			MHD, Mas, Mom, Nrj, Vol_B, Face_B,
+			Mas, Mom, Nrj, Vol_B, Face_B,
 			SInfo, Substep,
 			adiabatic_index,
 			vacuum_permeability,

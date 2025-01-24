@@ -54,6 +54,7 @@ Variables used by magnetohydrodynamic (MHD) solver
 */
 
 struct Mass_Density {
+	static bool is_stale;
 	using data_type = double;
 	static const std::string get_name() { return {"mass density"}; }
 	static const std::string get_option_name() { return {"mass-density"}; }
@@ -61,6 +62,7 @@ struct Mass_Density {
 };
 
 struct Momentum_Density {
+	static bool is_stale;
 	using data_type = Eigen::Vector3d;
 	static const std::string get_name() { return {"momentum density"}; }
 	static const std::string get_option_name() { return {"momentum-density"}; }
@@ -68,6 +70,7 @@ struct Momentum_Density {
 };
 
 struct Total_Energy_Density {
+	static bool is_stale;
 	using data_type = double;
 	static const std::string get_name() { return {"total energy density"}; }
 	static const std::string get_option_name() { return {"total-energy-density"}; }
@@ -192,7 +195,6 @@ using Cell = gensimcell::Cell<
 	pamhd::Magnetic_Field_Resistive,
 	pamhd::Magnetic_Field_Temp,
 	pamhd::Magnetic_Field_Divergence,
-	pamhd::Scalar_Potential_Gradient,
 	pamhd::mhd::HD_Flux_Conservative,
 	pamhd::Magnetic_Field_Flux,
 	pamhd::Face_Magnetic_Field,
@@ -217,7 +219,6 @@ using Cell2 = gensimcell::Cell<
 	pamhd::Magnetic_Field_Resistive,
 	pamhd::Magnetic_Field_Temp,
 	pamhd::Magnetic_Field_Divergence,
-	pamhd::Scalar_Potential_Gradient,
 	pamhd::mhd::HD_Flux_Conservative,
 	pamhd::mhd::HD2_Flux_Conservative,
 	pamhd::Magnetic_Field_Flux
@@ -230,14 +231,8 @@ using MHD_Conservative = gensimcell::Cell<
 	Mass_Density,
 	Momentum_Density,
 	Total_Energy_Density,
-	Magnetic_Field
+	pamhd::Magnetic_Field
 >;
-
-//! Current state of simulation cell
-struct MHD_State_Conservative {
-	static bool is_stale;
-	using data_type = MHD_Conservative;
-};
 
 //! Flux to/from cell from/to its neighbors
 struct MHD_Flux {
@@ -263,7 +258,10 @@ struct Timestep {
 // cell type for staggered solver MHD test program
 using Cell_Staggered = gensimcell::Cell<
 	gensimcell::Optional_Transfer,
-	pamhd::mhd::MHD_State_Conservative,
+	pamhd::mhd::Mass_Density,
+	pamhd::mhd::Momentum_Density,
+	pamhd::mhd::Total_Energy_Density,
+	pamhd::Magnetic_Field,
 	pamhd::Solver_Info,
 	pamhd::MPI_Rank,
 	pamhd::Bg_Magnetic_Field,

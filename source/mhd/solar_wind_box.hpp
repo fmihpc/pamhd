@@ -236,20 +236,26 @@ template<
 			vacuum_permeability
 		);
 
-		Mas(*cell.data) = mass;
-		Mom(*cell.data)   =
-		Vol_B(*cell.data) = {0, 0, 0};
+		Mas.data(*cell.data) = mass;
+		Mom.data(*cell.data)   =
+		Vol_B.data(*cell.data) = {0, 0, 0};
 		Face_B.data(*cell.data)  =
 		Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
-		Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
-			Mas(*cell.data),
-			Mom(*cell.data),
+		Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
+			Mas.data(*cell.data),
+			Mom.data(*cell.data),
 			pressure,
-			Vol_B(*cell.data),
+			Vol_B.data(*cell.data),
 			adiabatic_index,
 			vacuum_permeability
 		);
 	}
+	Mas.type().is_stale = true;
+	Mom.type().is_stale = true;
+	Nrj.type().is_stale = true;
+	Vol_B.type().is_stale = true;
+	Face_B.type().is_stale = true;
+	Bg_B.type().is_stale = true;
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
@@ -285,33 +291,38 @@ template<
 		json, sim_time, proton_mass
 	);
 	for (const auto& cell: solar_wind_cells) {
-		Mas(*cell.data) = mass;
-		Mom(*cell.data) = {
+		Mas.data(*cell.data) = mass;
+		Mom.data(*cell.data) = {
 			mass*velocity[0],
 			mass*velocity[1],
 			mass*velocity[2]
 		};
 		// prevent div(B) at solar wind boundary
 		if (solar_wind_dir != abs(1)) {
-			Vol_B(*cell.data)[0]   =
+			Vol_B.data(*cell.data)[0]   =
 			Face_B.data(*cell.data)(-1) =
 			Face_B.data(*cell.data)(+1) = magnetic_field[0];
 		}
 		if (solar_wind_dir != abs(2)) {
-			Vol_B(*cell.data)[1]   =
+			Vol_B.data(*cell.data)[1]   =
 			Face_B.data(*cell.data)(-2) =
 			Face_B.data(*cell.data)(+2) = magnetic_field[1];
 		}
 		if (solar_wind_dir != abs(3)) {
-			Vol_B(*cell.data)[2]   =
+			Vol_B.data(*cell.data)[2]   =
 			Face_B.data(*cell.data)(-3) =
 			Face_B.data(*cell.data)(+3) = magnetic_field[2];
 		}
-		Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
+		Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
 			mass, velocity, pressure, magnetic_field,
 			adiabatic_index, vacuum_permeability
 		);
 	}
+	Mas.type().is_stale = true;
+	Mom.type().is_stale = true;
+	Nrj.type().is_stale = true;
+	Vol_B.type().is_stale = true;
+	Face_B.type().is_stale = true;
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
@@ -353,16 +364,40 @@ template<
 	const Face_Magnetic_Field_Getter& Face_B,
 	const Solver_Info_Getter& SInfo
 ) try {
+	using Cell = Grid::cell_data_type;
+
+	bool update_copies = false;
+	if (
+		Mas.type().is_stale
+		or Mom.type().is_stale
+		or Nrj.type().is_stale
+		or Vol_B.type().is_stale
+	) {
+		update_copies = true;
+		Cell::set_transfer_all(true,
+			Mas.type(), Mom.type(), Nrj.type(), Vol_B.type());
+		// everything will become stale again below
+	}
+	if (Face_B.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, Face_B.type());
+	}
+	if (update_copies) {
+		grid.update_copies_of_remote_neighbors();
+	}
+	Cell::set_transfer_all(false,
+		Mas.type(), Mom.type(), Nrj.type(),
+		Vol_B.type(), Face_B.type());
 	// boundary and normal cell share face
 	for (int dir: {-3,-2,-1,+1,+2,+3}) {
 		for (const auto& cell: face_cells(dir)) {
 			for (const auto& neighbor: cell.neighbors_of) {
 				const auto& fn = neighbor.face_neighbor;
 				if (fn != -dir) continue;
-				Mas(*cell.data) = Mas(*neighbor.data);
-				Mom(*cell.data) = Mom(*neighbor.data);
-				Nrj(*cell.data) = Nrj(*neighbor.data);
-				Vol_B(*cell.data) = Vol_B(*neighbor.data);
+				Mas.data(*cell.data) = Mas.data(*neighbor.data);
+				Mom.data(*cell.data) = Mom.data(*neighbor.data);
+				Nrj.data(*cell.data) = Nrj.data(*neighbor.data);
+				Vol_B.data(*cell.data) = Vol_B.data(*neighbor.data);
 				for (int dir2: {-3,-2,-1,+1,+2,+3}) {
 					if (dir2 == fn or dir2 == -fn) {
 						Face_B.data(*cell.data)(dir2) = Face_B.data(*neighbor.data)(-fn);
@@ -382,10 +417,10 @@ template<
 			for (const auto& neighbor: cell.neighbors_of) {
 				const auto& en = neighbor.edge_neighbor;
 				if (en[0] != dim or en[1] != -dir1 or en[2] != -dir2) continue;
-				Mas(*cell.data) = Mas(*neighbor.data);
-				Mom(*cell.data) = Mom(*neighbor.data);
-				Nrj(*cell.data) = Nrj(*neighbor.data);
-				Vol_B(*cell.data) = Vol_B(*neighbor.data);
+				Mas.data(*cell.data) = Mas.data(*neighbor.data);
+				Mom.data(*cell.data) = Mom.data(*neighbor.data);
+				Nrj.data(*cell.data) = Nrj.data(*neighbor.data);
+				Vol_B.data(*cell.data) = Vol_B.data(*neighbor.data);
 				if (dim == 0) {
 					Face_B.data(*cell.data)(-1) = Face_B.data(*neighbor.data)(-1);
 					Face_B.data(*cell.data)(+1) = Face_B.data(*neighbor.data)(+1);
@@ -452,10 +487,10 @@ template<
 			const auto& en = neighbor.edge_neighbor;
 			if (en[0] >= 0) continue;
 
-			Mas(*cell.data) = Mas(*neighbor.data);
-			Mom(*cell.data) = Mom(*neighbor.data);
-			Nrj(*cell.data) = Nrj(*neighbor.data);
-			Vol_B(*cell.data) = Vol_B(*neighbor.data);
+			Mas.data(*cell.data) = Mas.data(*neighbor.data);
+			Mom.data(*cell.data) = Mom.data(*neighbor.data);
+			Nrj.data(*cell.data) = Nrj.data(*neighbor.data);
+			Vol_B.data(*cell.data) = Vol_B.data(*neighbor.data);
 			if (neighbor.x < 0) {
 				Face_B.data(*cell.data)(-1) =
 				Face_B.data(*cell.data)(+1) = Face_B.data(*neighbor.data)(+1);
@@ -482,14 +517,14 @@ template<
 
 	// planetary boundary cells
 	for (const auto& cell: planet_cells) {
-		Mas(*cell.data) = proton_mass * 1e9;
-		Mom(*cell.data) = {0, 0, 0};
-		Vol_B(*cell.data) = {0, 0, 0};
-		Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
-			Mas(*cell.data),
-			Mom(*cell.data),
+		Mas.data(*cell.data) = proton_mass * 1e9;
+		Mom.data(*cell.data) = {0, 0, 0};
+		Vol_B.data(*cell.data) = {0, 0, 0};
+		Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
+			Mas.data(*cell.data),
+			Mom.data(*cell.data),
 			1e-11,
-			Vol_B(*cell.data),
+			Vol_B.data(*cell.data),
 			adiabatic_index,
 			vacuum_permeability
 		);
@@ -525,27 +560,31 @@ template<
 				}
 			}
 		}
-		Vol_B(*cell.data) = {
+		Vol_B.data(*cell.data) = {
 			0.5*(Face_B.data(*cell.data)(-1) + Face_B.data(*cell.data)(+1)),
 			0.5*(Face_B.data(*cell.data)(-2) + Face_B.data(*cell.data)(+2)),
 			0.5*(Face_B.data(*cell.data)(-3) + Face_B.data(*cell.data)(+3))
 		};
-		Nrj(*cell.data) = pamhd::mhd::get_total_energy_density(
-			Mas(*cell.data),
-			Mom(*cell.data),
+		Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
+			Mas.data(*cell.data),
+			Mom.data(*cell.data),
 			1e-11,
-			Vol_B(*cell.data),
+			Vol_B.data(*cell.data),
 			adiabatic_index,
 			vacuum_permeability
 		);
 	}
+	Mas.type().is_stale = true;
+	Mom.type().is_stale = true;
+	Nrj.type().is_stale = true;
+	Vol_B.type().is_stale = true;
+	Face_B.type().is_stale = true;
 
 	apply_solar_wind_boundaries(
 		json, solar_wind_cells, solar_wind_dir, sim_time,
 		adiabatic_index, vacuum_permeability, proton_mass,
 		Mas, Mom, Nrj, Vol_B, Face_B
 	);
-	grid.update_copies_of_remote_neighbors();
 
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
