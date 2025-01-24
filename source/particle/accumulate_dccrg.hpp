@@ -2,7 +2,7 @@
 Particle data accumulator of PAMHD built on top of DCCRG.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019 Finnish Meteorological Institute
+Copyright 2019, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_PARTICLE_ACCUMULATE_DCCRG_HPP
@@ -129,7 +132,7 @@ template<
 	};
 
 	for (const auto& cell: cells) {
-		if (SInfo(*cell.data) < 0) {
+		if (SInfo.data(*cell.data) < 0) {
 			Bulk_Val(*cell.data) = {};
 			continue;
 		}
@@ -207,7 +210,7 @@ template<
 				}
 
 				// don't accumulate into dont_solve cells
-				if (SInfo(*neighbor.data) < 0) {
+				if (SInfo.data(*neighbor.data) < 0) {
 					continue;
 				}
 
@@ -309,7 +312,7 @@ template<
 	};
 
 	for (const auto& cell: cells) {
-		if (SInfo(*cell.data) < 0) {
+		if (SInfo.data(*cell.data) < 0) {
 			using bulk_val_t = std::remove_reference_t<
 				decltype(Bulk_Val(*cell.data))>;
 			if constexpr (is_same_v<bulk_val_t, Vector3d>) {
@@ -402,7 +405,7 @@ template<
 				}
 
 				// don't accumulate into dont_solve cells
-				if (SInfo(*neighbor.data) < 0) {
+				if (SInfo.data(*neighbor.data) < 0) {
 					continue;
 				}
 
@@ -506,7 +509,7 @@ template<
 			abort();
 		}
 
-		if (SInfo(*source_data) < 0) {
+		if (SInfo.data(*source_data) < 0) {
 			continue;
 		}
 
@@ -548,7 +551,7 @@ template<
 			abort();
 		}
 
-		if (SInfo(*source_data) < 0) {
+		if (SInfo.data(*source_data) < 0) {
 			continue;
 		}
 
@@ -624,6 +627,15 @@ template<
 	const Bulk_Velocity_Variable& bulk_vel_var,
 	const Solver_Info_Getter& SInfo
 ) {
+	using Cell = Grid::cell_data_type;
+
+	if (SInfo.type().is_stale) {
+		Cell::set_transfer_all(true, SInfo.type());
+		grid.update_copies_of_remote_neighbors();
+		Cell::set_transfer_all(false, SInfo.type());
+		SInfo.type().is_stale = false;
+	}
+
 	for (const auto& cell: grid.local_cells()) {
 		Bulk_Mass(*cell.data) = 0;
 		Bulk_Momentum(*cell.data) = {0, 0, 0};
@@ -660,7 +672,7 @@ template<
 		false // keep previous data in accumulation lists
 	);
 
-	Grid::cell_data_type::set_transfer_all(true, accu_list_len_var);
+	Cell::set_transfer_all(true, accu_list_len_var);
 	grid.start_remote_neighbor_copy_updates();
 
 	accumulate(
@@ -702,9 +714,9 @@ template<
 	);
 
 	grid.wait_remote_neighbor_copy_update_sends();
-	Grid::cell_data_type::set_transfer_all(false, accu_list_len_var);
+	Cell::set_transfer_all(false, accu_list_len_var);
 
-	Grid::cell_data_type::set_transfer_all(true, accu_list_var);
+	Cell::set_transfer_all(true, accu_list_var);
 	grid.start_remote_neighbor_copy_updates();
 	grid.wait_remote_neighbor_copy_update_receives();
 
@@ -726,7 +738,7 @@ template<
 	);
 
 	grid.wait_remote_neighbor_copy_update_sends();
-	Grid::cell_data_type::set_transfer_all(false, accu_list_var);
+	Cell::set_transfer_all(false, accu_list_var);
 
 	// scale velocities relative to total weights
 	for (const auto& cell: grid.local_cells()) {
@@ -744,7 +756,7 @@ template<
 	*/
 
 	// needs remote neighbors' bulk velocity
-	Grid::cell_data_type::set_transfer_all(true, bulk_vel_var);
+	Cell::set_transfer_all(true, bulk_vel_var);
 	grid.start_remote_neighbor_copy_updates();
 
 	for (const auto& cell: grid.local_cells()) {
@@ -757,12 +769,9 @@ template<
 	// returns number of particles of mass species mass
 	const auto particle_counter
 		= [
-			&Particle_Mass,
-			&Particle_Species_Mass
+			&Particle_Mass, &Particle_Species_Mass
 		](
-			typename Grid::cell_data_type& cell,
-			// TODO:switch to auto in c++17
-			decltype(*Particles(*(grid[0])).begin())& particle
+			Cell& cell, auto& particle
 		) ->double {
 			return Particle_Mass(cell, particle) / Particle_Species_Mass(cell, particle);
 		};
@@ -796,10 +805,10 @@ template<
 	);
 
 	grid.wait_remote_neighbor_copy_update_sends();
-	Grid::cell_data_type::set_transfer_all(false, bulk_vel_var);
+	Cell::set_transfer_all(false, bulk_vel_var);
 
 
-	Grid::cell_data_type::set_transfer_all(true, accu_list_len_var);
+	Cell::set_transfer_all(true, accu_list_len_var);
 	grid.start_remote_neighbor_copy_updates();
 
 	accumulate(
@@ -840,9 +849,9 @@ template<
 	);
 
 	grid.wait_remote_neighbor_copy_update_sends();
-	Grid::cell_data_type::set_transfer_all(false, accu_list_len_var);
+	Cell::set_transfer_all(false, accu_list_len_var);
 
-	Grid::cell_data_type::set_transfer_all(true, accu_list_var);
+	Cell::set_transfer_all(true, accu_list_var);
 	grid.start_remote_neighbor_copy_updates();
 	grid.wait_remote_neighbor_copy_update_receives();
 
@@ -864,7 +873,7 @@ template<
 	);
 
 	grid.wait_remote_neighbor_copy_update_sends();
-	Grid::cell_data_type::set_transfer_all(false, accu_list_var);
+	Cell::set_transfer_all(false, accu_list_var);
 }
 
 
@@ -883,45 +892,45 @@ template<
 	class MHD_Mass_Getter,
 	class MHD_Momentum_Getter,
 	class MHD_Energy_Getter,
-	class MHD_Magnetic_Field_Getter,
+	class Volume_Magnetic_Field_Getter,
 	class Solver_Info_Getter
 > void fill_mhd_fluid_values(
 	Grid& grid,
-	const double adiabatic_index,
-	const double vacuum_permeability,
-	const double particle_temp_nrj_ratio,
-	const double minimum_pressure,
-	Number_Of_Particles_Getter Number_Of_Particles,
-	Particle_Bulk_Mass_Getter Particle_Bulk_Mass,
-	Particle_Bulk_Momentum_Getter Particle_Bulk_Momentum,
-	Particle_Bulk_Relative_Kinetic_Energy_Getter Particle_Bulk_Relative_Kinetic_Energy,
-	Particle_List_Getter Particle_List,
-	MHD_Mass_Getter MHD_Mass,
-	MHD_Momentum_Getter MHD_Momentum,
-	MHD_Energy_Getter MHD_Energy,
-	MHD_Magnetic_Field_Getter MHD_Magnetic_Field,
-	Solver_Info_Getter SInfo
+	const double& adiabatic_index,
+	const double& vacuum_permeability,
+	const double& particle_temp_nrj_ratio,
+	const double& minimum_pressure,
+	const Number_Of_Particles_Getter& Number_Of_Particles,
+	const Particle_Bulk_Mass_Getter& Particle_Bulk_Mass,
+	const Particle_Bulk_Momentum_Getter& Particle_Bulk_Momentum,
+	const Particle_Bulk_Relative_Kinetic_Energy_Getter& Particle_Bulk_Relative_Kinetic_Energy,
+	const Particle_List_Getter& Particle_List,
+	const MHD_Mass_Getter& MHD_Mass,
+	const MHD_Momentum_Getter& MHD_Momentum,
+	const MHD_Energy_Getter& MHD_Energy,
+	const Volume_Magnetic_Field_Getter& Vol_B,
+	const Solver_Info_Getter& SInfo
 ) {
 	for (const auto& cell: grid.local_cells()) {
-		if (SInfo(*cell.data) < 0) {
-			MHD_Mass(*cell.data) = 0;
-			MHD_Momentum(*cell.data) = {0, 0, 0};
-			MHD_Energy(*cell.data) = 0;
+		if (SInfo.data(*cell.data) < 0) {
+			MHD_Mass.data(*cell.data) = 0;
+			MHD_Momentum.data(*cell.data) = {0, 0, 0};
+			MHD_Energy.data(*cell.data) = 0;
 			continue;
 		}
 
 		if (Particle_Bulk_Mass(*cell.data) <= 0) {
-			MHD_Mass(*cell.data) = 0;
-			MHD_Momentum(*cell.data) = {0, 0, 0};
-			MHD_Energy(*cell.data) = 0;
+			MHD_Mass.data(*cell.data) = 0;
+			MHD_Momentum.data(*cell.data) = {0, 0, 0};
+			MHD_Energy.data(*cell.data) = 0;
 			continue;
 		}
 
 		const auto length = grid.geometry.get_length(cell.id);
 		const auto volume = length[0] * length[1] * length[2];
 
-		MHD_Mass(*cell.data) = Particle_Bulk_Mass(*cell.data) / volume;
-		MHD_Momentum(*cell.data) = Particle_Bulk_Momentum(*cell.data) / volume;
+		MHD_Mass.data(*cell.data) = Particle_Bulk_Mass(*cell.data) / volume;
+		MHD_Momentum.data(*cell.data) = Particle_Bulk_Momentum(*cell.data) / volume;
 
 		const double pressure = [&](){
 			if (Particle_Bulk_Mass(*cell.data) <= 0) {
@@ -934,17 +943,21 @@ template<
 			}
 		}();
 
-		if (MHD_Mass(*cell.data) <= 0) {
-			MHD_Energy(*cell.data)
+		if (MHD_Mass.data(*cell.data) <= 0) {
+			MHD_Energy.data(*cell.data)
 				= pressure / (adiabatic_index - 1)
-				+ MHD_Magnetic_Field(*cell.data).squaredNorm() / vacuum_permeability / 2;
+				+ Vol_B.data(*cell.data).squaredNorm() / vacuum_permeability / 2;
 		} else {
-			MHD_Energy(*cell.data)
+			MHD_Energy.data(*cell.data)
 				= pressure / (adiabatic_index - 1)
-				+ MHD_Momentum(*cell.data).squaredNorm() / MHD_Mass(*cell.data) / 2
-				+ MHD_Magnetic_Field(*cell.data).squaredNorm() / vacuum_permeability / 2;
+				+ MHD_Momentum.data(*cell.data).squaredNorm() / MHD_Mass.data(*cell.data) / 2
+				+ Vol_B.data(*cell.data).squaredNorm() / vacuum_permeability / 2;
 		}
 	}
+	MHD_Mass.type().is_stale = true;
+	MHD_Momentum.type().is_stale = true;
+	MHD_Energy.type().is_stale = true;
+	Vol_B.type().is_stale = true;
 }
 
 

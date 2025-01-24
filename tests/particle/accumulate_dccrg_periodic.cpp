@@ -2,7 +2,7 @@
 Tests particle accumulator of PAMHD with periodic grid.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019 Finnish Meteorological Institute
+Copyright 2019, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -49,6 +49,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "particle/accumulate_dccrg.hpp"
 #include "particle/accumulation_variables.hpp"
 #include "particle/variables.hpp"
+#include "variable_getter.hpp"
 
 
 double mass_density()
@@ -158,10 +159,7 @@ const auto accumulation_list_length_getter
 		return cell_data[pamhd::particle::Nr_Accumulated_To_Cells()];
 	};
 
-const auto solver_info_getter
-	= [](Cell& cell_data)->pamhd::particle::Solver_Info::data_type&{
-		return cell_data[pamhd::particle::Solver_Info()];
-	};
+const auto solver_info_getter = pamhd::Variable_Getter<pamhd::particle::Solver_Info>();
 
 const auto accumulate_from_remote_neighbors
 	= [](Grid& grid){
@@ -292,7 +290,7 @@ int main(int argc, char* argv[])
 
 		for (const auto& cell: grid.local_cells()) {
 			bulk_value_getter(*cell.data) = 0;
-			solver_info_getter(*cell.data) = 0;
+			solver_info_getter.data(*cell.data) = 0;
 		}
 		pamhd::particle::accumulate(
 			grid.local_cells(),

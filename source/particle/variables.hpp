@@ -2,7 +2,7 @@
 Particle variables and cell class of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2024 Finnish Meteorological Institute
+Copyright 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -142,11 +142,13 @@ using Particle_External = Particle_T<Particle_ID, Destination_Cell>;
 
 //! Represents particles moving between cells
 struct Particles_External {
+	static bool is_stale;
 	using data_type = std::vector<Particle_External>;
 };
 
 //! Represents number of particles moving between cells.
 struct Nr_Particles_External {
+	static bool is_stale;
 	using data_type = unsigned long long int;
 };
 
@@ -166,6 +168,7 @@ struct Max_Gyrofrequency {
 };
 
 struct Electric_Field {
+	static bool is_stale;
 	using data_type = Eigen::Vector3d;
 	static const std::string get_name() { return {"electric field"}; }
 	static const std::string get_option_name() { return {"electric-field"}; }
@@ -267,6 +270,7 @@ using Accumulated_To_Cells = Accumulated_To_Cells_T<Accumulated_To_Cell>;
 
 
 struct Current_Minus_Velocity {
+	static bool is_stale;
 	using data_type = Eigen::Vector3d;
 	static const std::string get_name() { return {"J-V"}; }
 	static const std::string get_option_name() { return {"J-V"}; }
@@ -335,7 +339,6 @@ using Cell_hyb_particle = gensimcell::Cell<
 	pamhd::Magnetic_Field_Resistive,
 	pamhd::Magnetic_Field_Temp,
 	pamhd::Magnetic_Field_Divergence,
-	pamhd::Scalar_Potential_Gradient,
 	pamhd::particle::Electric_Field,
 	pamhd::particle::Number_Of_Particles,
 	pamhd::particle::Bdy_Number_Density,
@@ -369,8 +372,11 @@ using Cell_hyb_particle_staggered = gensimcell::Cell<
 	pamhd::Electric_Current_Density,
 	pamhd::grid::Target_Refinement_Level_Max,
 	pamhd::grid::Target_Refinement_Level_Min,
-	pamhd::mhd::MHD_State_Conservative,
 	pamhd::Solver_Info,
+	pamhd::mhd::Mass_Density,
+	pamhd::mhd::Momentum_Density,
+	pamhd::mhd::Total_Energy_Density,
+	pamhd::Magnetic_Field,
 	pamhd::mhd::Face_Boundary_Type,
 	pamhd::mhd::Timestep,
 	pamhd::mhd::Substepping_Period,

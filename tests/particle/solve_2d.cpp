@@ -49,6 +49,7 @@ Author(s): Ilja Honkonen
 #include "background_magnetic_field.hpp"
 #include "particle/solve_dccrg.hpp"
 #include "particle/variables.hpp"
+#include "variable_getter.hpp"
 
 using namespace std;
 
@@ -56,28 +57,26 @@ using Cell = pamhd::particle::Cell_test_particle;
 using Grid = dccrg::Dccrg<Cell, dccrg::Cartesian_Geometry>;
 
 
-// returns reference to magnetic field for propagating particles
-const auto Mag = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::Magnetic_Field()];
-};
+const auto Vol_B = pamhd::Variable_Getter<pamhd::Magnetic_Field>();
+bool pamhd::Magnetic_Field::is_stale = true;
+
 // electric field for propagating particles
-const auto Ele = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Electric_Field()];
-};
+const auto Ele = pamhd::Variable_Getter<pamhd::particle::Electric_Field>();
+bool pamhd::particle::Electric_Field::is_stale = true;
+
 const auto Part_Int = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Particles_Internal()];
 };
 // particles moving to another cell
-const auto Part_Ext = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Particles_External()];
-};
+const auto Part_Ext = pamhd::Variable_Getter<pamhd::particle::Particles_External>();
+bool pamhd::particle::Particles_External::is_stale = true;
+
 // number of particles in above list, for allocating memory for arriving particles
-const auto Nr_Ext = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Nr_Particles_External()];
-};
-const auto SInfo = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::Solver_Info()];
-};
+const auto Nr_Ext = pamhd::Variable_Getter<pamhd::particle::Nr_Particles_External>();
+bool pamhd::particle::Nr_Particles_External::is_stale = true;
+
+const auto SInfo = pamhd::Variable_Getter<pamhd::Solver_Info>();
+bool pamhd::Solver_Info::is_stale = true;
 
 // given a particle these return references to particle's parameters
 const auto Part_Pos = [](
@@ -237,16 +236,16 @@ int main(int argc, char* argv[])
 		Part_Int(cell_data_y).push_back(particle_y);
 		Part_Int(cell_data_z).push_back(particle_z);
 
-		Ele(cell_data_x) =
-		Mag(cell_data_x) =
-		Ele(cell_data_y) =
-		Mag(cell_data_y) =
-		Ele(cell_data_z) =
-		Mag(cell_data_z) = {0, 0, 0};
+		Ele.data(cell_data_x) =
+		Vol_B.data(cell_data_x) =
+		Ele.data(cell_data_y) =
+		Vol_B.data(cell_data_y) =
+		Ele.data(cell_data_z) =
+		Vol_B.data(cell_data_z) = {0, 0, 0};
 
-		Nr_Ext(cell_data_x) = Part_Ext(cell_data_x).size();
-		Nr_Ext(cell_data_y) = Part_Ext(cell_data_y).size();
-		Nr_Ext(cell_data_z) = Part_Ext(cell_data_z).size();
+		Nr_Ext.data(cell_data_x) = Part_Ext.data(cell_data_x).size();
+		Nr_Ext.data(cell_data_y) = Part_Ext.data(cell_data_y).size();
+		Nr_Ext.data(cell_data_z) = Part_Ext.data(cell_data_z).size();
 	}
 	// allocate copies of remote neighbor cells
 	grid_x.update_copies_of_remote_neighbors();
@@ -262,7 +261,7 @@ int main(int argc, char* argv[])
 	) {
 		pamhd::particle::solve(
 			1.0, cells, grid, bg_B, 1, false,
-			Ele, Mag, Nr_Ext, Part_Int, Part_Ext,
+			Ele, Vol_B, Nr_Ext, Part_Int, Part_Ext,
 			Part_Pos, Part_Vel, Part_C2M,
 			Part_Mas, Part_Des, SInfo
 		);

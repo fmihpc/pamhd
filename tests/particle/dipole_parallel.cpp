@@ -43,6 +43,7 @@ Author(s): Ilja Honkonen
 #include "particle/save.hpp"
 #include "particle/solve_dccrg.hpp"
 #include "particle/variables.hpp"
+#include "variable_getter.hpp"
 
 using namespace std;
 
@@ -50,28 +51,26 @@ using Cell = pamhd::particle::Cell_test_particle;
 using Grid = dccrg::Dccrg<Cell, dccrg::Cartesian_Geometry>;
 
 
-// returns reference to magnetic field for propagating particles
-const auto Mag = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::Magnetic_Field()];
-};
+const auto Vol_B = pamhd::Variable_Getter<pamhd::Magnetic_Field>();
+bool pamhd::Magnetic_Field::is_stale = true;
+
 // electric field for propagating particles
-const auto Ele = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Electric_Field()];
-};
+const auto Ele = pamhd::Variable_Getter<pamhd::particle::Electric_Field>();
+bool pamhd::particle::Electric_Field::is_stale = true;
+
 const auto Part_Int = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Particles_Internal()];
 };
 // particles moving to another cell
-const auto Part_Ext = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Particles_External()];
-};
+const auto Part_Ext = pamhd::Variable_Getter<pamhd::particle::Particles_External>();
+bool pamhd::particle::Particles_External::is_stale = true;
+
 // number of particles in above list, for allocating memory for arriving particles
-const auto Nr_Ext = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Nr_Particles_External()];
-};
-const auto SInfo = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::Solver_Info()];
-};
+const auto Nr_Ext = pamhd::Variable_Getter<pamhd::particle::Nr_Particles_External>();
+bool pamhd::particle::Nr_Particles_External::is_stale = true;
+
+const auto SInfo = pamhd::Variable_Getter<pamhd::Solver_Info>();
+bool pamhd::Solver_Info::is_stale = true;
 
 // given a particle these return references to particle's parameters
 const auto Part_Pos = [](
@@ -185,8 +184,8 @@ int main(int argc, char* argv[])
 		};
 		const auto distance = r.norm();
 
-		Ele(*cell.data) = {0, 0, 0};
-		Mag(*cell.data)
+		Ele.data(*cell.data) = {0, 0, 0};
+		Vol_B.data(*cell.data)
 			= bg_B.get_background_field(
 				Eigen::Vector3d{cell_center[0], cell_center[1], cell_center[2]},
 				1.257e-06
@@ -211,7 +210,7 @@ int main(int argc, char* argv[])
 		Part_C2M(particle) += 1e6;
 		Part_Int(*cell.data).push_back(particle);
 
-		Nr_Ext(*cell.data) = Part_Ext(*cell.data).size();
+		Nr_Ext.data(*cell.data) = Part_Ext.data(*cell.data).size();
 
 		initial_particles_local += Part_Int(*cell.data).size();
 	}
@@ -272,7 +271,7 @@ int main(int argc, char* argv[])
 		auto solve_max_dt = pamhd::particle::solve(
 			time_step, grid.outer_cells(), grid,
 			bg_B, 1.2566370614359173e-06,
-			false, Ele, Mag, Nr_Ext,
+			false, Ele, Vol_B, Nr_Ext,
 			Part_Int, Part_Ext, Part_Pos, Part_Vel,
 			Part_C2M, Part_Mas, Part_Des, SInfo
 		);
@@ -289,7 +288,7 @@ int main(int argc, char* argv[])
 		solve_max_dt = pamhd::particle::solve(
 			time_step, grid.inner_cells(), grid,
 			bg_B, 1.2566370614359173e-06,
-			false, Ele, Mag, Nr_Ext,
+			false, Ele, Vol_B, Nr_Ext,
 			Part_Int, Part_Ext, Part_Pos, Part_Vel,
 			Part_C2M, Part_Mas, Part_Des, SInfo
 		);

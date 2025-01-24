@@ -2,7 +2,7 @@
 Test for particle accumulator of PAMHD built on top of DCCRG.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019 Finnish Meteorological Institute
+Copyright 2019, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #include "algorithm"
@@ -48,6 +51,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "particle/accumulate_dccrg.hpp"
 #include "particle/accumulation_variables.hpp"
 #include "particle/variables.hpp"
+#include "variable_getter.hpp"
 
 
 Eigen::Vector3d f(const Eigen::Vector3d& r)
@@ -117,10 +121,7 @@ const auto accumulation_list_length_getter
 		return cell_data[pamhd::particle::Nr_Accumulated_To_Cells()];
 	};
 
-const auto solver_info_getter
-	= [](Cell& cell_data)->pamhd::particle::Solver_Info::data_type&{
-		return cell_data[pamhd::particle::Solver_Info()];
-	};
+const auto solver_info_getter = pamhd::Variable_Getter<pamhd::particle::Solver_Info>();
 
 const auto accumulate_from_remote_neighbors
 	= [](Grid& grid){
@@ -158,7 +159,7 @@ void create_particles(
 			cell_length = grid.geometry.get_length(cell.id),
 			cell_center = grid.geometry.get_center(cell.id);
 
-		solver_info_getter(*cell.data) = 0;
+		solver_info_getter.data(*cell.data) = 0;
 
 		for (size_t i = 0; i < values_per_cell; i++) {
 			pamhd::particle::Particle_Internal new_particle;

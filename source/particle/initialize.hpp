@@ -2,7 +2,7 @@
 Initializes particle solution of PAMHD.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019, 2024 Finnish Meteorological Institute
+Copyright 2019, 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_PARTICLE_INITIALIZE_HPP
@@ -72,7 +75,7 @@ template<
 			lat = asin(c[2] / r),
 			lon = atan2(c[1], c[0]);
 
-		Ele(*cell.data)
+		Ele.data(*cell.data)
 			= initial_conditions.get_default_data(
 				E,
 				simulation_time,
@@ -103,7 +106,7 @@ template<
 				abort();
 			}
 
-			Ele(*cell_data) = initial_conditions.get_data(
+			Ele.data(*cell_data) = initial_conditions.get_data(
 				E,
 				geometry_id,
 				simulation_time,
@@ -250,7 +253,7 @@ template<
 				abort();
 			}
 
-			if (SInfo(*cell_data) < 0) {
+			if (SInfo.data(*cell_data) < 0) {
 				continue;
 			}
 
@@ -288,7 +291,7 @@ template<
 				abort();
 			}
 
-			if (SInfo(*cell_data) < 0) {
+			if (SInfo.data(*cell_data) < 0) {
 				continue;
 			}
 
@@ -326,7 +329,7 @@ template<
 				abort();
 			}
 
-			if (SInfo(*cell_data) < 0) {
+			if (SInfo.data(*cell_data) < 0) {
 				continue;
 			}
 
@@ -364,7 +367,7 @@ template<
 				abort();
 			}
 
-			if (SInfo(*cell_data) < 0) {
+			if (SInfo.data(*cell_data) < 0) {
 				continue;
 			}
 
@@ -402,7 +405,7 @@ template<
 				abort();
 			}
 
-			if (SInfo(*cell_data) < 0) {
+			if (SInfo.data(*cell_data) < 0) {
 				continue;
 			}
 
@@ -440,7 +443,7 @@ template<
 				abort();
 			}
 
-			if (SInfo(*cell_data) < 0) {
+			if (SInfo.data(*cell_data) < 0) {
 				continue;
 			}
 
@@ -462,7 +465,7 @@ template<
 	}
 
 	for (const auto& cell: grid.local_cells()) {
-		if (SInfo(*cell.data) < 0) {
+		if (SInfo.data(*cell.data) < 0) {
 			continue;
 		}
 

@@ -74,7 +74,7 @@ template<
 	const Solver_Info_Getter SInfo
 ) {
 	for (const auto& cell: grid.local_cells()) {
-		SInfo(*cell.data) = 1;
+		SInfo.data(*cell.data) = 1;
 	}
 
 	if (boundaries.size() == 0) {
@@ -92,7 +92,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries[0].get_copy_boundary_cells(NPIC)) {
 		auto* const cell_data = grid[item[0]];
@@ -100,7 +100,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_nr_pic(
 		boundaries[0].get_dont_solve_cells(NPIC).cbegin(),
@@ -115,7 +115,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries[0].get_copy_boundary_cells(SpM)) {
 		auto* const cell_data = grid[item[0]];
@@ -123,7 +123,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_spm(
 		boundaries[0].get_dont_solve_cells(SpM).cbegin(),
@@ -138,7 +138,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries[0].get_copy_boundary_cells(C2M)) {
 		auto* const cell_data = grid[item[0]];
@@ -146,7 +146,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_c2m(
 		boundaries[0].get_dont_solve_cells(C2M).cbegin(),
@@ -161,7 +161,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries[0].get_copy_boundary_cells(N)) {
 		auto* const cell_data = grid[item[0]];
@@ -169,7 +169,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_mass(
 		boundaries[0].get_dont_solve_cells(N).cbegin(),
@@ -184,7 +184,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries[0].get_copy_boundary_cells(V)) {
 		auto* const cell_data = grid[item[0]];
@@ -192,7 +192,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_velocity(
 		boundaries[0].get_dont_solve_cells(V).cbegin(),
@@ -207,7 +207,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries[0].get_copy_boundary_cells(T)) {
 		auto* const cell_data = grid[item[0]];
@@ -215,7 +215,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_temperature(
 		boundaries[0].get_dont_solve_cells(T).cbegin(),
@@ -300,7 +300,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		SInfo(*cell_data) = -1;
+		SInfo.data(*cell_data) = -1;
 	}
 
 	grid.update_copies_of_remote_neighbors();
@@ -323,7 +323,7 @@ template<
 	boundaries.classify(grid, geometries, SInfo);
 
 	for (const auto& cell: grid.local_cells()) {
-		SInfo(*cell.data) = 1;
+		SInfo.data(*cell.data) = 1;
 	}
 
 	constexpr pamhd::particle::Electric_Field E{};
@@ -333,7 +333,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries[0].get_copy_boundary_cells(E)) {
 		auto* const cell_data = grid[item[0]];
@@ -341,7 +341,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		SInfo(*cell_data) = 0;
+		SInfo.data(*cell_data) = 0;
 	}
 
 	for (auto& cell: boundaries[0].get_dont_solve_cells(E)) {
@@ -350,7 +350,7 @@ template<
 			std::cerr <<  __FILE__ << ":" << __LINE__ << std::endl;
 			abort();
 		}
-		SInfo(*cell_data) = -1;
+		SInfo.data(*cell_data) = -1;
 	}
 
 	grid.update_copies_of_remote_neighbors();
@@ -373,7 +373,7 @@ template<
 	class Grid,
 	class Solver_Info_Getter,
 	class Electric_Field_Getter,
-	class Magnetic_Field_Getter,
+	class Volume_Magnetic_Field_Getter,
 	class Particles_Getter,
 	class Boundary_Number_Density_Getter,
 	class Boundary_Velocity_Getter,
@@ -384,25 +384,25 @@ template<
 > size_t apply_massless_boundaries(
 	const Sim_Geometries& bdy_geoms,
 	std::vector<Boundaries>& boundaries,
-	const double simulation_time,
-	const size_t simulation_step,
+	const double& simulation_time,
+	const size_t& simulation_step,
 	Grid& grid,
 	std::mt19937_64& random_source,
-	const double particle_temp_nrj_ratio,
-	const double vacuum_permeability,
-	const unsigned long long int first_particle_id,
-	const unsigned long long int particle_id_increase,
-	const bool verbose,
-	const Solver_Info_Getter SInfo,
-	const Electric_Field_Getter Ele,
-	const Magnetic_Field_Getter Mag,
-	const Particles_Getter Par,
-	const Boundary_Number_Density_Getter Bdy_N,
-	const Boundary_Velocity_Getter Bdy_V,
-	const Boundary_Temperature_Getter Bdy_T,
-	const Boundary_Nr_Particles_Getter Bdy_NPIC,
-	const Boundary_Charge_To_Mass_Ratio_Getter Bdy_C2M,
-	const Boundary_Species_Mass_Getter Bdy_SpM
+	const double& particle_temp_nrj_ratio,
+	const double& vacuum_permeability,
+	const unsigned long long int& first_particle_id,
+	const unsigned long long int& particle_id_increase,
+	const bool& verbose,
+	const Solver_Info_Getter& SInfo,
+	const Electric_Field_Getter& Ele,
+	const Volume_Magnetic_Field_Getter& Vol_B,
+	const Particles_Getter& Par,
+	const Boundary_Number_Density_Getter& Bdy_N,
+	const Boundary_Velocity_Getter& Bdy_V,
+	const Boundary_Temperature_Getter& Bdy_T,
+	const Boundary_Nr_Particles_Getter& Bdy_NPIC,
+	const Boundary_Charge_To_Mass_Ratio_Getter& Bdy_C2M,
+	const Boundary_Species_Mass_Getter& Bdy_SpM
 ) {
 	size_t
 		current_id_start = first_particle_id,
@@ -432,7 +432,7 @@ template<
 					abort();
 				}
 
-				Mag(*cell_data) = value_bdy.get_data(
+				Vol_B.data(*cell_data) = value_bdy.get_data(
 					simulation_time,
 					c[0], c[1], c[2],
 					r, lat, lon
@@ -463,7 +463,7 @@ template<
 					abort();
 				}
 
-				Ele(*cell_data) = value_bdy.get_data(
+				Ele.data(*cell_data) = value_bdy.get_data(
 					simulation_time,
 					c[0], c[1], c[2],
 					r, lat, lon
@@ -490,7 +490,7 @@ template<
 					abort();
 				}
 
-				if (SInfo(*cell_data) < 0) {
+				if (SInfo.data(*cell_data) < 0) {
 					continue;
 				}
 
@@ -527,7 +527,7 @@ template<
 					abort();
 				}
 
-				if (SInfo(*cell_data) < 0) {
+				if (SInfo.data(*cell_data) < 0) {
 					continue;
 				}
 
@@ -564,7 +564,7 @@ template<
 					abort();
 				}
 
-				if (SInfo(*cell_data) < 0) {
+				if (SInfo.data(*cell_data) < 0) {
 					continue;
 				}
 
@@ -601,7 +601,7 @@ template<
 					abort();
 				}
 
-				if (SInfo(*cell_data) < 0) {
+				if (SInfo.data(*cell_data) < 0) {
 					continue;
 				}
 
@@ -638,7 +638,7 @@ template<
 					abort();
 				}
 
-				if (SInfo(*cell_data) < 0) {
+				if (SInfo.data(*cell_data) < 0) {
 					continue;
 				}
 
@@ -675,7 +675,7 @@ template<
 					abort();
 				}
 
-				if (SInfo(*cell_data) < 0) {
+				if (SInfo.data(*cell_data) < 0) {
 					continue;
 				}
 
@@ -1121,7 +1121,7 @@ template<
 					abort();
 				}
 
-				if (SInfo(*cell_data) < 0) {
+				if (SInfo.data(*cell_data) < 0) {
 					continue;
 				}
 
@@ -1177,7 +1177,7 @@ template<
 					abort();
 				}
 
-				if (SInfo(*cell_data) < 0) {
+				if (SInfo.data(*cell_data) < 0) {
 					continue;
 				}
 
@@ -1226,7 +1226,7 @@ template<
 					abort();
 				}
 
-				if (SInfo(*cell_data) < 0) {
+				if (SInfo.data(*cell_data) < 0) {
 					continue;
 				}
 
@@ -1284,7 +1284,7 @@ template<
 					abort();
 				}
 
-				if (SInfo(*cell_data) < 0) {
+				if (SInfo.data(*cell_data) < 0) {
 					continue;
 				}
 
@@ -1341,7 +1341,7 @@ template<
 					abort();
 				}
 
-				if (SInfo(*cell_data) < 0) {
+				if (SInfo.data(*cell_data) < 0) {
 					continue;
 				}
 
@@ -1385,7 +1385,7 @@ template<
 					abort();
 				}
 
-				if (SInfo(*cell_data) < 0) {
+				if (SInfo.data(*cell_data) < 0) {
 					continue;
 				}
 

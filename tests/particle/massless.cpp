@@ -71,6 +71,7 @@ be used in config file.
 #include "particle/solve_dccrg.hpp"
 #include "particle/variables.hpp"
 #include "simulation_options.hpp"
+#include "variable_getter.hpp"
 
 
 using namespace std;
@@ -85,35 +86,36 @@ using Grid = dccrg::Dccrg<Cell, dccrg::Cartesian_Geometry>;
 
 // background magnetic field not stored on cell faces in this program
 pamhd::Bg_Magnetic_Field::data_type zero_bg_b;
-const auto Bg_B = [](Cell& cell_data)->auto& {
-	return zero_bg_b;
+struct _Bg_B {
+	pamhd::Bg_Magnetic_Field::data_type& data(auto&) const {
+		return zero_bg_b;
+	}
+	_Bg_B type() const {
+		return _Bg_B();
+	}
 };
+const auto Bg_B = _Bg_B();
 
-// returns reference to magnetic field for propagating particles
-const auto Mag = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::Magnetic_Field()];
-};
+const auto Vol_B = pamhd::Variable_Getter<pamhd::Magnetic_Field>();
+bool pamhd::Magnetic_Field::is_stale = true;
+
 // electric field for propagating particles
-const auto Ele = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Electric_Field()];
-};
-// list of particles in cell not moving to another cell
+const auto Ele = pamhd::Variable_Getter<pamhd::particle::Electric_Field>();
+bool pamhd::particle::Electric_Field::is_stale = true;
+
 const auto Part_Int = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Particles_Internal()];
 };
 // particles moving to another cell
-const auto Part_Ext = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Particles_External()];
-};
-// number of particles in above list, for allocating memory for arriving particles
-const auto Nr_Ext = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Nr_Particles_External()];
-};
+const auto Part_Ext = pamhd::Variable_Getter<pamhd::particle::Particles_External>();
+bool pamhd::particle::Particles_External::is_stale = true;
 
-// solver info variable for boundary logic
-const auto SInfo = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::Solver_Info()];
-};
+// number of particles in above list, for allocating memory for arriving particles
+const auto Nr_Ext = pamhd::Variable_Getter<pamhd::particle::Nr_Particles_External>();
+bool pamhd::particle::Nr_Particles_External::is_stale = true;
+
+const auto SInfo = pamhd::Variable_Getter<pamhd::Solver_Info>();
+bool pamhd::Solver_Info::is_stale = true;
 
 // references to initial condition & boundary data of cell
 const auto Bdy_N = [](Cell& cell_data)->auto& {
@@ -383,7 +385,7 @@ int main(int argc, char* argv[])
 		grid,
 		simulation_time,
 		options_sim.vacuum_permeability,
-		Mag, Mag_f, Bg_B
+		Vol_B, Mag_f, Bg_B
 	);
 
 	pamhd::particle::initialize_electric_field<pamhd::particle::Electric_Field>(
@@ -448,7 +450,7 @@ int main(int argc, char* argv[])
 			true,
 			SInfo,
 			Ele,
-			Mag,
+			Vol_B,
 			Part_Int,
 			Bdy_N,
 			Bdy_V,
@@ -533,7 +535,7 @@ int main(int argc, char* argv[])
 		particle_max_dt = pamhd::particle::solve(
 			time_step, grid.outer_cells(), grid,
 			background_B, options_sim.vacuum_permeability,
-			false, Ele, Mag, Nr_Ext, Part_Int, Part_Ext,
+			false, Ele, Vol_B, Nr_Ext, Part_Int, Part_Ext,
 			Part_Pos, Part_Vel, Part_C2M,
 			Part_Mas, Part_Des, SInfo
 		);
@@ -547,7 +549,7 @@ int main(int argc, char* argv[])
 		particle_max_dt = pamhd::particle::solve(
 			time_step, grid.inner_cells(), grid,
 			background_B, options_sim.vacuum_permeability,
-			false, Ele, Mag, Nr_Ext, Part_Int, Part_Ext,
+			false, Ele, Vol_B, Nr_Ext, Part_Int, Part_Ext,
 			Part_Pos, Part_Vel, Part_C2M,
 			Part_Mas, Part_Des, SInfo
 		);
@@ -622,7 +624,7 @@ int main(int argc, char* argv[])
 				false,
 				SInfo,
 				Ele,
-				Mag,
+				Vol_B,
 				Part_Int,
 				Bdy_N,
 				Bdy_V,

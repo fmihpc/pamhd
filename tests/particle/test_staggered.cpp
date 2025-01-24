@@ -48,8 +48,8 @@ Author(s): Ilja Honkonen
 #include "boundaries/geometries.hpp"
 #include "boundaries/multivariable_boundaries.hpp"
 #include "boundaries/multivariable_initial_conditions.hpp"
-#include "divergence/remove.hpp"
 #include "grid/options.hpp"
+#include "grid/variables.hpp"
 #include "math/staggered.hpp"
 #include "mhd/boundaries.hpp"
 #include "mhd/common.hpp"
@@ -73,6 +73,7 @@ Author(s): Ilja Honkonen
 #include "particle/splitter.hpp"
 #include "particle/variables.hpp"
 #include "simulation_options.hpp"
+#include "variable_getter.hpp"
 #include "variables.hpp"
 
 
@@ -91,191 +92,184 @@ using Grid = dccrg::Dccrg<
 		pamhd::grid::Neighbor_Is_Local>
 >;
 
-// returns reference to background magnetic field on cell faces
-const auto Bg_B = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::Bg_Magnetic_Field()];
-};
+const auto Bg_B = pamhd::Variable_Getter<pamhd::Bg_Magnetic_Field>();
+bool pamhd::Bg_Magnetic_Field::is_stale = true;
 
-// returns reference to total mass density in given cell
-const auto Mas = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Mass_Density()];
-};
-const auto Mom = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Momentum_Density()];
-};
-const auto Nrj = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::mhd::Total_Energy_Density()];
-};
-const auto Vol_B = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::mhd::MHD_State_Conservative()][pamhd::Magnetic_Field()];
-};
-const auto Face_B = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::Face_Magnetic_Field()];
-};
-const auto Face_dB = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::Face_dB()];
-};
-// divergence of magnetic field
-const auto Mag_div = [](Cell& cell_data) ->auto&{
-	return cell_data[pamhd::Magnetic_Field_Divergence()];
-};
+const auto Mas = pamhd::Variable_Getter<pamhd::mhd::Mass_Density>();
+bool pamhd::mhd::Mass_Density::is_stale = true;
+
+const auto Mom = pamhd::Variable_Getter<pamhd::mhd::Momentum_Density>();
+bool pamhd::mhd::Momentum_Density::is_stale = true;
+
+const auto Nrj = pamhd::Variable_Getter<pamhd::mhd::Total_Energy_Density>();
+bool pamhd::mhd::Total_Energy_Density::is_stale = true;
+
+const auto Vol_B = pamhd::Variable_Getter<pamhd::Magnetic_Field>();
+bool pamhd::Magnetic_Field::is_stale = true;
+
+const auto Face_B = pamhd::Variable_Getter<pamhd::Face_Magnetic_Field>();
+bool pamhd::Face_Magnetic_Field::is_stale = true;
+
+const auto Face_dB = pamhd::Variable_Getter<pamhd::Face_dB>();
+
+const auto Div_B = pamhd::Variable_Getter<pamhd::Magnetic_Field_Divergence>();
+
 // curl of magnetic field
-const auto Vol_J = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::Electric_Current_Density()];
-};
+const auto Vol_J = pamhd::Variable_Getter<pamhd::Electric_Current_Density>();
+bool pamhd::Electric_Current_Density::is_stale = true;
+
 // electric current minus bulk velocity
-const auto J_m_V = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::particle::Current_Minus_Velocity()];
-};
+const auto J_m_V = pamhd::Variable_Getter<pamhd::particle::Current_Minus_Velocity>();
+bool pamhd::particle::Current_Minus_Velocity::is_stale = true;
+
 // electric field for propagating particles
-const auto Vol_E = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::particle::Electric_Field()];
-};
+const auto Vol_E = pamhd::Variable_Getter<pamhd::particle::Electric_Field>();
+bool pamhd::particle::Electric_Field::is_stale = true;
 
-// solver info variable for boundary logic
-const auto SInfo = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::Solver_Info()];
-};
+/*! Solver info variable for boundary logic
 
-const auto Substep = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::mhd::Substepping_Period()];
-};
+-1 for cells not to be read nor written
+0 for read-only cells
+1 for read-write cells
+*/
+const auto SInfo = pamhd::Variable_Getter<pamhd::Solver_Info>();
+bool pamhd::Solver_Info::is_stale = true;
 
-const auto Substep_Min = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::mhd::Substep_Min()];
-};
+const auto Substep = pamhd::Variable_Getter<pamhd::mhd::Substepping_Period>();
+bool pamhd::mhd::Substepping_Period::is_stale = true;
 
-const auto Substep_Max = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::mhd::Substep_Max()];
-};
+const auto Substep_Min = pamhd::Variable_Getter<pamhd::mhd::Substep_Min>();
+bool pamhd::mhd::Substep_Min::is_stale = true;
 
-const auto Timestep = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::mhd::Timestep()];
-};
+const auto Substep_Max = pamhd::Variable_Getter<pamhd::mhd::Substep_Max>();
+bool pamhd::mhd::Substep_Max::is_stale = true;
 
-const auto Max_v = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::mhd::Max_Velocity()];
-};
+const auto Timestep = pamhd::Variable_Getter<pamhd::mhd::Timestep>();
+bool pamhd::mhd::Timestep::is_stale = true;
 
+const auto Max_v = pamhd::Variable_Getter<pamhd::mhd::Max_Velocity>();
+bool pamhd::mhd::Max_Velocity::is_stale = true;
+
+const auto MHDF = pamhd::Variable_Getter<pamhd::mhd::MHD_Flux>();
 const auto Mas_f = [](Cell& cell_data, const int dir)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](dir)[pamhd::mhd::Mass_Density()];
+	return MHDF.data(cell_data)(dir)[pamhd::mhd::Mass_Density()];
 };
 const auto Mom_f = [](Cell& cell_data, const int dir)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](dir)[pamhd::mhd::Momentum_Density()];
+	return MHDF.data(cell_data)(dir)[pamhd::mhd::Momentum_Density()];
 };
 const auto Nrj_f = [](Cell& cell_data, const int dir)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](dir)[pamhd::mhd::Total_Energy_Density()];
+	return MHDF.data(cell_data)(dir)[pamhd::mhd::Total_Energy_Density()];
 };
 const auto Mag_f = [](Cell& cell_data, const int dir)->auto& {
-	return cell_data[pamhd::mhd::MHD_Flux()](dir)[pamhd::Magnetic_Field()];
+	return MHDF.data(cell_data)(dir)[pamhd::Magnetic_Field()];
 };
 
-const auto FInfo = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::mhd::Face_Boundary_Type()];
-};
-const auto Ref_min = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::grid::Target_Refinement_Level_Min()];
-};
-const auto Ref_max = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::grid::Target_Refinement_Level_Max()];
-};
+const auto FInfo = pamhd::Variable_Getter<pamhd::mhd::Face_Boundary_Type>();
+bool pamhd::mhd::Face_Boundary_Type::is_stale = true;
+
+const auto Ref_min = pamhd::Variable_Getter<pamhd::grid::Target_Refinement_Level_Min>();
+bool pamhd::grid::Target_Refinement_Level_Min::is_stale = true;
+
+const auto Ref_max = pamhd::Variable_Getter<pamhd::grid::Target_Refinement_Level_Max>();
+bool pamhd::grid::Target_Refinement_Level_Max::is_stale = true;
 
 // list of particles in cell not moving to another cell
-const auto Part_Int = [](Cell& cell_data) ->auto& {
+const auto Part_Int = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Particles_Internal()];
 };
+
 // particles moving to another cell
-const auto Part_Ext = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::particle::Particles_External()];
-};
+const auto Part_Ext = pamhd::Variable_Getter<pamhd::particle::Particles_External>();
+bool pamhd::particle::Particles_External::is_stale = true;
+
 // number of particles in above list, for allocating memory for arriving particles
-const auto Nr_Ext = [](Cell& cell_data) ->auto& {
-	return cell_data[pamhd::particle::Nr_Particles_External()];
-};
-const auto Nr_Int = [](Cell& cell_data) ->auto& {
+const auto Nr_Ext = pamhd::Variable_Getter<pamhd::particle::Nr_Particles_External>();
+bool pamhd::particle::Nr_Particles_External::is_stale = true;
+
+const auto Nr_Int = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Nr_Particles_Internal()];
 };
 // references to initial condition & boundary data of cell
-const auto Bdy_N = [](Cell& cell_data) ->auto& {
+const auto Bdy_N = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Bdy_Number_Density()];
 };
-const auto Bdy_V = [](Cell& cell_data) ->auto& {
+const auto Bdy_V = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Bdy_Velocity()];
 };
-const auto Bdy_T = [](Cell& cell_data) ->auto& {
+const auto Bdy_T = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Bdy_Temperature()];
 };
-const auto Bdy_Nr_Par = [](Cell& cell_data) ->auto& {
+const auto Bdy_Nr_Par = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Bdy_Nr_Particles_In_Cell()];
 };
-const auto Bdy_SpM = [](Cell& cell_data) ->auto& {
+const auto Bdy_SpM = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Bdy_Species_Mass()];
 };
-const auto Bdy_C2M = [](Cell& cell_data) ->auto& {
+const auto Bdy_C2M = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Bdy_Charge_Mass_Ratio()];
 };
 
 // given a particle these return references to particle's parameters
 const auto Part_Pos = [](
 	pamhd::particle::Particle_Internal& particle
-) ->auto& {
+)->auto& {
 	return particle[pamhd::particle::Position()];
 };
 // as above but for caller that also provides cell's data
 const auto Part_Vel_Cell = [](
 	Cell&, pamhd::particle::Particle_Internal& particle
-) ->auto& {
+)->auto& {
 	return particle[pamhd::particle::Velocity()];
 };
 const auto Part_Vel = [](
 	pamhd::particle::Particle_Internal& particle
-) ->auto& {
+)->auto& {
 	return particle[pamhd::particle::Velocity()];
 };
 const auto Part_C2M = [](
 	pamhd::particle::Particle_Internal& particle
-) ->auto& {
+)->auto& {
 	return particle[pamhd::particle::Charge_Mass_Ratio()];
 };
 // copy of number of real particles represented by simulation particle
 const auto Part_Nr = [](
 	pamhd::particle::Particle_Internal& particle
-) ->auto {
+)->auto {
 	return particle[pamhd::particle::Mass()] / particle[pamhd::particle::Species_Mass()];
 };
 const auto Part_Mas = [](
 	pamhd::particle::Particle_Internal& particle
-) ->auto& {
+)->auto& {
 	return particle[pamhd::particle::Mass()];
 };
 // as above but for caller that also provides cell's data
 const auto Part_Mas_Cell = [](
 	Cell&, pamhd::particle::Particle_Internal& particle
-) ->auto& {
+)->auto& {
 	return particle[pamhd::particle::Mass()];
 };
 const auto Part_Des = [](
 	pamhd::particle::Particle_External& particle
-) ->auto& {
+)->auto& {
 	return particle[pamhd::particle::Destination_Cell()];
 };
 // reference to mass of given particle's species
 const auto Part_SpM = [](
 	pamhd::particle::Particle_Internal& particle
-) ->auto& {
+)->auto& {
 	return particle[pamhd::particle::Species_Mass()];
 };
 // as above but for caller that also provides cell's data
 const auto Part_SpM_Cell = [](
 	Cell&, pamhd::particle::Particle_Internal& particle
-) ->auto& {
+)->auto& {
 	return particle[pamhd::particle::Species_Mass()];
 };
 // copy of particle's kinetic energy relative to pamhd::particle::Bulk_Velocity
 const auto Part_Ekin = [](
 	Cell& cell_data,
 	pamhd::particle::Particle_Internal& particle
-) ->auto {
+)->auto {
 	return
 		0.5 * particle[pamhd::particle::Mass()]
 		* (
@@ -285,71 +279,70 @@ const auto Part_Ekin = [](
 };
 
 // reference to accumulated number of particles in given cell
-const auto Nr_Particles = [](Cell& cell_data) ->auto& {
+const auto Nr_Particles = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Number_Of_Particles()];
 };
 
-const auto Bulk_Mass_Getter = [](Cell& cell_data) ->auto& {
+const auto Bulk_Mass_Getter = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Bulk_Mass()];
 };
 
-const auto Bulk_Momentum_Getter = [](Cell& cell_data) ->auto& {
+const auto Bulk_Momentum_Getter = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Bulk_Momentum()];
 };
 
-const auto Bulk_Relative_Velocity2_Getter = [](Cell& cell_data) ->auto& {
+const auto Bulk_Relative_Velocity2_Getter = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Bulk_Relative_Velocity2()];
 };
 
-const auto Bulk_Velocity_Getter = [](Cell& cell_data) ->auto& {
+const auto Bulk_Velocity_Getter = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Bulk_Velocity()];
 };
 
 // list of items (variables above) accumulated from particles in given cell
-const auto Accu_List_Getter = [](Cell& cell_data) ->auto& {
+const auto Accu_List_Getter = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Accumulated_To_Cells()];
 };
 
 // length of above list (for transferring between processes)
-const auto Accu_List_Length_Getter = [](Cell& cell_data) ->auto& {
+const auto Accu_List_Length_Getter = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Nr_Accumulated_To_Cells()];
 };
 
 // target cell of accumulated particle values in an accumulation list item
 const auto Accu_List_Target_Getter = [](
 	pamhd::particle::Accumulated_To_Cell& accu_item
-) ->auto& {
+)->auto& {
 	return accu_item[pamhd::particle::Target()];
 };
 
 // accumulated number of particles in an accumulation list item
 const auto Accu_List_Number_Of_Particles_Getter = [](
 	pamhd::particle::Accumulated_To_Cell& accu_item
-) ->auto& {
+)->auto& {
 	return accu_item[pamhd::particle::Number_Of_Particles()];
 };
 
 const auto Accu_List_Bulk_Mass_Getter = [](
 	pamhd::particle::Accumulated_To_Cell& accu_item
-) ->auto& {
+)->auto& {
 	return accu_item[pamhd::particle::Bulk_Mass()];
 };
 
 const auto Accu_List_Bulk_Velocity_Getter = [](
 	pamhd::particle::Accumulated_To_Cell& accu_item
-) ->auto& {
+)->auto& {
 	return accu_item[pamhd::particle::Bulk_Velocity()];
 };
 
 const auto Accu_List_Bulk_Relative_Velocity2_Getter = [](
 	pamhd::particle::Accumulated_To_Cell& accu_item
-) ->auto& {
+)->auto& {
 	return accu_item[pamhd::particle::Bulk_Relative_Velocity2()];
 };
 
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
 	using std::ceil;
 	using std::cerr;
 	using std::cout;
@@ -382,7 +375,7 @@ int main(int argc, char* argv[])
 
 	next_particle_id = 1 + rank;
 
-	// intialize Zoltan
+	// initialize Zoltan
 	float zoltan_version;
 	if (Zoltan_Initialize(argc, argv, &zoltan_version) != ZOLTAN_OK) {
 		cerr << "Zoltan_Initialize failed." << endl;
@@ -426,10 +419,13 @@ int main(int argc, char* argv[])
 	rapidjson::Document document;
 	document.Parse(json.c_str());
 	if (document.HasParseError()) {
-		cerr << "Couldn't parse json data in file " << argv[1]
-			<< " at character position " << document.GetErrorOffset()
-			<< ": " << rapidjson::GetParseError_En(document.GetParseError())
-			<< endl;
+		if (rank == 0) {
+			cerr << "Couldn't parse json data in file "
+				<< argv[1] << " at character position "
+				<< document.GetErrorOffset() << ": "
+				<< rapidjson::GetParseError_En(document.GetParseError())
+				<< endl;
+		}
 		MPI_Finalize();
 		return EXIT_FAILURE;
 	}
@@ -580,7 +576,6 @@ int main(int argc, char* argv[])
 			}
 		}();
 
-
 	/*
 	Initialize simulation grid
 	*/
@@ -620,11 +615,13 @@ int main(int argc, char* argv[])
 	}
 
 	for (const auto& cell: grid.local_cells()) {
-//		SInfo(*cell.data) = 1;
 		(*cell.data)[pamhd::MPI_Rank()] = rank;
-		Substep(*cell.data) = 1;
-		Max_v(*cell.data) = {-1, -1, -1, -1, -1, -1};
+		Substep.data(*cell.data) = 1;
+		Max_v.data(*cell.data) = {-1, -1, -1, -1, -1, -1};
 	}
+	pamhd::mhd::set_minmax_substepping_period(
+		options_sim.time_start, grid,
+		options_mhd, Substep_Min, Substep_Max);
 	Cell::set_transfer_all(true,
 		pamhd::mhd::Max_Velocity(),
 		pamhd::mhd::Substepping_Period(),
@@ -670,53 +667,25 @@ int main(int argc, char* argv[])
 		options_sim.vacuum_permeability,
 		Face_B, Mag_f, Bg_B
 	);
-	Cell::set_transfer_all(true,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::Bg_Magnetic_Field()
-	);
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::Bg_Magnetic_Field()
-	);
 
 	pamhd::mhd::update_B_consistency(
-		0, grid.local_cells(),
+		0, grid.local_cells(), grid,
 		Mas, Mom, Nrj, Vol_B, Face_B,
 		SInfo, Substep,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		false // fluid not initialized yet
 	);
-	Cell::set_transfer_all(true,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::mhd::MHD_State_Conservative()
-	);
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
 	pamhd::mhd::initialize_fluid_staggered(
-		geometries,
-		initial_conditions_mhd,
-		grid,
-		simulation_time,
+		geometries, initial_conditions_mhd,
+		grid, simulation_time,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
-		options_sim.proton_mass,
-		true,
+		options_sim.proton_mass, true,
 		Mas, Mom, Nrj, Vol_B,
 		Mas_f, Mom_f, Nrj_f
 	);
-/*	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());*/
-
-/*	pamhd::mhd::apply_magnetic_field_boundaries(
-		grid,
-		boundaries_mhd,
-		geometries,
-		simulation_time,
-		Mag
-	);*/
 
 	// particles
 	std::mt19937_64 random_source;
@@ -847,22 +816,11 @@ int main(int argc, char* argv[])
 	}
 
 	/*
-	Classify cells into normal, boundary and dont_solve
+	Classify cells & faces into normal, boundary and dont_solve
 	*/
 
-	Cell::set_transfer_all(true, pamhd::Solver_Info());
-	pamhd::mhd::set_solver_info<pamhd::Solver_Info>(
-		grid, boundaries_mhd, geometries, SInfo
-	);
-	pamhd::particle::set_solver_info<pamhd::Solver_Info>(
-		grid, boundaries_particles, geometries, SInfo
-	);
-	Cell::set_transfer_all(false, pamhd::Solver_Info());
-
-	Cell::set_transfer_all(true, pamhd::mhd::Face_Boundary_Type());
+	pamhd::mhd::set_solver_info(grid, boundaries_mhd, geometries, SInfo);
 	pamhd::mhd::classify_faces(grid, SInfo, FInfo);
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, pamhd::mhd::Face_Boundary_Type());
 
 	/*pamhd::mhd::apply_fluid_boundaries(
 		grid,
@@ -874,9 +832,6 @@ int main(int argc, char* argv[])
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability
 	);*/
-	Cell::set_transfer_all(true, pamhd::mhd::MHD_State_Conservative());
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, pamhd::mhd::MHD_State_Conservative());
 
 	pamhd::mhd::apply_magnetic_field_boundaries_staggered(
 		grid,
@@ -885,46 +840,28 @@ int main(int argc, char* argv[])
 		simulation_time,
 		Face_B, FInfo
 	);
-	Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
 	pamhd::mhd::update_B_consistency(
-		0, grid.local_cells(),
+		0, grid.local_cells(), grid,
 		Mas, Mom, Nrj, Vol_B, Face_B,
 		SInfo, Substep,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		true
 	);
-	Cell::set_transfer_all(true,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::mhd::MHD_State_Conservative()
-	);
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false,
-		pamhd::Face_Magnetic_Field(),
-		pamhd::mhd::MHD_State_Conservative()
-	);
 
 	for (const auto& cell: grid.local_cells()) {
-		Max_v(*cell.data) = {-1, -1, -1, -1, -1, -1};
-		Timestep(*cell.data) = -1;
-		Substep(*cell.data)     =
-		Substep_Max(*cell.data) =
-		Substep_Min(*cell.data) = 1;
+		Max_v.data(*cell.data) = {-1, -1, -1, -1, -1, -1};
+		Timestep.data(*cell.data) = -1;
+		Substep.data(*cell.data)     =
+		Substep_Max.data(*cell.data) =
+		Substep_Min.data(*cell.data) = 1;
 	}
-	Grid::cell_data_type::set_transfer_all(true,
-		pamhd::mhd::Timestep(),
-		pamhd::mhd::Max_Velocity(),
-		pamhd::mhd::Substepping_Period()
-	);
+	Cell::set_transfer_all(true,
+		Timestep.type(), Max_v.type(), Substep.type());
 	grid.update_copies_of_remote_neighbors();
-	Grid::cell_data_type::set_transfer_all(false,
-		pamhd::mhd::Timestep(),
-		pamhd::mhd::Max_Velocity(),
-		pamhd::mhd::Substepping_Period()
-	);
+	Cell::set_transfer_all(false,
+		Timestep.type(), Max_v.type(), Substep.type());
 
 	// final init with timestep of 0
 	pamhd::particle::timestep(
@@ -1029,13 +966,11 @@ int main(int argc, char* argv[])
 		}
 		Cell::set_transfer_all(
 			true,
-			pamhd::mhd::MHD_State_Conservative(),
 			pamhd::particle::Nr_Particles_External()
 		);
 		grid.update_copies_of_remote_neighbors();
 		Cell::set_transfer_all(
 			false,
-			pamhd::mhd::MHD_State_Conservative(),
 			pamhd::particle::Nr_Particles_External()
 		);
 
@@ -1054,39 +989,23 @@ int main(int argc, char* argv[])
 			simulation_time,
 			Face_B, FInfo
 		);
-		Cell::set_transfer_all(true, pamhd::Face_Magnetic_Field());
-		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 
 		pamhd::mhd::update_B_consistency(
-			0, grid.local_cells(),
+			0, grid.local_cells(), grid,
 			Mas, Mom, Nrj, Vol_B, Face_B,
 			SInfo, Substep,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			true
 		);
-		Cell::set_transfer_all(true,
-			pamhd::Face_Magnetic_Field(),
-			pamhd::mhd::MHD_State_Conservative()
-		);
-		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false,
-			pamhd::Face_Magnetic_Field(),
-			pamhd::mhd::MHD_State_Conservative()
-		);
 
 		const auto avg_div = pamhd::math::get_divergence_staggered(
 			grid.local_cells(), grid,
-			Face_B, Mag_div,
-			SInfo
+			Face_B, Div_B, SInfo
 		);
 		if (rank == 0) {
 			cout << " average divergence " << avg_div << endl;
 		}
-		Cell::set_transfer_all(true, pamhd::Magnetic_Field_Divergence());
-		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false, pamhd::Magnetic_Field_Divergence());
 
 		nr_particles_created += pamhd::particle::apply_boundaries<
 			pamhd::particle::Particle_Internal,

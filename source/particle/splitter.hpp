@@ -183,7 +183,7 @@ template<
 	using std::to_string;
 
 	for (const auto& cell: grid.local_cells()) {
-		if (SInfo(*cell.data) < 1) {
+		if (SInfo.data(*cell.data) < 1) {
 			continue;
 		}
 
