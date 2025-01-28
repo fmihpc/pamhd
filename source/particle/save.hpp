@@ -2,7 +2,7 @@
 Saves particle solution of PAMHD.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2024 Finnish Meteorological Institute
+Copyright 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -72,6 +72,8 @@ template <class Grid> bool save(
 	using std::get;
 	using std::string;
 	using std::vector;
+
+	using Cell = Grid::cell_data_type;
 
 	std::set<string>
 		variables{},
@@ -160,49 +162,49 @@ template <class Grid> bool save(
 	if (variables.count("volE") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::particle::Electric_Field());
+		Cell::set_transfer_all(true, pamhd::particle::Electric_Field());
 		const string varname = "volE    ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::particle::Electric_Field());
+		Cell::set_transfer_all(false, pamhd::particle::Electric_Field());
 	}
 
 	if (variables.count("volJ") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::Electric_Current_Density());
+		Cell::set_transfer_all(true, pamhd::Electric_Current_Density());
 		const string varname = "volJ    ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::Electric_Current_Density());
+		Cell::set_transfer_all(false, pamhd::Electric_Current_Density());
 	}
 
 	if (variables.count("nr ipart") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::particle::Nr_Particles_Internal());
+		Cell::set_transfer_all(true, pamhd::particle::Nr_Particles_Internal());
 		const string varname = "nr ipart";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::particle::Nr_Particles_Internal());
+		Cell::set_transfer_all(false, pamhd::particle::Nr_Particles_Internal());
 	}
 
 	if (variables.count("ipart") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Grid::cell_data_type::set_transfer_all(true, pamhd::particle::Particles_Internal());
+		Cell::set_transfer_all(true, pamhd::particle::Particles_Internal());
 		const string varname = "ipart   ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Grid::cell_data_type::set_transfer_all(false, pamhd::particle::Particles_Internal());
+		Cell::set_transfer_all(false, pamhd::particle::Particles_Internal());
 	}
 
 	if (grid.get_rank() == 0) {

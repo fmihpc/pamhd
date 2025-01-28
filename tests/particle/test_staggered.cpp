@@ -623,20 +623,12 @@ int main(int argc, char* argv[]) {
 		options_sim.time_start, grid,
 		options_mhd, Substep_Min, Substep_Max);
 	Cell::set_transfer_all(true,
-		pamhd::mhd::Max_Velocity(),
-		pamhd::mhd::Substepping_Period(),
-		pamhd::mhd::Substep_Min(),
-		pamhd::mhd::Substep_Max(),
-		pamhd::MPI_Rank()
-	);
+		Max_v.type(), Substep.type(), Substep_Min.type(),
+		Substep_Max.type(), pamhd::MPI_Rank());
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(false,
-		pamhd::mhd::Max_Velocity(),
-		pamhd::mhd::Substepping_Period(),
-		pamhd::mhd::Substep_Min(),
-		pamhd::mhd::Substep_Max(),
-		pamhd::MPI_Rank()
-	);
+		Max_v.type(), Substep.type(), Substep_Min.type(),
+		Substep_Max.type(), pamhd::MPI_Rank());
 
 	// assign cells into boundary geometries
 	for (const auto& gid: geometries.get_geometry_ids()) {
@@ -659,12 +651,8 @@ int main(int argc, char* argv[]) {
 
 	double simulation_time = options_sim.time_start;
 	pamhd::mhd::initialize_magnetic_field_staggered<pamhd::Magnetic_Field>(
-		geometries,
-		initial_conditions_mhd,
-		background_B,
-		grid,
-		simulation_time,
-		options_sim.vacuum_permeability,
+		geometries, initial_conditions_mhd, background_B,
+		grid, simulation_time, options_sim.vacuum_permeability,
 		Face_B, Mag_f, Bg_B
 	);
 
@@ -964,13 +952,11 @@ int main(int argc, char* argv[]) {
 			(*cell.data)[pamhd::particle::Nr_Particles_External()]
 				= (*cell.data)[pamhd::particle::Particles_Internal()].size();
 		}
-		Cell::set_transfer_all(
-			true,
+		Cell::set_transfer_all(true,
 			pamhd::particle::Nr_Particles_External()
 		);
 		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(
-			false,
+		Cell::set_transfer_all(false,
 			pamhd::particle::Nr_Particles_External()
 		);
 

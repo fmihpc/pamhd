@@ -1888,7 +1888,7 @@ template <
 		}
 	} while (modified_cells > 0);
 	grid.update_copies_of_remote_neighbors();
-	Substep.type().is_stale = false;
+	Cell::set_transfer_all(false, Substep.type());
 
 	MPI_Comm_free(&comm);
 
