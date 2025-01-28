@@ -645,11 +645,16 @@ int main(int argc, char* argv[]) {
 	Simulate
 	*/
 
-	if (rank == 0) {
-		cout << "Initializing particles and magnetic field... " << endl;
-	}
+	const double time_end = options_sim.time_start + options_sim.time_length;
+	double
+		simulation_time = options_sim.time_start,
+		next_particle_save = 0,
+		next_mhd_save = 0,
+		next_amr = options_grid.amr_n;
 
-	double simulation_time = options_sim.time_start;
+	if (rank == 0) {
+		cout << "Initializing... " << endl;
+	}
 	pamhd::mhd::initialize_magnetic_field_staggered<pamhd::Magnetic_Field>(
 		geometries, initial_conditions_mhd, background_B,
 		grid, simulation_time, options_sim.vacuum_permeability,
@@ -800,7 +805,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	if (rank == 0) {
-		cout << "done initializing particles and fields." << endl;
+		cout << "Initialization done" << endl;
 	}
 
 	/*
@@ -885,15 +890,60 @@ int main(int argc, char* argv[]) {
 		cout << "Done initializing" << endl;
 	}
 
-	const double time_end = options_sim.time_start + options_sim.time_length;
-	double
-		max_dt_mhd = 0,
-		max_dt_particle_gyro = 0,
-		max_dt_particle_flight = 0,
-		next_particle_save = 0,
-		next_mhd_save = 0,
-		next_amr = options_grid.amr_n;
 	size_t simulation_step = 0;
+	constexpr uint64_t file_version = 4;
+	if (options_particle.save_n >= 0) {
+		if (rank == 0) {
+			cout << "Saving particles at time " << simulation_time << endl;
+		}
+
+		// update number of internal particles
+		for (const auto& cell: grid.local_cells()) {
+			Nr_Int(*cell.data) = Part_Int(*cell.data).size();
+		}
+		if (
+			not pamhd::particle::save(
+				boost::filesystem::canonical(
+					boost::filesystem::path(options_sim.output_directory)
+				).append("particle_").generic_string(),
+				grid, file_version,
+				simulation_step, simulation_time,
+				options_sim.adiabatic_index,
+				options_sim.proton_mass,
+				options_particle.boltzmann
+			)
+		) {
+			cerr <<  __FILE__ << "(" << __LINE__ << "): "
+				"Couldn't save particle result."
+				<< endl;
+			abort();
+		}
+	}
+
+	if (options_mhd.save_n >= 0) {
+		if (rank == 0) {
+			cout << "Saving MHD at time " << simulation_time << endl;
+		}
+
+		if (
+			not pamhd::mhd::save_staggered(
+				boost::filesystem::canonical(
+					boost::filesystem::path(options_sim.output_directory)
+				).append("mhd_staggered_").generic_string(),
+				grid, file_version,
+				simulation_step, simulation_time,
+				options_sim.adiabatic_index,
+				options_sim.proton_mass,
+				options_sim.vacuum_permeability
+			)
+		) {
+			cerr <<  __FILE__ << "(" << __LINE__ << "): "
+				"Couldn't save mhd result."
+				<< endl;
+			abort();
+		}
+	}
+
 	while (simulation_time < time_end) {
 		simulation_step++;
 
@@ -1012,11 +1062,6 @@ int main(int argc, char* argv[]) {
 		);
 		next_particle_id += nr_particles_created * grid.get_comm_size();
 
-		/*
-		Save simulation to disk
-		*/
-
-		// particles
 		if (
 			(options_particle.save_n >= 0 and simulation_time >= time_end)
 			or (options_particle.save_n > 0 and simulation_time >= next_particle_save)
@@ -1057,7 +1102,6 @@ int main(int argc, char* argv[]) {
 			}
 		}
 
-		// mhd
 		if (
 			(options_mhd.save_n >= 0 and simulation_time >= time_end)
 			or (options_mhd.save_n > 0 and simulation_time >= next_mhd_save)

@@ -413,7 +413,7 @@ int main(int argc, char* argv[]) {
 
 	// initialize MHD
 	if (rank == 0) {
-		cout << "Initializing MHD... " << endl;
+		cout << "Initializing... " << endl;
 	}
 	pamhd::mhd::initialize_magnetic_field_staggered<pamhd::Magnetic_Field>(
 		geometries, initial_conditions_mhd, background_B,
@@ -464,7 +464,7 @@ int main(int argc, char* argv[]) {
 		Substep, Substep_Min, Substep_Max, Max_v
 	);
 	if (rank == 0) {
-		cout << "Done initializing MHD" << endl;
+		cout << "Initialization done" << endl;
 	}
 
 	size_t simulation_step = 0;
