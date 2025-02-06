@@ -359,7 +359,7 @@ int main(int argc, char* argv[]) {
 		pamhd::grid::Target_Refinement_Level_Max(),
 		pamhd::Solver_Info()
 	);
-	prepare_grid(
+	pamhd::grid::prepare_grid(
 		options_sw.inner_bdy_radius,
 		grid, SInfo, Ref_max, Ref_min
 	);
@@ -473,7 +473,7 @@ int main(int argc, char* argv[]) {
 		cout << "Initializing MHD... " << endl;
 	}
 
-	initialize_plasma(
+	pamhd::mhd::initialize_plasma(
 		grid, simulation_time,
 		document, background_B,
 		Mas, Mom, Nrj, Vol_B, Face_B,
