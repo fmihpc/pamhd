@@ -241,13 +241,14 @@ Throws std::domain_error if given a state with non-positive mass density.
 Vector must be compatible with std::array<double, 3>.
 */
 template <
-	class Vector,
+	class Vector1,
+	class Vector2,
 	class Scalar
 > Scalar get_total_energy_density(
 	const Scalar& mass_density,
-	const Vector& vel,
+	const Vector1& vel,
 	const Scalar& pressure,
-	const Vector& mag,
+	const Vector2& mag,
 	const Scalar& adiabatic_index,
 	const Scalar& vacuum_permeability
 ) {
