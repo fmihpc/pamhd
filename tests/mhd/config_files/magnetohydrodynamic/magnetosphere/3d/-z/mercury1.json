@@ -10,8 +10,6 @@
 	"vacuum-permeability": 1.2566370614359173e-06,
 	"proton-mass": 1.67262192595e-27,
 	"mhd-time-step-factor": 0.3,
-	"substep-min": 0,
-	"substep-max": 2,
 	"grid-options": {
 		"periodic": "{false, false, false}",
 		"cells": "{32 + 2, 24 + 2, 24 + 2}",
@@ -22,14 +20,22 @@
 		"ref-lvl-at-least": 0,
 		"ref-lvl-at-most": 0
 	},
-	"solar-wind-dir": "+x",
-	"inner-bdy-radius": 5e6,
-	"number-density": 73e6,
-	"velocity": [-43e4, 0, 0],
-	"pressure": 17e-11,
-	"magnetic-field": [0, 13e-9, 0],
+	"solar-wind": {
+		"direction": "+x",
+		"number-density": 73e6,
+		"velocity": [-43e4, 0, 0],
+		"pressure": 17e-11,
+		"magnetic-field": [0, 0, 0]
+	},
+	"inner-boundary": {
+		"radius": 244e4,
+		"number-density": 73e7,
+		"velocity": [0, 0, 0],
+		"pressure": 17e-10,
+		"magnetic-field": [0, 0, 0]
+	},
 	"background-magnetic-field": {
-		"value": [-44e-9, 0, 0],
+		"value": [-44e-9, 13e-9, 0],
 		"min-distance": 1e6,
 		"dipoles": [
 			{"moment": [0, 0, -225e16], "position": [0, 0, 484e3]}
