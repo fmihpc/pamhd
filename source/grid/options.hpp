@@ -90,7 +90,8 @@ class Options
 public:
 	Options() = default;
 	Options(const Options& other) = default;
-	Options(Options&& other) = default;
+	Options(Options&& other) = delete;
+	Options& operator=(Options&& other) = delete;
 
 	Options(const rapidjson::Value& object)
 	{
