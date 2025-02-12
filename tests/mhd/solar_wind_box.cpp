@@ -360,7 +360,7 @@ int main(int argc, char* argv[]) {
 		pamhd::Solver_Info()
 	);
 	pamhd::grid::prepare_grid(
-		options_sw.inner_bdy_radius,
+		options_sw.inner_radius,
 		grid, SInfo, Ref_max, Ref_min
 	);
 	pamhd::grid::set_minmax_refinement_level(
@@ -408,11 +408,11 @@ int main(int argc, char* argv[]) {
 	}
 
 	auto planet_cells = pamhd::grid::get_planet_cells(
-		options_sw.inner_bdy_radius, grid, SInfo
+		options_sw.inner_radius, grid, SInfo
 	);
 	for (const auto& cell: planet_cells) {
 		const auto [inside, outside]
-			= pamhd::grid::at_inner_boundary(options_sw.inner_bdy_radius, cell.id, grid);
+			= pamhd::grid::at_inner_boundary(options_sw.inner_radius, cell.id, grid);
 		if (not (inside and outside)) throw runtime_error(__FILE__"(" + to_string(__LINE__) + "): " + to_string(cell.id));
 		if (SInfo.data(*cell.data) == 0) {
 			bool have_solve = false;
@@ -475,7 +475,7 @@ int main(int argc, char* argv[]) {
 
 	pamhd::mhd::initialize_plasma(
 		grid, simulation_time,
-		document, background_B,
+		options_sw, background_B,
 		Mas, Mom, Nrj, Vol_B, Face_B,
 		Face_dB, Bg_B,
 		options_sim.adiabatic_index,
@@ -492,15 +492,13 @@ int main(int argc, char* argv[]) {
 		true
 	);
 
-	pamhd::mhd::apply_boundaries(
-		grid, simulation_time, document,
-		solar_wind_dir, solar_wind_cells,
-		face_cells, edge_cells, vert_cells,
-		planet_cells,
+	pamhd::mhd::apply_boundaries_sw_box(
+		grid, simulation_time, options_sw, solar_wind_cells,
+		face_cells, edge_cells, vert_cells, planet_cells,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		options_sim.proton_mass,
-		Mas, Mom, Nrj, Vol_B, Face_B, SInfo
+		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, SInfo
 	);
 
 	// final init with timestep of 0
@@ -573,15 +571,13 @@ int main(int argc, char* argv[]) {
 			cout << " average divergence " << avg_div << endl;
 		}
 
-		pamhd::mhd::apply_boundaries(
-			grid, simulation_time, document,
-			solar_wind_dir, solar_wind_cells,
-			face_cells, edge_cells, vert_cells,
-			planet_cells,
+		pamhd::mhd::apply_boundaries_sw_box(
+			grid, simulation_time, options_sw, solar_wind_cells,
+			face_cells, edge_cells, vert_cells, planet_cells,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			options_sim.proton_mass,
-			Mas, Mom, Nrj, Vol_B, Face_B, SInfo
+			Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, SInfo
 		);
 
 		if (

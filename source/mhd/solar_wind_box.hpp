@@ -54,110 +54,12 @@ Author(s): Ilja Honkonen
 #include "mhd/common.hpp"
 #include "mhd/solve_staggered.hpp"
 #include "mhd/variables.hpp"
+#include "solar_wind_box_options.hpp"
 #include "variables.hpp"
 
 
 namespace pamhd {
 namespace mhd {
-
-
-std::tuple<
-	double, double, // mass (kg), pressure (Pa)
-	std::array<double, 3>, // velocity (m/s)
-	std::array<double, 3> // magnetic field (T)
-> get_solar_wind_parameters(
-	const rapidjson::Document& json,
-	const double& /*sim_time*/,
-	const double& proton_mass
-) {
-	using std::string;
-	using std::invalid_argument;
-	using std::to_string;
-
-	if (not json.HasMember("number-density")) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "JSON data doesn't have a number-density key."
-		);
-	}
-	const auto& mass_json = json["number-density"];
-	if (not mass_json.IsNumber()) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "JSON item number-density is not a number."
-		);
-	}
-	const double mass = proton_mass * json["number-density"].GetDouble();
-
-	if (not json.HasMember("pressure")) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "JSON data doesn't have a pressure key."
-		);
-	}
-	const auto& pressure_json = json["pressure"];
-	if (not pressure_json.IsNumber()) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "JSON item pressure is not a number."
-		);
-	}
-	const double pressure = json["pressure"].GetDouble();
-
-	if (not json.HasMember("velocity")) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "JSON data doesn't have a velocity key."
-		);
-	}
-	const auto& velocity_json = json["velocity"];
-	if (not velocity_json.IsArray()) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "JSON item velocity is not an array."
-		);
-	}
-	const auto& velocity_array = velocity_json.GetArray();
-	if (velocity_array.Size() != 3) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "Invalid size for velocity, should be 3"
-		);
-	}
-	const std::array<double, 3> velocity{
-		velocity_array[0].GetDouble(),
-		velocity_array[1].GetDouble(),
-		velocity_array[2].GetDouble()
-	};
-
-	if (not json.HasMember("magnetic-field")) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "JSON data doesn't have a magnetic field key."
-		);
-	}
-	const auto& magnetic_field_json = json["magnetic-field"];
-	if (not magnetic_field_json.IsArray()) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "JSON item magnetic field is not an array."
-		);
-	}
-	const auto& magnetic_field_array = magnetic_field_json.GetArray();
-	if (magnetic_field_array.Size() != 3) {
-		throw invalid_argument(
-			string(__FILE__ "(") + to_string(__LINE__) + "): "
-			+ "Invalid size for magnetic field, should be 3"
-		);
-	}
-	const std::array<double, 3> magnetic_field{
-		magnetic_field_array[0].GetDouble(),
-		magnetic_field_array[1].GetDouble(),
-		magnetic_field_array[2].GetDouble()
-	};
-
-	return std::make_tuple(mass, pressure, velocity, magnetic_field);
-}
 
 
 template<
@@ -171,8 +73,8 @@ template<
 	class Background_Magnetic_Field_Getter
 > void initialize_plasma(
 	Grid& grid,
-	const double& sim_time,
-	const rapidjson::Document& json,
+	const double& /*sim_time*/,
+	const Solar_Wind_Box_Options& options,
 	const pamhd::Background_Magnetic_Field<
 		double,
 		pamhd::Magnetic_Field::data_type
@@ -192,59 +94,91 @@ template<
 	using std::invalid_argument;
 	using std::to_string;
 
-	const auto [
-		mass, pressure, velocity, magnetic_field
-	] = get_solar_wind_parameters(
-		json, sim_time, proton_mass
-	);
 	if (grid.get_rank() == 0) {
 		std::cout << "Initializing run, solar wind: "
-		<< mass/proton_mass << " #/m^3, "
-		<< velocity << " m/s, "
-		<< pressure << " Pa, "
-		<< magnetic_field << " T"
+		<< options.sw_n_density << " #/m^3, "
+		<< options.sw_velocity << " m/s, "
+		<< options.sw_pressure << " Pa, "
+		<< options.sw_magnetic_field << " T"
 		<< std::endl;
 	}
 
+	const auto lvl0 = grid.mapping.length.get();
 	for (const auto& cell: grid.local_cells()) {
 		const auto [rx, ry, rz] = grid.geometry.get_center(cell.id);
 		const auto [sx, sy, sz] = grid.geometry.get_min(cell.id);
 		const auto [ex, ey, ez] = grid.geometry.get_max(cell.id);
 
-		Bg_B.data(*cell.data)(-1) = background_B.get_background_field(
-			{sx, ry, rz},
-			vacuum_permeability
-		);
-		Bg_B.data(*cell.data)(+1) = background_B.get_background_field(
-			{ex, ry, rz},
-			vacuum_permeability
-		);
-		Bg_B.data(*cell.data)(-2) = background_B.get_background_field(
-			{rx, sy, rz},
-			vacuum_permeability
-		);
-		Bg_B.data(*cell.data)(+2) = background_B.get_background_field(
-			{rx, ey, rz},
-			vacuum_permeability
-		);
-		Bg_B.data(*cell.data)(-3) = background_B.get_background_field(
-			{rx, ry, sz},
-			vacuum_permeability
-		);
-		Bg_B.data(*cell.data)(+3) = background_B.get_background_field(
-			{rx, ry, ez},
-			vacuum_permeability
-		);
+		if (lvl0[0] > 1) {
+			Bg_B.data(*cell.data)(-1) = background_B.get_background_field(
+				{sx, ry, rz},
+				vacuum_permeability
+			);
+			Bg_B.data(*cell.data)(+1) = background_B.get_background_field(
+				{ex, ry, rz},
+				vacuum_permeability
+			);
+		} else {
+			Bg_B.data(*cell.data)(+1) =
+			Bg_B.data(*cell.data)(+1) =
+				background_B.get_background_field(
+					{rx, ry, rz},
+					vacuum_permeability
+				);
+		}
 
-		Mas.data(*cell.data) = mass;
-		Mom.data(*cell.data)   =
-		Vol_B.data(*cell.data) = {0, 0, 0};
-		Face_B.data(*cell.data)  =
+		if (lvl0[1] > 1) {
+			Bg_B.data(*cell.data)(-2) = background_B.get_background_field(
+				{rx, sy, rz},
+				vacuum_permeability
+			);
+			Bg_B.data(*cell.data)(+2) = background_B.get_background_field(
+				{rx, ey, rz},
+				vacuum_permeability
+			);
+		} else {
+			Bg_B.data(*cell.data)(-2) =
+			Bg_B.data(*cell.data)(+2) =
+				background_B.get_background_field(
+					{rx, ry, rz},
+					vacuum_permeability
+				);
+		}
+
+		if (lvl0[2] > 1) {
+			Bg_B.data(*cell.data)(-3) = background_B.get_background_field(
+				{rx, ry, sz},
+				vacuum_permeability
+			);
+			Bg_B.data(*cell.data)(+3) = background_B.get_background_field(
+				{rx, ry, ez},
+				vacuum_permeability
+			);
+		} else {
+			Bg_B.data(*cell.data)(-3) =
+			Bg_B.data(*cell.data)(+3) =
+				background_B.get_background_field(
+					{rx, ry, rz},
+					vacuum_permeability
+				);
+		}
+
+		Mas.data(*cell.data) = options.sw_n_density * proton_mass;
+		Mom.data(*cell.data) = {0, 0, 0};
+		Vol_B.data(*cell.data)[0]   =
+		Face_B.data(*cell.data)(-1) =
+		Face_B.data(*cell.data)(+1) = options.sw_magnetic_field[0];
+		Vol_B.data(*cell.data)[1]   =
+		Face_B.data(*cell.data)(-2) =
+		Face_B.data(*cell.data)(+2) = options.sw_magnetic_field[1];
+		Vol_B.data(*cell.data)[2]   =
+		Face_B.data(*cell.data)(-3) =
+		Face_B.data(*cell.data)(+3) = options.sw_magnetic_field[2];
 		Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
 		Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
 			Mas.data(*cell.data),
 			Mom.data(*cell.data),
-			pressure,
+			options.sw_pressure,
 			Vol_B.data(*cell.data),
 			adiabatic_index,
 			vacuum_permeability
@@ -264,18 +198,17 @@ template<
 
 
 template<
-	class JSON,
 	class Cells,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Energy_Density_Getter,
 	class Volume_Magnetic_Field_Getter,
-	class Face_Magnetic_Field_Getter
+	class Face_Magnetic_Field_Getter,
+	class Face_Magnetic_Field_Change_Getter
 > void apply_solar_wind_boundaries(
-	const JSON& json,
+	const Solar_Wind_Box_Options& options,
 	const Cells& solar_wind_cells,
-	const int& solar_wind_dir,
-	const double& sim_time,
+	const double& /*sim_time*/,
 	const double& adiabatic_index,
 	const double& vacuum_permeability,
 	const double& proton_mass,
@@ -283,38 +216,52 @@ template<
 	const Momentum_Density_Getter& Mom,
 	const Energy_Density_Getter& Nrj,
 	const Volume_Magnetic_Field_Getter& Vol_B,
-	const Face_Magnetic_Field_Getter& Face_B
+	const Face_Magnetic_Field_Getter& Face_B,
+	const Face_Magnetic_Field_Change_Getter& Face_dB
 ) try {
-	const auto [
-		mass, pressure, velocity, magnetic_field
-	] = pamhd::mhd::get_solar_wind_parameters(
-		json, sim_time, proton_mass
-	);
 	for (const auto& cell: solar_wind_cells) {
+		const auto mass = options.sw_n_density * proton_mass;
 		Mas.data(*cell.data) = mass;
 		Mom.data(*cell.data) = {
-			mass*velocity[0],
-			mass*velocity[1],
-			mass*velocity[2]
+			mass*options.sw_velocity[0],
+			mass*options.sw_velocity[1],
+			mass*options.sw_velocity[2]
 		};
+		Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
+
 		// prevent div(B) at solar wind boundary
-		if (solar_wind_dir != abs(1)) {
+		if (options.sw_dir[1] != 'x') {
 			Vol_B.data(*cell.data)[0]   =
 			Face_B.data(*cell.data)(-1) =
-			Face_B.data(*cell.data)(+1) = magnetic_field[0];
+			Face_B.data(*cell.data)(+1) = options.sw_magnetic_field[0];
+		} else {
+			Vol_B.data(*cell.data)[0]   =
+			Face_B.data(*cell.data)(-1) =
+			Face_B.data(*cell.data)(+1) = 0;
 		}
-		if (solar_wind_dir != abs(2)) {
+
+		if (options.sw_dir[1] != 'y') {
 			Vol_B.data(*cell.data)[1]   =
 			Face_B.data(*cell.data)(-2) =
-			Face_B.data(*cell.data)(+2) = magnetic_field[1];
+			Face_B.data(*cell.data)(+2) = options.sw_magnetic_field[1];
+		} else {
+			Vol_B.data(*cell.data)[1]   =
+			Face_B.data(*cell.data)(-2) =
+			Face_B.data(*cell.data)(+2) = 0;
 		}
-		if (solar_wind_dir != abs(3)) {
+
+		if (options.sw_dir[1] != 'z') {
 			Vol_B.data(*cell.data)[2]   =
 			Face_B.data(*cell.data)(-3) =
-			Face_B.data(*cell.data)(+3) = magnetic_field[2];
+			Face_B.data(*cell.data)(+3) = options.sw_magnetic_field[2];
+		} else {
+			Vol_B.data(*cell.data)[2]   =
+			Face_B.data(*cell.data)(-3) =
+			Face_B.data(*cell.data)(+3) = 0;
 		}
 		Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
-			mass, velocity, pressure, magnetic_field,
+			mass, options.sw_velocity,
+			options.sw_pressure, Vol_B.data(*cell.data),
 			adiabatic_index, vacuum_permeability
 		);
 	}
@@ -323,6 +270,7 @@ template<
 	Nrj.type().is_stale = true;
 	Vol_B.type().is_stale = true;
 	Face_B.type().is_stale = true;
+
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
@@ -332,7 +280,6 @@ template<
 
 template<
 	class Grid,
-	class JSON,
 	class SW_Cells,
 	class Face_Cells,
 	class Edge_Cells,
@@ -343,12 +290,12 @@ template<
 	class Energy_Density_Getter,
 	class Volume_Magnetic_Field_Getter,
 	class Face_Magnetic_Field_Getter,
+	class Face_Magnetic_Field_Change_Getter,
 	class Solver_Info_Getter
-> void apply_boundaries(
+> void apply_boundaries_sw_box(
 	Grid& grid,
 	const double& sim_time,
-	const JSON& json,
-	const int& solar_wind_dir,
+	const Solar_Wind_Box_Options& options,
 	const SW_Cells& solar_wind_cells,
 	const Face_Cells& face_cells,
 	const Edge_Cells& edge_cells,
@@ -362,6 +309,7 @@ template<
 	const Energy_Density_Getter& Nrj,
 	const Volume_Magnetic_Field_Getter& Vol_B,
 	const Face_Magnetic_Field_Getter& Face_B,
+	const Face_Magnetic_Field_Change_Getter& Face_dB,
 	const Solver_Info_Getter& SInfo
 ) try {
 	using Cell = Grid::cell_data_type;
@@ -391,6 +339,7 @@ template<
 	// boundary and normal cell share face
 	for (int dir: {-3,-2,-1,+1,+2,+3}) {
 		for (const auto& cell: face_cells(dir)) {
+			Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
 			for (const auto& neighbor: cell.neighbors_of) {
 				const auto& fn = neighbor.face_neighbor;
 				if (fn != -dir) continue;
@@ -414,6 +363,7 @@ template<
 	for (int dir1: {-1, +1})
 	for (int dir2: {-1, +1}) {
 		for (const auto& cell: edge_cells(dim, dir1, dir2)) {
+			Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
 			for (const auto& neighbor: cell.neighbors_of) {
 				const auto& en = neighbor.edge_neighbor;
 				if (en[0] != dim or en[1] != -dir1 or en[2] != -dir2) continue;
@@ -481,6 +431,7 @@ template<
 
 	// boundary and normal cell share vertex
 	for (const auto& cell: vert_cells) {
+		Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
 			if (fn != 0) continue;
@@ -517,23 +468,9 @@ template<
 
 	// planetary boundary cells
 	for (const auto& cell: planet_cells) {
-		Mas.data(*cell.data) = proton_mass * 1e9;
+		Mas.data(*cell.data) = options.inner_density * proton_mass;
 		Mom.data(*cell.data) = {0, 0, 0};
-		Vol_B.data(*cell.data) = {0, 0, 0};
-		Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
-			Mas.data(*cell.data),
-			Mom.data(*cell.data),
-			1e-11,
-			Vol_B.data(*cell.data),
-			adiabatic_index,
-			vacuum_permeability
-		);
-		Face_B.data(*cell.data)(-1) =
-		Face_B.data(*cell.data)(+1) =
-		Face_B.data(*cell.data)(-2) =
-		Face_B.data(*cell.data)(+2) =
-		Face_B.data(*cell.data)(-3) =
-		Face_B.data(*cell.data)(+3) = 0;
+		Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
 
 		pamhd::grid::Face_Type<bool> have_value{false, false, false, false, false, false};
 		// corrections to Face_B from normal neighbors
@@ -557,6 +494,7 @@ template<
 				if (have_value(-dir)) {
 					Face_B.data(*cell.data)(dir) = Face_B.data(*cell.data)(-dir);
 				} else {
+					// TODO
 				}
 			}
 		}
@@ -568,7 +506,7 @@ template<
 		Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
 			Mas.data(*cell.data),
 			Mom.data(*cell.data),
-			1e-11,
+			options.inner_pressure,
 			Vol_B.data(*cell.data),
 			adiabatic_index,
 			vacuum_permeability
@@ -581,9 +519,9 @@ template<
 	Face_B.type().is_stale = true;
 
 	apply_solar_wind_boundaries(
-		json, solar_wind_cells, solar_wind_dir, sim_time,
+		options, solar_wind_cells, sim_time,
 		adiabatic_index, vacuum_permeability, proton_mass,
-		Mas, Mom, Nrj, Vol_B, Face_B
+		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB
 	);
 
 } catch (const std::exception& e) {
