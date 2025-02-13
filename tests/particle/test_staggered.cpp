@@ -38,7 +38,6 @@ Author(s): Ilja Honkonen
 #include "dccrg.hpp"
 #include "dccrg_cartesian_geometry.hpp"
 #include "Eigen/Core" // must be included before gensimcell.hpp
-#include "Eigen/Geometry"
 #include "mpi.h" // must be included before gensimcell.hpp
 #include "gensimcell.hpp"
 #include "rapidjson/document.h"
@@ -699,7 +698,7 @@ int main(int argc, char* argv[]) {
 			simulation_time,
 			grid,
 			random_source,
-			options_particle.boltzmann,
+			options_sim.temp2nrj,
 			next_particle_id,
 			grid.get_comm_size(),
 			false,
@@ -732,7 +731,7 @@ int main(int argc, char* argv[]) {
 			0,
 			grid,
 			random_source,
-			options_particle.boltzmann,
+			options_sim.temp2nrj,
 			options_sim.vacuum_permeability,
 			next_particle_id,
 			grid.get_comm_size(),
@@ -787,7 +786,7 @@ int main(int argc, char* argv[]) {
 			grid,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
-			options_particle.boltzmann,
+			options_sim.temp2nrj,
 			options_mhd.min_pressure,
 			Nr_Particles,
 			Bulk_Mass_Getter,
@@ -877,7 +876,7 @@ int main(int argc, char* argv[]) {
 		pamhd::particle::Bulk_Velocity(), SInfo,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
-		options_particle.boltzmann,
+		options_sim.temp2nrj,
 		options_mhd.min_pressure,
 		Mas, Mom, Nrj, Vol_B, Vol_J, J_m_V, Vol_E, Nr_Ext,
 		Part_Ext, Part_C2M, Part_Des, Face_dB, Bg_B,
@@ -910,7 +909,7 @@ int main(int argc, char* argv[]) {
 				simulation_step, simulation_time,
 				options_sim.adiabatic_index,
 				options_sim.proton_mass,
-				options_particle.boltzmann
+				options_sim.temp2nrj
 			)
 		) {
 			cerr <<  __FILE__ << "(" << __LINE__ << "): "
@@ -975,7 +974,7 @@ int main(int argc, char* argv[]) {
 				pamhd::particle::Bulk_Velocity(), SInfo,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
-				options_particle.boltzmann,
+				options_sim.temp2nrj,
 				options_mhd.min_pressure,
 				Mas, Mom, Nrj, Vol_B, Vol_J, J_m_V, Vol_E, Nr_Ext,
 				Part_Ext, Part_C2M, Part_Des, Face_dB, Bg_B,
@@ -1054,7 +1053,7 @@ int main(int argc, char* argv[]) {
 		>(
 			geometries, boundaries_particles, simulation_time,
 			simulation_step, grid, random_source,
-			options_particle.boltzmann,
+			options_sim.temp2nrj,
 			options_sim.vacuum_permeability,
 			next_particle_id, grid.get_comm_size(), true,
 			SInfo, Part_Int, Bdy_N, Bdy_V, Bdy_T,
@@ -1092,7 +1091,7 @@ int main(int argc, char* argv[]) {
 					simulation_time,
 					options_sim.adiabatic_index,
 					options_sim.proton_mass,
-					options_particle.boltzmann
+					options_sim.temp2nrj
 				)
 			) {
 				cerr <<  __FILE__ << "(" << __LINE__ << "): "

@@ -53,9 +53,9 @@ struct Solar_Wind_Box_Options
 	std::string sw_dir{""};
 	double
 		inner_radius{-1},
-		inner_density{-1},
+		inner_nr_density{-1},
 		inner_pressure{-1},
-		sw_n_density{-1},
+		sw_nr_density{-1},
 		sw_pressure{-1};
 	std::array<double, 3>
 		inner_velocity{0, 0, 0},
@@ -120,14 +120,14 @@ struct Solar_Wind_Box_Options
 				+ "'solar-wind' doesn't have a 'number-density' key."
 			);
 		}
-		const auto& sw_n_json = sw["number-density"];
-		if (not sw_n_json.IsNumber()) {
+		const auto& sw_nr_json = sw["number-density"];
+		if (not sw_nr_json.IsNumber()) {
 			throw invalid_argument(
 				string(__FILE__ "(") + to_string(__LINE__) + "): "
 				+ "'solar-wind' item 'number-density' is not a number."
 			);
 		}
-		this->sw_n_density = sw_n_json.GetDouble();
+		this->sw_nr_density = sw_nr_json.GetDouble();
 
 		if (not sw.HasMember("pressure")) {
 			throw invalid_argument(
@@ -238,7 +238,7 @@ struct Solar_Wind_Box_Options
 				+ "'inner-boundary' item 'number-density' is not a number."
 			);
 		}
-		this->inner_density = n_json.GetDouble();
+		this->inner_nr_density = n_json.GetDouble();
 
 		if (not inner.HasMember("pressure")) {
 			throw invalid_argument(

@@ -411,7 +411,7 @@ int main(int argc, char* argv[])
 			simulation_time,
 			grid,
 			random_source,
-			options_particle.boltzmann,
+			options_sim.temp2nrj,
 			next_particle_id,
 			grid.get_comm_size(),
 			true,
@@ -443,7 +443,7 @@ int main(int argc, char* argv[])
 			0,
 			grid,
 			random_source,
-			options_particle.boltzmann,
+			options_sim.temp2nrj,
 			options_sim.vacuum_permeability,
 			next_particle_id,
 			grid.get_comm_size(),
@@ -617,7 +617,7 @@ int main(int argc, char* argv[])
 				simulated_steps,
 				grid,
 				random_source,
-				options_particle.boltzmann,
+				options_sim.temp2nrj,
 				options_sim.vacuum_permeability,
 				next_particle_id,
 				grid.get_comm_size(),
@@ -664,7 +664,7 @@ int main(int argc, char* argv[])
 					simulation_time,
 					0,
 					0,
-					options_particle.boltzmann
+					options_sim.temp2nrj
 				)
 			) {
 				std::cerr <<  __FILE__ << "(" << __LINE__ << "): Couldn't save particle result." << std::endl;

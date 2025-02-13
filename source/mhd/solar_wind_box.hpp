@@ -96,7 +96,7 @@ template<
 
 	if (grid.get_rank() == 0) {
 		std::cout << "Initializing run, solar wind: "
-		<< options.sw_n_density << " #/m^3, "
+		<< options.sw_nr_density << " #/m^3, "
 		<< options.sw_velocity << " m/s, "
 		<< options.sw_pressure << " Pa, "
 		<< options.sw_magnetic_field << " T"
@@ -163,7 +163,7 @@ template<
 				);
 		}
 
-		Mas.data(*cell.data) = options.sw_n_density * proton_mass;
+		Mas.data(*cell.data) = options.sw_nr_density * proton_mass;
 		Mom.data(*cell.data) = {0, 0, 0};
 		Vol_B.data(*cell.data)[0]   =
 		Face_B.data(*cell.data)(-1) =
@@ -220,7 +220,7 @@ template<
 	const Face_Magnetic_Field_Change_Getter& Face_dB
 ) try {
 	for (const auto& cell: solar_wind_cells) {
-		const auto mass = options.sw_n_density * proton_mass;
+		const auto mass = options.sw_nr_density * proton_mass;
 		Mas.data(*cell.data) = mass;
 		Mom.data(*cell.data) = {
 			mass*options.sw_velocity[0],
@@ -468,7 +468,7 @@ template<
 
 	// planetary boundary cells
 	for (const auto& cell: planet_cells) {
-		Mas.data(*cell.data) = options.inner_density * proton_mass;
+		Mas.data(*cell.data) = options.inner_nr_density * proton_mass;
 		Mom.data(*cell.data) = {0, 0, 0};
 		Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
 
