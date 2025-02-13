@@ -16,11 +16,8 @@
 	"vacuum-permeability": 1,
 	"proton-mass": 1,
 	"particle-temp-nrj-ratio": 1,
-	"remove-div-B-n": -1,
 	"gyroperiod-time-step-factor": 1,
 	"flight-time-step-factor": 1,
-	"poisson-norm-stop": 1e-15,
-	"poisson-norm-increase-max": 10,
 	"grid-options": {
 		"periodic": "{true, false, true}",
 		"cells": "{1, 20 + 2, 1}",
