@@ -446,11 +446,20 @@ template<
 	// boundary and normal cell share vertex
 	for (const auto& cell: vert_cells) {
 		Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
+		const auto cilen = grid.mapping.get_cell_length_in_indices(cell.id);
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
 			if (fn != 0) continue;
 			const auto& en = neighbor.edge_neighbor;
 			if (en[0] >= 0) continue;
+			if (
+				abs(neighbor.x) > cilen
+				or abs(neighbor.y) > cilen
+				or abs(neighbor.z) > cilen
+			) continue;
+			if (neighbor.relative_size != 0) {
+				throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			}
 			if (SInfo.data(*neighbor.data) != 1) {
 				throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			}
