@@ -1660,6 +1660,11 @@ template <
 		Cell::set_transfer_all(true, Substep.type());
 		Substep.type().is_stale = false;
 	}
+	if (Bg_B.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, Bg_B.type());
+		Bg_B.type().is_stale = false;
+	}
 	if (update_copies) {
 		grid.start_remote_neighbor_copy_updates();
 	}
@@ -1686,6 +1691,9 @@ template <
 	if (update_copies) {
 		grid.wait_remote_neighbor_copy_update_sends();
 	}
+	Cell::set_transfer_all(false,
+		Mas.type(), Mom.type(), Nrj.type(), Vol_B.type(),
+		SInfo.type(), Substep.type(), Bg_B.type());
 
 	pamhd::mhd::get_fluxes(
 		solver, grid.remote_cells(), grid, substep,
@@ -1694,9 +1702,6 @@ template <
 		Mas_f, Mom_f, Nrj_f, Mag_f,
 		SInfo, Substep, Max_v
 	);
-	Cell::set_transfer_all(false,
-		Mas.type(), Mom.type(), Nrj.type(),
-		Vol_B.type(), SInfo.type(), Substep.type());
 	Max_v.type().is_stale = true;
 
 } catch (const std::exception& e) {

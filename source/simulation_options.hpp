@@ -38,7 +38,6 @@ Author(s): Ilja Honkonen
 #define PAMHD_SIMULATION_OPTIONS_HPP
 
 
-#include "cmath"
 #include "stdexcept"
 #include "string"
 
@@ -48,8 +47,16 @@ Author(s): Ilja Honkonen
 namespace pamhd {
 
 
-struct Options
-{
+struct Options {
+	std::string lb_name{"RCB"}, output_directory{""};
+	double
+		time_start{0}, time_length{1},
+		adiabatic_index{5.0 / 3.0},
+		vacuum_permeability{4e-7 * M_PI},
+		proton_mass{1.672621777e-27},
+		charge2mass{95788332}, // charge to mass ratio (C/kg)
+		temp2nrj{1.380649e-23}; // Boltzmann constant (J/K)
+
 	Options() = default;
 	Options(const Options& other) = default;
 	Options& operator=(const Options& other) = default;
@@ -60,17 +67,6 @@ struct Options
 	{
 		this->set(object);
 	};
-
-
-	std::string lb_name{"RCB"}, output_directory{""};
-
-	double
-		time_start{0}, time_length{1},
-		adiabatic_index{5.0 / 3.0},
-		vacuum_permeability{4e-7 * M_PI},
-		proton_mass{1.672621777e-27},
-		charge2mass{95788332}, // charge to mass ratio (C/kg)
-		temp2nrj{1.380649e-23}; // Boltzmann constant (J/K)
 
 	void set(const rapidjson::Value& object) {
 		using std::invalid_argument;

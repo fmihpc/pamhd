@@ -312,6 +312,9 @@ template<
 	const Face_Magnetic_Field_Change_Getter& Face_dB,
 	const Solver_Info_Getter& SInfo
 ) try {
+	using std::runtime_error;
+	using std::to_string;
+
 	using Cell = Grid::cell_data_type;
 
 	bool update_copies = false;
@@ -324,18 +327,21 @@ template<
 		update_copies = true;
 		Cell::set_transfer_all(true,
 			Mas.type(), Mom.type(), Nrj.type(), Vol_B.type());
-		// everything will become stale again below
 	}
 	if (Face_B.type().is_stale) {
 		update_copies = true;
 		Cell::set_transfer_all(true, Face_B.type());
+	}
+	if (SInfo.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, SInfo.type());
 	}
 	if (update_copies) {
 		grid.update_copies_of_remote_neighbors();
 	}
 	Cell::set_transfer_all(false,
 		Mas.type(), Mom.type(), Nrj.type(),
-		Vol_B.type(), Face_B.type());
+		Vol_B.type(), Face_B.type(), SInfo.type());
 	// boundary and normal cell share face
 	for (int dir: {-3,-2,-1,+1,+2,+3}) {
 		for (const auto& cell: face_cells(dir)) {
@@ -343,6 +349,10 @@ template<
 			for (const auto& neighbor: cell.neighbors_of) {
 				const auto& fn = neighbor.face_neighbor;
 				if (fn != -dir) continue;
+				if (SInfo.data(*neighbor.data) != 1) {
+					throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+				}
+
 				Mas.data(*cell.data) = Mas.data(*neighbor.data);
 				Mom.data(*cell.data) = Mom.data(*neighbor.data);
 				Nrj.data(*cell.data) = Nrj.data(*neighbor.data);
@@ -367,6 +377,10 @@ template<
 			for (const auto& neighbor: cell.neighbors_of) {
 				const auto& en = neighbor.edge_neighbor;
 				if (en[0] != dim or en[1] != -dir1 or en[2] != -dir2) continue;
+				if (SInfo.data(*neighbor.data) != 1) {
+					throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+				}
+
 				Mas.data(*cell.data) = Mas.data(*neighbor.data);
 				Mom.data(*cell.data) = Mom.data(*neighbor.data);
 				Nrj.data(*cell.data) = Nrj.data(*neighbor.data);
@@ -437,6 +451,9 @@ template<
 			if (fn != 0) continue;
 			const auto& en = neighbor.edge_neighbor;
 			if (en[0] >= 0) continue;
+			if (SInfo.data(*neighbor.data) != 1) {
+				throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			}
 
 			Mas.data(*cell.data) = Mas.data(*neighbor.data);
 			Mom.data(*cell.data) = Mom.data(*neighbor.data);

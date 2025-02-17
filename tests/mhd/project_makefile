@@ -3,8 +3,7 @@ TESTS_MHD_EXECUTABLES = \
   tests/mhd/reference_staggered.exe \
   tests/mhd/two_reference.exe \
   tests/mhd/test_staggered.exe \
-  tests/mhd/solar_wind_box.exe \
-  tests/mhd/two_test.exe
+  tests/mhd/solar_wind_box.exe
 
 TESTS_MHD_TESTS = \
   tests/mhd/reference.tst_rusanov \

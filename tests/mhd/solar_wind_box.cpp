@@ -242,21 +242,7 @@ int main(int argc, char* argv[]) {
 	pamhd::Options options_sim{document};
 	pamhd::grid::Options options_grid{document};
 	pamhd::mhd::Options options_mhd{document};
-	pamhd::Solar_Wind_Box_Options options_sw{document};
-	const int solar_wind_dir = [&options_sw](){
-		if (options_sw.sw_dir == "-x") return -1;
-		else if (options_sw.sw_dir == "+x") return +1;
-		else if (options_sw.sw_dir == "-y") return -2;
-		else if (options_sw.sw_dir == "+y") return +2;
-		else if (options_sw.sw_dir == "-z") return -3;
-		else if (options_sw.sw_dir == "+z") return +3;
-		else {
-			std::cerr << "Invalid solar wind boundary direction: "
-				<< options_sw.sw_dir << std::endl;
-			MPI_Finalize();
-			return EXIT_FAILURE;
-		}
-	}();
+	pamhd::Solar_Wind_Box_Options options_box{document};
 
 	if (rank == 0 and options_sim.output_directory != "") {
 		cout << "Saving results into directory " << options_sim.output_directory << endl;
@@ -354,40 +340,21 @@ int main(int argc, char* argv[]) {
 			<< options_sim.time_start << "...  " << flush;
 	}
 
-	Cell::set_transfer_all(true,
-		pamhd::grid::Target_Refinement_Level_Min(),
-		pamhd::grid::Target_Refinement_Level_Max(),
-		pamhd::Solver_Info()
-	);
-	pamhd::grid::prepare_grid(
-		options_sw.inner_radius,
+	auto [
+		solar_wind_cells, face_cells,
+		edge_cells, vert_cells, planet_cells
+	] = pamhd::grid::prepare_grid(
+		options_sim, options_grid, options_box,
 		grid, SInfo, Ref_max, Ref_min
-	);
-	pamhd::grid::set_minmax_refinement_level(
-		grid.local_cells(), grid, options_grid,
-		options_sim.time_start, Ref_min, Ref_max, true
-	);
-	pamhd::grid::adapt_grid(grid, Ref_min, Ref_max, SInfo);
-	grid.balance_load();
-	Cell::set_transfer_all(false,
-		pamhd::grid::Target_Refinement_Level_Min(),
-		pamhd::grid::Target_Refinement_Level_Max(),
-		pamhd::Solver_Info()
 	);
 	if (rank == 0) {
 		cout << "done" << endl;
 	}
 
-	auto solar_wind_cells
-		= get_solar_wind_cells(solar_wind_dir, grid);
 	for (const auto& cell: solar_wind_cells) {
 		if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}
-
-	auto [
-		face_cells, edge_cells, vert_cells
-	] = get_outflow_cells(grid);
 	for (int dir: {-3,-2,-1,+1,+2,+3}) {
 		for (const auto& cell: face_cells(dir)) {
 			if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
@@ -406,58 +373,22 @@ int main(int argc, char* argv[]) {
 		if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}
-
-	auto planet_cells = pamhd::grid::get_planet_cells(
-		options_sw.inner_radius, grid, SInfo
-	);
 	for (const auto& cell: planet_cells) {
-		const auto [inside, outside]
-			= pamhd::grid::at_inner_boundary(options_sw.inner_radius, cell.id, grid);
-		if (not (inside and outside)) throw runtime_error(__FILE__"(" + to_string(__LINE__) + "): " + to_string(cell.id));
-		if (SInfo.data(*cell.data) == 0) {
-			bool have_solve = false;
-			for (const auto& neighbor: cell.neighbors_of) {
-				if (
-					neighbor.face_neighbor == 0
-					and neighbor.edge_neighbor[0] < 0
-				) {
-					continue;
-				}
-				if (SInfo.data(*neighbor.data) == 1) {
-					have_solve = true;
-					break;
-				}
-			}
-			if (not have_solve) throw runtime_error(__FILE__"(" + to_string(__LINE__) + "): " + to_string(cell.id));
-		}
-		if (SInfo.data(*cell.data) == 1) {
-			throw runtime_error(__FILE__"(" + to_string(__LINE__) + "): " + to_string(cell.id) + " " + to_string(SInfo.data(*cell.data)));
-		}
+		if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (Ref_max.data(*cell.data) != grid.get_maximum_refinement_level()) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}
 
 	for (const auto& cell: grid.local_cells()) {
 		(*cell.data)[pamhd::MPI_Rank()] = rank;
-		Substep.data(*cell.data) = 1;
+		Substep.data(*cell.data)     =
+		Substep_Max.data(*cell.data) =
+		Substep_Min.data(*cell.data) = 1;
 		Max_v.data(*cell.data) = {-1, -1, -1, -1, -1, -1};
 	}
-	pamhd::mhd::set_minmax_substepping_period(
-		options_sim.time_start, grid,
-		options_mhd, Substep_Min, Substep_Max);
-	Cell::set_transfer_all(true,
-		pamhd::mhd::Max_Velocity(),
-		pamhd::mhd::Substepping_Period(),
-		pamhd::mhd::Substep_Min(),
-		pamhd::mhd::Substep_Max(),
-		pamhd::MPI_Rank()
-	);
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false,
-		pamhd::mhd::Max_Velocity(),
-		pamhd::mhd::Substepping_Period(),
-		pamhd::mhd::Substep_Min(),
-		pamhd::mhd::Substep_Max(),
-		pamhd::MPI_Rank()
-	);
+	Max_v.type().is_stale = true;
+	Substep.type().is_stale = true;
+	Substep_Max.type().is_stale = true;
+	Substep_Min.type().is_stale = true;
 
 	/*
 	Simulate
@@ -475,7 +406,7 @@ int main(int argc, char* argv[]) {
 
 	pamhd::mhd::initialize_plasma(
 		grid, simulation_time,
-		options_sw, background_B,
+		options_box, background_B,
 		Mas, Mom, Nrj, Vol_B, Face_B,
 		Face_dB, Bg_B,
 		options_sim.adiabatic_index,
@@ -493,7 +424,7 @@ int main(int argc, char* argv[]) {
 	);
 
 	pamhd::mhd::apply_boundaries_sw_box(
-		grid, simulation_time, options_sw, solar_wind_cells,
+		grid, simulation_time, options_box, solar_wind_cells,
 		face_cells, edge_cells, vert_cells, planet_cells,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
@@ -563,6 +494,15 @@ int main(int argc, char* argv[]) {
 		}
 		simulation_time += dt;
 
+		pamhd::mhd::apply_boundaries_sw_box(
+			grid, simulation_time, options_box, solar_wind_cells,
+			face_cells, edge_cells, vert_cells, planet_cells,
+			options_sim.adiabatic_index,
+			options_sim.vacuum_permeability,
+			options_sim.proton_mass,
+			Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, SInfo
+		);
+
 		const auto avg_div = pamhd::math::get_divergence_staggered(
 			grid.local_cells(), grid,
 			Face_B, Div_B, SInfo
@@ -570,15 +510,6 @@ int main(int argc, char* argv[]) {
 		if (rank == 0) {
 			cout << " average divergence " << avg_div << endl;
 		}
-
-		pamhd::mhd::apply_boundaries_sw_box(
-			grid, simulation_time, options_sw, solar_wind_cells,
-			face_cells, edge_cells, vert_cells, planet_cells,
-			options_sim.adiabatic_index,
-			options_sim.vacuum_permeability,
-			options_sim.proton_mass,
-			Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, SInfo
-		);
 
 		if (
 			(options_mhd.save_n >= 0 and simulation_time >= time_end)

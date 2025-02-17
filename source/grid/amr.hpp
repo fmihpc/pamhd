@@ -561,6 +561,7 @@ template <
 ) {
 	#ifdef MPI_VERSION
 	using Cell = Grid::cell_data_type;
+	Cell::set_transfer_all(true, RLMin.type(), RLMax.type());
 	MPI_Comm comm = grid.get_communicator();
 	#endif
 	for (
@@ -597,7 +598,6 @@ template <
 	}
 	#ifdef MPI_VERSION
 	MPI_Comm_free(&comm);
-	Cell::set_transfer_all(true, RLMin.type(), RLMax.type());
 	grid.update_copies_of_remote_neighbors();
 	Cell::set_transfer_all(false, RLMin.type(), RLMax.type());
 	#endif
@@ -617,7 +617,7 @@ template <
 > void set_minmax_refinement_level(
 	const Cells& cells,
 	Grid& grid,
-	Options& options,
+	pamhd::grid::Options& options,
 	const double& sim_time,
 	const Target_Refinement_Level_Min_Getter& RLMin,
 	const Target_Refinement_Level_Max_Getter& RLMax,

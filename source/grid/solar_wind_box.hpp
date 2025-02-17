@@ -44,169 +44,12 @@ Author(s): Ilja Honkonen
 #include "vector"
 
 #include "grid/amr.hpp"
+#include "simulation_options.hpp"
+#include "solar_wind_box_options.hpp"
 
 
 namespace pamhd {
 namespace grid {
-
-/*! Returns solar wind cells
-
-Returns in std::vector<> subset of cells from:
-for (const auto& cell: grid.local_cells()) {...}
-
-TODO: assumes sw cells have refinement level 0
-*/
-template<
-	class Grid
-> auto get_solar_wind_cells(
-	int direction,
-	const Grid& grid
-) try {
-	using std::invalid_argument;
-	using std::to_string;
-
-	if (direction == 0) throw invalid_argument(
-		__FILE__ "(" + to_string(__LINE__) + "): direction = 0"
-	);
-	const size_t dim = std::abs(direction) - 1;
-	if (dim > 2) throw invalid_argument(
-		__FILE__ "(" + to_string(__LINE__) + "): |direction| - 1 > 2"
-	);
-
-	const auto len0 = grid.length.get();
-	const auto mrlvl = grid.get_maximum_refinement_level();
-	const std::array<uint64_t, 3> end_indices{
-		len0[0] * (uint64_t(1) << mrlvl),
-		len0[1] * (uint64_t(1) << mrlvl),
-		len0[2] * (uint64_t(1) << mrlvl)
-	};
-
-	std::vector<
-		std::remove_cv_t<std::remove_reference_t<
-			decltype(grid.cells.front())>>
-	> sw_cells;
-	for (const auto& cell: grid.local_cells()) {
-		const auto indices = grid.mapping.get_indices(cell.id);
-		const auto len = grid.mapping.get_cell_length_in_indices(cell.id);
-
-		if (direction < 0) {
-			if (indices[dim] == 0) {
-				sw_cells.push_back(cell);
-			}
-		} else {
-			if (indices[dim] == end_indices[dim] - len) {
-				sw_cells.push_back(cell);
-			}
-		}
-	}
-	return sw_cells;
-
-} catch (const std::exception& e) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
-} catch (...) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
-}
-
-
-/*! Returns outflow cells
-
-of subset of cells from:
-for (const auto& cell: grid.local_cells()) {...}
-
-TODO: assumes outflow cells have refinement level 0
-*/
-template<
-	class Grid
-> auto get_outflow_cells(
-	const Grid& grid
-) try {
-	using std::cout;
-	using std::endl;
-	using std::string;
-	using std::invalid_argument;
-	using std::to_string;
-
-	const auto len0 = grid.length.get();
-	const auto mrlvl = grid.get_maximum_refinement_level();
-	const std::array<uint64_t, 3> end_indices{
-		len0[0] * (uint64_t(1) << mrlvl),
-		len0[1] * (uint64_t(1) << mrlvl),
-		len0[2] * (uint64_t(1) << mrlvl)
-	};
-
-	using cell_list_t = std::vector<
-		std::remove_cv_t<std::remove_reference_t<
-			decltype(grid.cells.front())>>
-	>;
-	// boundary and normal cell share face
-	pamhd::grid::Face_Type<cell_list_t> face_bdy;
-	// boundary and normal cell share edge
-	pamhd::grid::Edge_Type<cell_list_t> edge_bdy;
-	// boundary and normal cell share vertex
-	cell_list_t vert_bdy;
-	for (const auto& cell: grid.local_cells()) {
-		const auto indices = grid.mapping.get_indices(cell.id);
-		const auto len = grid.mapping.get_cell_length_in_indices(cell.id);
-
-		int x = 0, y = 0, z = 0;
-		if (indices[0] == 0) x = -1;
-		else if (indices[0] == end_indices[0] - len) x = +1;
-		if (indices[1] == 0) y = -1;
-		else if (indices[1] == end_indices[1] - len) y = +1;
-		if (indices[2] == 0) z = -1;
-		else if (indices[2] == end_indices[2] - len) z = +1;
-
-		if (len0[0] == 1) x = 0;
-		if (len0[1] == 1) y = 0;
-		if (len0[2] == 1) z = 0;
-
-		if (x != 0 and y != 0 and z != 0) {
-			vert_bdy.push_back(cell);
-		} else if (y < 0 and z < 0) {
-			edge_bdy(0, -1, -1).push_back(cell);
-		} else if (y < 0 and z > 0) {
-			edge_bdy(0, -1, +1).push_back(cell);
-		} else if (y > 0 and z < 0) {
-			edge_bdy(0, +1, -1).push_back(cell);
-		} else if (y > 0 and z > 0) {
-			edge_bdy(0, +1, +1).push_back(cell);
-		} else if (x < 0 and z < 0) {
-			edge_bdy(1, -1, -1).push_back(cell);
-		} else if (x < 0 and z > 0) {
-			edge_bdy(1, -1, +1).push_back(cell);
-		} else if (x > 0 and z < 0) {
-			edge_bdy(1, +1, -1).push_back(cell);
-		} else if (x > 0 and z > 0) {
-			edge_bdy(1, +1, +1).push_back(cell);
-		} else if (x < 0 and y < 0) {
-			edge_bdy(2, -1, -1).push_back(cell);
-		} else if (x < 0 and y > 0) {
-			edge_bdy(2, -1, +1).push_back(cell);
-		} else if (x > 0 and y < 0) {
-			edge_bdy(2, +1, -1).push_back(cell);
-		} else if (x > 0 and y > 0) {
-			edge_bdy(2, +1, +1).push_back(cell);
-		} else if (x < 0) {
-			face_bdy(-1).push_back(cell);
-		} else if (x > 0) {
-			face_bdy(+1).push_back(cell);
-		} else if (y < 0) {
-			face_bdy(-2).push_back(cell);
-		} else if (y > 0) {
-			face_bdy(+2).push_back(cell);
-		} else if (z < 0) {
-			face_bdy(-3).push_back(cell);
-		} else if (z > 0) {
-			face_bdy(+3).push_back(cell);
-		}
-	}
-	return std::make_tuple(face_bdy, edge_bdy, vert_bdy);
-
-} catch (const std::exception& e) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
-} catch (...) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
-}
 
 
 /*! Returns whether given cell spans inner boundary
@@ -270,34 +113,6 @@ template<
 	}
 
 	return make_tuple(inside, outside);
-}
-
-
-template<
-	class Grid,
-	class Solver_Info_Getter
-> auto get_planet_cells(
-	const double& inner_bdy_radius,
-	const Grid& grid,
-	const Solver_Info_Getter& SInfo
-) try {
-	std::vector<
-		std::remove_cv_t<std::remove_reference_t<
-			decltype(grid.cells.front())>>
-	> planet_cells;
-	for (const auto& cell: grid.local_cells()) {
-		const auto [inside, outside]
-			= at_inner_boundary(inner_bdy_radius, cell.id, grid);
-		if (inside and outside and SInfo.data(*cell.data) == 0) {
-			planet_cells.push_back(cell);
-		}
-	}
-	return planet_cells;
-
-} catch (const std::exception& e) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
-} catch (...) {
-	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
 }
 
 
@@ -375,21 +190,25 @@ template<
 	class Solver_Info_Getter,
 	class Targer_Maximum_Refinement_Level_Getter,
 	class Targer_Minimum_Refinement_Level_Getter
-> void prepare_grid(
-	const double& inner_bdy_radius,
+> auto prepare_grid(
+	const pamhd::Options& options_sim,
+	pamhd::grid::Options& options_grid,
+	const pamhd::Solar_Wind_Box_Options& options_box,
 	Grid& grid,
 	const Solver_Info_Getter& SInfo,
 	const Targer_Maximum_Refinement_Level_Getter& Ref_max,
 	const Targer_Minimum_Refinement_Level_Getter& Ref_min
 ) try {
+	using std::invalid_argument;
 	using std::max;
 	using std::min;
 	using std::runtime_error;
 	using std::to_string;
 
-	// maximum refinement level at inner boundary
-	const auto max_ref_cells = refine_inner_cells(inner_bdy_radius, grid);
+	using Cell = Grid::cell_data_type;
 
+	// maximum refinement level at inner boundary
+	const auto max_ref_cells = refine_inner_cells(options_box.inner_radius, grid);
 	const auto mrlvl = grid.get_maximum_refinement_level();
 	for (const auto& cell: grid.local_cells()) {
 		if (max_ref_cells.count(cell.id) > 0) {
@@ -399,46 +218,6 @@ template<
 		}
 		Ref_max.data(*cell.data) = mrlvl;
 	}
-
-	// classify cells around inner boundary
-	for (const auto& cell: grid.local_cells()) {
-		const auto [inside, outside]
-			= at_inner_boundary(inner_bdy_radius, cell.id, grid);
-		if (inside) {
-			SInfo.data(*cell.data) = 0;
-			if (outside and grid.get_refinement_level(cell.id) < mrlvl) throw runtime_error(__FILE__"(" + to_string(__LINE__) + "): " + to_string(cell.id));
-		} else if (outside) {
-			SInfo.data(*cell.data) = 1;
-		} else {
-			throw runtime_error(
-				__FILE__"(" + to_string(__LINE__)
-				+ "): Unexpected location for cell "
-				+ to_string(cell.id));
-		}
-	}
-	grid.update_copies_of_remote_neighbors();
-
-	// classify dont_solve cells
-	for (const auto& cell: grid.local_cells()) {
-		if (SInfo.data(*cell.data) != 0) continue;
-		bool have_normal = false;
-		for (const auto& neighbor: cell.neighbors_of) {
-			if (
-				neighbor.face_neighbor == 0
-				and neighbor.edge_neighbor[0] < 0
-			) {
-				continue;
-			}
-			if (SInfo.data(*neighbor.data) == 1) {
-				have_normal = true;
-				break;
-			}
-		}
-		if (not have_normal) {
-			SInfo.data(*cell.data) = -1;
-		}
-	}
-	grid.update_copies_of_remote_neighbors();
 
 	// minimal refinement level at outer boundaries
 	const auto len0 = grid.length.get();
@@ -457,7 +236,6 @@ template<
 				int((end_indices[dim]-indices[dim]-1) / indices0));
 		}
 		const auto rlvl = grid.get_refinement_level(cell.id);
-		if (min_distance < 1) SInfo.data(*cell.data) = 0;
 		if (min_distance < 2) {
 			Ref_max.data(*cell.data) = 0;
 			if (rlvl > 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + "): " + to_string(cell.id));
@@ -474,6 +252,198 @@ template<
 		Ref_max.data(*cell.data) = min(mrlvl, Ref_max.data(*cell.data));
 	}
 
+	pamhd::grid::set_minmax_refinement_level(
+		grid.local_cells(), grid, options_grid,
+		options_sim.time_start, Ref_min, Ref_max, true
+	);
+	adapt_grid_sw_box(grid, Ref_min, Ref_max);
+	Cell::set_transfer_all(true, Ref_min.type(), Ref_max.type());
+	grid.balance_load();
+	Cell::set_transfer_all(false, Ref_min.type(), Ref_max.type());
+	Ref_max.type().is_stale = false;
+	Ref_min.type().is_stale = false;
+
+
+	/*
+	Classify and collect boundary cells
+	*/
+
+	for (const auto& cell: grid.local_cells()) {
+		SInfo.data(*cell.data) = 1;
+	}
+
+	using cell_list_t = std::vector<
+		std::remove_cv_t<std::remove_reference_t<
+			decltype(grid.cells.front())>>>;
+
+	// solar wind
+	const int direction = [&](){
+		if (options_box.sw_dir == "-x") {
+			return -1;
+		} else if (options_box.sw_dir == "+x") {
+			return +1;
+		} else if (options_box.sw_dir == "-y") {
+			return -2;
+		} else if (options_box.sw_dir == "+y") {
+			return +2;
+		} else if (options_box.sw_dir == "-z") {
+			return -3;
+		} else if (options_box.sw_dir == "+z") {
+			return +3;
+		} else {
+			throw invalid_argument(
+				__FILE__ "(" + to_string(__LINE__) + "): "
+				+ options_box.sw_dir
+			);
+		}
+	}();
+	const size_t dim = std::abs(direction) - 1;
+
+	cell_list_t sw_cells;
+	for (const auto& cell: grid.local_cells()) {
+		const auto indices = grid.mapping.get_indices(cell.id);
+		const auto len = grid.mapping.get_cell_length_in_indices(cell.id);
+
+		if (direction < 0) {
+			if (indices[dim] == 0) {
+				sw_cells.push_back(cell);
+			}
+		} else {
+			if (indices[dim] == end_indices[dim] - len) {
+				sw_cells.push_back(cell);
+			}
+		}
+	}
+	for (const auto& cell: sw_cells) {
+		SInfo.data(*cell.data) = 0;
+	}
+
+	// outflow
+	// boundary and normal cell share face
+	pamhd::grid::Face_Type<cell_list_t> face_bdy;
+	// boundary and normal cell share edge
+	pamhd::grid::Edge_Type<cell_list_t> edge_bdy;
+	// boundary and normal cell share vertex
+	cell_list_t vert_bdy;
+	for (const auto& cell: grid.local_cells()) {
+		const auto indices = grid.mapping.get_indices(cell.id);
+		const auto len = grid.mapping.get_cell_length_in_indices(cell.id);
+
+		int x = 0, y = 0, z = 0;
+		if (indices[0] == 0) x = -1;
+		else if (indices[0] == end_indices[0] - len) x = +1;
+		if (indices[1] == 0) y = -1;
+		else if (indices[1] == end_indices[1] - len) y = +1;
+		if (indices[2] == 0) z = -1;
+		else if (indices[2] == end_indices[2] - len) z = +1;
+
+		if (len0[0] == 1) x = 0;
+		if (len0[1] == 1) y = 0;
+		if (len0[2] == 1) z = 0;
+
+		if (x != 0 and y != 0 and z != 0) {
+			vert_bdy.push_back(cell);
+		} else if (y < 0 and z < 0) {
+			edge_bdy(0, -1, -1).push_back(cell);
+		} else if (y < 0 and z > 0) {
+			edge_bdy(0, -1, +1).push_back(cell);
+		} else if (y > 0 and z < 0) {
+			edge_bdy(0, +1, -1).push_back(cell);
+		} else if (y > 0 and z > 0) {
+			edge_bdy(0, +1, +1).push_back(cell);
+		} else if (x < 0 and z < 0) {
+			edge_bdy(1, -1, -1).push_back(cell);
+		} else if (x < 0 and z > 0) {
+			edge_bdy(1, -1, +1).push_back(cell);
+		} else if (x > 0 and z < 0) {
+			edge_bdy(1, +1, -1).push_back(cell);
+		} else if (x > 0 and z > 0) {
+			edge_bdy(1, +1, +1).push_back(cell);
+		} else if (x < 0 and y < 0) {
+			edge_bdy(2, -1, -1).push_back(cell);
+		} else if (x < 0 and y > 0) {
+			edge_bdy(2, -1, +1).push_back(cell);
+		} else if (x > 0 and y < 0) {
+			edge_bdy(2, +1, -1).push_back(cell);
+		} else if (x > 0 and y > 0) {
+			edge_bdy(2, +1, +1).push_back(cell);
+		} else if (x < 0) {
+			face_bdy(-1).push_back(cell);
+		} else if (x > 0) {
+			face_bdy(+1).push_back(cell);
+		} else if (y < 0) {
+			face_bdy(-2).push_back(cell);
+		} else if (y > 0) {
+			face_bdy(+2).push_back(cell);
+		} else if (z < 0) {
+			face_bdy(-3).push_back(cell);
+		} else if (z > 0) {
+			face_bdy(+3).push_back(cell);
+		}
+	}
+	for (const auto& cell: vert_bdy) {
+		SInfo.data(*cell.data) = 0;
+	}
+	for (int dir: {-3,-2,-1,+1,+2,+3}) {
+		for (const auto& cell: face_bdy(dir)) {
+			SInfo.data(*cell.data) = 0;
+		}
+	}
+	for (size_t dim: {0, 1, 2})
+	for (int dir1: {-1,+1})
+	for (int dir2: {-1,+1}) {
+		for (const auto& cell: edge_bdy(dim, dir1, dir2)) {
+			SInfo.data(*cell.data) = 0;
+		}
+	}
+
+	// planet
+	cell_list_t _planet_cells;
+	for (const auto& cell: grid.local_cells()) {
+		const auto [
+			inside, outside
+		] = at_inner_boundary(
+			options_box.inner_radius, cell.id, grid
+		);
+		if (inside) {
+			SInfo.data(*cell.data) = 0;
+			_planet_cells.push_back(cell);
+			if (outside and grid.get_refinement_level(cell.id) < mrlvl) {
+				throw runtime_error(__FILE__"(" + to_string(__LINE__)
+					+ "): " + to_string(cell.id));
+			}
+		}
+	}
+	Cell::set_transfer_all(true, SInfo.type());
+	grid.update_copies_of_remote_neighbors();
+	cell_list_t planet_cells;
+	for (const auto& cell: _planet_cells) {
+		bool have_normal = false;
+		for (const auto& neighbor: cell.neighbors_of) {
+			if (
+				neighbor.face_neighbor == 0
+				and neighbor.edge_neighbor[0] < 0
+			) {
+				continue;
+			}
+			if (SInfo.data(*neighbor.data) == 1) {
+				have_normal = true;
+				break;
+			}
+		}
+		if (not have_normal) {
+			SInfo.data(*cell.data) = -1;
+		} else {
+			planet_cells.push_back(cell);
+		}
+	}
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false, SInfo.type());
+	SInfo.type().is_stale = false;
+
+	return std::make_tuple(
+		sw_cells, face_bdy, edge_bdy, vert_bdy, planet_cells);
+
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
@@ -484,13 +454,11 @@ template<
 template <
 	class Grid,
 	class Target_Refinement_Level_Min_Getter,
-	class Target_Refinement_Level_Max_Getter,
-	class Solver_Info_Getter
-> void adapt_grid(
+	class Target_Refinement_Level_Max_Getter
+> void adapt_grid_sw_box(
 	Grid& grid,
 	const Target_Refinement_Level_Min_Getter& Ref_min,
-	const Target_Refinement_Level_Max_Getter& Ref_max,
-	const Solver_Info_Getter& SInfo
+	const Target_Refinement_Level_Max_Getter& Ref_max
 ) {
 	using std::to_string;
 	using std::runtime_error;
@@ -511,7 +479,6 @@ template <
 		if (cell_data == nullptr) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		auto* const parent_data = grid[grid.get_parent(cell)];
 		if (parent_data == nullptr) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		SInfo.data(*cell_data) = SInfo.data(*parent_data);
 	}
 	const auto removed_cells = grid.get_removed_cells();
 	for (auto cell: removed_cells) {
@@ -520,7 +487,6 @@ template <
 		const auto parent = grid.mapping.get_parent(cell);
 		auto* const parent_data = grid[parent];
 		if (parent_data == nullptr) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		SInfo.data(*parent_data) = SInfo.data(*removed_data);
 	}
 }
 
