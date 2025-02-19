@@ -809,10 +809,6 @@ int main(int argc, char* argv[]) {
 		abort();
 	}
 
-	if (rank == 0) {
-		cout << "Initialization done" << endl;
-	}
-
 	/*
 	Classify cells & faces into normal, boundary and dont_solve
 	*/
@@ -849,11 +845,13 @@ int main(int argc, char* argv[]) {
 	);
 
 	for (const auto& cell: grid.local_cells()) {
-		Max_v_wave.data(*cell.data) = {-1, -1, -1, -1, -1, -1};
 		Timestep.data(*cell.data) = -1;
 		Substep.data(*cell.data)     =
 		Substep_Max.data(*cell.data) =
 		Substep_Min.data(*cell.data) = 1;
+		Max_v_wave.data(*cell.data) = {-1, -1, -1, -1, -1, -1};
+		Max_v_part.data(*cell.data) =
+		Max_ω_part.data(*cell.data) = -1;
 	}
 	Cell::set_transfer_all(true,
 		Timestep.type(), Max_v_wave.type(), Substep.type());
@@ -891,7 +889,7 @@ int main(int argc, char* argv[]) {
 		mhd_solver, Timestep, 0, options_mhd.time_step_factor
 	);
 	if (rank == 0) {
-		cout << "Done initializing" << endl;
+		cout << "done" << endl;
 	}
 
 	size_t simulation_step = 0;
@@ -985,7 +983,7 @@ int main(int argc, char* argv[]) {
 				Max_v_part, Max_ω_part, Part_Ext, Part_C2M, Part_Des,
 				Face_dB, Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f, Substep,
 				Substep_Min, Substep_Max, Max_v_wave, Face_B, background_B,
-				mhd_solver, Timestep, 0, options_mhd.time_step_factor
+				mhd_solver, Timestep, until_end, options_mhd.time_step_factor
 			);
 
 		if (rank == 0) {
