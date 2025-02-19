@@ -117,6 +117,12 @@ bool pamhd::particle::Nr_Particles_External::is_stale = true;
 const auto SInfo = pamhd::Variable_Getter<pamhd::Solver_Info>();
 bool pamhd::Solver_Info::is_stale = true;
 
+const auto Max_v_part = pamhd::Variable_Getter<pamhd::particle::Max_Spatial_Velocity>();
+bool pamhd::particle::Max_Spatial_Velocity::is_stale = true;
+
+const auto Max_ω_part = pamhd::Variable_Getter<pamhd::particle::Max_Angular_Velocity>();
+bool pamhd::particle::Max_Angular_Velocity::is_stale = true;
+
 // references to initial condition & boundary data of cell
 const auto Bdy_N = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Bdy_Number_Density()];
@@ -367,8 +373,6 @@ int main(int argc, char* argv[])
 
 	const double time_end = options_sim.time_start + options_sim.time_length;
 	double
-		max_dt_particle_gyro = 0,
-		max_dt_particle_flight = 0,
 		simulation_time = options_sim.time_start,
 		next_particle_save = options_particle.save_n;
 
@@ -477,16 +481,14 @@ int main(int argc, char* argv[])
 
 
 	size_t simulated_steps = 0;
+	double max_dt = 0;
 	while (simulation_time < time_end) {
 		simulated_steps++;
 
 		double
 			// don't step over the final simulation time
 			until_end = time_end - simulation_time,
-			local_time_step = min(min(
-				options_particle.gyroperiod_time_step_factor * max_dt_particle_gyro,
-				options_particle.flight_time_step_factor * max_dt_particle_flight),
-				until_end),
+			local_time_step = min(max_dt, until_end),
 			time_step = -1;
 
 		if (
@@ -514,9 +516,6 @@ int main(int argc, char* argv[])
 				<< " s with time step " << time_step << " s" << endl;
 		}
 
-		max_dt_particle_gyro   =
-		max_dt_particle_flight = std::numeric_limits<double>::max();
-
 		Cell::set_transfer_all(
 			true,
 			pamhd::particle::Electric_Field(),
@@ -530,31 +529,35 @@ int main(int argc, char* argv[])
 		);
 
 		// E is given directly to particle propagator
-		// TODO: don't use preprocessor
-		std::pair<double, double> particle_max_dt{0, 0};
-		particle_max_dt = pamhd::particle::solve(
+		pamhd::particle::solve(
 			time_step, grid.outer_cells(), grid,
 			background_B, options_sim.vacuum_permeability,
 			false, Ele, Vol_B, Nr_Ext, Part_Int, Part_Ext,
-			Part_Pos, Part_Vel, Part_C2M,
-			Part_Mas, Part_Des, SInfo
+			Max_v_part, Max_ω_part, Part_Pos, Part_Vel,
+			Part_C2M, Part_Mas, Part_Des, SInfo
 		);
-
-		max_dt_particle_flight = min(particle_max_dt.first, max_dt_particle_flight);
-		max_dt_particle_gyro = min(particle_max_dt.second, max_dt_particle_gyro);
 
 		Cell::set_transfer_all(true, pamhd::particle::Nr_Particles_External());
 		grid.start_remote_neighbor_copy_updates();
 
-		particle_max_dt = pamhd::particle::solve(
+		pamhd::particle::solve(
 			time_step, grid.inner_cells(), grid,
 			background_B, options_sim.vacuum_permeability,
 			false, Ele, Vol_B, Nr_Ext, Part_Int, Part_Ext,
-			Part_Pos, Part_Vel, Part_C2M,
-			Part_Mas, Part_Des, SInfo
+			Max_v_part, Max_ω_part, Part_Pos, Part_Vel,
+			Part_C2M, Part_Mas, Part_Des, SInfo
 		);
-		max_dt_particle_flight = min(particle_max_dt.first, max_dt_particle_flight);
-		max_dt_particle_gyro = min(particle_max_dt.second, max_dt_particle_gyro);
+		max_dt = std::numeric_limits<double>::max();
+		for (const auto& cell: grid.local_cells()) {
+			const auto len = grid.geometry.get_length(cell.id);
+			const auto& max_v = Max_v_part.data(*cell.data);
+			for (const size_t dim: {0, 1, 2}) {
+				// half length so field interpolation works
+				max_dt = min(max_dt, 0.5 * len[dim] / max_v);
+			}
+			const auto& max_ω = Max_ω_part.data(*cell.data);
+			max_dt = min(max_dt, 2*M_PI/4/max_ω);
+		}
 
 		simulation_time += time_step;
 

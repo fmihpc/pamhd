@@ -411,6 +411,8 @@ template <
 				cell_dx, cell_dy, dt*min_min_sub);
 		}
 	}
+	Max_v.type().is_stale = true;
+
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {

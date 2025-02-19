@@ -128,7 +128,7 @@ bool pamhd::mhd::Substep_Max::is_stale = true;
 const auto Timestep = pamhd::Variable_Getter<pamhd::mhd::Timestep>();
 bool pamhd::mhd::Timestep::is_stale = true;
 
-const auto Max_v = pamhd::Variable_Getter<pamhd::mhd::Max_Velocity>();
+const auto Max_v_wave = pamhd::Variable_Getter<pamhd::mhd::Max_Velocity>();
 bool pamhd::mhd::Max_Velocity::is_stale = true;
 
 const auto MHDF = pamhd::Variable_Getter<pamhd::mhd::MHD_Flux>();
@@ -383,9 +383,9 @@ int main(int argc, char* argv[]) {
 		Substep.data(*cell.data)     =
 		Substep_Max.data(*cell.data) =
 		Substep_Min.data(*cell.data) = 1;
-		Max_v.data(*cell.data) = {-1, -1, -1, -1, -1, -1};
+		Max_v_wave.data(*cell.data) = {-1, -1, -1, -1, -1, -1};
 	}
-	Max_v.type().is_stale = true;
+	Max_v_wave.type().is_stale = true;
 	Substep.type().is_stale = true;
 	Substep_Max.type().is_stale = true;
 	Substep_Min.type().is_stale = true;
@@ -399,9 +399,8 @@ int main(int argc, char* argv[]) {
 		simulation_time = options_sim.time_start,
 		next_mhd_save = options_mhd.save_n;
 
-	// initialize MHD
 	if (rank == 0) {
-		cout << "Initializing MHD... " << endl;
+		cout << "Initializing... " << endl;
 	}
 
 	pamhd::mhd::initialize_plasma(
@@ -440,10 +439,10 @@ int main(int argc, char* argv[]) {
 		options_sim.vacuum_permeability,
 		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 		Mas_f, Mom_f, Nrj_f, Mag_f, SInfo, Timestep,
-		Substep, Substep_Min, Substep_Max, Max_v
+		Substep, Substep_Min, Substep_Max, Max_v_wave
 	);
 	if (rank == 0) {
-		cout << "Done initializing MHD" << endl;
+		cout << "done" << endl;
 	}
 
 	size_t simulation_step = 0;
@@ -486,7 +485,7 @@ int main(int argc, char* argv[]) {
 				options_sim.vacuum_permeability,
 				Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 				Mas_f, Mom_f, Nrj_f, Mag_f, SInfo, Timestep,
-				Substep, Substep_Min, Substep_Max, Max_v
+				Substep, Substep_Min, Substep_Max, Max_v_wave
 			);
 		if (rank == 0) {
 			cout << "Solved MHD at time " << simulation_time

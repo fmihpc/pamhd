@@ -72,6 +72,12 @@ bool pamhd::particle::Nr_Particles_External::is_stale = true;
 const auto SInfo = pamhd::Variable_Getter<pamhd::Solver_Info>();
 bool pamhd::Solver_Info::is_stale = true;
 
+const auto Max_v_part = pamhd::Variable_Getter<pamhd::particle::Max_Spatial_Velocity>();
+bool pamhd::particle::Max_Spatial_Velocity::is_stale = true;
+
+const auto Max_ω_part = pamhd::Variable_Getter<pamhd::particle::Max_Angular_Velocity>();
+bool pamhd::particle::Max_Angular_Velocity::is_stale = true;
+
 // given a particle these return references to particle's parameters
 const auto Part_Pos = [](
 	pamhd::particle::Particle_Internal& particle
@@ -101,6 +107,10 @@ const auto Part_Des = [](
 
 int main(int argc, char* argv[])
 {
+	using std::cerr;
+	using std::endl;
+	using std::min;
+
 	constexpr double Re = 6.371e6; // radius of earth
 
 	/*
@@ -108,7 +118,7 @@ int main(int argc, char* argv[])
 	*/
 
 	if (MPI_Init(&argc, &argv) != MPI_SUCCESS) {
-		std::cerr << "Couldn't initialize MPI." << std::endl;
+		cerr << "Couldn't initialize MPI." << endl;
 		abort();
 	}
 
@@ -116,18 +126,18 @@ int main(int argc, char* argv[])
 
 	int rank = 0, comm_size = 0;
 	if (MPI_Comm_rank(comm, &rank) != MPI_SUCCESS) {
-		std::cerr << "Couldn't obtain MPI rank." << std::endl;
+		cerr << "Couldn't obtain MPI rank." << endl;
 		abort();
 	}
 	if (MPI_Comm_size(comm, &comm_size) != MPI_SUCCESS) {
-		std::cerr << "Couldn't obtain size of MPI communicator." << std::endl;
+		cerr << "Couldn't obtain size of MPI communicator." << std::endl;
 		abort();
 	}
 
 	// intialize Zoltan
 	float zoltan_version;
 	if (Zoltan_Initialize(argc, argv, &zoltan_version) != ZOLTAN_OK) {
-		std::cerr << "Zoltan_Initialize failed." << std::endl;
+		cerr << "Zoltan_Initialize failed." << endl;
 		abort();
 	}
 
@@ -163,10 +173,10 @@ int main(int argc, char* argv[])
 		"}}"
 	);
 	if (document.HasParseError()) {
-		std::cerr << "Couldn't parse json data in file " << argv[1]
+		cerr << "Couldn't parse json data in file " << argv[1]
 			<< " at character position " << document.GetErrorOffset()
 			<< ": " << rapidjson::GetParseError_En(document.GetParseError())
-			<< std::endl;
+			<< endl;
 		MPI_Finalize();
 		return EXIT_FAILURE;
 	}
@@ -242,7 +252,7 @@ int main(int argc, char* argv[])
 		double
 			// don't step over the final simulation time
 			until_end = end_time - simulation_time,
-			local_time_step = std::min(0.5 * max_dt, until_end),
+			local_time_step = min(0.5 * max_dt, until_end),
 			time_step = -1;
 
 		if (
@@ -255,9 +265,8 @@ int main(int argc, char* argv[])
 				comm
 			) != MPI_SUCCESS
 		) {
-			std::cerr << __FILE__ << ":" << __LINE__
-				<< ": Couldn't set reduce time step."
-				<< std::endl;
+			cerr << __FILE__ "(" << __LINE__ << "): "
+				<< "Couldn't set reduce time step." << endl;
 			abort();
 		}
 
@@ -266,16 +275,12 @@ int main(int argc, char* argv[])
 				<< " s with time step " << time_step << " s" << endl;*/
 		}
 
-		max_dt = std::numeric_limits<double>::max();
-
-		auto solve_max_dt = pamhd::particle::solve(
-			time_step, grid.outer_cells(), grid,
-			bg_B, 1.2566370614359173e-06,
-			false, Ele, Vol_B, Nr_Ext,
-			Part_Int, Part_Ext, Part_Pos, Part_Vel,
-			Part_C2M, Part_Mas, Part_Des, SInfo
+		pamhd::particle::solve(
+			time_step, grid.outer_cells(), grid, bg_B,
+			1.2566370614359173e-06, false, Ele, Vol_B, Nr_Ext,
+			Part_Int, Part_Ext, Max_v_part, Max_ω_part, Part_Pos,
+			Part_Vel, Part_C2M, Part_Mas, Part_Des, SInfo
 		);
-		max_dt = std::min(std::min(solve_max_dt.first, solve_max_dt.second), max_dt);
 
 		Cell::set_transfer_all(
 			true,
@@ -285,14 +290,23 @@ int main(int argc, char* argv[])
 		);
 		grid.start_remote_neighbor_copy_updates();
 
-		solve_max_dt = pamhd::particle::solve(
-			time_step, grid.inner_cells(), grid,
-			bg_B, 1.2566370614359173e-06,
-			false, Ele, Vol_B, Nr_Ext,
-			Part_Int, Part_Ext, Part_Pos, Part_Vel,
-			Part_C2M, Part_Mas, Part_Des, SInfo
+		pamhd::particle::solve(
+			time_step, grid.inner_cells(), grid, bg_B,
+			1.2566370614359173e-06, false, Ele, Vol_B, Nr_Ext,
+			Part_Int, Part_Ext, Max_v_part, Max_ω_part, Part_Pos,
+			Part_Vel, Part_C2M, Part_Mas, Part_Des, SInfo
 		);
-		max_dt = std::min(std::min(solve_max_dt.first, solve_max_dt.second), max_dt);
+		max_dt = std::numeric_limits<double>::max();
+		for (const auto& cell: grid.local_cells()) {
+			const auto len = grid.geometry.get_length(cell.id);
+			const auto& max_v = Max_v_part.data(*cell.data);
+			for (const size_t dim: {0, 1, 2}) {
+				// half length so field interpolation works
+				max_dt = min(max_dt, 0.5 * len[dim] / max_v);
+			}
+			const auto& max_ω = Max_ω_part.data(*cell.data);
+			max_dt = min(max_dt, 2*M_PI/4/max_ω);
+		}
 
 		simulation_time += time_step;
 
@@ -365,20 +379,14 @@ int main(int argc, char* argv[])
 			constexpr uint64_t file_version = 4;
 			if (
 				not pamhd::particle::save(
-					"tests/particle/",
-					grid,
-					file_version,
-					simulated_steps,
-					simulation_time,
-					0,
-					0,
-					0
+					"tests/particle/", grid, file_version,
+					simulated_steps,simulation_time, 0, 0, 0
 				)
 			) {
-				std::cerr <<  __FILE__ << "(" << __LINE__ << "): "
+				cerr <<  __FILE__ << "(" << __LINE__ << "): "
 					"Couldn't save particle result, did you run this "
 					"from the root pamhd directory?"
-					<< std::endl;
+					<< endl;
 				abort();
 			}
 		}
@@ -402,10 +410,10 @@ int main(int argc, char* argv[])
 		);
 		if (total_particles != initial_particles) {
 			if (grid.get_rank() == 0) {
-				std::cerr << __FILE__ << "(" << __LINE__ << ") "
+				cerr << __FILE__ << "(" << __LINE__ << ") "
 					<< "Incorrect total number of particles at end of step "
 					<< simulated_steps << ": " << total_particles
-					<< std::endl;
+					<< endl;
 			}
 			abort();
 		}

@@ -38,7 +38,6 @@ Author(s): Ilja Honkonen
 #define PAMHD_PARTICLE_VARIABLES_HPP
 
 
-#include "array"
 #include "vector"
 
 #ifndef DONT_USE_MPI
@@ -153,8 +152,15 @@ struct Nr_Particles_External {
 };
 
 
-//! max velocity of particles within cell
-struct Max_Velocity {
+//! of particles
+struct Max_Spatial_Velocity {
+	static bool is_stale;
+	using data_type = double;
+};
+
+//! of particles
+struct Max_Angular_Velocity {
+	static bool is_stale;
 	using data_type = double;
 };
 
@@ -308,6 +314,8 @@ using Cell_test_particle = gensimcell::Cell<
 	pamhd::Solver_Info,
 	pamhd::MPI_Rank,
 	pamhd::Magnetic_Field,
+	pamhd::particle::Max_Spatial_Velocity,
+	pamhd::particle::Max_Angular_Velocity,
 	pamhd::particle::Electric_Field,
 	pamhd::particle::Number_Of_Particles,
 	pamhd::particle::Bdy_Number_Density,
@@ -386,9 +394,8 @@ using Cell_hyb_particle_staggered = gensimcell::Cell<
 	pamhd::mhd::MHD_Flux,
 	pamhd::particle::Electric_Field,
 	pamhd::particle::Number_Of_Particles,
-	pamhd::particle::Max_Velocity,
-	pamhd::particle::Max_Acceleration,
-	pamhd::particle::Max_Gyrofrequency,
+	pamhd::particle::Max_Spatial_Velocity,
+	pamhd::particle::Max_Angular_Velocity,
 	pamhd::particle::Bdy_Number_Density,
 	pamhd::particle::Bdy_Velocity,
 	pamhd::particle::Bdy_Temperature,

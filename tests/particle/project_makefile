@@ -23,7 +23,8 @@ TESTS_PARTICLE_EXECUTABLES = \
   tests/particle/particle2gnuplot.exe \
   tests/particle/particle_time_series2gnuplot.exe \
   tests/particle/particle_time_averages2gnuplot.exe \
-  tests/particle/single1d.exe
+  tests/particle/single1d.exe \
+  tests/particle/solar_wind_box_2d.exe
 
 TESTS_PARTICLE_TESTS = \
   tests/particle/solve1.tst \
@@ -302,3 +303,35 @@ tests/particle/single1d.exe: \
 	  $(BOOST_LDFLAGS) \
 	  $(BOOST_LIBS) \
 	  $(EIGEN_CPPFLAGS)
+
+tests/particle/solar_wind_box_2d.exe: \
+  tests/particle/solar_wind_box_2d.cpp \
+  $(TEST_PARTICLE_COMMON_DEPS) \
+  source/background_magnetic_field.hpp \
+  source/boundaries/geometries.hpp \
+  source/boundaries/multivariable_boundaries.hpp \
+  source/boundaries/multivariable_initial_conditions.hpp \
+  source/particle/save.hpp \
+  source/particle/initialize.hpp \
+  source/particle/accumulate.hpp \
+  source/particle/accumulate_dccrg.hpp \
+  source/particle/accumulation_variables.hpp \
+  source/particle/options.hpp \
+  source/particle/solve_dccrg.hpp \
+  source/particle/splitter.hpp \
+  source/math/staggered.hpp \
+  source/mhd/boundaries.hpp \
+  source/mhd/common.hpp \
+  source/mhd/initialize_staggered.hpp \
+  source/mhd/hll_athena.hpp \
+  source/mhd/hlld_athena.hpp \
+  source/mhd/roe_athena.hpp \
+  source/mhd/rusanov.hpp \
+  source/mhd/solve_staggered.hpp \
+  source/mhd/variables.hpp
+	@printf "MPICXX $<\n" && $(MPICXX) \
+	  $(TEST_PARTICLE_SOLVE_COMPILE) \
+	  $(MUPARSERX_CPPFLAGS) \
+	  $(MUPARSERX_LDFLAGS) \
+	  $(MUPARSERX_LIBS) \
+	  $(PHIPROF_CPPFLAGS)

@@ -38,6 +38,7 @@ Author(s): Ilja Honkonen
 #define PAMHD_PARTICLE_SOLVE_DCCRG_HPP
 
 
+#include "array"
 #include "cstdlib"
 #include "exception"
 #include "type_traits"
@@ -82,31 +83,35 @@ template<
 	class Nr_Particles_External_Getter,
 	class Particles_Internal_Getter,
 	class Particles_External_Getter,
+	class Particle_Max_Spatial_Velocity_Getter,
+	class Particle_Max_Angular_Velocity_Getter,
 	class Particle_Position_Getter,
 	class Particle_Velocity_Getter,
 	class Particle_Charge_Mass_Ratio_Getter,
 	class Particle_Mass_Getter,
 	class Particle_Destination_Cell_Getter,
 	class Solver_Info_Getter
-> std::pair<double, double> solve(
-	const double dt,
+> void solve(
+	const double& dt,
 	const Cell_Iterator& cells,
 	Grid& grid,
 	const Background_Magnetic_Field& bg_B,
-	const double vacuum_permeability,
-	const bool E_is_derived_quantity,
+	const double& vacuum_permeability,
+	const bool& E_is_derived_quantity,
 	// if E_is_derived_quantity == true: JmV = J - V, else JmV = E
-	const Current_Minus_Velocity_Getter JmV,
-	const Volume_Magnetic_Field_Getter Vol_B,
-	const Nr_Particles_External_Getter Nr_Ext,
-	const Particles_Internal_Getter Part_Int,
-	const Particles_External_Getter Part_Ext,
-	const Particle_Position_Getter Part_Pos,
-	const Particle_Velocity_Getter Part_Vel,
-	const Particle_Charge_Mass_Ratio_Getter Part_C2M,
-	const Particle_Mass_Getter Part_Mas,
-	const Particle_Destination_Cell_Getter Part_Des,
-	const Solver_Info_Getter SInfo
+	const Current_Minus_Velocity_Getter& JmV,
+	const Volume_Magnetic_Field_Getter& Vol_B,
+	const Nr_Particles_External_Getter& Nr_Ext,
+	const Particles_Internal_Getter& Part_Int,
+	const Particles_External_Getter& Part_Ext,
+	const Particle_Max_Spatial_Velocity_Getter& Max_v_part,
+	const Particle_Max_Angular_Velocity_Getter& Max_ω_part,
+	const Particle_Position_Getter& Part_Pos,
+	const Particle_Velocity_Getter& Part_Vel,
+	const Particle_Charge_Mass_Ratio_Getter& Part_C2M,
+	const Particle_Mass_Getter& Part_Mas,
+	const Particle_Destination_Cell_Getter& Part_Des,
+	const Solver_Info_Getter& SInfo
 ) {
 	using std::abs;
 	using std::isnan;
@@ -137,7 +142,17 @@ template<
 	Cell::set_transfer_all(false, JmV.type(), Vol_B.type());
 
 	std::pair<double, double> max_time_step{std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
+	const std::array<double, 3>
+		grid_start{grid.geometry.get_start()},
+		grid_end{grid.geometry.get_end()},
+		grid_center{
+			(grid_end[0]-grid_start[0]) / 2,
+			(grid_end[1]-grid_start[1]) / 2,
+			(grid_end[2]-grid_start[2]) / 2
+		};
 	for (const auto& cell: cells) {
+		Max_v_part.data(*cell.data) =
+		Max_ω_part.data(*cell.data) = 0;
 		if (SInfo.data(*cell.data) < 0) {
 			Part_Int(*cell.data).clear();
 			Part_Ext.data(*cell.data).clear();
@@ -184,101 +199,59 @@ template<
 				cell_center[2] + cell_length[2]
 			};
 
-		// calculate max length of time step for next step from cell-centered values
-		const Eigen::Vector3d B_centered = Vol_B.data(*cell.data) + bg_B.get_background_field(
-			{cell_center[0], cell_center[1], cell_center[2]},
-			vacuum_permeability
-		);
-		const auto E_centered = [&](){
-			if (E_is_derived_quantity) {
-				return JmV.data(*cell.data).cross(Vol_B.data(*cell.data));
-			} else {
-				return JmV.data(*cell.data);
-			}
-		}();
-
 		for (size_t part_i = 0; part_i < Part_Int(*cell.data).size(); part_i++) {
-			auto particle = Part_Int(*cell.data)[part_i]; // reference faster?
-
-			// TODO check accurately only for most restrictive particle(s) in each cell?
-			const auto step_size
-				= get_step_size(
-					1.0 / 32.0,
-					// only allow particles to propagate through half a
-					// cell in order to not break field interpolation
-					min(cell_length[0], min(cell_length[1], cell_length[2])) / 2.0,
-					Part_C2M(particle),
-					Part_Vel(particle),
-					E_centered,
-					B_centered
-				);
-
-			max_time_step.first = min(step_size.first, max_time_step.first);
-			max_time_step.second = min(step_size.second, max_time_step.second);
-
-			// propagate for dt with substeps at most 1/32 of gyroperiod
-			const int substeps
-				= [&dt, &step_size](){
-					const auto substeps = std::ceil(max(1.0, dt / step_size.second));
-					if (substeps > std::numeric_limits<int>::max()) {
-						std::cerr << __FILE__ "(" << __LINE__ << ") too many substeps" << std::endl;
-						abort();
-					} else {
-						return int(substeps);
-					}
-				}();
-
-			auto pos = Part_Pos(particle);
-			auto vel = Part_Vel(particle);
-			for (int substep = 0; substep < substeps; substep++) {
-				const Eigen::Vector3d B_at_pos
-					= interpolate(
-						pos,
-						interpolation_start,
-						interpolation_end,
-						magnetic_fields)
-					+ bg_B.get_background_field(
-						pos, vacuum_permeability);
-				const Eigen::Matrix<double,3,1> E_at_pos = [&](){
-					if (E_is_derived_quantity) {
-						const auto J_m_V_at_pos = interpolate(
-							pos,
-							interpolation_start,
-							interpolation_end,
-							current_minus_velocities
-						);
-						return J_m_V_at_pos.cross(B_at_pos);
-					} else {
-						return interpolate(
-							pos,
-							interpolation_start,
-							interpolation_end,
-							current_minus_velocities
-						);
-					}
-				}();
-				std::tie(
-					pos,
-					vel
-				) = propagate(
-					pos,
-					vel,
-					E_at_pos,
-					B_at_pos,
-					Part_C2M(particle),
-					dt / substeps
-				);
+			auto
+				pos = Part_Pos(Part_Int(*cell.data)[part_i]),
+				// emulate 2d,1d,0d sim from B0 perspective
+				bg_pos = pos;
+			const auto lvl0 = grid.mapping.length.get();
+			for (size_t dim = 0; dim < 3; dim++) {
+				if (lvl0[dim] == 1) {
+					bg_pos[dim] = grid_center[dim];
+				}
 			}
+			const Eigen::Vector3d B_at_pos
+				= interpolate(
+					pos, interpolation_start,
+					interpolation_end, magnetic_fields)
+				+ bg_B.get_background_field(
+					bg_pos, vacuum_permeability);
+
+			auto vel = Part_Vel(Part_Int(*cell.data)[part_i]);
+			Max_v_part.data(*cell.data) = max(
+				Max_v_part.data(*cell.data),
+				vel.norm());
+			const auto& c2m = Part_C2M(Part_Int(*cell.data)[part_i]);
+			Max_ω_part.data(*cell.data) = max(
+				Max_ω_part.data(*cell.data),
+				abs(c2m) * B_at_pos.norm());
+
+			const Eigen::Matrix<double,3,1> E_at_pos = [&](){
+				if (E_is_derived_quantity) {
+					const auto J_m_V_at_pos = interpolate(
+						pos, interpolation_start,
+						interpolation_end, current_minus_velocities
+					);
+					return J_m_V_at_pos.cross(B_at_pos);
+				} else {
+					return interpolate(
+						pos, interpolation_start,
+						interpolation_end, current_minus_velocities
+					);
+				}
+			}();
+			std::tie(pos, vel) = propagate(
+				pos, vel, E_at_pos, B_at_pos, c2m, dt
+			);
 			Part_Vel(Part_Int(*cell.data)[part_i]) = vel;
 
 			// take into account periodic grid
 			const auto real_pos
-				= grid.geometry.get_real_coordinate({{pos[0], pos[1], pos[2]}});
+				= grid.geometry.get_real_coordinate(
+					{pos[0], pos[1], pos[2]});
 
 			Part_Pos(Part_Int(*cell.data)[part_i]) = {
-				real_pos[0],
-				real_pos[1],
-				real_pos[2]
+				real_pos[0], real_pos[1], real_pos[2]
 			};
 
 			// remove from simulation if particle not inside of grid
@@ -338,7 +311,7 @@ template<
 
 					std::cerr << __FILE__ << "(" << __LINE__ << "): "
 						<< " No destination found for particle at " << real_pos
-						<< " propagated from " << Part_Pos(particle)
+						<< " propagated from " << real_pos
 						<< " with dt " << dt
 						<< " in cell " << cell.id
 						<< " of length " << cell_length
@@ -359,8 +332,8 @@ template<
 	}
 	Part_Ext.type().is_stale = true;
 	Nr_Ext.type().is_stale = true;
-
-	return max_time_step;
+	Max_v_part.type().is_stale = true;
+	Max_ω_part.type().is_stale = true;
 }
 
 
@@ -478,6 +451,8 @@ double timestep(
 	const auto& J_m_V,
 	const auto& Vol_E,
 	const auto& Nr_Ext,
+	const auto& Max_v_part,
+	const auto& Max_ω_part,
 	const auto& Part_Ext,
 	const auto& Part_C2M,
 	const auto& Part_Des,
@@ -490,7 +465,7 @@ double timestep(
 	const auto& Substep,
 	const auto& Substep_Min,
 	const auto& Substep_Max,
-	const auto& Max_v,
+	const auto& Max_v_wave,
 	const auto& Face_B,
 	const auto& background_B,
 	const auto& mhd_solver,
@@ -502,6 +477,7 @@ double timestep(
 	using std::cout;
 	using std::endl;
 	using std::min;
+	using std::numeric_limits;
 
 	using Cell = std::remove_reference_t<decltype(grid)>::cell_data_type;
 
@@ -518,7 +494,7 @@ double timestep(
 		Timestep,
 		Substep_Min,
 		Substep_Max,
-		Max_v
+		Max_v_wave
 	);
 
 	restrict_substepping_period(
@@ -530,14 +506,13 @@ double timestep(
 
 	const int max_substep = update_substeps(grid, SInfo, Substep);
 	if (max_substep > 1) {
-		std::cerr << "Substep > 1 (level > 0) not supported." << std::endl;
+		cerr << "Substep > 1 (level > 0) not supported." << endl;
 		MPI_Finalize();
 		exit(EXIT_FAILURE);
 	}
 	if (grid.get_rank() == 0) {
-		std::cout
-			<< "Substep: " << sub_dt << ", largest substep period: "
-			<< max_substep << std::endl;
+		cout << "Substep: " << sub_dt
+			<< ", largest substep period: " << max_substep << endl;
 	}
 
 	double total_dt = 0;
@@ -599,24 +574,14 @@ double timestep(
 		J_m_V.type().is_stale = true;
 
 
-		double
-			max_dt_particle_flight = std::numeric_limits<double>::max(),
-			max_dt_particle_gyro = std::numeric_limits<double>::max();
-
-		std::pair<double, double> particle_max_dt{0, 0};
-
 		// outer particles
-		particle_max_dt = pamhd::particle::solve(
+		pamhd::particle::solve(
 			sub_dt, grid.outer_cells(), grid,
 			background_B, vacuum_permeability,
-			true, J_m_V, Vol_B, Nr_Ext,
-			Part_Int, Part_Ext, Part_Pos,
-			Part_Vel, Part_C2M, Part_Mas,
-			Part_Des, SInfo
+			true, J_m_V, Vol_B, Nr_Ext, Part_Int, Part_Ext,
+			Max_v_part, Max_ω_part, Part_Pos, Part_Vel,
+			Part_C2M, Part_Mas, Part_Des, SInfo
 		);
-
-		max_dt_particle_flight = min(particle_max_dt.first, max_dt_particle_flight);
-		max_dt_particle_gyro = min(particle_max_dt.second, max_dt_particle_gyro);
 
 		Cell::set_transfer_all(true,
 			Mas.type(), Mom.type(), Nrj.type(),
@@ -629,20 +594,17 @@ double timestep(
 			adiabatic_index, vacuum_permeability,
 			sub_dt, Mas, Mom, Nrj, Vol_B, Face_dB,
 			Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f,
-			SInfo, Substep, Max_v
+			SInfo, Substep, Max_v_wave
 		);
 
 		// inner particles
-		particle_max_dt = pamhd::particle::solve(
+		pamhd::particle::solve(
 			sub_dt, grid.inner_cells(), grid,
 			background_B, vacuum_permeability,
-			true, J_m_V, Vol_B, Nr_Ext,
-			Part_Int, Part_Ext, Part_Pos,
-			Part_Vel, Part_C2M, Part_Mas,
-			Part_Des, SInfo
+			true, J_m_V, Vol_B, Nr_Ext, Part_Int, Part_Ext,
+			Max_v_part, Max_ω_part, Part_Pos, Part_Vel,
+			Part_C2M, Part_Mas, Part_Des, SInfo
 		);
-		max_dt_particle_flight = min(particle_max_dt.first, max_dt_particle_flight);
-		max_dt_particle_gyro = min(particle_max_dt.second, max_dt_particle_gyro);
 
 		grid.wait_remote_neighbor_copy_update_receives();
 
@@ -652,7 +614,7 @@ double timestep(
 			adiabatic_index, vacuum_permeability,
 			sub_dt, Mas, Mom, Nrj, Vol_B, Face_dB,
 			Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f,
-			SInfo, Substep, Max_v
+			SInfo, Substep, Max_v_wave
 		);
 
 		pamhd::particle::resize_receiving_containers<

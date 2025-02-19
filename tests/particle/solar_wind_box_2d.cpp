@@ -1,8 +1,9 @@
 /*
-Hybrid PIC program of PAMHD.
+Test program of PAMHD with one planet in solar wind.
 
-Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019, 2024, 2025 Finnish Meteorological Institute
+Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2018, 2019, 2022,
+          2023, 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -48,6 +49,7 @@ Author(s): Ilja Honkonen
 #include "boundaries/multivariable_boundaries.hpp"
 #include "boundaries/multivariable_initial_conditions.hpp"
 #include "grid/options.hpp"
+#include "grid/solar_wind_box.hpp"
 #include "grid/variables.hpp"
 #include "math/staggered.hpp"
 #include "mhd/boundaries.hpp"
@@ -60,6 +62,7 @@ Author(s): Ilja Honkonen
 #include "mhd/roe_athena.hpp"
 #include "mhd/rusanov.hpp"
 #include "mhd/save.hpp"
+#include "mhd/solar_wind_box.hpp"
 #include "mhd/solve_staggered.hpp"
 #include "mhd/variables.hpp"
 #include "particle/accumulate_dccrg.hpp"
@@ -68,10 +71,12 @@ Author(s): Ilja Honkonen
 #include "particle/initialize.hpp"
 #include "particle/options.hpp"
 #include "particle/save.hpp"
+#include "particle/solar_wind_box.hpp"
 #include "particle/solve_dccrg.hpp"
 #include "particle/splitter.hpp"
 #include "particle/variables.hpp"
 #include "simulation_options.hpp"
+#include "solar_wind_box_options.hpp"
 #include "variable_getter.hpp"
 #include "variables.hpp"
 
@@ -134,12 +139,6 @@ bool pamhd::particle::Electric_Field::is_stale = true;
 const auto SInfo = pamhd::Variable_Getter<pamhd::Solver_Info>();
 bool pamhd::Solver_Info::is_stale = true;
 
-const auto Max_v_part = pamhd::Variable_Getter<pamhd::particle::Max_Spatial_Velocity>();
-bool pamhd::particle::Max_Spatial_Velocity::is_stale = true;
-
-const auto Max_ω_part = pamhd::Variable_Getter<pamhd::particle::Max_Angular_Velocity>();
-bool pamhd::particle::Max_Angular_Velocity::is_stale = true;
-
 const auto Substep = pamhd::Variable_Getter<pamhd::mhd::Substepping_Period>();
 bool pamhd::mhd::Substepping_Period::is_stale = true;
 
@@ -169,9 +168,6 @@ const auto Mag_f = [](Cell& cell_data, const int dir)->auto& {
 	return MHDF.data(cell_data)(dir)[pamhd::Magnetic_Field()];
 };
 
-const auto FInfo = pamhd::Variable_Getter<pamhd::mhd::Face_Boundary_Type>();
-bool pamhd::mhd::Face_Boundary_Type::is_stale = true;
-
 const auto Ref_min = pamhd::Variable_Getter<pamhd::grid::Target_Refinement_Level_Min>();
 bool pamhd::grid::Target_Refinement_Level_Min::is_stale = true;
 
@@ -194,25 +190,12 @@ bool pamhd::particle::Nr_Particles_External::is_stale = true;
 const auto Nr_Int = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::particle::Nr_Particles_Internal()];
 };
-// references to initial condition & boundary data of cell
-const auto Bdy_N = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Bdy_Number_Density()];
-};
-const auto Bdy_V = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Bdy_Velocity()];
-};
-const auto Bdy_T = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Bdy_Temperature()];
-};
-const auto Bdy_Nr_Par = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Bdy_Nr_Particles_In_Cell()];
-};
-const auto Bdy_SpM = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Bdy_Species_Mass()];
-};
-const auto Bdy_C2M = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Bdy_Charge_Mass_Ratio()];
-};
+
+const auto Max_v_part = pamhd::Variable_Getter<pamhd::particle::Max_Spatial_Velocity>();
+bool pamhd::particle::Max_Spatial_Velocity::is_stale = true;
+
+const auto Max_ω_part = pamhd::Variable_Getter<pamhd::particle::Max_Angular_Velocity>();
+bool pamhd::particle::Max_Angular_Velocity::is_stale = true;
 
 // given a particle these return references to particle's parameters
 const auto Part_Pos = [](
@@ -355,6 +338,7 @@ int main(int argc, char* argv[]) {
 	using std::flush;
 	using std::max;
 	using std::min;
+	using std::runtime_error;
 	using std::to_string;
 
 	/*
@@ -439,6 +423,16 @@ int main(int argc, char* argv[]) {
 	pamhd::grid::Options options_grid{document};
 	pamhd::mhd::Options options_mhd{document};
 	pamhd::particle::Options options_particle{document};
+	pamhd::Solar_Wind_Box_Options options_box{document};
+	const int solar_wind_dir = [&options_box](){
+		if (options_box.sw_dir == "+x") return +1;
+		else {
+			cerr << "Invalid solar wind boundary direction: "
+				<< options_box.sw_dir << endl;
+			MPI_Finalize();
+			return EXIT_FAILURE;
+		}
+	}();
 
 	if (rank == 0 and options_sim.output_directory != "") {
 		cout << "Saving results into directory " << options_sim.output_directory << endl;
@@ -452,103 +446,6 @@ int main(int argc, char* argv[]) {
 				<< endl;
 			abort();
 		}
-	}
-
-	using geometry_id_t = unsigned int;
-
-	pamhd::boundaries::Geometries<
-		geometry_id_t,
-		std::array<double, 3>,
-		double,
-		uint64_t
-	> geometries;
-	geometries.set(document);
-
-	pamhd::boundaries::Multivariable_Initial_Conditions<
-		geometry_id_t,
-		pamhd::mhd::Number_Density,
-		pamhd::mhd::Velocity,
-		pamhd::mhd::Pressure,
-		pamhd::Magnetic_Field
-	> initial_conditions_mhd;
-	initial_conditions_mhd.set(document);
-
-	pamhd::boundaries::Multivariable_Boundaries<
-		uint64_t,
-		geometry_id_t,
-		pamhd::mhd::Number_Density,
-		pamhd::mhd::Velocity,
-		pamhd::mhd::Pressure,
-		pamhd::Magnetic_Field
-	> boundaries_mhd;
-	boundaries_mhd.set(document);
-
-	// separate initial and boundary conditions for each particle population
-	std::vector<
-		pamhd::boundaries::Multivariable_Initial_Conditions<
-			geometry_id_t,
-			pamhd::particle::Bdy_Number_Density,
-			pamhd::particle::Bdy_Temperature,
-			pamhd::particle::Bdy_Velocity,
-			pamhd::particle::Bdy_Nr_Particles_In_Cell,
-			pamhd::particle::Bdy_Charge_Mass_Ratio,
-			pamhd::particle::Bdy_Species_Mass
-		>
-	> initial_conditions_particles;
-	for (size_t population_id = 0; population_id < 99; population_id++) {
-		const auto& obj_population_i
-			= document.FindMember(
-				(
-					"particle-population-"
-					+ to_string(population_id)
-				).c_str()
-			);
-		if (obj_population_i == document.MemberEnd()) {
-			if (population_id == 0) {
-				continue; // allow population ids to start from 0 and 1
-			} else {
-				break;
-			}
-		}
-		const auto& obj_population = obj_population_i->value;
-
-		const auto old_size = initial_conditions_particles.size();
-		initial_conditions_particles.resize(old_size + 1);
-		initial_conditions_particles[old_size].set(obj_population);
-	}
-
-	std::vector<
-		pamhd::boundaries::Multivariable_Boundaries<
-			uint64_t,
-			geometry_id_t,
-			pamhd::particle::Bdy_Number_Density,
-			pamhd::particle::Bdy_Temperature,
-			pamhd::particle::Bdy_Velocity,
-			pamhd::particle::Bdy_Nr_Particles_In_Cell,
-			pamhd::particle::Bdy_Charge_Mass_Ratio,
-			pamhd::particle::Bdy_Species_Mass
-		>
-	> boundaries_particles;
-	for (size_t population_id = 0; population_id < 99; population_id++) {
-		const auto& obj_population_i
-			= document.FindMember(
-				(
-					"particle-population-"
-					+ to_string(population_id)
-				).c_str()
-			);
-		if (obj_population_i == document.MemberEnd()) {
-			if (population_id == 0) {
-				continue; // allow population ids to start from 0 and 1
-			} else {
-				break;
-			}
-		}
-		const auto& obj_population = obj_population_i->value;
-
-		const auto old_size = boundaries_particles.size();
-		boundaries_particles.resize(old_size + 1);
-		boundaries_particles[old_size].set(obj_population);
 	}
 
 	pamhd::Background_Magnetic_Field<
@@ -586,14 +483,22 @@ int main(int argc, char* argv[]) {
 	*/
 	const unsigned int neighborhood_size = 3;
 	const auto& number_of_cells = options_grid.get_number_of_cells();
-	const auto& periodic = options_grid.get_periodic();
+	const size_t min_cell0_count = 5 + 2*options_grid.get_max_ref_lvl();
+	for (auto dim: {0, 1}) {
+		if (number_of_cells[dim] < min_cell0_count) {
+			cout << "Number of initial cells in dimension " << dim
+				<< " must be at least " << min_cell0_count
+				<< " but " << number_of_cells[dim] << " given" << endl;
+			abort();
+		}
+	}
 
 	Grid grid; grid
 		.set_initial_length(number_of_cells)
 		.set_neighborhood_length(neighborhood_size)
-		.set_periodic(periodic[0], periodic[1], periodic[2])
+		.set_periodic(false, false, true)
 		.set_load_balancing_method(options_sim.lb_name.c_str())
-		.set_maximum_refinement_level(0)
+		.set_maximum_refinement_level(options_grid.get_max_ref_lvl())
 		.initialize(comm);
 
 	// set grid geometry
@@ -619,32 +524,64 @@ int main(int argc, char* argv[]) {
 		abort();
 	}
 
+	if (rank == 0) {
+		cout << "Adapting and balancing grid at time "
+			<< options_sim.time_start << "...  " << flush;
+	}
+
+	auto [
+		solar_wind_cells, face_cells,
+		edge_cells, vert_cells, planet_cells
+	] = pamhd::grid::prepare_grid(
+		options_sim, options_grid, options_box,
+		grid, SInfo, Ref_max, Ref_min
+	);
+	if (rank == 0) {
+		cout << "done" << endl;
+	}
+
+	for (const auto& cell: solar_wind_cells) {
+		if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+	}
+	for (int dir: {-3,-2,-1,+1,+2,+3}) {
+		for (const auto& cell: face_cells(dir)) {
+			if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		}
+	}
+	for (int dim: {0, 1, 2})
+	for (int dir1: {-1, +1})
+	for (int dir2: {-1, +1}) {
+		for (const auto& cell: edge_cells(dim, dir1, dir2)) {
+			if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		}
+	}
+	for (const auto& cell: vert_cells) {
+		if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+	}
+	for (const auto& cell: planet_cells) {
+		if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (Ref_max.data(*cell.data) != grid.get_maximum_refinement_level()) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+	}
+
 	for (const auto& cell: grid.local_cells()) {
 		(*cell.data)[pamhd::MPI_Rank()] = rank;
-		Substep.data(*cell.data) = 1;
+		Substep.data(*cell.data)     =
+		Substep_Max.data(*cell.data) =
+		Substep_Min.data(*cell.data) = 1;
 		Max_v_wave.data(*cell.data) = {-1, -1, -1, -1, -1, -1};
+		Max_v_part.data(*cell.data) =
+		Max_ω_part.data(*cell.data) = -1;
 	}
-	pamhd::mhd::set_minmax_substepping_period(
-		options_sim.time_start, grid,
-		options_mhd, Substep_Min, Substep_Max);
-	Cell::set_transfer_all(true,
-		Max_v_wave.type(), Substep.type(), Substep_Min.type(),
-		Substep_Max.type(), pamhd::MPI_Rank());
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false,
-		Max_v_wave.type(), Substep.type(), Substep_Min.type(),
-		Substep_Max.type(), pamhd::MPI_Rank());
-
-	// assign cells into boundary geometries
-	for (const auto& gid: geometries.get_geometry_ids()) {
-		geometries.clear_cells(gid);
-	}
-	for (const auto& cell: grid.local_cells()) {
-		geometries.overlaps(
-			grid.geometry.get_min(cell.id),
-			grid.geometry.get_max(cell.id),
-			cell.id);
-	}
+	Max_v_wave.type().is_stale = true;
+	Max_v_part.type().is_stale = true;
+	Max_ω_part.type().is_stale = true;
+	Substep.type().is_stale = true;
+	Substep_Max.type().is_stale = true;
+	Substep_Min.type().is_stale = true;
 
 	/*
 	Simulate
@@ -653,190 +590,26 @@ int main(int argc, char* argv[]) {
 	const double time_end = options_sim.time_start + options_sim.time_length;
 	double
 		simulation_time = options_sim.time_start,
-		next_particle_save = 0,
-		next_mhd_save = 0,
-		next_amr = options_grid.amr_n;
+		next_mhd_save = options_mhd.save_n,
+		next_particle_save = options_particle.save_n;
 
 	if (rank == 0) {
 		cout << "Initializing... " << endl;
 	}
-	pamhd::mhd::initialize_magnetic_field_staggered<pamhd::Magnetic_Field>(
-		geometries, initial_conditions_mhd, background_B,
-		grid, simulation_time, options_sim.vacuum_permeability,
-		Face_B, Mag_f, Bg_B
-	);
 
-	pamhd::mhd::update_B_consistency(
-		0, grid.local_cells(), grid,
-		Mas, Mom, Nrj, Vol_B, Face_B,
-		SInfo, Substep,
-		options_sim.adiabatic_index,
-		options_sim.vacuum_permeability,
-		false // fluid not initialized yet
-	);
-
-	pamhd::mhd::initialize_fluid_staggered(
-		geometries, initial_conditions_mhd,
+	pamhd::mhd::initialize_plasma(
 		grid, simulation_time,
+		options_box, background_B,
+		Mas, Mom, Nrj, Vol_B, Face_B,
+		Face_dB, Bg_B,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
-		options_sim.proton_mass, true,
-		Mas, Mom, Nrj, Vol_B,
-		Mas_f, Mom_f, Nrj_f
+		options_sim.proton_mass
 	);
-
-	// particles
 	std::mt19937_64 random_source;
-
-	unsigned long long int nr_particles_created = 0;
-	for (auto& init_cond_part: initial_conditions_particles) {
-		nr_particles_created = pamhd::particle::initialize_particles<
-			pamhd::particle::Particle_Internal,
-			pamhd::particle::Mass,
-			pamhd::particle::Charge_Mass_Ratio,
-			pamhd::particle::Position,
-			pamhd::particle::Velocity,
-			pamhd::particle::Particle_ID,
-			pamhd::particle::Species_Mass
-		>(
-			geometries,
-			init_cond_part,
-			simulation_time,
-			grid,
-			random_source,
-			options_sim.temp2nrj,
-			next_particle_id,
-			grid.get_comm_size(),
-			false,
-			true,
-			Part_Int,
-			Bdy_N,
-			Bdy_V,
-			Bdy_T,
-			Bdy_Nr_Par,
-			Bdy_SpM,
-			Bdy_C2M,
-			SInfo
-		);
-		next_particle_id += nr_particles_created * grid.get_comm_size();
-	}
-
-	nr_particles_created
-		+= pamhd::particle::apply_boundaries<
-			pamhd::particle::Particle_Internal,
-			pamhd::particle::Mass,
-			pamhd::particle::Charge_Mass_Ratio,
-			pamhd::particle::Position,
-			pamhd::particle::Velocity,
-			pamhd::particle::Particle_ID,
-			pamhd::particle::Species_Mass
-		>(
-			geometries,
-			boundaries_particles,
-			simulation_time,
-			0,
-			grid,
-			random_source,
-			options_sim.temp2nrj,
-			options_sim.vacuum_permeability,
-			next_particle_id,
-			grid.get_comm_size(),
-			true,
-			SInfo,
-			Part_Int,
-			Bdy_N,
-			Bdy_V,
-			Bdy_T,
-			Bdy_Nr_Par,
-			Bdy_SpM,
-			Bdy_C2M
-		);
-	next_particle_id += nr_particles_created * grid.get_comm_size();
-
-	try {
-		pamhd::particle::accumulate_mhd_data(
-			grid,
-			Part_Int,
-			Part_Pos,
-			Part_Mas_Cell,
-			Part_SpM_Cell,
-			Part_Vel_Cell,
-			Part_Ekin,
-			Nr_Particles,
-			Part_Nr,
-			Bulk_Mass_Getter,
-			Bulk_Momentum_Getter,
-			Bulk_Relative_Velocity2_Getter,
-			Bulk_Velocity_Getter,
-			Accu_List_Number_Of_Particles_Getter,
-			Accu_List_Bulk_Mass_Getter,
-			Accu_List_Bulk_Velocity_Getter,
-			Accu_List_Bulk_Relative_Velocity2_Getter,
-			Accu_List_Target_Getter,
-			Accu_List_Length_Getter,
-			Accu_List_Getter,
-			pamhd::particle::Nr_Accumulated_To_Cells(),
-			pamhd::particle::Accumulated_To_Cells(),
-			pamhd::particle::Bulk_Velocity(),
-			SInfo
-		);
-	} catch (const std::exception& e) {
-		std::cerr << __FILE__ "(" << __LINE__ << ": "
-			<< "Couldn't accumulate MHD data from particles: " << e.what()
-			<< std::endl;
-		abort();
-	}
-
-	try {
-		pamhd::particle::fill_mhd_fluid_values(
-			grid,
-			options_sim.adiabatic_index,
-			options_sim.vacuum_permeability,
-			options_sim.temp2nrj,
-			options_mhd.min_pressure,
-			Nr_Particles,
-			Bulk_Mass_Getter,
-			Bulk_Momentum_Getter,
-			Bulk_Relative_Velocity2_Getter,
-			Part_Int,
-			Mas, Mom, Nrj, Vol_B,
-			SInfo
-		);
-	} catch (const std::exception& e) {
-		std::cerr << __FILE__ "(" << __LINE__ << ": "
-			<< "Couldn't fill MHD fluid values: " << e.what()
-			<< std::endl;
-		abort();
-	}
-
-	if (rank == 0) {
-		cout << "Initialization done" << endl;
-	}
-
-	/*
-	Classify cells & faces into normal, boundary and dont_solve
-	*/
-
-	pamhd::mhd::set_solver_info(grid, boundaries_mhd, geometries, SInfo);
-	pamhd::mhd::classify_faces(grid, SInfo, FInfo);
-
-	/*pamhd::mhd::apply_fluid_boundaries(
-		grid,
-		boundaries,
-		geometries,
-		simulation_time,
-		Mas, Mom, Nrj, Vol_B, SInfo,
-		options_sim.proton_mass,
-		options_sim.adiabatic_index,
-		options_sim.vacuum_permeability
-	);*/
-
-	pamhd::mhd::apply_magnetic_field_boundaries_staggered(
-		grid,
-		boundaries_mhd,
-		geometries,
-		simulation_time,
-		Face_B, FInfo
+	uint64_t next_particle_id = pamhd::particle::initialize_plasma(
+		grid, simulation_time, options_sim, options_box,
+		options_particle, random_source, Part_Int
 	);
 
 	pamhd::mhd::update_B_consistency(
@@ -848,18 +621,31 @@ int main(int argc, char* argv[]) {
 		true
 	);
 
-	for (const auto& cell: grid.local_cells()) {
-		Max_v_wave.data(*cell.data) = {-1, -1, -1, -1, -1, -1};
-		Timestep.data(*cell.data) = -1;
-		Substep.data(*cell.data)     =
-		Substep_Max.data(*cell.data) =
-		Substep_Min.data(*cell.data) = 1;
-	}
-	Cell::set_transfer_all(true,
-		Timestep.type(), Max_v_wave.type(), Substep.type());
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false,
-		Timestep.type(), Max_v_wave.type(), Substep.type());
+	pamhd::mhd::apply_boundaries_sw_box(
+		grid, simulation_time, options_box, solar_wind_cells,
+		face_cells, edge_cells, vert_cells, planet_cells,
+		options_sim.adiabatic_index,
+		options_sim.vacuum_permeability,
+		options_sim.proton_mass,
+		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, SInfo
+	);
+	uint64_t simulation_step = 0;
+	next_particle_id = pamhd::particle::apply_boundaries_sw_box(
+		next_particle_id,
+		simulation_step,
+		grid,
+		simulation_time,
+		options_sim,
+		options_box,
+		options_particle,
+		solar_wind_cells,
+		face_cells,
+		edge_cells,
+		vert_cells,
+		planet_cells,
+		random_source,
+		Part_Int
+	);
 
 	// final init with timestep of 0
 	pamhd::particle::timestep(
@@ -883,24 +669,23 @@ int main(int argc, char* argv[]) {
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		options_sim.temp2nrj,
-		options_mhd.min_pressure,
-		Mas, Mom, Nrj, Vol_B, Vol_J, J_m_V, Vol_E, Nr_Ext,
-		Max_v_part, Max_ω_part, Part_Ext, Part_C2M, Part_Des,
-		Face_dB, Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f, Substep,
-		Substep_Min, Substep_Max, Max_v_wave, Face_B, background_B,
-		mhd_solver, Timestep, 0, options_mhd.time_step_factor
+		options_mhd.min_pressure, Mas, Mom, Nrj, Vol_B,
+		Vol_J, J_m_V, Vol_E, Nr_Ext, Max_v_part, Max_ω_part,
+		Part_Ext, Part_C2M, Part_Des, Face_dB, Bg_B,
+		Mas_f, Mom_f, Nrj_f, Mag_f, Substep, Substep_Min,
+		Substep_Max, Max_v_wave, Face_B, background_B,
+		mhd_solver, Timestep, 0,
+		options_mhd.time_step_factor
 	);
 	if (rank == 0) {
-		cout << "Done initializing" << endl;
+		cout << "done" << endl;
 	}
 
-	size_t simulation_step = 0;
 	constexpr uint64_t file_version = 4;
 	if (options_particle.save_n >= 0) {
 		if (rank == 0) {
 			cout << "Saving particles at time " << simulation_time << endl;
 		}
-
 		// update number of internal particles
 		for (const auto& cell: grid.local_cells()) {
 			Nr_Int(*cell.data) = Part_Int(*cell.data).size();
@@ -928,7 +713,6 @@ int main(int argc, char* argv[]) {
 		if (rank == 0) {
 			cout << "Saving MHD at time " << simulation_time << endl;
 		}
-
 		if (
 			not pamhd::mhd::save_staggered(
 				boost::filesystem::canonical(
@@ -980,12 +764,13 @@ int main(int argc, char* argv[]) {
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
 				options_sim.temp2nrj,
-				options_mhd.min_pressure,
-				Mas, Mom, Nrj, Vol_B, Vol_J, J_m_V, Vol_E, Nr_Ext,
-				Max_v_part, Max_ω_part, Part_Ext, Part_C2M, Part_Des,
-				Face_dB, Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f, Substep,
-				Substep_Min, Substep_Max, Max_v_wave, Face_B, background_B,
-				mhd_solver, Timestep, 0, options_mhd.time_step_factor
+				options_mhd.min_pressure, Mas, Mom, Nrj, Vol_B,
+				Vol_J, J_m_V, Vol_E, Nr_Ext, Max_v_part, Max_ω_part,
+				Part_Ext, Part_C2M, Part_Des, Face_dB, Bg_B,
+				Mas_f, Mom_f, Nrj_f, Mag_f, Substep, Substep_Min,
+				Substep_Max, Max_v_wave, Face_B, background_B,
+				mhd_solver, Timestep, until_end,
+				options_mhd.time_step_factor
 			);
 
 		if (rank == 0) {
@@ -1021,23 +806,6 @@ int main(int argc, char* argv[]) {
 		grid.update_copies_of_remote_neighbors();
 		Cell::set_transfer_all(false, pamhd::particle::Particles_Internal());
 
-		pamhd::mhd::apply_magnetic_field_boundaries_staggered(
-			grid,
-			boundaries_mhd,
-			geometries,
-			simulation_time,
-			Face_B, FInfo
-		);
-
-		pamhd::mhd::update_B_consistency(
-			0, grid.local_cells(), grid,
-			Mas, Mom, Nrj, Vol_B, Face_B,
-			SInfo, Substep,
-			options_sim.adiabatic_index,
-			options_sim.vacuum_permeability,
-			true
-		);
-
 		const auto avg_div = pamhd::math::get_divergence_staggered(
 			grid.local_cells(), grid,
 			Face_B, Div_B, SInfo
@@ -1046,24 +814,30 @@ int main(int argc, char* argv[]) {
 			cout << " average divergence " << avg_div << endl;
 		}
 
-		nr_particles_created += pamhd::particle::apply_boundaries<
-			pamhd::particle::Particle_Internal,
-			pamhd::particle::Mass,
-			pamhd::particle::Charge_Mass_Ratio,
-			pamhd::particle::Position,
-			pamhd::particle::Velocity,
-			pamhd::particle::Particle_ID,
-			pamhd::particle::Species_Mass
-		>(
-			geometries, boundaries_particles, simulation_time,
-			simulation_step, grid, random_source,
-			options_sim.temp2nrj,
+		pamhd::mhd::apply_boundaries_sw_box(
+			grid, simulation_time, options_box, solar_wind_cells,
+			face_cells, edge_cells, vert_cells, planet_cells,
+			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
-			next_particle_id, grid.get_comm_size(), true,
-			SInfo, Part_Int, Bdy_N, Bdy_V, Bdy_T,
-			Bdy_Nr_Par, Bdy_SpM, Bdy_C2M
+			options_sim.proton_mass,
+			Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, SInfo
 		);
-		next_particle_id += nr_particles_created * grid.get_comm_size();
+		next_particle_id = pamhd::particle::apply_boundaries_sw_box(
+			next_particle_id,
+			simulation_step,
+			grid,
+			simulation_time,
+			options_sim,
+			options_box,
+			options_particle,
+			solar_wind_cells,
+			face_cells,
+			edge_cells,
+			vert_cells,
+			planet_cells,
+			random_source,
+			Part_Int
+		);
 
 		if (
 			(options_particle.save_n >= 0 and simulation_time >= time_end)
@@ -1109,17 +883,14 @@ int main(int argc, char* argv[]) {
 			(options_mhd.save_n >= 0 and simulation_time >= time_end)
 			or (options_mhd.save_n > 0 and simulation_time >= next_mhd_save)
 		) {
+			if (rank == 0) {
+				cout << "Saving MHD at time " << simulation_time << endl;
+			}
 			if (next_mhd_save <= simulation_time) {
 				next_mhd_save
 					+= options_mhd.save_n
 					* ceil(max(options_mhd.save_n, simulation_time - next_mhd_save) / options_mhd.save_n);
 			}
-
-			if (rank == 0) {
-				cout << "Saving MHD at time " << simulation_time << "... " << endl;
-			}
-
-			constexpr uint64_t file_version = 4;
 			if (
 				not pamhd::mhd::save_staggered(
 					boost::filesystem::canonical(
