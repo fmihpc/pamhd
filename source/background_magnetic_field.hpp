@@ -123,8 +123,8 @@ public:
 			}
 		}
 
-		if (bg_B.HasMember("minimum-distance")) {
-			const auto& min_distance_json = bg_B["minimum-distance"];
+		if (bg_B.HasMember("min-distance")) {
+			const auto& min_distance_json = bg_B["min-distance"];
 			if (not min_distance_json.IsNumber()) {
 				throw std::invalid_argument(
 					std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
