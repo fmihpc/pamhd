@@ -303,11 +303,12 @@ int main(int argc, char* argv[]) {
 			abort();
 		}
 	}
+	const auto& periodic = options_grid.get_periodic();
 
 	Grid grid; grid
 		.set_initial_length(number_of_cells)
 		.set_neighborhood_length(neighborhood_size)
-		.set_periodic(false, false, false)
+		.set_periodic(periodic[0], periodic[1], periodic[2])
 		.set_load_balancing_method(options_sim.lb_name.c_str())
 		.set_maximum_refinement_level(options_grid.get_max_ref_lvl())
 		.initialize(comm);
