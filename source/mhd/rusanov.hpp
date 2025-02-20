@@ -67,8 +67,11 @@ template <
 	const Scalar& adiabatic_index,
 	const Scalar& vacuum_permeability
 ) {
+	using std::abs;
+	using std::domain_error;
 	using std::isnormal;
 	using std::isfinite;
+	using std::max;
 	using std::to_string;
 
 	const Mass_Density Mas{};
@@ -77,13 +80,13 @@ template <
 	const Magnetic_Field Mag{};
 
 	if (not isnormal(state_neg[Mas]) or state_neg[Mas] < 0) {
-		throw std::domain_error(
+		throw domain_error(
 			"Invalid mass density in state_neg: "
 			+ to_string(state_neg[Mas])
 		);
 	}
 	if (not isnormal(state_pos[Mas]) or state_pos[Mas] < 0) {
-		throw std::domain_error(
+		throw domain_error(
 			"Invalid mass density in state_pos: "
 			+ to_string(state_pos[Mas])
 		);
@@ -112,20 +115,20 @@ template <
 				vacuum_permeability
 			),
 
-		max_fast_ms = std::max(fast_magnetosonic_neg, fast_magnetosonic_pos),
-		max_signal = std::max(
-			std::abs(state_neg[Mom][0] / state_neg[Mas]) + max_fast_ms,
-			std::abs(state_pos[Mom][0] / state_pos[Mas]) + max_fast_ms
+		max_fast_ms = max(fast_magnetosonic_neg, fast_magnetosonic_pos),
+		max_signal = max(
+			abs(state_neg[Mom][0] / state_neg[Mas]) + max_fast_ms,
+			abs(state_pos[Mom][0] / state_pos[Mas]) + max_fast_ms
 		);
 
 	if (not isfinite(max_fast_ms)) {
-		throw std::domain_error(
+		throw domain_error(
 			"Invalid maximum fast magnetosonic speed: "
 			+ to_string(max_fast_ms)
 		);
 	}
 	if (not isfinite(max_signal)) {
-		throw std::domain_error(
+		throw domain_error(
 			"Invalid maximum signal speed: "
 			+ to_string(max_signal)
 		);
@@ -166,13 +169,13 @@ template <
 				Mas_getter, Mom_getter, Nrj_getter, Mag_getter
 			);
 	if (not isfinite(flux_neg[Mas])) {
-		throw std::domain_error(
+		throw domain_error(
 			"Invalid mass density flux_neg: "
 			+ to_string(flux_neg[Mas])
 		);
 	}
 	if (not isfinite(flux_pos[Mas])) {
-		throw std::domain_error(
+		throw domain_error(
 			"Invalid mass density flux_pos: "
 			+ to_string(flux_pos[Mas])
 		);
@@ -183,7 +186,7 @@ template <
 		- (state_pos - state_neg) * (max_signal / 2);
 
 	if (not isfinite(flux[Mas])) {
-		throw std::domain_error(
+		throw domain_error(
 			"Invalid mass density flux: "
 			+ to_string(flux[Mas])
 		);
