@@ -159,6 +159,7 @@ def plot1d(data, outname):
 					str(data['centers'][i][dim]) + ' '
 					+ str(mag[2]) + '\n')
 			outfile.write('end\nreset\n')
+
 		if 'substmin' in data['cell_data'][0]:
 			outfile.write(
 				'set title "Time ' + str(data['sim_time'])
@@ -202,6 +203,26 @@ def plot1d(data, outname):
 					str(data['centers'][i][dim]) + ' '
 					+ str(data['cell_data'][i]['timestep']) + '\n')
 			outfile.write('end\nreset\n')
+
+		if 'bgB     ' in data['cell_data'][0]:
+			outfile.write(
+				'set title "Time ' + str(data['sim_time'])
+				+ '"\nset xlabel "Dimension ' + str(dim+1)
+				+ '"\nset xrange [' + str(gs[dim]) + ':'
+				+ str(ge[dim]) + ']\nset output "'
+				+ outname + '_B0.png"\nset ylabel "B0"\n'
+				+ 'set key horizontal bottom outside\nplot '
+				+ '"-" u 1:2 lw 2 t "component 1", '
+				+ '"-" u 1:2 lw 2 t "component 2", '
+				+ '"-" u 1:2 lw 2 t "component 3"\n')
+			for bgB_i in [3, 10, 17]:
+				for i in range(len(data['cells'])):
+					bgB = data['cell_data'][i]['bgB     ']
+					outfile.write(
+						str(data['centers'][i][dim]) + ' '
+						+ str(bgB[bgB_i]) + '\n')
+				outfile.write('end\n')
+			outfile.write('reset\n')
 
 
 if __name__ == '__main__':
