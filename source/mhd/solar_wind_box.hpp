@@ -43,6 +43,7 @@ Author(s): Ilja Honkonen
 #include "limits"
 #include "map"
 #include "set"
+#include "stdexcept"
 #include "string"
 #include "utility"
 #include "vector"
@@ -92,7 +93,21 @@ template<
 ) try {
 	using std::string;
 	using std::invalid_argument;
+	using std::runtime_error;
 	using std::to_string;
+
+	for (const size_t dim: {0, 1, 2}) {
+		if (
+			options.sw_dim == dim
+			and options.sw_magnetic_field[dim] != 0
+		) {
+			throw runtime_error(
+				__FILE__ "(" + to_string(__LINE__) + "): solar "
+				"wind boundary in " + to_string(dim) + " dimension"
+				" but corresponding B component non-zero: "
+				+ to_string(options.sw_magnetic_field[dim]));
+		}
+	}
 
 	if (grid.get_rank() == 0) {
 		std::cout << "Initializing run, solar wind: "
@@ -163,8 +178,20 @@ template<
 				);
 		}
 
-		Mas.data(*cell.data) = options.sw_nr_density * proton_mass;
-		Mom.data(*cell.data) = {0, 0, 0};
+		const auto mass = options.sw_nr_density * proton_mass;
+		Mas.data(*cell.data) = mass;
+
+		const auto
+			grid_end = grid.geometry.get_end(),
+			cell_center = grid.geometry.get_center(cell.id);
+		const auto v_factor = std::max(0.0, cell_center[0]/grid_end[0]);
+		const Eigen::Vector3d velocity{
+			v_factor * options.sw_velocity[0],
+			v_factor * options.sw_velocity[1],
+			v_factor * options.sw_velocity[2]
+		};
+		Mom.data(*cell.data) = mass * velocity;
+
 		Vol_B.data(*cell.data)[0]   =
 		Face_B.data(*cell.data)(-1) =
 		Face_B.data(*cell.data)(+1) = options.sw_magnetic_field[0];
@@ -175,9 +202,10 @@ template<
 		Face_B.data(*cell.data)(-3) =
 		Face_B.data(*cell.data)(+3) = options.sw_magnetic_field[2];
 		Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
+
 		Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
 			Mas.data(*cell.data),
-			Mom.data(*cell.data),
+			velocity,
 			options.sw_pressure,
 			Vol_B.data(*cell.data),
 			adiabatic_index,
@@ -221,49 +249,47 @@ template<
 ) try {
 	for (const auto& cell: solar_wind_cells) {
 		const auto mass = options.sw_nr_density * proton_mass;
-		Mas.data(*cell.data) = mass;
-		Mom.data(*cell.data) = {
-			mass*options.sw_velocity[0],
-			mass*options.sw_velocity[1],
-			mass*options.sw_velocity[2]
-		};
-		Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
 
-		// prevent div(B) at solar wind boundary
-		if (options.sw_dir[1] != 'x') {
+		if (cell.is_local) {
+			Mas.data(*cell.data) = mass;
+			Mom.data(*cell.data) = {
+				mass*options.sw_velocity[0],
+				mass*options.sw_velocity[1],
+				mass*options.sw_velocity[2]
+			};
+			Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
+
 			Vol_B.data(*cell.data)[0]   =
 			Face_B.data(*cell.data)(-1) =
 			Face_B.data(*cell.data)(+1) = options.sw_magnetic_field[0];
-		} else {
-			Vol_B.data(*cell.data)[0]   =
-			Face_B.data(*cell.data)(-1) =
-			Face_B.data(*cell.data)(+1) = 0;
-		}
-
-		if (options.sw_dir[1] != 'y') {
 			Vol_B.data(*cell.data)[1]   =
 			Face_B.data(*cell.data)(-2) =
 			Face_B.data(*cell.data)(+2) = options.sw_magnetic_field[1];
-		} else {
-			Vol_B.data(*cell.data)[1]   =
-			Face_B.data(*cell.data)(-2) =
-			Face_B.data(*cell.data)(+2) = 0;
-		}
-
-		if (options.sw_dir[1] != 'z') {
 			Vol_B.data(*cell.data)[2]   =
 			Face_B.data(*cell.data)(-3) =
 			Face_B.data(*cell.data)(+3) = options.sw_magnetic_field[2];
-		} else {
-			Vol_B.data(*cell.data)[2]   =
-			Face_B.data(*cell.data)(-3) =
-			Face_B.data(*cell.data)(+3) = 0;
+			Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
+				mass, options.sw_velocity,
+				options.sw_pressure, Vol_B.data(*cell.data),
+				adiabatic_index, vacuum_permeability
+			);
 		}
-		Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
-			mass, options.sw_velocity,
-			options.sw_pressure, Vol_B.data(*cell.data),
-			adiabatic_index, vacuum_permeability
-		);
+
+		for (const auto& neighbor: cell.neighbors_of) {
+			if (not neighbor.is_local) continue;
+			if (options.sw_dir != -neighbor.face_neighbor) continue;
+
+			Face_B.data(*neighbor.data)(options.sw_dir)
+				= options.sw_magnetic_field[options.sw_dim];
+			Vol_B.data(*neighbor.data)[options.sw_dim]
+				= Face_B.data(*neighbor.data)(+options.sw_dir) / 2
+				+ Face_B.data(*neighbor.data)(-options.sw_dir) / 2;
+			Nrj.data(*neighbor.data) = pamhd::mhd::get_total_energy_density(
+				mass, options.sw_velocity,
+				options.sw_pressure, Vol_B.data(*neighbor.data),
+				adiabatic_index, vacuum_permeability
+			);
+		}
 	}
 	Mas.type().is_stale = true;
 	Mom.type().is_stale = true;
