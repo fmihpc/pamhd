@@ -276,46 +276,24 @@ template<
 		std::remove_cv_t<std::remove_reference_t<
 			decltype(grid.cells.front())>>>;
 
-	// solar wind
-	const int direction = [&](){
-		if (options_box.sw_dir == "-x") {
-			return -1;
-		} else if (options_box.sw_dir == "+x") {
-			return +1;
-		} else if (options_box.sw_dir == "-y") {
-			return -2;
-		} else if (options_box.sw_dir == "+y") {
-			return +2;
-		} else if (options_box.sw_dir == "-z") {
-			return -3;
-		} else if (options_box.sw_dir == "+z") {
-			return +3;
-		} else {
-			throw invalid_argument(
-				__FILE__ "(" + to_string(__LINE__) + "): "
-				+ options_box.sw_dir
-			);
-		}
-	}();
-	const size_t dim = std::abs(direction) - 1;
-
+	// sw_cells must also include remote copies
 	cell_list_t sw_cells;
-	for (const auto& cell: grid.local_cells()) {
+	for (const auto& cell: grid.all_cells()) {
 		const auto indices = grid.mapping.get_indices(cell.id);
 		const auto len = grid.mapping.get_cell_length_in_indices(cell.id);
 
-		if (direction < 0) {
-			if (indices[dim] == 0) {
+		if (options_box.sw_dir < 0) {
+			if (indices[options_box.sw_dim] == 0) {
 				sw_cells.push_back(cell);
 			}
 		} else {
-			if (indices[dim] == end_indices[dim] - len) {
+			if (indices[options_box.sw_dim] == end_indices[options_box.sw_dim] - len) {
 				sw_cells.push_back(cell);
 			}
 		}
 	}
 	for (const auto& cell: sw_cells) {
-		SInfo.data(*cell.data) = 0;
+		if (cell.is_local) SInfo.data(*cell.data) = 0;
 	}
 
 	// outflow

@@ -50,7 +50,9 @@ namespace pamhd {
 
 struct Solar_Wind_Box_Options
 {
-	std::string sw_dir{""};
+	std::string sw_dir_s{""};
+	int sw_dir{0};
+	size_t sw_dim{3};
 	double
 		inner_radius{-1},
 		inner_nr_density{-1},
@@ -105,14 +107,26 @@ struct Solar_Wind_Box_Options
 				+ "'solar-wind' item 'direction' is not a string."
 			);
 		}
-		this->sw_dir = sw_dir_json.GetString();
-		std::set<string> allowed_dirs{"-x", "+x", "-y", "+y", "-z", "+z"};
-		if (allowed_dirs.count(this->sw_dir) == 0) {
+		this->sw_dir_s = sw_dir_json.GetString();
+		if (this->sw_dir_s == "-x") {
+			this->sw_dir = -1;
+		} else if (this->sw_dir_s == "+x") {
+			this->sw_dir = +1;
+		} else if (this->sw_dir_s == "-y") {
+			this->sw_dir = -2;
+		} else if (this->sw_dir_s == "+y") {
+			this->sw_dir = +2;
+		} else if (this->sw_dir_s == "-z") {
+			this->sw_dir = -3;
+		} else if (this->sw_dir_s == "+z") {
+			this->sw_dir = +3;
+		} else {
 			throw invalid_argument(
 				string(__FILE__ "(") + to_string(__LINE__) + "): "
 				+ "'solar-wind' item 'direction' must be one of: -x,+x,-y,+y,-z,+z."
 			);
 		}
+		this->sw_dim = std::abs(this->sw_dir) - 1;
 
 		if (not sw.HasMember("number-density")) {
 			throw invalid_argument(
