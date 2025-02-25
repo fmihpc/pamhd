@@ -375,20 +375,8 @@ int main(int argc, char* argv[]) {
 		Substep.data(*cell.data) = 1;
 		Max_v.data(*cell.data) = {-1, -1, -1, -1, -1, -1};
 	}
-	pamhd::mhd::set_minmax_substepping_period(
-		options_sim.time_start, grid,
-		options_mhd, Substep_Min, Substep_Max);
-	Cell::set_transfer_all(true,
-		Max_v.type(), Substep.type(),
-		Substep_Min.type(), Substep_Max.type(),
-		pamhd::MPI_Rank()
-	);
-	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false,
-		Max_v.type(), Substep.type(),
-		Substep_Min.type(), Substep_Max.type(),
-		pamhd::MPI_Rank()
-	);
+	Max_v.type().is_stale = true;
+	Substep.type().is_stale = true;
 
 	// assign cells into boundary geometries
 	for (const auto& gid: geometries.get_geometry_ids()) {
