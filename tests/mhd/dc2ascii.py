@@ -50,7 +50,7 @@ spec.loader.exec_module(common)
 try:
 	import numpy
 except Exception as e:
-	print("Couldn't import numpy, try pip install --user numpy: ", e)
+	print("Couldn't import numpy, try 'pip install --user numpy': ", e)
 	exit(1)
 
 
