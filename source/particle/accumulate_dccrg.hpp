@@ -122,6 +122,8 @@ template<
 	Solver_Info_Getter SInfo,
 	const bool clear_at_start = true
 ) {
+	using std::abs;
+
 	const auto
 		grid_start = grid.geometry.get_start(),
 		grid_end = grid.geometry.get_end();
@@ -143,6 +145,8 @@ template<
 		if (clear_at_start) {
 			Accu_List(*cell.data).clear();
 		}
+
+		const auto cilen = grid.mapping.get_cell_length_in_indices(cell.id);
 
 		// TODO: faster to iterate over neighbors first?
 		for (auto& particle: Part(*cell.data)) {
@@ -171,6 +175,11 @@ template<
 
 			// accumulate to neighbors
 			for (const auto& neighbor: cell.neighbors_of) {
+				if (
+					abs(neighbor.x) > cilen
+					or abs(neighbor.y) > cilen
+					or abs(neighbor.z) > cilen
+				) continue; // TODO: AMR
 
 				Eigen::Vector3d neigh_min, neigh_max, neigh_length, neigh_center;
 				std::tie(neigh_min, neigh_max, neigh_length, neigh_center) = get_cell_geometry(neighbor.id, grid.geometry);
@@ -912,14 +921,10 @@ template<
 	const Solver_Info_Getter& SInfo
 ) {
 	for (const auto& cell: grid.local_cells()) {
-		if (SInfo.data(*cell.data) < 0) {
-			MHD_Mass.data(*cell.data) = 0;
-			MHD_Momentum.data(*cell.data) = {0, 0, 0};
-			MHD_Energy.data(*cell.data) = 0;
-			continue;
-		}
-
-		if (Particle_Bulk_Mass(*cell.data) <= 0) {
+		if (
+			SInfo.data(*cell.data) < 0
+			or Particle_Bulk_Mass(*cell.data) <= 0
+		) {
 			MHD_Mass.data(*cell.data) = 0;
 			MHD_Momentum.data(*cell.data) = {0, 0, 0};
 			MHD_Energy.data(*cell.data) = 0;
@@ -957,7 +962,6 @@ template<
 	MHD_Mass.type().is_stale = true;
 	MHD_Momentum.type().is_stale = true;
 	MHD_Energy.type().is_stale = true;
-	Vol_B.type().is_stale = true;
 }
 
 
