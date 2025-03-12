@@ -55,6 +55,7 @@ Author(s): Ilja Honkonen
 #include "math/staggered.hpp"
 #include "mhd/solve_staggered.hpp"
 #include "particle/solve.hpp"
+#include "substepping.hpp"
 #include "variables.hpp"
 
 
@@ -173,6 +174,9 @@ template<
 				or abs(neighbor.y) > 1
 				or abs(neighbor.z) > 1
 			) {
+				continue;
+			}
+			if (SInfo.data(*neighbor.data) < 0) {
 				continue;
 			}
 
@@ -408,6 +412,54 @@ template<
 }
 
 
+template <
+	class Grid,
+	class Solver_Info_Getter,
+	class Timestep_Getter,
+	class Max_Spatial_Velocity_Getter,
+	class Max_Angular_Velocity_Getter
+> void minimize_timestep(
+	Grid& grid,
+	const double& dt_factor,
+	const Solver_Info_Getter& SInfo,
+	const Timestep_Getter& Timestep,
+	const Max_Spatial_Velocity_Getter& Max_v_part,
+	const Max_Angular_Velocity_Getter& Max_ω_part
+) try {
+	using std::cerr;
+	using std::endl;
+	using std::max;
+	using std::min;
+	using std::numeric_limits;
+
+	Timestep.type().is_stale = true;
+
+	for (const auto& cell: grid.local_cells()) {
+		if (SInfo.data(*cell.data) < 0) {
+			continue;
+		}
+
+		const auto& max_v = Max_v_part.data(*cell.data);
+		const auto& max_ω = Max_ω_part.data(*cell.data);
+		const auto len = grid.geometry.get_length(cell.id);
+		if (max_v <= 0 or max_ω <= 0) {
+			Timestep.data(*cell.data) = 0;
+		} else {
+			auto min_dt = dt_factor * 2*M_PI/max_ω;
+			for (const size_t dim: {0, 1, 2}) {
+				min_dt = min(min_dt, len[dim]/max_v/2);
+			}
+			Timestep.data(*cell.data) = min(min_dt, Timestep.data(*cell.data));
+		}
+	}
+
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
+
+
 //! returns length of timestep taken
 double timestep(
 	const auto& simulation_time,
@@ -471,7 +523,8 @@ double timestep(
 	const auto& mhd_solver,
 	const auto& Timestep,
 	const auto& max_time_step,
-	const auto& time_step_factor
+	const auto& mhd_time_step_factor,
+	const auto& particle_time_step_factor
 ) try {
 	using std::cerr;
 	using std::cout;
@@ -481,20 +534,23 @@ double timestep(
 
 	using Cell = std::remove_reference_t<decltype(grid)>::cell_data_type;
 
-	pamhd::mhd::set_minmax_substepping_period(
+	set_minmax_substepping_period(
 		simulation_time, grid, options_mhd,
 		Substep_Min, Substep_Max
 	);
 
-	const double sub_dt = pamhd::mhd::set_minmax_substepping_period(
-		grid,
-		max_time_step,
-		time_step_factor,
-		SInfo,
-		Timestep,
-		Substep_Min,
-		Substep_Max,
-		Max_v_wave
+	pamhd::mhd::minimize_timestep(
+		grid, mhd_time_step_factor, SInfo, Timestep, Max_v_wave
+	);
+
+	pamhd::particle::minimize_timestep(
+		grid, particle_time_step_factor, SInfo,
+		Timestep, Max_v_part, Max_ω_part
+	);
+
+	const double sub_dt = set_minmax_substepping_period(
+		grid, max_time_step, SInfo,
+		Timestep, Substep_Min, Substep_Max
 	);
 
 	restrict_substepping_period(

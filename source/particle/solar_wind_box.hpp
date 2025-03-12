@@ -37,21 +37,15 @@ Author(s): Ilja Honkonen
 #define PAMHD_PARTICLE_SW_BOX_HPP
 
 
-#include "algorithm"
 #include "cmath"
-#include "iterator"
-#include "limits"
-#include "map"
 #include "random"
-#include "set"
 #include "string"
-#include "tuple"
-#include "utility"
 #include "vector"
 
 #include "dccrg.hpp"
 
 #include "mhd/solar_wind_box.hpp"
+#include "particle/common.hpp"
 #include "particle/options.hpp"
 #include "particle/variables.hpp"
 #include "simulation_options.hpp"
@@ -71,7 +65,7 @@ template<
 	Grid& grid,
 	const double& sim_time,
 	const pamhd::Options& options_sim,
-	const pamhd::Solar_Wind_Box_Options& options_sw,
+	const pamhd::Solar_Wind_Box_Options& options_box,
 	const particle::Options& options_part,
 	std::mt19937_64& random_source,
 	const Internal_Particle_Getter& Part_Int
@@ -85,17 +79,26 @@ template<
 		id_start = grid.get_rank(),
 		id_increase = grid.get_comm_size();
 	const auto temperature
-		= options_sw.sw_pressure
-		/ options_sw.sw_nr_density
+		= options_box.sw_pressure
+		/ options_box.sw_nr_density
 		/ options_sim.temp2nrj;
+	if (options_box.sw_dir != +1) {
+		throw std::runtime_error(__FILE__":"+std::to_string(__LINE__));
+	}
+	const auto grid_end = grid.geometry.get_end();
 	for (const auto& cell: grid.local_cells()) {
-		random_source.seed(cell.id);
-
 		const auto
 			cell_start = grid.geometry.get_min(cell.id),
 			cell_end = grid.geometry.get_max(cell.id),
-			cell_length = grid.geometry.get_length(cell.id);
+			cell_length = grid.geometry.get_length(cell.id),
+			cell_center = grid.geometry.get_center(cell.id);
+		const auto v_factor = std::max(0.0, cell_center[0]/grid_end[0]);
+		const Eigen::Vector3d velocity{
+			v_factor * options_box.sw_velocity[0],
+			v_factor * options_box.sw_velocity[1],
+			v_factor * options_box.sw_velocity[2]};
 
+		random_source.seed(cell.id);
 		Part_Int(*cell.data) = create_particles<
 			pamhd::particle::Particle_Internal,
 			pamhd::particle::Mass,
@@ -105,13 +108,13 @@ template<
 			pamhd::particle::Particle_ID,
 			pamhd::particle::Species_Mass
 		>(
-			Eigen::Vector3d{0, 0, 0},
+			velocity,
 			Eigen::Vector3d{cell_start[0], cell_start[1], cell_start[2]},
 			Eigen::Vector3d{cell_end[0], cell_end[1], cell_end[2]},
 			Eigen::Vector3d{temperature, temperature, temperature},
 			options_part.particles_in_cell,
 			options_sim.charge2mass,
-			options_sim.proton_mass * options_sw.sw_nr_density
+			options_sim.proton_mass * options_box.sw_nr_density
 				* cell_length[0] * cell_length[1] * cell_length[2],
 			options_sim.proton_mass,
 			options_sim.temp2nrj,
@@ -138,7 +141,7 @@ template<
 	uint64_t next_particle_id,
 	const uint64_t& simulation_step,
 	const pamhd::Options& options_sim,
-	const pamhd::Solar_Wind_Box_Options& options_sw,
+	const pamhd::Solar_Wind_Box_Options& options_box,
 	const particle::Options& options_part,
 	const Grid& grid,
 	const Cells& solar_wind_cells,
@@ -148,10 +151,11 @@ template<
 ) try {
 	const uint64_t id_increase = grid.get_comm_size();
 	const auto temperature
-		= options_sw.sw_pressure
-		/ options_sw.sw_nr_density
+		= options_box.sw_pressure
+		/ options_box.sw_nr_density
 		/ options_sim.temp2nrj;
 	for (const auto& cell: solar_wind_cells) {
+		if (not cell.is_local) continue;
 		random_source.seed(cell.id + simulation_step * 1'000'000);
 
 		const auto
@@ -169,15 +173,15 @@ template<
 			pamhd::particle::Species_Mass
 		>(
 			Eigen::Vector3d{
-				options_sw.sw_velocity[0],
-				options_sw.sw_velocity[1],
-				options_sw.sw_velocity[2]},
+				options_box.sw_velocity[0],
+				options_box.sw_velocity[1],
+				options_box.sw_velocity[2]},
 			Eigen::Vector3d{cell_start[0], cell_start[1], cell_start[2]},
 			Eigen::Vector3d{cell_end[0], cell_end[1], cell_end[2]},
 			Eigen::Vector3d{temperature, temperature, temperature},
 			options_part.particles_in_cell,
 			options_sim.charge2mass,
-			options_sim.proton_mass * options_sw.sw_nr_density
+			options_sim.proton_mass * options_box.sw_nr_density
 				* cell_length[0] * cell_length[1] * cell_length[2],
 			options_sim.proton_mass,
 			options_sim.temp2nrj,
@@ -203,14 +207,15 @@ template<
 	class Edge_Cells,
 	class Vert_Cells,
 	class Planet_Cells,
-	class Internal_Particle_Getter
+	class Internal_Particle_Getter,
+	class Solver_Info_Getter
 > uint64_t apply_boundaries_sw_box(
 	uint64_t next_particle_id,
 	const uint64_t& simulation_step,
 	Grid& grid,
 	const double& sim_time,
 	const pamhd::Options& options_sim,
-	const pamhd::Solar_Wind_Box_Options& options_sw,
+	const pamhd::Solar_Wind_Box_Options& options_box,
 	const particle::Options& options_part,
 	const SW_Cells& solar_wind_cells,
 	const Face_Cells& face_cells,
@@ -218,29 +223,89 @@ template<
 	const Vert_Cells& vert_cells,
 	const Planet_Cells& planet_cells,
 	std::mt19937_64& random_source,
-	const Internal_Particle_Getter& Part_Int
+	const Internal_Particle_Getter& Part_Int,
+	const Solver_Info_Getter& SInfo
 ) try {
+	using std::abs;
+	using std::runtime_error;
+	using std::to_string;
 	using std::vector;
 
 	const uint64_t id_increase = grid.get_comm_size();
 
+	// make more if not enough particles to copy
+	const auto get_filler_particles = [&](
+		const size_t& nr_new_particles,
+		const uint64_t& cell_id,
+		const size_t& next_particle_id,
+		const Eigen::Vector3d& velocity
+	){
+		const auto
+			cell_start = grid.geometry.get_min(cell_id),
+			cell_end = grid.geometry.get_max(cell_id),
+			cell_length = grid.geometry.get_length(cell_id);
+		const auto temperature
+			= options_box.sw_pressure
+			/ options_box.sw_nr_density
+			/ options_sim.temp2nrj;
+		return create_particles<
+			pamhd::particle::Particle_Internal,
+			pamhd::particle::Mass,
+			pamhd::particle::Charge_Mass_Ratio,
+			pamhd::particle::Position,
+			pamhd::particle::Velocity,
+			pamhd::particle::Particle_ID,
+			pamhd::particle::Species_Mass
+		>(
+			velocity,
+			Eigen::Vector3d{cell_start[0], cell_start[1], cell_start[2]},
+			Eigen::Vector3d{cell_end[0], cell_end[1], cell_end[2]},
+			Eigen::Vector3d{temperature, temperature, temperature},
+			nr_new_particles,
+			options_sim.charge2mass,
+			options_sim.proton_mass * options_box.sw_nr_density
+				* cell_length[0] * cell_length[1] * cell_length[2],
+			options_sim.proton_mass,
+			options_sim.temp2nrj,
+			random_source,
+			next_particle_id,
+			id_increase
+		);
+	};
+
 	// boundary and normal cell share face
 	for (int dir: {-3,-2,-1,+1,+2,+3}) {
 		for (const auto& cell: face_cells(dir)) {
-			random_source.seed(cell.id + simulation_step * 1'000'000);
+			vector<uint64_t> copy_cells{cell.id};
 			for (const auto& neighbor: cell.neighbors_of) {
 				const auto& fn = neighbor.face_neighbor;
 				if (fn != -dir) continue;
-				const vector<uint64_t> copy_cells{cell.id, neighbor.id};
-				next_particle_id
-					+= id_increase
-					* copy_particles<
-						pamhd::particle::Position,
-						pamhd::particle::Particle_ID
-					>(
-						copy_cells, next_particle_id, id_increase,
-						random_source, grid, Part_Int
-					);
+				copy_cells.push_back(neighbor.id);
+			}
+			if (copy_cells.size() != 2) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+
+			random_source.seed(cell.id + simulation_step * 1'000'000);
+			next_particle_id += id_increase * copy_particles<
+				pamhd::particle::Position,
+				pamhd::particle::Particle_ID
+			>(
+				copy_cells, next_particle_id, id_increase,
+				random_source, grid, Part_Int
+			);
+
+			// make sure boundary cell has enough particles
+			auto& particles = Part_Int(*cell.data);
+			if (particles.size() < options_part.particles_in_cell) {
+				const auto filler = get_filler_particles(
+					options_part.particles_in_cell - Part_Int(*cell.data).size(),
+					cell.id, next_particle_id,
+					Eigen::Vector3d{
+						options_box.sw_velocity[0],
+						options_box.sw_velocity[1],
+						options_box.sw_velocity[2]}
+				);
+				next_particle_id += filler.size() * id_increase;
+				particles.insert(particles.end(), filler.begin(), filler.end());
 			}
 		}
 	}
@@ -250,89 +315,126 @@ template<
 	for (int dir1: {-1, +1})
 	for (int dir2: {-1, +1}) {
 		for (const auto& cell: edge_cells(dim, dir1, dir2)) {
-			random_source.seed(cell.id + simulation_step * 1'000'000);
+			vector<uint64_t> copy_cells{cell.id};
 			for (const auto& neighbor: cell.neighbors_of) {
 				const auto& en = neighbor.edge_neighbor;
 				if (en[0] != dim or en[1] != -dir1 or en[2] != -dir2) continue;
-				const vector<uint64_t> copy_cells{cell.id, neighbor.id};
-				next_particle_id
-					+= id_increase
-					* copy_particles<
-						pamhd::particle::Position,
-						pamhd::particle::Particle_ID
-					>(
-						copy_cells, next_particle_id, id_increase,
-						random_source, grid, Part_Int
-					);
+				copy_cells.push_back(neighbor.id);
+			}
+			if (copy_cells.size() != 2) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+
+			random_source.seed(cell.id + simulation_step * 1'000'000);
+			next_particle_id += id_increase * copy_particles<
+				pamhd::particle::Position,
+				pamhd::particle::Particle_ID
+			>(
+				copy_cells, next_particle_id, id_increase,
+				random_source, grid, Part_Int
+			);
+
+			auto& particles = Part_Int(*cell.data);
+			if (particles.size() < options_part.particles_in_cell) {
+				const auto filler = get_filler_particles(
+					options_part.particles_in_cell - Part_Int(*cell.data).size(),
+					cell.id, next_particle_id,
+					Eigen::Vector3d{
+						options_box.sw_velocity[0],
+						options_box.sw_velocity[1],
+						options_box.sw_velocity[2]}
+				);
+				next_particle_id += filler.size() * id_increase;
+				particles.insert(particles.end(), filler.begin(), filler.end());
 			}
 		}
 	}
 
 	// boundary and normal cell share vertex
 	for (const auto& cell: vert_cells) {
-		random_source.seed(cell.id + simulation_step * 1'000'000);
+		const auto cilen = grid.mapping.get_cell_length_in_indices(cell.id);
+		vector<uint64_t> copy_cells{cell.id};
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
 			if (fn != 0) continue;
 			const auto& en = neighbor.edge_neighbor;
 			if (en[0] >= 0) continue;
-			const vector<uint64_t> copy_cells{cell.id, neighbor.id};
-			next_particle_id
-				+= id_increase
-				* copy_particles<
-					pamhd::particle::Position,
-					pamhd::particle::Particle_ID
-				>(
-					copy_cells, next_particle_id, id_increase,
-					random_source, grid, Part_Int
-				);
+			if (
+				abs(neighbor.x) > cilen
+				or abs(neighbor.y) > cilen
+				or abs(neighbor.z) > cilen
+			) continue;
+			copy_cells.push_back(neighbor.id);
+		}
+		if (copy_cells.size() != 2) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+
+		random_source.seed(cell.id + simulation_step * 1'000'000);
+		next_particle_id += id_increase * copy_particles<
+			pamhd::particle::Position,
+			pamhd::particle::Particle_ID
+		>(
+			copy_cells, next_particle_id, id_increase,
+			random_source, grid, Part_Int
+		);
+
+		auto& particles = Part_Int(*cell.data);
+		if (particles.size() < options_part.particles_in_cell) {
+			const auto filler = get_filler_particles(
+				options_part.particles_in_cell - Part_Int(*cell.data).size(),
+				cell.id, next_particle_id,
+				Eigen::Vector3d{
+					options_box.sw_velocity[0],
+					options_box.sw_velocity[1],
+					options_box.sw_velocity[2]}
+			);
+			next_particle_id += filler.size() * id_increase;
+			particles.insert(particles.end(), filler.begin(), filler.end());
 		}
 	}
 
 	// planetary boundary cells
-	const auto inner_temperature
-			= options_sw.inner_pressure
-			/ options_sw.inner_nr_density
-			/ options_sim.temp2nrj;
+	const auto grid_end = grid.geometry.get_end();
 	for (const auto& cell: planet_cells) {
-		random_source.seed(cell.id + simulation_step * 1'000'000);
-		const auto
-			cell_start = grid.geometry.get_min(cell.id),
-			cell_end = grid.geometry.get_max(cell.id),
-			cell_length = grid.geometry.get_length(cell.id);
+		const auto cilen = grid.mapping.get_cell_length_in_indices(cell.id);
+		vector<uint64_t> copy_cells{cell.id};
+		for (const auto& neighbor: cell.neighbors_of) {
+			if (
+				abs(neighbor.x) > cilen
+				or abs(neighbor.y) > cilen
+				or abs(neighbor.z) > cilen
+			) continue; // TODO: AMR
+			if (SInfo.data(*neighbor.data) < 1) continue;
+			copy_cells.push_back(neighbor.id);
+		}
+		if (copy_cells.size() < 2) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 
-		Part_Int(*cell.data) = create_particles<
-			pamhd::particle::Particle_Internal,
-			pamhd::particle::Mass,
-			pamhd::particle::Charge_Mass_Ratio,
+		random_source.seed(cell.id + simulation_step * 1'000'000);
+		next_particle_id += id_increase * copy_particles<
 			pamhd::particle::Position,
-			pamhd::particle::Velocity,
-			pamhd::particle::Particle_ID,
-			pamhd::particle::Species_Mass
+			pamhd::particle::Particle_ID
 		>(
-			Eigen::Vector3d{0, 0, 0},
-			Eigen::Vector3d{cell_start[0], cell_start[1], cell_start[2]},
-			Eigen::Vector3d{cell_end[0], cell_end[1], cell_end[2]},
-			Eigen::Vector3d{
-				inner_temperature,
-				inner_temperature,
-				inner_temperature},
-			options_part.particles_in_cell,
-			options_sim.charge2mass,
-			options_sim.proton_mass * options_sw.inner_nr_density
-				* cell_length[0] * cell_length[1] * cell_length[2],
-			options_sim.proton_mass,
-			options_sim.temp2nrj,
-			random_source,
-			next_particle_id,
-			id_increase
+			copy_cells, next_particle_id, id_increase,
+			random_source, grid, Part_Int
 		);
-		next_particle_id += Part_Int(*cell.data).size() * id_increase;
+
+		auto& particles = Part_Int(*cell.data);
+		if (particles.size() < options_part.particles_in_cell) {
+			const auto cell_center = grid.geometry.get_center(cell.id);
+			const auto v_factor = std::max(0.0, cell_center[0]/grid_end[0]);
+			const auto filler = get_filler_particles(
+				options_part.particles_in_cell - Part_Int(*cell.data).size(),
+				cell.id, next_particle_id,
+				Eigen::Vector3d{
+					v_factor * options_box.sw_velocity[0],
+					v_factor * options_box.sw_velocity[1],
+					v_factor * options_box.sw_velocity[2]}
+			);
+			next_particle_id += filler.size() * id_increase;
+			particles.insert(particles.end(), filler.begin(), filler.end());
+		}
 	}
 
 	next_particle_id = apply_solar_wind_boundaries(
 		next_particle_id, simulation_step, options_sim,
-		options_sw, options_part, grid, solar_wind_cells,
+		options_box, options_part, grid, solar_wind_cells,
 		sim_time, random_source, Part_Int
 	);
 

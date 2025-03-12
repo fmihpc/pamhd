@@ -920,6 +920,29 @@ template<
 	const Volume_Magnetic_Field_Getter& Vol_B,
 	const Solver_Info_Getter& SInfo
 ) {
+	/*TODO
+	using Cell = Grid::cell_data_type;
+	bool update_copies = false;
+	if (Particle_Bulk_Mass.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, Particle_Bulk_Mass.type());
+	}
+	if (Particle_Bulk_Momentum.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, Particle_Bulk_Momentum.type());
+	}
+	if (Particle_Bulk_Relative_Kinetic_Energy.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, Particle_Bulk_Relative_Kinetic_Energy.type());
+	}
+	if (update_copies) {
+		grid.update_copies_of_remote_neighbors();
+	}
+	Cell::set_transfer_all(false,
+		Particle_Bulk_Mass.type(),
+		Particle_Bulk_Momentum.type(),
+		Particle_Bulk_Relative_Kinetic_Energy.type()
+	);*/
 	for (const auto& cell: grid.local_cells()) {
 		if (
 			SInfo.data(*cell.data) < 0

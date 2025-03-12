@@ -424,15 +424,6 @@ int main(int argc, char* argv[]) {
 	pamhd::mhd::Options options_mhd{document};
 	pamhd::particle::Options options_particle{document};
 	pamhd::Solar_Wind_Box_Options options_box{document};
-	const int solar_wind_dir = [&options_box](){
-		if (options_box.sw_dir == "+x") return +1;
-		else {
-			cerr << "Invalid solar wind boundary direction: "
-				<< options_box.sw_dir << endl;
-			MPI_Finalize();
-			return EXIT_FAILURE;
-		}
-	}();
 
 	if (rank == 0 and options_sim.output_directory != "") {
 		cout << "Saving results into directory " << options_sim.output_directory << endl;
@@ -484,7 +475,8 @@ int main(int argc, char* argv[]) {
 	const unsigned int neighborhood_size = 3;
 	const auto& number_of_cells = options_grid.get_number_of_cells();
 	const size_t min_cell0_count = 5 + 2*options_grid.get_max_ref_lvl();
-	for (auto dim: {0, 1}) {
+	for (auto dim: {0, 1, 2}) {
+		if (number_of_cells[dim] == 1) continue;
 		if (number_of_cells[dim] < min_cell0_count) {
 			cout << "Number of initial cells in dimension " << dim
 				<< " must be at least " << min_cell0_count
@@ -492,11 +484,12 @@ int main(int argc, char* argv[]) {
 			abort();
 		}
 	}
+	const auto& periodic = options_grid.get_periodic();
 
 	Grid grid; grid
 		.set_initial_length(number_of_cells)
 		.set_neighborhood_length(neighborhood_size)
-		.set_periodic(false, false, true)
+		.set_periodic(periodic[0], periodic[1], periodic[2])
 		.set_load_balancing_method(options_sim.lb_name.c_str())
 		.set_maximum_refinement_level(options_grid.get_max_ref_lvl())
 		.initialize(comm);
@@ -644,7 +637,8 @@ int main(int argc, char* argv[]) {
 		vert_cells,
 		planet_cells,
 		random_source,
-		Part_Int
+		Part_Int,
+		SInfo
 	);
 
 	// final init with timestep of 0
@@ -675,12 +669,12 @@ int main(int argc, char* argv[]) {
 		Mas_f, Mom_f, Nrj_f, Mag_f, Substep, Substep_Min,
 		Substep_Max, Max_v_wave, Face_B, background_B,
 		mhd_solver, Timestep, 0,
-		options_mhd.time_step_factor
+		options_mhd.time_step_factor,
+		options_particle.gyroperiod_time_step_factor
 	);
 	if (rank == 0) {
 		cout << "done" << endl;
 	}
-
 	constexpr uint64_t file_version = 4;
 	if (options_particle.save_n >= 0) {
 		if (rank == 0) {
@@ -770,7 +764,8 @@ int main(int argc, char* argv[]) {
 				Mas_f, Mom_f, Nrj_f, Mag_f, Substep, Substep_Min,
 				Substep_Max, Max_v_wave, Face_B, background_B,
 				mhd_solver, Timestep, until_end,
-				options_mhd.time_step_factor
+				options_mhd.time_step_factor,
+				options_particle.gyroperiod_time_step_factor
 			);
 
 		if (rank == 0) {
@@ -836,7 +831,8 @@ int main(int argc, char* argv[]) {
 			vert_cells,
 			planet_cells,
 			random_source,
-			Part_Int
+			Part_Int,
+			SInfo
 		);
 
 		if (

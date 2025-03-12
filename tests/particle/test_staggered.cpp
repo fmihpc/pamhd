@@ -886,7 +886,8 @@ int main(int argc, char* argv[]) {
 		Max_v_part, Max_ω_part, Part_Ext, Part_C2M, Part_Des,
 		Face_dB, Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f, Substep,
 		Substep_Min, Substep_Max, Max_v_wave, Face_B, background_B,
-		mhd_solver, Timestep, 0, options_mhd.time_step_factor
+		mhd_solver, Timestep, 0, options_mhd.time_step_factor,
+		options_particle.gyroperiod_time_step_factor
 	);
 	if (rank == 0) {
 		cout << "done" << endl;
@@ -983,7 +984,9 @@ int main(int argc, char* argv[]) {
 				Max_v_part, Max_ω_part, Part_Ext, Part_C2M, Part_Des,
 				Face_dB, Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f, Substep,
 				Substep_Min, Substep_Max, Max_v_wave, Face_B, background_B,
-				mhd_solver, Timestep, until_end, options_mhd.time_step_factor
+				mhd_solver, Timestep, until_end,
+				options_mhd.time_step_factor,
+				options_particle.gyroperiod_time_step_factor
 			);
 
 		if (rank == 0) {
