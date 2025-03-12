@@ -135,7 +135,7 @@ template<
 
 	for (const auto& cell: cells) {
 		if (SInfo.data(*cell.data) < 0) {
-			Bulk_Val(*cell.data) = {};
+			Bulk_Val.data(*cell.data) = {};
 			continue;
 		}
 
@@ -164,22 +164,27 @@ template<
 				};
 
 			// accumulate to current cell
-			Bulk_Val(*cell.data)
-				+= get_accumulated_value(
-					Part_Val(*cell.data, particle),
-					value_box_min,
-					value_box_max,
-					cell_min,
-					cell_max
-				);
+			Bulk_Val.data(*cell.data) += get_accumulated_value(
+				Part_Val(*cell.data, particle),
+				value_box_min,
+				value_box_max,
+				cell_min,
+				cell_max
+			);
 
 			// accumulate to neighbors
 			for (const auto& neighbor: cell.neighbors_of) {
+				// don't accumulate too far
 				if (
 					abs(neighbor.x) > cilen
 					or abs(neighbor.y) > cilen
 					or abs(neighbor.z) > cilen
 				) continue; // TODO: AMR
+
+				// don't accumulate into dont_solve cells
+				if (SInfo.data(*neighbor.data) < 0) {
+					continue;
+				}
 
 				Eigen::Vector3d neigh_min, neigh_max, neigh_length, neigh_center;
 				std::tie(neigh_min, neigh_max, neigh_length, neigh_center) = get_cell_geometry(neighbor.id, grid.geometry);
@@ -218,11 +223,6 @@ template<
 					continue;
 				}
 
-				// don't accumulate into dont_solve cells
-				if (SInfo.data(*neighbor.data) < 0) {
-					continue;
-				}
-
 				const auto accumulated_value
 					= get_accumulated_value(
 						Part_Val(*neighbor.data, particle),
@@ -234,7 +234,7 @@ template<
 
 				// same as for current cell above
 				if (neighbor.is_local) {
-					Bulk_Val(*neighbor.data) += accumulated_value;
+					Bulk_Val.data(*neighbor.data) += accumulated_value;
 				// accumulate values to a list in current cell
 				} else {
 					// use this index in the list
@@ -323,15 +323,15 @@ template<
 	for (const auto& cell: cells) {
 		if (SInfo.data(*cell.data) < 0) {
 			using bulk_val_t = std::remove_reference_t<
-				decltype(Bulk_Val(*cell.data))>;
+				decltype(Bulk_Val.data(*cell.data))>;
 			if constexpr (is_same_v<bulk_val_t, Vector3d>) {
-				Bulk_Val(*cell.data) = Vector3d::Zero();
+				Bulk_Val.data(*cell.data) = Vector3d::Zero();
 			} else if constexpr (
 				is_same_v<bulk_val_t, std::pair<Vector3d, double>>
 			) {
-				Bulk_Val(*cell.data) = {Vector3d::Zero(), 0};
+				Bulk_Val.data(*cell.data) = {Vector3d::Zero(), 0};
 			} else {
-				Bulk_Val(*cell.data) = {};
+				Bulk_Val.data(*cell.data) = {};
 			}
 			continue;
 		}
@@ -369,9 +369,9 @@ template<
 					cell_min,
 					cell_max
 				);
-			Bulk_Val(*cell.data).first += accu_to_cell.first;
+			Bulk_Val.data(*cell.data).first += accu_to_cell.first;
 			// final weight of this particle's data in this cell
-			Bulk_Val(*cell.data).second += accu_to_cell.second;
+			Bulk_Val.data(*cell.data).second += accu_to_cell.second;
 
 			// accumulate to neighbors
 			for (const auto& neighbor: cell.neighbors_of) {
@@ -430,8 +430,8 @@ template<
 
 				// same as for current cell above
 				if (neighbor.is_local) {
-					Bulk_Val(*neighbor.data).first += accumulated_value.first;
-					Bulk_Val(*neighbor.data).second += accumulated_value.second;
+					Bulk_Val.data(*neighbor.data).first += accumulated_value.first;
+					Bulk_Val.data(*neighbor.data).second += accumulated_value.second;
 				// accumulate values to a list in current cell
 				} else {
 					// use this index in the list
@@ -533,7 +533,7 @@ template<
 				abort();
 			}
 
-			Bulk_Val(*target_data) += Value_In_List(item);
+			Bulk_Val.data(*target_data) += Value_In_List(item);
 		}
 	}
 }
@@ -575,8 +575,8 @@ template<
 				abort();
 			}
 
-			Bulk_Val(*target_data).first += Value_In_List(item).first;
-			Bulk_Val(*target_data).second += Value_In_List(item).second;
+			Bulk_Val.data(*target_data).first += Value_In_List(item).first;
+			Bulk_Val.data(*target_data).second += Value_In_List(item).second;
 		}
 	}
 }
@@ -597,7 +597,7 @@ template<
 	class Particle_Weight_Getter,
 	class Bulk_Mass_Getter,
 	class Bulk_Momentum_Getter,
-	class Bulk_Relative_Kinetic_Energy_Getter,
+	class Bulk_Relative_Velocity2_Getter,
 	class Number_Of_Particles_In_List_Getter,
 	class Bulk_Mass_In_List_Getter,
 	class Bulk_Momentum_In_List_Getter,
@@ -622,7 +622,7 @@ template<
 	const Particle_Weight_Getter& Particle_Weight,
 	const Bulk_Mass_Getter& Bulk_Mass,
 	const Bulk_Momentum_Getter& Bulk_Momentum,
-	const Bulk_Relative_Kinetic_Energy_Getter& Bulk_Relative_Kinetic_Energy,
+	const Bulk_Relative_Velocity2_Getter& Bulk_Relative_Velocity2,
 	const Bulk_Velocity_Getter& Bulk_Velocity,
 	const Number_Of_Particles_In_List_Getter& Accu_List_Number_Of_Particles,
 	const Bulk_Mass_In_List_Getter& Accu_List_Bulk_Mass,
@@ -636,20 +636,42 @@ template<
 	const Bulk_Velocity_Variable& bulk_vel_var,
 	const Solver_Info_Getter& SInfo
 ) {
+	using std::to_string;
+
 	using Cell = Grid::cell_data_type;
 
+	bool update_copies = false;
 	if (SInfo.type().is_stale) {
+		update_copies = true;
 		Cell::set_transfer_all(true, SInfo.type());
-		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false, SInfo.type());
 		SInfo.type().is_stale = false;
 	}
 
+	if (update_copies) {
+		grid.update_copies_of_remote_neighbors();
+		update_copies = false;
+	}
+	Cell::set_transfer_all(false, SInfo.type());
+
+	Bulk_Mass.type().is_stale = true;
+	Bulk_Momentum.type().is_stale = true;
+	Bulk_Relative_Velocity2.type().is_stale = true;
+
 	for (const auto& cell: grid.local_cells()) {
-		Bulk_Mass(*cell.data) = 0;
-		Bulk_Momentum(*cell.data) = {0, 0, 0};
-		Bulk_Velocity(*cell.data).first = {0, 0, 0};
-		Bulk_Velocity(*cell.data).second = 0;
+		if (
+			SInfo.data(*cell.data) > -1
+			and Particles(*cell.data).size() == 0
+		) {
+			throw std::runtime_error(
+				__FILE__ "(" + to_string(__LINE__) + "): "
+				+ " No particles in cell " + to_string(cell.id));
+		}
+
+		Bulk_Mass.data(*cell.data) = 0;
+		Bulk_Momentum.data(*cell.data) = {0, 0, 0};
+		Bulk_Relative_Velocity2.data(*cell.data) = 0;
+		Bulk_Velocity.data(*cell.data).first = {0, 0, 0};
+		Bulk_Velocity.data(*cell.data).second = 0;
 	}
 
 	accumulate(
@@ -751,12 +773,12 @@ template<
 
 	// scale velocities relative to total weights
 	for (const auto& cell: grid.local_cells()) {
-		if (Bulk_Velocity(*cell.data).second <= 0) {
-			Bulk_Velocity(*cell.data).first = {0, 0, 0};
+		if (Bulk_Velocity.data(*cell.data).second <= 0) {
+			Bulk_Velocity.data(*cell.data).first = {0, 0, 0};
 		} else {
-			Bulk_Velocity(*cell.data).first /= Bulk_Velocity(*cell.data).second;
+			Bulk_Velocity.data(*cell.data).first /= Bulk_Velocity.data(*cell.data).second;
 		}
-		Bulk_Momentum(*cell.data) = Bulk_Velocity(*cell.data).first * Bulk_Mass(*cell.data);
+		Bulk_Momentum.data(*cell.data) = Bulk_Velocity.data(*cell.data).first * Bulk_Mass.data(*cell.data);
 	}
 
 
@@ -769,8 +791,8 @@ template<
 	grid.start_remote_neighbor_copy_updates();
 
 	for (const auto& cell: grid.local_cells()) {
-		Number_Of_Particles(*cell.data)          =
-		Bulk_Relative_Kinetic_Energy(*cell.data) = 0;
+		Number_Of_Particles.data(*cell.data)     =
+		Bulk_Relative_Velocity2.data(*cell.data) = 0;
 	}
 
 	grid.wait_remote_neighbor_copy_update_receives();
@@ -804,7 +826,7 @@ template<
 		Particles,
 		Particle_Position,
 		Particle_Relative_Kinetic_Energy,
-		Bulk_Relative_Kinetic_Energy,
+		Bulk_Relative_Velocity2,
 		Accu_List_Bulk_Relative_Kinetic_Energy,
 		Accu_List_Target,
 		Accu_List_Length,
@@ -840,7 +862,7 @@ template<
 		Particles,
 		Particle_Position,
 		Particle_Relative_Kinetic_Energy,
-		Bulk_Relative_Kinetic_Energy,
+		Bulk_Relative_Velocity2,
 		Accu_List_Bulk_Relative_Kinetic_Energy,
 		Accu_List_Target,
 		Accu_List_Length,
@@ -874,7 +896,7 @@ template<
 	);
 	accumulate_from_remote_neighbors(
 		grid,
-		Bulk_Relative_Kinetic_Energy,
+		Bulk_Relative_Velocity2,
 		Accu_List_Bulk_Relative_Kinetic_Energy,
 		Accu_List_Target,
 		Accu_List,
@@ -896,7 +918,7 @@ template<
 	class Number_Of_Particles_Getter,
 	class Particle_Bulk_Mass_Getter,
 	class Particle_Bulk_Momentum_Getter,
-	class Particle_Bulk_Relative_Kinetic_Energy_Getter,
+	class Particle_Bulk_Relative_Velocity2_Getter,
 	class Particle_List_Getter,
 	class MHD_Mass_Getter,
 	class MHD_Momentum_Getter,
@@ -912,7 +934,7 @@ template<
 	const Number_Of_Particles_Getter& Number_Of_Particles,
 	const Particle_Bulk_Mass_Getter& Particle_Bulk_Mass,
 	const Particle_Bulk_Momentum_Getter& Particle_Bulk_Momentum,
-	const Particle_Bulk_Relative_Kinetic_Energy_Getter& Particle_Bulk_Relative_Kinetic_Energy,
+	const Particle_Bulk_Relative_Velocity2_Getter& Particle_Bulk_Relative_Velocity2,
 	const Particle_List_Getter& Particle_List,
 	const MHD_Mass_Getter& MHD_Mass,
 	const MHD_Momentum_Getter& MHD_Momentum,
@@ -920,8 +942,8 @@ template<
 	const Volume_Magnetic_Field_Getter& Vol_B,
 	const Solver_Info_Getter& SInfo
 ) {
-	/*TODO
 	using Cell = Grid::cell_data_type;
+
 	bool update_copies = false;
 	if (Particle_Bulk_Mass.type().is_stale) {
 		update_copies = true;
@@ -931,9 +953,9 @@ template<
 		update_copies = true;
 		Cell::set_transfer_all(true, Particle_Bulk_Momentum.type());
 	}
-	if (Particle_Bulk_Relative_Kinetic_Energy.type().is_stale) {
+	if (Particle_Bulk_Relative_Velocity2.type().is_stale) {
 		update_copies = true;
-		Cell::set_transfer_all(true, Particle_Bulk_Relative_Kinetic_Energy.type());
+		Cell::set_transfer_all(true, Particle_Bulk_Relative_Velocity2.type());
 	}
 	if (update_copies) {
 		grid.update_copies_of_remote_neighbors();
@@ -941,12 +963,17 @@ template<
 	Cell::set_transfer_all(false,
 		Particle_Bulk_Mass.type(),
 		Particle_Bulk_Momentum.type(),
-		Particle_Bulk_Relative_Kinetic_Energy.type()
-	);*/
+		Particle_Bulk_Relative_Velocity2.type()
+	);
+
+	MHD_Mass.type().is_stale = true;
+	MHD_Momentum.type().is_stale = true;
+	MHD_Energy.type().is_stale = true;
+
 	for (const auto& cell: grid.local_cells()) {
 		if (
 			SInfo.data(*cell.data) < 0
-			or Particle_Bulk_Mass(*cell.data) <= 0
+			or Particle_Bulk_Mass.data(*cell.data) <= 0
 		) {
 			MHD_Mass.data(*cell.data) = 0;
 			MHD_Momentum.data(*cell.data) = {0, 0, 0};
@@ -957,16 +984,16 @@ template<
 		const auto length = grid.geometry.get_length(cell.id);
 		const auto volume = length[0] * length[1] * length[2];
 
-		MHD_Mass.data(*cell.data) = Particle_Bulk_Mass(*cell.data) / volume;
-		MHD_Momentum.data(*cell.data) = Particle_Bulk_Momentum(*cell.data) / volume;
+		MHD_Mass.data(*cell.data) = Particle_Bulk_Mass.data(*cell.data) / volume;
+		MHD_Momentum.data(*cell.data) = Particle_Bulk_Momentum.data(*cell.data) / volume;
 
 		const double pressure = [&](){
-			if (Particle_Bulk_Mass(*cell.data) <= 0) {
+			if (Particle_Bulk_Mass.data(*cell.data) <= 0) {
 				return 0.0;
 			} else {
 				return std::max(
 					minimum_pressure,
-					2 * Particle_Bulk_Relative_Kinetic_Energy(*cell.data) / 3 / volume
+					2 * Particle_Bulk_Relative_Velocity2.data(*cell.data) / 3 / volume
 				);
 			}
 		}();
@@ -982,9 +1009,6 @@ template<
 				+ Vol_B.data(*cell.data).squaredNorm() / vacuum_permeability / 2;
 		}
 	}
-	MHD_Mass.type().is_stale = true;
-	MHD_Momentum.type().is_stale = true;
-	MHD_Energy.type().is_stale = true;
 }
 
 

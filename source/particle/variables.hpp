@@ -230,6 +230,7 @@ struct Bdy_Charge_Mass_Ratio {
 };
 
 struct Bulk_Mass {
+	static bool is_stale;
 	using data_type = double;
 	static const std::string get_name() { return {"bulk mass"}; }
 	static const std::string get_option_name() { return {"bulk-mass"}; }
@@ -237,6 +238,7 @@ struct Bulk_Mass {
 };
 
 struct Bulk_Momentum {
+	static bool is_stale;
 	using data_type = Eigen::Vector3d;
 	static const std::string get_name() { return {"bulk momentum"}; }
 	static const std::string get_option_name() { return {"bulk-momentum"}; }
@@ -245,6 +247,7 @@ struct Bulk_Momentum {
 
 struct Bulk_Velocity {
 	//! second value used for tracking total weight of particles in cell
+	static bool is_stale;
 	using data_type = std::pair<Eigen::Vector3d, double>; // TODO: another cell type?
 	static const std::string get_name() { return {"bulk velocity"}; }
 	static const std::string get_option_name() { return {"bulk-velocity"}; }
@@ -252,6 +255,7 @@ struct Bulk_Velocity {
 };
 
 struct Number_Of_Particles {
+	static bool is_stale;
 	using data_type = double;
 	static const std::string get_name() { return {"number of species particles"}; }
 	static const std::string get_option_name() { return {"number-of-species-particles"}; }
@@ -259,6 +263,7 @@ struct Number_Of_Particles {
 };
 
 struct Bulk_Relative_Velocity2 {
+	static bool is_stale;
 	using data_type = double;
 	static const std::string get_name() { return {"bulk relative velocity2"}; }
 	static const std::string get_option_name() { return {"bulk-relative-velocity2"}; }
@@ -281,22 +286,6 @@ struct Current_Minus_Velocity {
 	static const std::string get_name() { return {"J-V"}; }
 	static const std::string get_option_name() { return {"J-V"}; }
 	static const std::string get_option_help() { return {"Current minus Velocity for interpolating electric field to particle position"}; }
-};
-
-// same purpose as mhd solver info variable
-struct Solver_Info {
-	using data_type = unsigned int;
-	static const unsigned int
-		normal                         = 0,
-		dont_solve                     = 1 << 0,
-		number_density_bdy             = 1 << 1,
-		velocity_bdy                   = 1 << 2,
-		temperature_bdy                = 1 << 3,
-		particle_number_bdy            = 1 << 4,
-		particle_charge_mass_ratio_bdy = 1 << 5,
-		particle_species_mass_bdy      = 1 << 6,
-		magnetic_field_bdy             = 1 << 7,
-		electric_field_bdy             = 1 << 8;
 };
 
 /*!

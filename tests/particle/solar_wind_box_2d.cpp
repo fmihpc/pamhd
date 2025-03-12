@@ -267,25 +267,20 @@ const auto Part_Ekin = [](
 };
 
 // reference to accumulated number of particles in given cell
-const auto Nr_Particles = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Number_Of_Particles()];
-};
+const auto Nr_Particles = pamhd::Variable_Getter<pamhd::particle::Number_Of_Particles>();
+bool pamhd::particle::Number_Of_Particles::is_stale = true;
 
-const auto Bulk_Mass_Getter = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Bulk_Mass()];
-};
+const auto Bulk_Mass_Getter = pamhd::Variable_Getter<pamhd::particle::Bulk_Mass>();
+bool pamhd::particle::Bulk_Mass::is_stale = true;
 
-const auto Bulk_Momentum_Getter = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Bulk_Momentum()];
-};
+const auto Bulk_Momentum_Getter = pamhd::Variable_Getter<pamhd::particle::Bulk_Momentum>();
+bool pamhd::particle::Bulk_Momentum::is_stale = true;
 
-const auto Bulk_Relative_Velocity2_Getter = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Bulk_Relative_Velocity2()];
-};
+const auto Bulk_Relative_Velocity2_Getter = pamhd::Variable_Getter<pamhd::particle::Bulk_Relative_Velocity2>();
+bool pamhd::particle::Bulk_Relative_Velocity2::is_stale = true;
 
-const auto Bulk_Velocity_Getter = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::particle::Bulk_Velocity()];
-};
+const auto Bulk_Velocity_Getter = pamhd::Variable_Getter<pamhd::particle::Bulk_Velocity>();
+bool pamhd::particle::Bulk_Velocity::is_stale = true;
 
 // list of items (variables above) accumulated from particles in given cell
 const auto Accu_List_Getter = [](Cell& cell_data)->auto& {

@@ -1594,7 +1594,10 @@ template <
 	using Cell = Grid::cell_data_type;
 
 	bool update_copies = false;
-	if (Nrj.type().is_stale or Vol_B.type().is_stale) {
+	if (
+		Mas.type().is_stale or Mom.type().is_stale
+		or Nrj.type().is_stale or Vol_B.type().is_stale
+	) {
 		update_copies = true;
 		Cell::set_transfer_all(true,
 			Mas.type(), Mom.type(), Nrj.type(), Vol_B.type());
