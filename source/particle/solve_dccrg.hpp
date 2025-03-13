@@ -640,16 +640,16 @@ double timestep(
 		);
 
 		Cell::set_transfer_all(true,
-			Mas.type(), Mom.type(), Nrj.type(),
-			Vol_B.type(), Nr_Ext.type());
+			Mas.type(), Mom.type(), Nrj.type(), Vol_B.type(),
+			Bg_B.type(), Substep.type(), SInfo.type(), Nr_Ext.type());
 		grid.start_remote_neighbor_copy_updates();
 
 		// inner MHD
 		pamhd::mhd::get_fluxes(
-			mhd_solver, grid.inner_cells(), grid, 1,
-			adiabatic_index, vacuum_permeability,
-			sub_dt, Mas, Mom, Nrj, Vol_B, Face_dB,
-			Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f,
+			mhd_solver, grid.inner_cells(), grid, substep,
+			adiabatic_index, vacuum_permeability, sub_dt,
+			Mas, Mom, Nrj, Vol_B, Face_dB, Bg_B,
+			Mas_f, Mom_f, Nrj_f, Mag_f,
 			SInfo, Substep, Max_v_wave
 		);
 
@@ -666,10 +666,10 @@ double timestep(
 
 		// outer MHD
 		pamhd::mhd::get_fluxes(
-			mhd_solver, grid.outer_cells(), grid, 1,
-			adiabatic_index, vacuum_permeability,
-			sub_dt, Mas, Mom, Nrj, Vol_B, Face_dB,
-			Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f,
+			mhd_solver, grid.outer_cells(), grid, substep,
+			adiabatic_index, vacuum_permeability, sub_dt,
+			Mas, Mom, Nrj, Vol_B, Face_dB, Bg_B,
+			Mas_f, Mom_f, Nrj_f, Mag_f,
 			SInfo, Substep, Max_v_wave
 		);
 
@@ -680,8 +680,17 @@ double timestep(
 
 		grid.wait_remote_neighbor_copy_update_sends();
 		Cell::set_transfer_all(false,
-			Mas.type(), Mom.type(), Nrj.type(),
-			Vol_B.type(), Nr_Ext.type());
+			Mas.type(), Mom.type(), Nrj.type(), Vol_B.type(),
+			Bg_B.type(), Substep.type(), SInfo.type(), Nr_Ext.type());
+
+		pamhd::mhd::get_fluxes(
+			mhd_solver, grid.remote_cells(), grid, substep,
+			adiabatic_index, vacuum_permeability, sub_dt,
+			Mas, Mom, Nrj, Vol_B, Face_dB, Bg_B,
+			Mas_f, Mom_f, Nrj_f, Mag_f,
+			SInfo, Substep, Max_v_wave
+		);
+		Max_v_wave.type().is_stale = true;
 
 		pamhd::mhd::update_mhd_state(
 			grid.local_cells(), grid, substep,
@@ -731,6 +740,39 @@ double timestep(
 			pamhd::particle::Particles_External
 		>(grid.outer_cells(), grid);
 	}
+
+	// update internal particles
+	for (const auto& cell: grid.local_cells()) {
+		// (ab)use external number counter as internal number counter
+		(*cell.data)[pamhd::particle::Nr_Particles_External()]
+			= (*cell.data)[pamhd::particle::Particles_Internal()].size();
+	}
+	Cell::set_transfer_all(true,
+		pamhd::particle::Nr_Particles_External()
+	);
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false,
+		pamhd::particle::Nr_Particles_External()
+	);
+
+	pamhd::particle::resize_receiving_containers<
+		pamhd::particle::Nr_Particles_External,
+		pamhd::particle::Particles_Internal
+	>(grid.remote_cells(), grid);
+	Cell::set_transfer_all(true, pamhd::particle::Particles_Internal());
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false, pamhd::particle::Particles_Internal());
+
+	for (const auto& cell: grid.local_cells()) {
+		(*cell.data)[pamhd::particle::Nr_Particles_External()] = 0;
+	}
+	Cell::set_transfer_all(true,
+		pamhd::particle::Nr_Particles_External()
+	);
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false,
+		pamhd::particle::Nr_Particles_External()
+	);
 
 	return total_dt;
 

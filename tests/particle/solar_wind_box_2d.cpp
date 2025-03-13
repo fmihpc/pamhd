@@ -724,11 +724,6 @@ int main(int argc, char* argv[]) {
 	while (simulation_time < time_end) {
 		simulation_step++;
 
-		pamhd::particle::split_particles(
-			options_particle.min_particles, random_source,
-			grid, Part_Int, Part_Pos, Part_Mas, SInfo
-		);
-
 		// don't step over the final simulation time
 		const double
 			until_end = time_end - simulation_time,
@@ -769,32 +764,6 @@ int main(int argc, char* argv[]) {
 		}
 
 		simulation_time += dt;
-
-		/*
-		Update internal particles for setting particle copy boundaries.
-
-		TODO overlap computation and communication in boundary processing
-		*/
-		for (const auto& cell: grid.local_cells()) {
-			// (ab)use external number counter as internal number counter
-			(*cell.data)[pamhd::particle::Nr_Particles_External()]
-				= (*cell.data)[pamhd::particle::Particles_Internal()].size();
-		}
-		Cell::set_transfer_all(true,
-			pamhd::particle::Nr_Particles_External()
-		);
-		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false,
-			pamhd::particle::Nr_Particles_External()
-		);
-
-		pamhd::particle::resize_receiving_containers<
-			pamhd::particle::Nr_Particles_External,
-			pamhd::particle::Particles_Internal
-		>(grid.remote_cells(), grid);
-		Cell::set_transfer_all(true, pamhd::particle::Particles_Internal());
-		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false, pamhd::particle::Particles_Internal());
 
 		const auto avg_div = pamhd::math::get_divergence_staggered(
 			grid.local_cells(), grid,

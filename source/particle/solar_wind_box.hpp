@@ -47,6 +47,7 @@ Author(s): Ilja Honkonen
 #include "mhd/solar_wind_box.hpp"
 #include "particle/common.hpp"
 #include "particle/options.hpp"
+#include "particle/solve_dccrg.hpp"
 #include "particle/variables.hpp"
 #include "simulation_options.hpp"
 #include "solar_wind_box_options.hpp"
@@ -70,6 +71,8 @@ template<
 	std::mt19937_64& random_source,
 	const Internal_Particle_Getter& Part_Int
 ) try {
+	using Cell = std::remove_reference_t<decltype(grid)>::cell_data_type;
+
 	if (grid.get_rank() == 0) {
 		std::cout << "Initializing particles: "
 			<< options_part.particles_in_cell << " #/cell" << std::endl;
@@ -124,6 +127,40 @@ template<
 		);
 		id_start += Part_Int(*cell.data).size() * id_increase;
 	}
+
+	// update internal particles
+	for (const auto& cell: grid.local_cells()) {
+		// (ab)use external number counter as internal number counter
+		(*cell.data)[pamhd::particle::Nr_Particles_External()]
+			= (*cell.data)[pamhd::particle::Particles_Internal()].size();
+	}
+	Cell::set_transfer_all(true,
+		pamhd::particle::Nr_Particles_External()
+	);
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false,
+		pamhd::particle::Nr_Particles_External()
+	);
+
+	pamhd::particle::resize_receiving_containers<
+		pamhd::particle::Nr_Particles_External,
+		pamhd::particle::Particles_Internal
+	>(grid.remote_cells(), grid);
+	Cell::set_transfer_all(true, pamhd::particle::Particles_Internal());
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false, pamhd::particle::Particles_Internal());
+
+	for (const auto& cell: grid.local_cells()) {
+		(*cell.data)[pamhd::particle::Nr_Particles_External()] = 0;
+	}
+	Cell::set_transfer_all(true,
+		pamhd::particle::Nr_Particles_External()
+	);
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false,
+		pamhd::particle::Nr_Particles_External()
+	);
+
 	return id_start;
 
 } catch (const std::exception& e) {
@@ -230,6 +267,8 @@ template<
 	using std::runtime_error;
 	using std::to_string;
 	using std::vector;
+
+	using Cell = std::remove_reference_t<decltype(grid)>::cell_data_type;
 
 	const uint64_t id_increase = grid.get_comm_size();
 
@@ -436,6 +475,39 @@ template<
 		next_particle_id, simulation_step, options_sim,
 		options_box, options_part, grid, solar_wind_cells,
 		sim_time, random_source, Part_Int
+	);
+
+	// update internal particles
+	for (const auto& cell: grid.local_cells()) {
+		// (ab)use external number counter as internal number counter
+		(*cell.data)[pamhd::particle::Nr_Particles_External()]
+			= (*cell.data)[pamhd::particle::Particles_Internal()].size();
+	}
+	Cell::set_transfer_all(true,
+		pamhd::particle::Nr_Particles_External()
+	);
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false,
+		pamhd::particle::Nr_Particles_External()
+	);
+
+	pamhd::particle::resize_receiving_containers<
+		pamhd::particle::Nr_Particles_External,
+		pamhd::particle::Particles_Internal
+	>(grid.remote_cells(), grid);
+	Cell::set_transfer_all(true, pamhd::particle::Particles_Internal());
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false, pamhd::particle::Particles_Internal());
+
+	for (const auto& cell: grid.local_cells()) {
+		(*cell.data)[pamhd::particle::Nr_Particles_External()] = 0;
+	}
+	Cell::set_transfer_all(true,
+		pamhd::particle::Nr_Particles_External()
+	);
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false,
+		pamhd::particle::Nr_Particles_External()
 	);
 
 	return next_particle_id;
