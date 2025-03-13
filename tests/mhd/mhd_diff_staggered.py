@@ -3,7 +3,7 @@
 Checks differences between MHD outputs of PAMHD.
 
 Copyright 2016 Ilja Honkonen
-Copyright 2024 Finnish Meteorogical Institute
+Copyright 2024, 2025 Finnish Meteorogical Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -36,9 +36,13 @@ Author(s): Ilja Honkonen
 '''
 
 from importlib.util import module_from_spec, spec_from_file_location
-from os.path import dirname, join
+from os.path import dirname, join, realpath
+from pathlib import Path
 from sys import modules
-spec = spec_from_file_location('common', join(dirname(__file__), 'common.py'))
+spec = spec_from_file_location(
+	'common',
+	join(Path(realpath(__file__)).parent.parent, 'common.py')
+)
 common = module_from_spec(spec)
 modules['common'] = common
 spec.loader.exec_module(common)
