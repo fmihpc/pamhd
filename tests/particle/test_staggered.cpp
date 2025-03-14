@@ -945,11 +945,6 @@ int main(int argc, char* argv[]) {
 	while (simulation_time < time_end) {
 		simulation_step++;
 
-		pamhd::particle::split_particles(
-			options_particle.min_particles, random_source,
-			grid, Part_Int, Part_Pos, Part_Mas, SInfo
-		);
-
 		// don't step over the final simulation time
 		const double
 			until_end = time_end - simulation_time,
@@ -1041,6 +1036,11 @@ int main(int argc, char* argv[]) {
 		if (rank == 0) {
 			cout << " average divergence " << avg_div << endl;
 		}
+
+		pamhd::particle::split_particles(
+			options_particle.min_particles, random_source,
+			grid, Part_Int, Part_Pos, Part_Mas, SInfo
+		);
 
 		nr_particles_created += pamhd::particle::apply_boundaries<
 			pamhd::particle::Particle_Internal,

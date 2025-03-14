@@ -595,7 +595,7 @@ double timestep(
 				Bulk_Velocity, SInfo
 			);
 		} catch (const std::exception& e) {
-			cerr << __FILE__ "(" << __LINE__ << ": "
+			cerr << __FILE__ "(" << __LINE__ << "): "
 				<< "Couldn't accumulate MHD data from particles: " << e.what()
 				<< endl;
 			abort();

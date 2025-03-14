@@ -773,6 +773,11 @@ int main(int argc, char* argv[]) {
 			cout << " average divergence " << avg_div << endl;
 		}
 
+		pamhd::particle::split_particles(
+			options_particle.min_particles, random_source,
+			grid, Part_Int, Part_Pos, Part_Mas, SInfo
+		);
+
 		pamhd::mhd::apply_boundaries_sw_box(
 			grid, simulation_time, options_box, solar_wind_cells,
 			face_cells, edge_cells, vert_cells, planet_cells,

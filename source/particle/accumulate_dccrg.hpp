@@ -660,11 +660,13 @@ template<
 	for (const auto& cell: grid.local_cells()) {
 		if (
 			SInfo.data(*cell.data) > -1
-			and Particles(*cell.data).size() == 0
+			and Particles(*cell.data).size() < 2
 		) {
 			throw std::runtime_error(
 				__FILE__ "(" + to_string(__LINE__) + "): "
-				+ " No particles in cell " + to_string(cell.id));
+				"Not enough particles to accumulate pressure "
+				"in cell " + to_string(cell.id) + " of type "
+				+ to_string(SInfo.data(*cell.data)));
 		}
 
 		Bulk_Mass.data(*cell.data) = 0;

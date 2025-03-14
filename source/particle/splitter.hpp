@@ -131,9 +131,8 @@ template<
 	const size_t original_nr_particles = particles.size();
 	if (min_particles > 0 and original_nr_particles == 0) {
 		throw std::domain_error(
-			std::string(__FILE__) + "(" + to_string(__LINE__) + "): "
-			+ "No particles in cell " + to_string(cell_id) + " starting at "
-			+ to_string(cell_min[0]) + ", " + to_string(cell_min[1]) + ", " + to_string(cell_min[2])
+			__FILE__"(" + to_string(__LINE__) + "): "
+			+ "No particles in cell " + to_string(cell_id)
 		);
 	}
 
@@ -141,11 +140,9 @@ template<
 		return;
 	}
 
-	// don't allocate in below loop
-	particles.reserve(min_particles);
-
 	std::uniform_int_distribution<size_t> index_generator(0, original_nr_particles - 1);
-	for (size_t i = 0; i < min_particles - original_nr_particles; i++) {
+	particles.reserve(min_particles);
+	for (size_t i = original_nr_particles; i < min_particles; i++) {
 		particles.push_back(
 			split(
 				particles[index_generator(random_source)],
@@ -183,7 +180,7 @@ template<
 	using std::to_string;
 
 	for (const auto& cell: grid.local_cells()) {
-		if (SInfo.data(*cell.data) < 1) {
+		if (SInfo.data(*cell.data) < 0) {
 			continue;
 		}
 
@@ -205,8 +202,10 @@ template<
 			);
 		} catch (const std::exception& e) {
 			throw std::runtime_error(
-				std::string("Couldn't split particles in normal cell ")
-				+ to_string(cell.id) + ": "
+				"Couldn't split particle(s) in cell "
+				+ to_string(cell.id) + " of type "
+				+ to_string(SInfo.data(*cell.data))
+				+ ": " + e.what()
 			);
 		}
 	}
