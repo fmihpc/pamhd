@@ -28,6 +28,7 @@ Author(s): Ilja Honkonen
 
 from argparse import ArgumentParser
 from imp import load_source
+from math import isnan
 from os import _exit
 from os.path import basename, dirname, join, realpath
 from pathlib import Path
@@ -146,6 +147,9 @@ def save_slice_plot(
 def dc2vtk(outname, data):
 	with open(outname, 'w') as outfile:
 		cells = data['cells']
+		# skip dont_solve cells
+		if len(cells) > 0 and 'mhd info' in data[cells[0]]:
+			cells = [cell for cell in data['cells'] if data[cell]['mhd info'] >= 0]
 		outfile.write(
 			"# vtk DataFile Version 2.0\n"
 			+ "MHD data from PAMHD\n"
@@ -195,10 +199,11 @@ def dc2vtk(outname, data):
 			for c in cells:
 				mas = data[c]['mhd     '][0]
 				mom = data[c]['mhd     '][1]
-				outfile.write(
-					str(mom[0]/mas) + ' '
-					+ str(mom[1]/mas) + ' '
-					+ str(mom[2]/mas) + '\n')
+				vx, vy, vz = mom[0]/mas, mom[1]/mas, mom[2]/mas
+				if isnan(vx) or isnan(vy) or isnan(vz):
+					outfile.write('0 0 0\n')
+				else:
+					outfile.write(str(vx)+' '+str(vy)+' '+str(vz)+'\n')
 			outfile.write('SCALARS pressure double 1\nlookup_table default\n')
 			for c in cells:
 				mas = data[c]['mhd     '][0]
@@ -208,7 +213,10 @@ def dc2vtk(outname, data):
 				kin_nrj = (mom[0]**2 + mom[1]**2 + mom[2]**2) / 2 / mas
 				mag_nrj = (mag[0]**2 + mag[1]**2 + mag[2]**2) / 2 / data['vacuum_permeability']
 				pressure = (nrj - kin_nrj - mag_nrj) * (data['adiabatic_index'] - 1)
-				outfile.write(str(pressure) + '\n')
+				if isnan(pressure):
+					outfile.write('0\n')
+				else:
+					outfile.write(str(pressure) + '\n')
 			outfile.write('VECTORS volume_B double\n')
 			for c in cells:
 				mag = data[c]['mhd     '][3]
