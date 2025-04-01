@@ -67,13 +67,18 @@ def plot1d(data, outname):
 		gs[2] + rl0c[2] * l0cl[2]
 	)
 	with open(outname + '.gnuplot', 'w') as outfile:
+		cells = data['cells']
+		# skip dont_solve cells
+		if len(cells) > 0 and 'mhd info' in data[cells[0]]:
+			cells = [cell for cell in data['cells'] if data[cell]['mhd info'] >= 0]
+
 		outfile.write(
 			common_1d + '\nset title "Time '
 			+ str(data['sim_time']) + '"\nset xlabel "Dimension '
 			+ str(dim+1) + '"\nset xrange [' + str(gs[dim])
 			+ ':' + str(ge[dim]) + ']\n')
 
-		if 'mhd     ' in data['cell_data'][0]:
+		if 'mhd     ' in data[cells[0]]:
 			outfile.write(
 				'set output "' + outname + '_n.png"\n'
 				+ 'set ylabel "Number density" textcolor lt 1\n'
@@ -82,25 +87,24 @@ def plot1d(data, outname):
 				+ 'set format y "%.2e"\nset format y2 "%.2e"\n'
 				+ 'set y2tics auto\nplot "-" using 1:2 axes '
 				+  'x1y1 linewidth 2, "-" u 1:2 axes x1y2 lt 3 lw 2\n')
-			for i in range(len(data['cells'])):
-				mas = data['cell_data'][i]['mhd     '][0]
+			for cell in cells:
+				mas = data[cell]['mhd     '][0]
 				outfile.write(
-					str(data['centers'][i][dim]) + ' '
+					str(data['centers'][cell][dim]) + ' '
 					+ str(mas / data['proton_mass']) + '\n')
 			outfile.write('end\n')
-			for i in range(len(data['cells'])):
-				cell_data = data['cell_data'][i]
-				mas = cell_data['mhd     '][0]
-				mom = cell_data['mhd     '][1]
-				nrj = cell_data['mhd     '][2]
-				mag = cell_data['mhd     '][3]
+			for cell in cells:
+				mas = data[cell]['mhd     '][0]
+				mom = data[cell]['mhd     '][1]
+				nrj = data[cell]['mhd     '][2]
+				mag = data[cell]['mhd     '][3]
 				kin_nrj = (mom[0]**2 + mom[1]**2 + mom[2]**2) / 2 / mas
 				if isnan(kin_nrj):
 					kin_nrj = 0
 				mag_nrj = (mag[0]**2 + mag[1]**2 + mag[2]**2) / 2 / data['vacuum_permeability']
 				pressure = (nrj - kin_nrj - mag_nrj) * (data['adiabatic_index'] - 1)
 				outfile.write(
-					str(data['centers'][i][dim]) + ' '
+					str(data['centers'][cell][dim]) + ' '
 					+ str(pressure) + '\n')
 			outfile.write('end\nreset\n')
 			outfile.write(
@@ -113,26 +117,26 @@ def plot1d(data, outname):
 				+ '"-" u 1:2 lw 2 t "component 1", '
 				+ '"-" u 1:2 lw 2 t "component 2", '
 				+ '"-" u 1:2 lw 2 t "component 3"\n')
-			for i in range(len(data['cells'])):
-				mas = data['cell_data'][i]['mhd     '][0]
-				mom = data['cell_data'][i]['mhd     '][1]
+			for cell in cells:
+				mas = data[cell]['mhd     '][0]
+				mom = data[cell]['mhd     '][1]
 				vx = mom[0] / mas
 				if isnan(vx):
 					vx = 0
-				outfile.write(str(data['centers'][i][dim])+' '+str(vx)+'\n')
+				outfile.write(str(data['centers'][cell][dim])+' '+str(vx)+'\n')
 			outfile.write('end\n')
-			for i in range(len(data['cells'])):
-				mas = data['cell_data'][i]['mhd     '][0]
+			for cell in cells:
+				mas = data[cell]['mhd     '][0]
 				vy = mom[1] / mas
 				if isnan(vx):
 					vy = 0
-				outfile.write(str(data['centers'][i][dim])+' '+str(vy)+'\n')
+				outfile.write(str(data['centers'][cell][dim])+' '+str(vy)+'\n')
 			outfile.write('end\n')
-			for i in range(len(data['cells'])):
+			for cell in cells:
 				vz = mom[2] / mas
 				if isnan(vz):
 					vz = 0
-				outfile.write(str(data['centers'][i][dim])+' '+str(vz)+'\n')
+				outfile.write(str(data['centers'][cell][dim])+' '+str(vz)+'\n')
 			outfile.write('end\nreset\n')
 			outfile.write(
 				'set title "Time ' + str(data['sim_time'])
@@ -144,26 +148,26 @@ def plot1d(data, outname):
 				+ '"-" u 1:2 lw 2 t "component 1", '
 				+ '"-" u 1:2 lw 2 t "component 2", '
 				+ '"-" u 1:2 lw 2 t "component 3"\n')
-			for i in range(len(data['cells'])):
-				mag = data['cell_data'][i]['mhd     '][3]
+			for cell in cells:
+				mag = data[cell]['mhd     '][3]
 				outfile.write(
-					str(data['centers'][i][dim]) + ' '
+					str(data['centers'][cell][dim]) + ' '
 					+ str(mag[0]) + '\n')
 			outfile.write('end\n')
-			for i in range(len(data['cells'])):
-				mag = data['cell_data'][i]['mhd     '][3]
+			for cell in cells:
+				mag = data[cell]['mhd     '][3]
 				outfile.write(
-					str(data['centers'][i][dim]) + ' '
+					str(data['centers'][cell][dim]) + ' '
 					+ str(mag[1]) + '\n')
 			outfile.write('end\n')
-			for i in range(len(data['cells'])):
-				mag = data['cell_data'][i]['mhd     '][3]
+			for cell in cells:
+				mag = data[cell]['mhd     '][3]
 				outfile.write(
-					str(data['centers'][i][dim]) + ' '
+					str(data['centers'][cell][dim]) + ' '
 					+ str(mag[2]) + '\n')
 			outfile.write('end\nreset\n')
 
-		if 'substmin' in data['cell_data'][0]:
+		if 'substmin' in data[cells[0]]:
 			outfile.write(
 				'set title "Time ' + str(data['sim_time'])
 				+ '"\nset xlabel "Dimension ' + str(dim+1)
@@ -171,7 +175,7 @@ def plot1d(data, outname):
 				+ str(ge[dim]) + ']\nset output "'
 				+ outname + '_substep.png"\n'
 				+ 'set ylabel "Substepping period"\n')
-			if 'timestep' in data['cell_data'][0]:
+			if 'timestep' in data[cells[0]]:
 				outfile.write(
 					'set y2label "Cell dt"\n'
 					+ 'set y2tics\nset ytics nomirror\n')
@@ -180,34 +184,34 @@ def plot1d(data, outname):
 				+ '"-" u 1:2 lw 2 t "min substep", '
 				+ '"-" u 1:2 lw 2 t "max substep", '
 				+ '"-" u 1:2 lw 2 t "substep"')
-			if 'timestep' in data['cell_data'][0]:
+			if 'timestep' in data[cells[0]]:
 				outfile.write(', "-" u 1:2 axis x1y2 lw 2 t "dt"\n')
 			else:
 				outfile.write('\n')
 			for i in range(len(data['cells'])):
 				outfile.write(
-					str(data['centers'][i][dim]) + ' '
+					str(data['centers'][cell][dim]) + ' '
 					# min and max are kept in 2^N format
-					+ str(2**data['cell_data'][i]['substmin']) + '\n')
+					+ str(2**data[cell]['substmin']) + '\n')
 			outfile.write('end\n')
-			for i in range(len(data['cells'])):
+			for cell in cells:
 				outfile.write(
-					str(data['centers'][i][dim]) + ' '
-					+ str(2**data['cell_data'][i]['substmax']) + '\n')
+					str(data['centers'][cell][dim]) + ' '
+					+ str(2**data[cell]['substmax']) + '\n')
 			outfile.write('end\n')
-			for i in range(len(data['cells'])):
+			for cell in cells:
 				outfile.write(
-					str(data['centers'][i][dim]) + ' '
-					+ str(data['cell_data'][i]['substep ']) + '\n')
+					str(data['centers'][cell][dim]) + ' '
+					+ str(data[cell]['substep ']) + '\n')
 			outfile.write('end\n')
-		if 'timestep' in data['cell_data'][0]:
-			for i in range(len(data['cells'])):
+		if 'timestep' in data[cells[0]]:
+			for cell in cells:
 				outfile.write(
-					str(data['centers'][i][dim]) + ' '
-					+ str(data['cell_data'][i]['timestep']) + '\n')
+					str(data['centers'][cell][dim]) + ' '
+					+ str(data[cell]['timestep']) + '\n')
 			outfile.write('end\nreset\n')
 
-		if 'bgB     ' in data['cell_data'][0]:
+		if 'bgB     ' in data[cells[0]]:
 			outfile.write(
 				'set title "Time ' + str(data['sim_time'])
 				+ '"\nset xlabel "Dimension ' + str(dim+1)
@@ -219,10 +223,10 @@ def plot1d(data, outname):
 				+ '"-" u 1:2 lw 2 t "component 2", '
 				+ '"-" u 1:2 lw 2 t "component 3"\n')
 			for bgB_i in [3, 10, 17]:
-				for i in range(len(data['cells'])):
-					bgB = data['cell_data'][i]['bgB     ']
+				for cell in cells:
+					bgB = data[cell]['bgB     ']
 					outfile.write(
-						str(data['centers'][i][dim]) + ' '
+						str(data['centers'][cell][dim]) + ' '
 						+ str(bgB[bgB_i]) + '\n')
 				outfile.write('end\n')
 			outfile.write('reset\n')
@@ -243,22 +247,24 @@ if __name__ == '__main__':
 	for inname in args.files:
 		with open(inname, 'rb') as infile:
 			data = common.get_metadata(infile)
-			data['cells'] = common.get_cells(infile, data['total_cells'])
-			if len(data['cells']) == 0:
-				continue
-			data['cell_data'] = common.get_cell_data(infile, data, range(len(data['cells'])))
-
 			if data['file_version'] != 4:
 				exit('Unsupported file version: ' + str(data['file_version']))
 
 			if data['geometry_id'] != 1:
 				exit('Unsupported geometry: ' + str(data['geometry_id']))
 
-			data['centers'] = []
+			data['cells'] = common.get_cells(infile, data['total_cells'])
+			if len(data['cells']) == 0:
+				continue
+			sim_data_ = common.get_cell_data(infile, data, range(len(data['cells'])))
+			for i in range(len(data['cells'])):
+				data[data['cells'][i]] = sim_data_[i]
+
+			data['centers'] = dict()
 			for i in range(len(data['cells'])):
 				cell_id = data['cells'][i]
 				center, _ = common.get_cell_geom(data, cell_id)
-				data['centers'].append(center)
+				data['centers'][cell_id] = center
 
 			rl0c = data['ref_lvl_0_cells']
 			dims = 0
