@@ -36,6 +36,7 @@ Author(s): Ilja Honkonen
 '''
 
 from importlib.util import module_from_spec, spec_from_file_location
+from math import isnan
 from os.path import dirname, isfile, join, realpath
 from pathlib import Path
 from sys import modules
@@ -94,6 +95,8 @@ def plot1d(data, outname):
 				nrj = cell_data['mhd     '][2]
 				mag = cell_data['mhd     '][3]
 				kin_nrj = (mom[0]**2 + mom[1]**2 + mom[2]**2) / 2 / mas
+				if isnan(kin_nrj):
+					kin_nrj = 0
 				mag_nrj = (mag[0]**2 + mag[1]**2 + mag[2]**2) / 2 / data['vacuum_permeability']
 				pressure = (nrj - kin_nrj - mag_nrj) * (data['adiabatic_index'] - 1)
 				outfile.write(
@@ -113,23 +116,23 @@ def plot1d(data, outname):
 			for i in range(len(data['cells'])):
 				mas = data['cell_data'][i]['mhd     '][0]
 				mom = data['cell_data'][i]['mhd     '][1]
-				outfile.write(
-					str(data['centers'][i][dim]) + ' '
-					+ str(mom[0] / mas) + '\n')
+				vx = mom[0] / mas
+				if isnan(vx):
+					vx = 0
+				outfile.write(str(data['centers'][i][dim])+' '+str(vx)+'\n')
 			outfile.write('end\n')
 			for i in range(len(data['cells'])):
 				mas = data['cell_data'][i]['mhd     '][0]
-				mom = data['cell_data'][i]['mhd     '][1]
-				outfile.write(
-					str(data['centers'][i][dim]) + ' '
-					+ str(mom[1] / mas) + '\n')
+				vy = mom[1] / mas
+				if isnan(vx):
+					vy = 0
+				outfile.write(str(data['centers'][i][dim])+' '+str(vy)+'\n')
 			outfile.write('end\n')
 			for i in range(len(data['cells'])):
-				mas = data['cell_data'][i]['mhd     '][0]
-				mom = data['cell_data'][i]['mhd     '][1]
-				outfile.write(
-					str(data['centers'][i][dim]) + ' '
-					+ str(mom[2] / mas) + '\n')
+				vz = mom[2] / mas
+				if isnan(vz):
+					vz = 0
+				outfile.write(str(data['centers'][i][dim])+' '+str(vz)+'\n')
 			outfile.write('end\nreset\n')
 			outfile.write(
 				'set title "Time ' + str(data['sim_time'])
