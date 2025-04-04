@@ -456,6 +456,8 @@ int main(int argc, char* argv[]) {
 					cout << "NOTE: background magnetic field ignored by roe-athena solver." << endl;
 				}
 				return pamhd::mhd::Solver::roe_athena;
+			} else if (options_mhd.solver == "hybrid") {
+				return pamhd::mhd::Solver::hybrid;
 			} else {
 				cerr <<  __FILE__ << "(" << __LINE__ << "): "
 					<< "Unsupported solver: " << options_mhd.solver

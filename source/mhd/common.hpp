@@ -50,7 +50,8 @@ enum class Solver {
 	rusanov_staggered,
 	hll_athena,
 	hlld_athena,
-	roe_athena
+	roe_athena,
+	hybrid // MHD solution not used on particle side
 };
 
 

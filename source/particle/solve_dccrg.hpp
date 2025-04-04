@@ -539,9 +539,15 @@ double timestep(
 		Substep_Min, Substep_Max
 	);
 
-	pamhd::mhd::minimize_timestep(
-		grid, mhd_time_step_factor, SInfo, Timestep, Max_v_wave
-	);
+	if (mhd_solver != mhd::Solver::hybrid) {
+		pamhd::mhd::minimize_timestep(
+			grid, mhd_time_step_factor, SInfo, Timestep, Max_v_wave
+		);
+	} else {
+		for (const auto& cell: grid.local_cells()) {
+			Timestep.data(*cell.data) = numeric_limits<double>::max();
+		}
+	}
 
 	pamhd::particle::minimize_timestep(
 		grid, particle_time_step_factor, SInfo,
@@ -648,7 +654,7 @@ double timestep(
 		pamhd::mhd::get_fluxes(
 			mhd_solver, grid.inner_cells(), grid, substep,
 			adiabatic_index, vacuum_permeability, sub_dt,
-			Mas, Mom, Nrj, Vol_B, Face_dB, Bg_B,
+			Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 			Mas_f, Mom_f, Nrj_f, Mag_f,
 			SInfo, Substep, Max_v_wave
 		);
@@ -668,7 +674,7 @@ double timestep(
 		pamhd::mhd::get_fluxes(
 			mhd_solver, grid.outer_cells(), grid, substep,
 			adiabatic_index, vacuum_permeability, sub_dt,
-			Mas, Mom, Nrj, Vol_B, Face_dB, Bg_B,
+			Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 			Mas_f, Mom_f, Nrj_f, Mag_f,
 			SInfo, Substep, Max_v_wave
 		);
@@ -686,7 +692,7 @@ double timestep(
 		pamhd::mhd::get_fluxes(
 			mhd_solver, grid.remote_cells(), grid, substep,
 			adiabatic_index, vacuum_permeability, sub_dt,
-			Mas, Mom, Nrj, Vol_B, Face_dB, Bg_B,
+			Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 			Mas_f, Mom_f, Nrj_f, Mag_f,
 			SInfo, Substep, Max_v_wave
 		);

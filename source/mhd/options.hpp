@@ -114,11 +114,12 @@ struct Options
 			and solver != "hll-athena"
 			and solver != "hlld-athena"
 			and solver != "roe-athena"
+			and solver != "hybrid"
 		) {
 			throw std::invalid_argument(
 				std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
 				+ "Invalid mhd solver: " + solver
-				+ ", should be one of rusanov, hll-athena, hlld-athena, roe-athena."
+				+ ", should be one of rusanov, hll-athena, hlld-athena, roe-athena, hybrid."
 			);
 		}
 

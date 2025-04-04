@@ -117,7 +117,7 @@ template <
 	const Magnetic_Field::data_type bg_face_b
 		= get_rotated_vector(Bg_B.data(*cell.data)(dir), abs(dir));
 	detail::MHD flux;
-	double max_vel;
+	double max_vel = -1;
 	try {
 		#define SOLVER(name) \
 			name< \
@@ -144,6 +144,8 @@ template <
 			break;
 		case pamhd::mhd::Solver::roe_athena:
 			tie(flux, max_vel) = SOLVER(pamhd::mhd::athena::get_flux_roe);
+			break;
+		case pamhd::mhd::Solver::hybrid:
 			break;
 		default:
 			std::cerr <<  __FILE__ << "(" << __LINE__ << ") "
@@ -201,7 +203,8 @@ template <
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
-	class Magnetic_Field_Getter,
+	class Volume_Magnetic_Field_Getter,
+	class Face_Magnetic_Field_Getter,
 	class Face_dB_Getter,
 	class Background_Magnetic_Field_Getter,
 	class Mass_Density_Flux_Getters,
@@ -222,7 +225,8 @@ template <
 	const Mass_Density_Getter& Mas,
 	const Momentum_Density_Getter& Mom,
 	const Total_Energy_Density_Getter& Nrj,
-	const Magnetic_Field_Getter& Vol_B,
+	const Volume_Magnetic_Field_Getter& Vol_B,
+	const Face_Magnetic_Field_Getter& Face_B,
 	const Face_dB_Getter& Face_dB,
 	const Background_Magnetic_Field_Getter& Bg_B,
 	const Mass_Density_Flux_Getters& Mas_f,
@@ -234,6 +238,7 @@ template <
 	const Max_Velocity_Getter& Max_v
 ) try {
 	using std::abs;
+	using std::array;
 	using std::get;
 	using std::min;
 	using std::runtime_error;
@@ -271,7 +276,7 @@ template <
 		const auto [cell_dx, cell_dy, cell_dz]
 			= grid.geometry.get_length(cell.id);
 
-		std::array<bool, 3> missing_flux{false, false, false};
+		array<bool, 3> missing_flux{false, false, false};
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
 			if (fn == 0) continue;
@@ -301,12 +306,15 @@ template <
 				Vol_B, Bg_B, SInfo, Substep, solver,
 				adiabatic_index, vacuum_permeability, dt);
 
-			Max_v.data(*cell.data)(fn) = max_vel;
-			Max_v.data(*neighbor.data)(-fn) = max_vel;
+			if (solver != Solver::hybrid) {
+				Max_v.data(*cell.data)(fn) = max_vel;
+				Max_v.data(*neighbor.data)(-fn) = max_vel;
+			}
 
 			// cell size and substep factors for fluxes
 			const auto min_sub = min(csub, nsub);
-			double cfac = dt*min_sub, nfac = dt*min_sub;
+			const auto min_dt = dt * min_sub;
+			double cfac = min_dt, nfac = min_dt;
 			// average smaller fluxes through large face
 			if (neighbor.relative_size > 0) {
 				cfac /= 4;
@@ -316,68 +324,165 @@ template <
 
 			const auto [neigh_dx, neigh_dy, neigh_dz]
 				= grid.geometry.get_length(neighbor.id);
+			const auto
+				min_dx = min(cell_dx, neigh_dx),
+				min_dy = min(cell_dy, neigh_dy),
+				min_dz = min(cell_dz, neigh_dz);
+			const auto
+				Vx_avg
+					= Mom.data(*cell.data)[0]/Mas.data(*cell.data)/2
+					+ Mom.data(*neighbor.data)[0]/Mas.data(*neighbor.data)/2,
+				Vy_avg
+					= Mom.data(*cell.data)[1]/Mas.data(*cell.data)/2
+					+ Mom.data(*neighbor.data)[1]/Mas.data(*neighbor.data)/2,
+				Vz_avg
+					= Mom.data(*cell.data)[2]/Mas.data(*cell.data)/2
+					+ Mom.data(*neighbor.data)[2]/Mas.data(*neighbor.data)/2,
+				Bx_avg
+					= Vol_B.data(*cell.data)[0]/2
+					+ Vol_B.data(*neighbor.data)[0]/2,
+				By_avg
+					= Vol_B.data(*cell.data)[1]/2
+					+ Vol_B.data(*neighbor.data)[1]/2,
+				Bz_avg
+					= Vol_B.data(*cell.data)[2]/2
+					+ Vol_B.data(*neighbor.data)[2]/2;
+			const double inv_min_dt = [&](){
+				if (min_dt == 0) return 0.0;
+				else return 1.0 / min_dt;}();
 
 			if (fn == +1) {
-				if (cell.is_local) {
+				if (solver != Solver::hybrid and cell.is_local) {
 					Mas_f(*cell.data, +1) += cfac * flux[mas_int];
 					Mom_f(*cell.data, +1) += cfac * flux[mom_int];
 					Nrj_f(*cell.data, +1) += cfac * flux[nrj_int];
 					Mag_f(*cell.data, +1) += cfac * flux[mag_int];
 				}
 
-				if (neighbor.is_local) {
+				if (solver != Solver::hybrid and neighbor.is_local) {
 					Mas_f(*neighbor.data, -1) += nfac * flux[mas_int];
 					Mom_f(*neighbor.data, -1) += nfac * flux[mom_int];
 					Nrj_f(*neighbor.data, -1) += nfac * flux[nrj_int];
 					Mag_f(*neighbor.data, -1) += nfac * flux[mag_int];
 				}
 
+				const auto E_source = [&]()->array<double, 3> {
+					if (solver != Solver::hybrid) {
+						return {
+							flux[mag_int][0],
+							flux[mag_int][1],
+							flux[mag_int][2]};
+					} else {
+						const auto Bx = [&]()->double {
+							if (neighbor.relative_size < 0) {
+								return Face_B.data(*neighbor.data)(-1);
+							} else {
+								return Face_B.data(*cell.data)(+1);
+							}
+						}();
+						return {
+							// not used in assign_face_dBs_fx
+							0,
+							// remove +dt*dz term applied
+							// in assign_face_dBs_fx
+							(Vy_avg*Bx - Vx_avg*By_avg)
+								* inv_min_dt / min_dz,
+							// remove -dt*dy term
+							-(Vx_avg*Bz_avg - Vz_avg*Bx)
+								* inv_min_dt / min_dy};
+					}
+				}();
 				assign_face_dBs_fx(
-					grid, cell, neighbor, flux[mag_int], Face_dB,
-					min(cell_dy, neigh_dy), min(cell_dz, neigh_dz),
-					dt*min_sub);
+					grid, cell, neighbor, E_source, Face_dB,
+					min_dy, min_dz, min_dt);
 			}
 
 			if (fn == +2) {
-				if (cell.is_local) {
+				if (solver != Solver::hybrid and cell.is_local) {
 					Mas_f(*cell.data, +2) += cfac * flux[mas_int];
 					Mom_f(*cell.data, +2) += cfac * flux[mom_int];
 					Nrj_f(*cell.data, +2) += cfac * flux[nrj_int];
 					Mag_f(*cell.data, +2) += cfac * flux[mag_int];
 				}
 
-				if (neighbor.is_local) {
+				if (solver != Solver::hybrid and neighbor.is_local) {
 					Mas_f(*neighbor.data, -2) += nfac * flux[mas_int];
 					Mom_f(*neighbor.data, -2) += nfac * flux[mom_int];
 					Nrj_f(*neighbor.data, -2) += nfac * flux[nrj_int];
 					Mag_f(*neighbor.data, -2) += nfac * flux[mag_int];
 				}
 
+				const auto E_source = [&]()->array<double, 3> {
+					if (solver != Solver::hybrid) {
+						return {
+							flux[mag_int][0],
+							flux[mag_int][1],
+							flux[mag_int][2]};
+					} else {
+						const auto By = [&]()->double {
+							if (neighbor.relative_size < 0) {
+								return Face_B.data(*neighbor.data)(-2);
+							} else {
+								return Face_B.data(*cell.data)(+2);
+							}
+						}();
+						return {
+							// remove -dt*dz use in assign...fy
+							-(Vy_avg*Bx_avg - Vx_avg*By)
+								* inv_min_dt / min_dz,
+							0, // not used
+							// remove +dt*dx
+							(Vz_avg*By - Vy_avg*Bz_avg)
+								* inv_min_dt / min_dx};
+					}
+				}();
 				assign_face_dBs_fy(
-					grid, cell, neighbor, flux[mag_int], Face_dB,
-					min(cell_dx, neigh_dx), min(cell_dz, neigh_dz),
-					dt*min_sub);
+					grid, cell, neighbor, E_source, Face_dB,
+					min_dx, min_dz, min_dt);
 			}
 
 			if (fn == +3) {
-				if (cell.is_local) {
+				if (solver != Solver::hybrid and cell.is_local) {
 					Mas_f(*cell.data, +3) += cfac * flux[mas_int];
 					Mom_f(*cell.data, +3) += cfac * flux[mom_int];
 					Nrj_f(*cell.data, +3) += cfac * flux[nrj_int];
 					Mag_f(*cell.data, +3) += cfac * flux[mag_int];
 				}
 
-				if (neighbor.is_local) {
+				if (solver != Solver::hybrid and neighbor.is_local) {
 					Mas_f(*neighbor.data, -3) += nfac * flux[mas_int];
 					Mom_f(*neighbor.data, -3) += nfac * flux[mom_int];
 					Nrj_f(*neighbor.data, -3) += nfac * flux[nrj_int];
 					Mag_f(*neighbor.data, -3) += nfac * flux[mag_int];
 				}
 
+				const auto E_source = [&]()->array<double, 3> {
+					if (solver != Solver::hybrid) {
+						return {
+							flux[mag_int][0],
+							flux[mag_int][1],
+							flux[mag_int][2]};
+					} else {
+						const auto Bz = [&]()->double {
+							if (neighbor.relative_size < 0) {
+								return Face_B.data(*neighbor.data)(-3);
+							} else {
+								return Face_B.data(*cell.data)(+3);
+							}
+						}();
+						return {
+							// remove +dt*dy term
+							(Vx_avg*Bz - Vz_avg*Bx_avg)
+								* inv_min_dt / min_dy,
+							// remove -dt*dx
+							-(Vz_avg*By_avg - Vy_avg*Bz)
+								* inv_min_dt / min_dx,
+							0};
+					}
+				}();
 				assign_face_dBs_fz(
-					grid, cell, neighbor, flux[mag_int], Face_dB,
-					min(cell_dx, neigh_dx), min(cell_dy, neigh_dy),
-					dt*min_sub);
+					grid, cell, neighbor, E_source, Face_dB,
+					min_dx, min_dy, min_dt);
 			}
 		}
 
@@ -1560,7 +1665,8 @@ template <
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
-	class Magnetic_Field_Getter,
+	class Volume_Magnetic_Field_Getter,
+	class Face_Magnetic_Field_Getter,
 	class Face_dB_Getter,
 	class Background_Magnetic_Field_Getter,
 	class Mass_Density_Flux_Getters,
@@ -1580,7 +1686,8 @@ template <
 	const Mass_Density_Getter& Mas,
 	const Momentum_Density_Getter& Mom,
 	const Total_Energy_Density_Getter& Nrj,
-	const Magnetic_Field_Getter& Vol_B,
+	const Volume_Magnetic_Field_Getter& Vol_B,
+	const Face_Magnetic_Field_Getter& Face_B,
 	const Face_dB_Getter& Face_dB,
 	const Background_Magnetic_Field_Getter& Bg_B,
 	const Mass_Density_Flux_Getters& Mas_f,
@@ -1624,10 +1731,11 @@ template <
 	if (update_copies) {
 		grid.start_remote_neighbor_copy_updates();
 	}
+
 	pamhd::mhd::get_fluxes(
 		solver, grid.inner_cells(), grid, substep,
 		adiabatic_index, vacuum_permeability, sub_dt,
-		Mas, Mom, Nrj, Vol_B, Face_dB, Bg_B,
+		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 		Mas_f, Mom_f, Nrj_f, Mag_f,
 		SInfo, Substep, Max_v
 	);
@@ -1639,7 +1747,7 @@ template <
 	pamhd::mhd::get_fluxes(
 		solver, grid.outer_cells(), grid, substep,
 		adiabatic_index, vacuum_permeability, sub_dt,
-		Mas, Mom, Nrj, Vol_B, Face_dB, Bg_B,
+		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 		Mas_f, Mom_f, Nrj_f, Mag_f,
 		SInfo, Substep, Max_v
 	);
@@ -1654,7 +1762,7 @@ template <
 	pamhd::mhd::get_fluxes(
 		solver, grid.remote_cells(), grid, substep,
 		adiabatic_index, vacuum_permeability, sub_dt,
-		Mas, Mom, Nrj, Vol_B, Face_dB, Bg_B,
+		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 		Mas_f, Mom_f, Nrj_f, Mag_f,
 		SInfo, Substep, Max_v
 	);
@@ -1745,8 +1853,8 @@ template <
 
 		get_all_fluxes(
 			sub_dt, solver, grid, substep, adiabatic_index,
-			vacuum_permeability, Mas, Mom, Nrj,
-			Vol_B, Face_dB, Bg_B, Mas_f, Mom_f, Nrj_f,
+			vacuum_permeability, Mas, Mom, Nrj, Vol_B,
+			Face_B, Face_dB, Bg_B, Mas_f, Mom_f, Nrj_f,
 			Mag_f, SInfo, Substep, Max_v
 		);
 
