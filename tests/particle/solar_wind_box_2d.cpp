@@ -762,7 +762,7 @@ int main(int argc, char* argv[]) {
 
 		if (rank == 0) {
 			cout << "Solution calculated at time " << simulation_time
-				<< " s with time step " << dt << " s" << flush;
+				<< " s, timestep " << dt << " s" << flush;
 		}
 
 		simulation_time += dt;
@@ -772,13 +772,29 @@ int main(int argc, char* argv[]) {
 			Face_B, Div_B, SInfo
 		);
 		if (rank == 0) {
-			cout << " average divergence " << avg_div << endl;
+			cout << ", average divergence " << avg_div;
 		}
 
-		pamhd::particle::split_particles(
+		const uint64_t splits_local = pamhd::particle::split_particles(
 			options_particle.min_particles, random_source,
 			grid, Part_Int, Part_Pos, Part_Mas, SInfo
 		);
+		uint64_t splits_global = 0;
+		if (MPI_Reduce(
+			&splits_local, &splits_global, 1,
+			MPI_UINT64_T, MPI_SUM, 0, comm
+		) != MPI_SUCCESS) {
+			std::cerr << __FILE__ "(" << __LINE__
+				<< "): Couldn't reduce max substep." << std::endl;
+			abort();
+		}
+		if (rank == 0) {
+			if (splits_global > 0) {
+				cout << ", " << splits_global << " particle(s) split" << endl;
+			} else {
+				cout << endl;
+			}
+		}
 
 		pamhd::mhd::apply_boundaries_sw_box(
 			grid, simulation_time, options_box, solar_wind_cells,

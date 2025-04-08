@@ -340,13 +340,25 @@ template <
 					+ Mom.data(*neighbor.data)[2]/Mas.data(*neighbor.data)/2,
 				Bx_avg
 					= Vol_B.data(*cell.data)[0]/2
-					+ Vol_B.data(*neighbor.data)[0]/2,
+					+ Vol_B.data(*neighbor.data)[0]/2
+					+ Bg_B.data(*cell.data)(-1)[0]/4
+					+ Bg_B.data(*cell.data)(+1)[0]/4
+					+ Bg_B.data(*neighbor.data)(-1)[0]/4
+					+ Bg_B.data(*neighbor.data)(+1)[0]/4,
 				By_avg
 					= Vol_B.data(*cell.data)[1]/2
-					+ Vol_B.data(*neighbor.data)[1]/2,
+					+ Vol_B.data(*neighbor.data)[1]/2
+					+ Bg_B.data(*cell.data)(-2)[1]/4
+					+ Bg_B.data(*cell.data)(+2)[1]/4
+					+ Bg_B.data(*neighbor.data)(-2)[1]/4
+					+ Bg_B.data(*neighbor.data)(+2)[1]/4,
 				Bz_avg
 					= Vol_B.data(*cell.data)[2]/2
-					+ Vol_B.data(*neighbor.data)[2]/2;
+					+ Vol_B.data(*neighbor.data)[2]/2
+					+ Bg_B.data(*cell.data)(-3)[2]/4
+					+ Bg_B.data(*cell.data)(+3)[2]/4
+					+ Bg_B.data(*neighbor.data)(-3)[2]/4
+					+ Bg_B.data(*neighbor.data)(+3)[2]/4;
 			const double inv_min_dt = [&](){
 				if (min_dt == 0) return 0.0;
 				else return 1.0 / min_dt;}();
@@ -375,9 +387,11 @@ template <
 					} else {
 						const auto Bx = [&]()->double {
 							if (neighbor.relative_size < 0) {
-								return Face_B.data(*neighbor.data)(-1);
+								return Face_B.data(*neighbor.data)(-1)
+									+ Bg_B.data(*neighbor.data)(-1)[0];
 							} else {
-								return Face_B.data(*cell.data)(+1);
+								return Face_B.data(*cell.data)(+1)
+									+ Bg_B.data(*cell.data)(+1)[0];
 							}
 						}();
 						return {
@@ -385,11 +399,11 @@ template <
 							0,
 							// remove +dt*dz term applied
 							// in assign_face_dBs_fx
-							(Vy_avg*Bx - Vx_avg*By_avg)
-								* inv_min_dt / min_dz,
+							(Vy_avg*Bx - Vx_avg*By_avg),
+								//* inv_min_dt / min_dz,
 							// remove -dt*dy term
-							-(Vx_avg*Bz_avg - Vz_avg*Bx)
-								* inv_min_dt / min_dy};
+							-(Vx_avg*Bz_avg - Vz_avg*Bx)};
+								//* inv_min_dt / min_dy};
 					}
 				}();
 				assign_face_dBs_fx(
@@ -421,19 +435,21 @@ template <
 					} else {
 						const auto By = [&]()->double {
 							if (neighbor.relative_size < 0) {
-								return Face_B.data(*neighbor.data)(-2);
+								return Face_B.data(*neighbor.data)(-2)
+									+ Bg_B.data(*neighbor.data)(-2)[1];
 							} else {
-								return Face_B.data(*cell.data)(+2);
+								return Face_B.data(*cell.data)(+2)
+									+ Bg_B.data(*cell.data)(+2)[1];
 							}
 						}();
 						return {
 							// remove -dt*dz use in assign...fy
-							-(Vy_avg*Bx_avg - Vx_avg*By)
-								* inv_min_dt / min_dz,
+							-(Vy_avg*Bx_avg - Vx_avg*By),
+								//* inv_min_dt / min_dz,
 							0, // not used
 							// remove +dt*dx
-							(Vz_avg*By - Vy_avg*Bz_avg)
-								* inv_min_dt / min_dx};
+							(Vz_avg*By - Vy_avg*Bz_avg)};
+								//* inv_min_dt / min_dx};
 					}
 				}();
 				assign_face_dBs_fy(
@@ -465,18 +481,20 @@ template <
 					} else {
 						const auto Bz = [&]()->double {
 							if (neighbor.relative_size < 0) {
-								return Face_B.data(*neighbor.data)(-3);
+								return Face_B.data(*neighbor.data)(-3)
+									+ Bg_B.data(*neighbor.data)(-3)[2];
 							} else {
-								return Face_B.data(*cell.data)(+3);
+								return Face_B.data(*cell.data)(+3)
+									+ Bg_B.data(*cell.data)(+3)[2];
 							}
 						}();
 						return {
 							// remove +dt*dy term
-							(Vx_avg*Bz - Vz_avg*Bx_avg)
-								* inv_min_dt / min_dy,
+							(Vx_avg*Bz - Vz_avg*Bx_avg),
+								//* inv_min_dt / min_dy,
 							// remove -dt*dx
-							-(Vz_avg*By_avg - Vy_avg*Bz)
-								* inv_min_dt / min_dx,
+							-(Vz_avg*By_avg - Vy_avg*Bz),
+								//* inv_min_dt / min_dx,
 							0};
 					}
 				}();

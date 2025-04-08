@@ -2,6 +2,7 @@
 Particle splitter of PAMHD.
 
 Copyright 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_PARTICLE_SPLITTER_HPP
@@ -107,13 +111,14 @@ template<
 }
 
 
+//! Returns number of splits performed.
 template<
 	class Particle,
 	class Cell_Data,
 	class Vector,
 	class Particle_Position_Getter,
 	class Particle_Mass_Getter
-> void split(
+> uint64_t split(
 	std::vector<Particle>& particles,
 	const size_t min_particles,
 	const uint64_t cell_id,
@@ -137,11 +142,12 @@ template<
 	}
 
 	if (original_nr_particles >= min_particles) {
-		return;
+		return 0;
 	}
 
 	std::uniform_int_distribution<size_t> index_generator(0, original_nr_particles - 1);
 	particles.reserve(min_particles);
+	uint64_t splits = 0;
 	for (size_t i = original_nr_particles; i < min_particles; i++) {
 		particles.push_back(
 			split(
@@ -153,7 +159,9 @@ template<
 				Part_Mas
 			)
 		);
+		splits++;
 	}
+	return splits;
 }
 
 
@@ -161,6 +169,8 @@ template<
 Splits random particles in normal cells until given minimum exist.
 
 Every split preserves center of mass, other parameters also unchanged.
+
+Returns number of splits preformed on this process.
 */
 template<
 	class Grid,
@@ -168,7 +178,7 @@ template<
 	class Particle_Position_Getter,
 	class Particle_Mass_Getter,
 	class Solver_Info_Getter
-> void split_particles(
+> uint64_t split_particles(
 	const size_t min_particles,
 	std::mt19937_64& random_source,
 	Grid& grid,
@@ -179,6 +189,7 @@ template<
 ) {
 	using std::to_string;
 
+	uint64_t splits = 0;
 	for (const auto& cell: grid.local_cells()) {
 		if (SInfo.data(*cell.data) < 0) {
 			continue;
@@ -189,7 +200,7 @@ template<
 			cell_max = grid.geometry.get_max(cell.id);
 
 		try {
-			split(
+			splits += split(
 				Particles(*cell.data),
 				min_particles,
 				cell.id,
@@ -209,6 +220,7 @@ template<
 			);
 		}
 	}
+	return splits;
 }
 
 
