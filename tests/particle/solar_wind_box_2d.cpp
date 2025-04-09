@@ -531,30 +531,65 @@ int main(int argc, char* argv[]) {
 	}
 
 	for (const auto& cell: solar_wind_cells) {
-		if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (SInfo.data(*cell.data) != 0) {
+			throw runtime_error(
+				__FILE__"(" + to_string(__LINE__)
+				+ ") Solar wind cell " + to_string(cell.id)
+				+ " is of type " + to_string(SInfo.data(*cell.data))
+			);
+		}
+		if (Ref_max.data(*cell.data) != 0)
+			throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}
 	for (int dir: {-3,-2,-1,+1,+2,+3}) {
 		for (const auto& cell: face_cells(dir)) {
-			if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-			if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (SInfo.data(*cell.data) != 0) {
+				throw runtime_error(
+					__FILE__"(" + to_string(__LINE__)
+					+ ") Face boundary cell " + to_string(cell.id)
+					+ " is of type " + to_string(SInfo.data(*cell.data))
+				);
+			}
+			if (Ref_max.data(*cell.data) != 0)
+				throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 	}
 	for (int dim: {0, 1, 2})
 	for (int dir1: {-1, +1})
 	for (int dir2: {-1, +1}) {
 		for (const auto& cell: edge_cells(dim, dir1, dir2)) {
-			if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-			if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (SInfo.data(*cell.data) != 0) {
+				throw runtime_error(
+					__FILE__"(" + to_string(__LINE__)
+					+ ") Edge boundary cell " + to_string(cell.id)
+					+ " is of type " + to_string(SInfo.data(*cell.data))
+				);
+			}
+			if (Ref_max.data(*cell.data) != 0)
+				throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 	}
 	for (const auto& cell: vert_cells) {
-		if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (SInfo.data(*cell.data) != 0) {
+			throw runtime_error(
+				__FILE__"(" + to_string(__LINE__)
+				+ ") Vertex boundary cell " + to_string(cell.id)
+				+ " is of type " + to_string(SInfo.data(*cell.data))
+			);
+		}
+		if (Ref_max.data(*cell.data) != 0)
+			throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}
 	for (const auto& cell: planet_cells) {
-		if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-		if (Ref_max.data(*cell.data) != grid.get_maximum_refinement_level()) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (SInfo.data(*cell.data) != 0) {
+			throw runtime_error(
+				__FILE__"(" + to_string(__LINE__)
+				+ ") Planet boundary cell " + to_string(cell.id)
+				+ " is of type " + to_string(SInfo.data(*cell.data))
+			);
+		}
+		if (Ref_max.data(*cell.data) != grid.get_maximum_refinement_level())
+			throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}
 
 	for (const auto& cell: grid.local_cells()) {
