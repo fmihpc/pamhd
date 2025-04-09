@@ -70,10 +70,12 @@ struct Face_Neighbor {
 			temp_cli = grid.mapping.get_cell_length_in_indices(cell.id),
 			temp_nli = grid.mapping.get_cell_length_in_indices(neighbor.id);
 		if (temp_cli > numeric_limits<int>::max()) {
-			throw range_error(__FILE__"(" + to_string(__LINE__) + ") Cell length in indices too large for int");
+			throw range_error(__FILE__"(" + to_string(__LINE__)
+				+ ") Cell length in indices too large for int");
 		}
 		if (temp_nli > numeric_limits<int>::max()) {
-			throw range_error(__FILE__"(" + to_string(__LINE__) + ") Neighbor length in indices too large for int");
+			throw range_error(__FILE__"(" + to_string(__LINE__)
+				+ ") Neighbor length in indices too large for int");
 		}
 		const int cell_length_i = temp_cli, neigh_length_i = temp_nli;
 		if (
@@ -175,10 +177,12 @@ struct Edge_Neighbor {
 			cell_length = grid.mapping.get_cell_length_in_indices(cell.id),
 			neigh_length = grid.mapping.get_cell_length_in_indices(neighbor.id);
 		if (cell_length > numeric_limits<int>::max()) {
-			throw range_error(__FILE__"(" + to_string(__LINE__) + ") Cell length in indices too large for int");
+			throw range_error(__FILE__"(" + to_string(__LINE__)
+				+ ") Cell length in indices too large for int");
 		}
 		if (neigh_length > numeric_limits<int>::max()) {
-			throw range_error(__FILE__"(" + to_string(__LINE__) + ") Neighbor length in indices too large for int");
+			throw range_error(__FILE__"(" + to_string(__LINE__)
+				+ ") Neighbor length in indices too large for int");
 		}
 		const int cell_len = cell_length, neigh_len = neigh_length;
 
@@ -254,6 +258,66 @@ struct Edge_Neighbor {
 			// not edge neighbor
 			this->edge_neighbor[0] = -1;
 			return;
+		}
+	}
+};
+
+/*! Stores whether cell and neighbor share one vertex.
+
+Value in each dimension is +1 or -1 if neighbor and cell
+share one vertex and 0 otherwise.
+vertex_neighbor = {+1, -1, -1} means that neighbor and cell
+have shared vertex in +x, -y, -z direction from cell's center.
+*/
+struct Vertex_Neighbor {
+	std::array<int, 3> vertex_neighbor{0, 0, 0};
+	template<
+		class Grid, class Cell_Item, class Neighbor_Item
+	> void update(
+		const Grid& grid,
+		const Cell_Item& cell,
+		const Neighbor_Item& neighbor,
+		const int&,
+		const Vertex_Neighbor&
+	) {
+		using std::numeric_limits;
+		using std::range_error;
+		using std::to_string;
+
+		const auto
+			cell_length = grid.mapping.get_cell_length_in_indices(cell.id),
+			neigh_length = grid.mapping.get_cell_length_in_indices(neighbor.id);
+		if (cell_length > numeric_limits<int>::max()) {
+			throw range_error(__FILE__"(" + to_string(__LINE__)
+				+ ") Cell length in indices too large for int");
+		}
+		if (neigh_length > numeric_limits<int>::max()) {
+			throw range_error(__FILE__"(" + to_string(__LINE__)
+				+ ") Neighbor length in indices too large for int");
+		}
+		const int cell_len = cell_length, neigh_len = neigh_length;
+
+		if (neighbor.x == cell_len) {
+			this->vertex_neighbor[0] = +1;
+		} else if (neighbor.x == -neigh_len) {
+			this->vertex_neighbor[0] = -1;
+		}
+		if (neighbor.y == cell_len) {
+			this->vertex_neighbor[1] = +1;
+		} else if (neighbor.y == -neigh_len) {
+			this->vertex_neighbor[1] = -1;
+		}
+		if (neighbor.z == cell_len) {
+			this->vertex_neighbor[2] = +1;
+		} else if (neighbor.z == -neigh_len) {
+			this->vertex_neighbor[2] = -1;
+		}
+		if (
+			this->vertex_neighbor[0] == 0
+			or this->vertex_neighbor[1] == 0
+			or this->vertex_neighbor[2] == 0
+		) {
+			this->vertex_neighbor = {0, 0, 0};
 		}
 	}
 };
