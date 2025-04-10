@@ -599,63 +599,16 @@ template<
 		Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
 		const auto cilen = grid.mapping.get_cell_length_in_indices(cell.id);
 
-		// copy plasma params from normal neighbor(s)
-		size_t nr_neighs{0};
-		double mas_neighs{0};
-		double pre_neighs{0};
-		Eigen::Vector3d vel_neighs{0, 0, 0};
-
-		for (const auto& neighbor: cell.neighbors_of) {
-			if (
-				abs(neighbor.x) > cilen
-				or abs(neighbor.y) > cilen
-				or abs(neighbor.z) > cilen
-			) continue; // TODO: AMR
-			if (SInfo.data(*neighbor.data) < 1) continue;
-
-			nr_neighs++;
-			mas_neighs += Mas.data(*neighbor.data);
-			pre_neighs += pamhd::mhd::get_pressure(
-				Mas.data(*neighbor.data),
-				Mom.data(*neighbor.data),
-				Nrj.data(*neighbor.data),
-				Vol_B.data(*neighbor.data),
-				adiabatic_index, vacuum_permeability
-			);
-			vel_neighs
-				+= Mom.data(*neighbor.data)
-				/ Mas.data(*neighbor.data);
-
-			const auto& fn = neighbor.face_neighbor;
-			//const auto& en = neighbor.edge_neighbor;
-			if (fn != 0) {
-				for (const int dir: {-3,-2,-1,+1,+2,+3}) {
-					if (dir == +fn or dir == -fn) {
-						Face_B.data(*cell.data)(dir)
-							= Face_B.data(*neighbor.data)(-fn);
-					} else {
-						Face_B.data(*cell.data)(dir)
-							= Face_B.data(*neighbor.data)(dir);
-					}
-				}
-			}/* else if (en[0] >= 0) {
-				// TODO
-			} else {
-				// TODO
-			}*/
+		for (const int dir: {-3,-2,-1,+1,+2,+3}) {
+			Face_B.data(*cell.data)(dir) = 0;
 		}
-		Vol_B.data(*cell.data) = {
-			0.5*(Face_B.data(*cell.data)(-1) + Face_B.data(*cell.data)(+1)),
-			0.5*(Face_B.data(*cell.data)(-2) + Face_B.data(*cell.data)(+2)),
-			0.5*(Face_B.data(*cell.data)(-3) + Face_B.data(*cell.data)(+3))
-		};
-
-		Mas.data(*cell.data) = mas_neighs / nr_neighs;
-		Mom.data(*cell.data) = Mas.data(*cell.data) * vel_neighs / nr_neighs;
+		Vol_B.data(*cell.data) = {0, 0, 0};
+		Mas.data(*cell.data) = options.sw_nr_density * proton_mass;
+		Mom.data(*cell.data) = {0,0,0};
 		Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
 			Mas.data(*cell.data),
-			vel_neighs / nr_neighs,
-			pre_neighs / nr_neighs,
+			Mom.data(*cell.data),
+			options.sw_pressure,
 			Vol_B.data(*cell.data),
 			adiabatic_index,
 			vacuum_permeability

@@ -352,33 +352,40 @@ template<
 	}
 
 	// planetary boundary cells
+	const auto temperature
+		= options_box.sw_pressure
+		/ options_box.sw_nr_density
+		/ options_sim.temp2nrj;
 	for (const auto& cell: planet_cells) {
-		const auto cilen = grid.mapping.get_cell_length_in_indices(cell.id);
-		std::set<uint64_t> _copy_cells;
-		for (const auto& neighbor: cell.neighbors_of) {
-			if (
-				abs(neighbor.x) > cilen
-				or abs(neighbor.y) > cilen
-				or abs(neighbor.z) > cilen
-			) continue; // TODO: AMR
-			if (SInfo.data(*neighbor.data) < 1) continue;
-			_copy_cells.insert(neighbor.id);
-			//copy_cells.push_back(neighbor.id);
-		}
-		_copy_cells.erase(cell.id);
-		vector<uint64_t> copy_cells{cell.id};
-		copy_cells.insert(copy_cells.end(), _copy_cells.begin(), _copy_cells.end());
-		if (copy_cells.size() < 2) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
-
 		random_source.seed(cell.id + simulation_step * 1'000'000);
-		next_particle_id += id_increase * copy_particles<
+		const auto
+			cell_start = grid.geometry.get_min(cell.id),
+			cell_end = grid.geometry.get_max(cell.id),
+			cell_length = grid.geometry.get_length(cell.id);
+		Part_Int(*cell.data) = create_particles<
+			pamhd::particle::Particle_Internal,
+			pamhd::particle::Mass,
+			pamhd::particle::Charge_Mass_Ratio,
 			pamhd::particle::Position,
-			pamhd::particle::Particle_ID
+			pamhd::particle::Velocity,
+			pamhd::particle::Particle_ID,
+			pamhd::particle::Species_Mass
 		>(
-			copy_cells, next_particle_id, id_increase,
-			random_source, grid, Part_Int
+			Eigen::Vector3d{0,0,0},
+			Eigen::Vector3d{cell_start[0], cell_start[1], cell_start[2]},
+			Eigen::Vector3d{cell_end[0], cell_end[1], cell_end[2]},
+			Eigen::Vector3d{temperature, temperature, temperature},
+			options_part.particles_in_cell,
+			options_sim.charge2mass,
+			options_sim.proton_mass * options_box.sw_nr_density
+				* cell_length[0] * cell_length[1] * cell_length[2],
+			options_sim.proton_mass,
+			options_sim.temp2nrj,
+			random_source,
+			next_particle_id,
+			id_increase
 		);
-
+		next_particle_id += id_increase * Part_Int(*cell.data).size();
 	}
 
 	next_particle_id = apply_solar_wind_boundaries(

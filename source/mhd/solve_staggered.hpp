@@ -399,11 +399,11 @@ template <
 							0,
 							// remove +dt*dz term applied
 							// in assign_face_dBs_fx
-							(Vy_avg*Bx - Vx_avg*By_avg),
-								//* inv_min_dt / min_dz,
+							(Vy_avg*Bx - Vx_avg*By_avg)
+								* inv_min_dt / min_dz,
 							// remove -dt*dy term
-							-(Vx_avg*Bz_avg - Vz_avg*Bx)};
-								//* inv_min_dt / min_dy};
+							-(Vx_avg*Bz_avg - Vz_avg*Bx)
+								* inv_min_dt / min_dy};
 					}
 				}();
 				assign_face_dBs_fx(
@@ -444,12 +444,12 @@ template <
 						}();
 						return {
 							// remove -dt*dz use in assign...fy
-							-(Vy_avg*Bx_avg - Vx_avg*By),
-								//* inv_min_dt / min_dz,
+							-(Vy_avg*Bx_avg - Vx_avg*By)
+								* inv_min_dt / min_dz,
 							0, // not used
 							// remove +dt*dx
-							(Vz_avg*By - Vy_avg*Bz_avg)};
-								//* inv_min_dt / min_dx};
+							(Vz_avg*By - Vy_avg*Bz_avg)
+								* inv_min_dt / min_dx};
 					}
 				}();
 				assign_face_dBs_fy(
@@ -490,11 +490,11 @@ template <
 						}();
 						return {
 							// remove +dt*dy term
-							(Vx_avg*Bz - Vz_avg*Bx_avg),
-								//* inv_min_dt / min_dy,
+							(Vx_avg*Bz - Vz_avg*Bx_avg)
+								* inv_min_dt / min_dy,
 							// remove -dt*dx
-							-(Vz_avg*By_avg - Vy_avg*Bz),
-								//* inv_min_dt / min_dx,
+							-(Vz_avg*By_avg - Vy_avg*Bz)
+								* inv_min_dt / min_dx,
 							0};
 					}
 				}();
