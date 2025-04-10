@@ -40,18 +40,22 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rapidjson/document.h"
 #include "prettyprint.hpp"
 
+#include "gensimcell.hpp"
 #include "grid/amr.hpp"
 #include "grid/options.hpp"
+#include "variable_getter.hpp"
 
-using Cell = std::array<int, 2>;
 
-const auto Ref_Lvl_Min = [](Cell& cell_data)->auto& {
-	return cell_data[0];
-};
-const auto Ref_Lvl_Max = [](Cell& cell_data)->auto& {
-	return cell_data[1];
-};
+struct Ref_Lvl_Max_ {using data_type = int;};
+struct Ref_Lvl_Min_ {using data_type = int;};
 
+using Cell = gensimcell::Cell<
+	gensimcell::Optional_Transfer,
+	Ref_Lvl_Max_, Ref_Lvl_Min_
+>;
+
+const auto Ref_Lvl_Max = pamhd::Variable_Getter<Ref_Lvl_Max_>();
+const auto Ref_Lvl_Min = pamhd::Variable_Getter<Ref_Lvl_Min_>();
 
 
 int main(int argc, char* argv[])
