@@ -86,7 +86,8 @@ TESTS_BOUNDARIES_MPI_COMPILE = \
   @printf "MPICXX $<\n" && $(MPICXX) $< -o $@ \
   $(CPPFLAGS) \
   $(CXXFLAGS) \
-  $(LDFLAGS)
+  $(LDFLAGS) \
+  $(GENSIMCELL_CPPFLAGS)
 
 
 

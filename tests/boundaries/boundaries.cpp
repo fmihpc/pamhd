@@ -2,7 +2,7 @@
 Tests boundaries class for one simulation variable of PAMHD.
 
 Copyright 2016, 2017 Ilja Honkonen
-Copyright 2019 Finnish Meteorological Institute
+Copyright 2019, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 
@@ -40,37 +43,25 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "dccrg.hpp"
 #include "mpi.h"
 
+#include "gensimcell.hpp"
 #include "boundaries/boundaries.hpp"
 #include "boundaries/geometries.hpp"
+#include "variable_getter.hpp"
 
 
 using namespace pamhd::boundaries;
 
 
 // storage for classifier algorithm
-struct Cell_Type {
+struct Variable {
 	using data_type = int;
 	static const std::string get_name(){ return {"cell type"}; }
 	static const std::string get_option_name(){ return {"cell_type"}; }
 };
 
-// simulation cell type used in this test
-struct Cell_Data {
-	typename Cell_Type::data_type type;
+using Cell = gensimcell::Cell<gensimcell::Optional_Transfer, Variable>;
 
-	std::tuple<void*, int, MPI_Datatype> get_mpi_datatype()
-	{
-		return std::make_tuple(static_cast<void*>(&this->type), 1, MPI_INT);
-	}
-};
-
-// returns a reference to given cell's type data
-const auto Type
-	= [](Cell_Data& cell_data)
-		->typename Cell_Type::data_type&
-	{
-		return cell_data.type;
-	};
+const auto Var_Getter = pamhd::Variable_Getter<Variable>();
 
 
 int main(int argc, char* argv[])
@@ -120,12 +111,12 @@ int main(int argc, char* argv[])
 	Geometries<int, std::array<double, 3>, double, uint64_t> geometries;
 	geometries.set(document);
 
-	Boundaries<uint64_t, int, Cell_Type> boundaries;
+	Boundaries<uint64_t, int, Variable> boundaries;
 	boundaries.set(document);
 
 	MPI_Init(&argc, &argv);
 
-	dccrg::Dccrg<Cell_Data> grid; grid
+	dccrg::Dccrg<Cell> grid; grid
 		.set_neighborhood_length(0)
 		.set_maximum_refinement_level(0)
 		.set_load_balancing_method("RANDOM")
@@ -244,7 +235,7 @@ int main(int argc, char* argv[])
 
 
 
-	boundaries.classify(grid, geometries, Type);
+	boundaries.classify(grid, geometries, Var_Getter);
 
 	// check that cells have been classified correctly
 	unsigned int
