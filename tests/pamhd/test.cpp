@@ -52,7 +52,7 @@ particles represent one of the fluids.
 #include "boundaries/multivariable_initial_conditions.hpp"
 #include "divergence/options.hpp"
 #include "divergence/remove.hpp"
-#include "grid_options.hpp"
+#include "grid/options.hpp"
 #include "mhd/boundaries.hpp"
 #include "mhd/common.hpp"
 #include "mhd/options.hpp"
