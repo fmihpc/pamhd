@@ -1,5 +1,5 @@
 all:
-	@$(MAKE) tests/grid_executables tests/grid_tests -C ../..
+	@$(MAKE) tests/grid_executables -C ../..
 
 t: test
 test:

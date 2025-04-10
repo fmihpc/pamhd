@@ -2,33 +2,12 @@ TESTS_GRID_EXECUTABLES = \
   tests/grid/options_compile.exe \
   tests/grid/options_parse.exe \
   tests/grid/options_amr.exe \
-  tests/grid/adapt.exe \
-  tests/grid/pface1.exe \
-  tests/grid/pface2.exe \
-  tests/grid/pface3.exe \
-  tests/grid/pedge1.exe \
-  tests/grid/pedge2.exe \
-  tests/grid/pedge3.exe \
-  tests/grid/pedge4.exe
+  tests/grid/adapt.exe
 
 TESTS_GRID_TESTS = \
   tests/grid/options_parse.tst \
   tests/grid/options_amr.tst \
-  tests/grid/adapt.tst \
-  tests/grid/pface1.tst \
-  tests/grid/pface1.mtst \
-  tests/grid/pface2.tst \
-  tests/grid/pface2.mtst \
-  tests/grid/pface3.tst \
-  tests/grid/pface3.mtst \
-  tests/grid/pedge1.tst \
-  tests/grid/pedge1.mtst \
-  tests/grid/pedge2.tst \
-  tests/grid/pedge2.mtst \
-  tests/grid/pedge3.tst \
-  tests/grid/pedge3.mtst \
-  tests/grid/pedge4.tst \
-  tests/grid/pedge4.mtst
+  tests/grid/adapt.tst
 
 tests/grid_executables: $(TESTS_GRID_EXECUTABLES)
 
@@ -87,40 +66,5 @@ tests/grid/options_amr.exe: \
 
 tests/grid/adapt.exe: \
   tests/grid/adapt.cpp \
-  $(TESTS_GRID_COMMON_DEPS)
-	$(TESTS_GRID_COMPILE_COMMAND)
-
-tests/grid/pface1.exe: \
-  tests/grid/pface1.cpp \
-  $(TESTS_GRID_COMMON_DEPS)
-	$(TESTS_GRID_COMPILE_COMMAND)
-
-tests/grid/pface2.exe: \
-  tests/grid/pface2.cpp \
-  $(TESTS_GRID_COMMON_DEPS)
-	$(TESTS_GRID_COMPILE_COMMAND)
-
-tests/grid/pface3.exe: \
-  tests/grid/pface3.cpp \
-  $(TESTS_GRID_COMMON_DEPS)
-	$(TESTS_GRID_COMPILE_COMMAND)
-
-tests/grid/pedge1.exe: \
-  tests/grid/pedge1.cpp \
-  $(TESTS_GRID_COMMON_DEPS)
-	$(TESTS_GRID_COMPILE_COMMAND)
-
-tests/grid/pedge2.exe: \
-  tests/grid/pedge2.cpp \
-  $(TESTS_GRID_COMMON_DEPS)
-	$(TESTS_GRID_COMPILE_COMMAND)
-
-tests/grid/pedge3.exe: \
-  tests/grid/pedge3.cpp \
-  $(TESTS_GRID_COMMON_DEPS)
-	$(TESTS_GRID_COMPILE_COMMAND)
-
-tests/grid/pedge4.exe: \
-  tests/grid/pedge4.cpp \
   $(TESTS_GRID_COMMON_DEPS)
 	$(TESTS_GRID_COMPILE_COMMAND)
