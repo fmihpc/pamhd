@@ -68,7 +68,7 @@ using Cell = gensimcell::Cell<
 	gensimcell::Optional_Transfer,
 	pamhd::particle::Particles_Internal,
 	Mass_Density,
-	pamhd::particle::Solver_Info,
+	pamhd::Solver_Info,
 	// only following two are transferred between processes
 	pamhd::particle::Nr_Accumulated_To_Cells,
 	Accumulated_To_Cells
@@ -127,10 +127,7 @@ void create_particles(
 
 
 // returns a reference to data accumulated from particles in given cell
-const auto bulk_value_getter
-	= [](Cell& cell_data)->Mass_Density::data_type&{
-		return cell_data[Mass_Density()];
-	};
+const auto bulk_value_getter = pamhd::Variable_Getter<Mass_Density>();
 
 // returns a reference to data accumulated from particles in accumulation list
 const auto list_bulk_value_getter
@@ -159,7 +156,7 @@ const auto accumulation_list_length_getter
 		return cell_data[pamhd::particle::Nr_Accumulated_To_Cells()];
 	};
 
-const auto solver_info_getter = pamhd::Variable_Getter<pamhd::particle::Solver_Info>();
+const auto solver_info_getter = pamhd::Variable_Getter<pamhd::Solver_Info>();
 
 const auto accumulate_from_remote_neighbors
 	= [](Grid& grid){
@@ -289,7 +286,7 @@ int main(int argc, char* argv[])
 		create_particles(nr_of_values, grid);
 
 		for (const auto& cell: grid.local_cells()) {
-			bulk_value_getter(*cell.data) = 0;
+			bulk_value_getter.data(*cell.data) = 0;
 			solver_info_getter.data(*cell.data) = 0;
 		}
 		pamhd::particle::accumulate(
