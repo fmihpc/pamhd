@@ -1,5 +1,5 @@
 all:
-	@$(MAKE) tests/boundaries_executables tests/boundaries_tests -C ../..
+	@$(MAKE) tests/boundaries_executables -C ../..
 
 c: clean
 clean:
