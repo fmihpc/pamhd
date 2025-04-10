@@ -2,7 +2,8 @@
 Staggered version of get1d_div.cpp.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2022, 2023, 2024 Finnish Meteorological Institute
+Copyright 2018, 2022, 2023,
+          2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -50,6 +51,7 @@ Author(s): Ilja Honkonen
 #include "grid/variables.hpp"
 #include "math/staggered.hpp"
 #include "tests/math/common.hpp"
+#include "variable_getter.hpp"
 
 
 double function(const double x)
@@ -221,15 +223,9 @@ int main(int argc, char* argv[])
 		initialize<Vector, Type>(grid_y, comm, nr_of_cells, 1);
 		initialize<Vector, Type>(grid_z, comm, nr_of_cells, 2);
 
-		auto Vector_Getter = [](Cell& cell_data)->auto& {
-			return cell_data[Vector()];
-		};
-		auto Divergence_Getter = [](Cell& cell_data)->auto& {
-			return cell_data[Divergence()];
-		};
-		auto Type_Getter = [](Cell& cell_data)->auto& {
-			return cell_data[Type()];
-		};
+		const auto Vector_Getter = pamhd::Variable_Getter<Vector>();
+		const auto Divergence_Getter = pamhd::Variable_Getter<Divergence>();
+		const auto Type_Getter = pamhd::Variable_Getter<Type>();
 		pamhd::math::get_divergence_staggered(
 			grid_x.local_cells(),
 			grid_x,

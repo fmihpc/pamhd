@@ -2,7 +2,8 @@
 Tests vector field divergence calculation of PAMHD in 3d.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2022, 2023, 2024 Finnish Meteorological Institute
+Copyright 2018, 2022, 2023,
+          2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -49,6 +50,7 @@ Author(s): Ilja Honkonen
 #include "grid/variables.hpp"
 #include "math/staggered.hpp"
 #include "tests/math/common.hpp"
+#include "variable_getter.hpp"
 
 
 std::array<double, 3> function(const std::array<double, 3>& r)
@@ -237,18 +239,15 @@ int main(int argc, char* argv[])
 			abort();
 		}
 
+		const auto Vector_Getter = pamhd::Variable_Getter<Vector>();
+		const auto Divergence_Getter = pamhd::Variable_Getter<Divergence>();
+		const auto Type_Getter = pamhd::Variable_Getter<Type>();
 		pamhd::math::get_divergence_staggered(
 			grid.local_cells(),
 			grid,
-			[](Cell& cell_data)->auto& {
-				return cell_data[Vector()];
-			},
-			[](Cell& cell_data)->auto& {
-				return cell_data[Divergence()];
-			},
-			[](Cell& cell_data)->auto& {
-				return cell_data[Type()];
-			}
+			Vector_Getter,
+			Divergence_Getter,
+			Type_Getter
 		);
 
 		const double norm = get_max_norm(grid);
