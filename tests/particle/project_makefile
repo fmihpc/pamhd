@@ -24,7 +24,7 @@ TESTS_PARTICLE_EXECUTABLES = \
   tests/particle/particle_time_series2gnuplot.exe \
   tests/particle/particle_time_averages2gnuplot.exe \
   tests/particle/single1d.exe \
-  tests/particle/solar_wind_box_2d.exe
+  tests/particle/solar_wind_box.exe
 
 TESTS_PARTICLE_TESTS = \
   tests/particle/solve1.tst \
@@ -304,8 +304,8 @@ tests/particle/single1d.exe: \
 	  $(BOOST_LIBS) \
 	  $(EIGEN_CPPFLAGS)
 
-tests/particle/solar_wind_box_2d.exe: \
-  tests/particle/solar_wind_box_2d.cpp \
+tests/particle/solar_wind_box.exe: \
+  tests/particle/solar_wind_box.cpp \
   $(TEST_PARTICLE_COMMON_DEPS) \
   source/background_magnetic_field.hpp \
   source/boundaries/geometries.hpp \
