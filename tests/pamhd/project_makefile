@@ -31,7 +31,6 @@ TEST_PAMHD_COMMON_DEPS = \
   source/boundaries/multivariable_initial_conditions.hpp \
   source/boundaries/initial_conditions.hpp \
   source/boundaries/initial_condition.hpp \
-  source/boundaries/math_expression.hpp \
   source/boundaries/multivariable_boundaries.hpp \
   source/boundaries/boundaries.hpp \
   source/boundaries/value_boundaries.hpp \
