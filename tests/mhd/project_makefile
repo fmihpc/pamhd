@@ -1,6 +1,5 @@
 TESTS_MHD_EXECUTABLES = \
   tests/mhd/reference.exe \
-  tests/mhd/reference_staggered.exe \
   tests/mhd/two_reference.exe \
   tests/mhd/test_staggered.exe \
   tests/mhd/solar_wind_box.exe
@@ -10,7 +9,6 @@ TESTS_MHD_TESTS = \
   tests/mhd/reference.tst_hll_athena \
   tests/mhd/reference.tst_hlld_athena \
   tests/mhd/reference.tst_roe_athena \
-  tests/mhd/reference_staggered.tst_rusanov \
   tests/mhd/two_reference.tst_rusanov \
   tests/mhd/two_reference.tst_hll_athena \
   tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered.ok \
@@ -143,11 +141,6 @@ tests/mhd/reference.exe: \
   $(TEST_MHD_COMMON_DEPS)
 	@printf "CXX $<\n" && $(CXX) $(TEST_MHD_COMPILE_COMMOM)
 
-tests/mhd/reference_staggered.exe: \
-  tests/mhd/reference_staggered.cpp \
-  $(TEST_MHD_COMMON_DEPS)
-	@printf "CXX $<\n" && $(CXX) $(TEST_MHD_COMPILE_COMMOM)
-
 tests/mhd/two_reference.exe: \
   tests/mhd/two_reference.cpp \
   $(TEST_MHD_COMMON_DEPS)
@@ -206,9 +199,6 @@ tests/mhd/reference.tst_hlld_athena: tests/mhd/reference.exe
 	@printf RUN\ HLLD_Athena\ $<...\ \  && $(RUN) ./$< --solver hlld_athena && printf "PASS\n" && touch $@
 tests/mhd/reference.tst_roe_athena: tests/mhd/reference.exe
 	@printf RUN\ Roe_Athena\ $<...\ \  && $(RUN) ./$< --solver roe_athena && printf "PASS\n" && touch $@
-
-tests/mhd/reference_staggered.tst_rusanov: tests/mhd/reference_staggered.exe
-	@printf RUN\ staggered\ Rusanov\ $<...\ \  && $(RUN) ./$< --solver rusanov && printf "PASS\n" && touch $@
 
 tests/mhd/two_reference.tst_hll_athena: tests/mhd/two_reference.exe
 	@printf RUN\ HLL_Athena\ $<...\ \  && $(RUN) ./$< --solver hll_athena && printf "PASS\n" && touch $@

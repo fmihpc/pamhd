@@ -2,6 +2,7 @@
 Reference test program for MHD solvers of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -16,6 +17,9 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+
+Author(s): Ilja Honkonen
 */
 
 
@@ -61,9 +65,11 @@ constexpr size_t grid_length = 1000 + 2;
 using Cell = gensimcell::Cell<
 	gensimcell::Never_Transfer,
 	pamhd::mhd::HD_State_Conservative,
+	// used as face magnetic field since system is 1d with const Bx
 	pamhd::Magnetic_Field,
+	pamhd::Edge_Electric_Field,
 	pamhd::mhd::HD_Flux_Conservative,
-	pamhd::Magnetic_Field_Flux,
+	pamhd::Magnetic_Field_Flux, // not real flux, used as dB
 	pamhd::Bg_Magnetic_Field
 >;
 using Grid = std::array<Cell, grid_length>;
@@ -91,8 +97,12 @@ const auto Mag = [](Cell& cell_data)->auto& {
 	return cell_data[pamhd::Magnetic_Field()];
 };
 
+const auto Ele = [](Cell& cell_data)->auto& {
+	return cell_data[pamhd::Edge_Electric_Field()];
+};
+
 const auto Bg_Mag = [](Cell& cell_data)->auto& {
-	return cell_data[pamhd::Bg_Magnetic_Field()](0,1);
+	return cell_data[pamhd::Bg_Magnetic_Field()](+1);
 };
 
 // fluxes of conservative MHD variables
@@ -170,12 +180,13 @@ template <
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
 	class Magnetic_Field_Getter,
+	class Edge_Electric_Field_Getter,
 	class Mass_Density_Flux_Getter,
 	class Momentum_Density_Flux_Getter,
 	class Total_Energy_Density_Flux_Getter,
 	class Magnetic_Field_Flux_Getter
 > void initialize_mhd(
-	const std::string& solver,
+	const std::string& /*solver*/,
 	Grid& grid,
 	const double adiabatic_index,
 	const double vacuum_permeability,
@@ -183,6 +194,7 @@ template <
 	const Momentum_Density_Getter Mom,
 	const Total_Energy_Density_Getter Nrj,
 	const Magnetic_Field_Getter Mag,
+	const Edge_Electric_Field_Getter Ele,
 	const Mass_Density_Flux_Getter Mas_f,
 	const Momentum_Density_Flux_Getter Mom_f,
 	const Total_Energy_Density_Flux_Getter Nrj_f,
@@ -205,25 +217,22 @@ template <
 		Mag_f(cell_data)[1] =
 		Mag_f(cell_data)[2] = 0;
 
-		Mom(cell_data)[0] =
-		Mom(cell_data)[1] =
-		Mom(cell_data)[2] =
-		Mag(cell_data)[0] =
-		Bg_Mag(cell_data)[1] = 0;
-
-		if (solver == "hlld_athena" or solver == "roe_athena") {
-			Mag(cell_data)[0] = 1.5e-9;
-			Mag(cell_data)[2]    =
-			Bg_Mag(cell_data)[0] =
-			Bg_Mag(cell_data)[2] = 0;
-		} else {
-			Bg_Mag(cell_data)[0] = 1.5e-9;
-			Mag(cell_data)[2] = 1e-9;
-			Bg_Mag(cell_data)[2] = -Mag(cell_data)[2];
-		}
+		Mom(cell_data)[0]     =
+		Mom(cell_data)[1]     =
+		Mom(cell_data)[2]     =
+		Mag(cell_data)[0]     =
+		Mag(cell_data)[1]     =
+		Mag(cell_data)[2]     =
+		Ele(cell_data)(0,-1,-1) =
+		Ele(cell_data)(1,-1,-1) =
+		Ele(cell_data)(2,-1,-1) =
+		Bg_Mag(cell_data)[0]  =
+		Bg_Mag(cell_data)[1]  =
+		Bg_Mag(cell_data)[2]  = 0;
 
 		const double center = get_cell_center(cell_i);
 		double pressure = -1;
+		Mag(cell_data)[0] = 1.5e-9;
 		if (center < (get_grid_end() - get_grid_start()) / 2) {
 			Mas(cell_data) = proton_mass * 3e6;
 			Mag(cell_data)[1] = 1e-9;
@@ -232,6 +241,15 @@ template <
 			Mas(cell_data) = proton_mass * 1e6;
 			Mag(cell_data)[1] = -1e-9;
 			pressure = 1e-12;
+		}
+		// face in middle of grid has average B
+		if (grid.size() % 2 == 0 and cell_i == grid.size() / 2 - 1) {
+			Mag(cell_data)[1] = 0;
+		}
+		// cell in middle of grid has average mass, pressure
+		if (grid.size() % 2 == 1 and cell_i == grid.size() / 2) {
+			Mas(cell_data) = proton_mass * 2e6;
+			pressure = 2e-12;
 		}
 
 		Nrj(cell_data)
@@ -257,6 +275,7 @@ template <
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
 	class Magnetic_Field_Getter,
+	class Electric_Field_Getter,
 	class Mass_Density_Flux_Getter,
 	class Momentum_Density_Flux_Getter,
 	class Total_Energy_Density_Flux_Getter,
@@ -271,6 +290,7 @@ template <
 	const Momentum_Density_Getter Mom,
 	const Total_Energy_Density_Getter Nrj,
 	const Magnetic_Field_Getter Mag,
+	const Electric_Field_Getter Ele,
 	const Mass_Density_Flux_Getter Mas_f,
 	const Momentum_Density_Flux_Getter Mom_f,
 	const Total_Energy_Density_Flux_Getter Nrj_f,
@@ -281,7 +301,7 @@ template <
 		"Grid must have at least three cells"
 	);
 
-	// shorthand notation for variable used internally
+	// shorthand notation for variables used internally
 	const pamhd::mhd::Mass_Density mas{};
 	const pamhd::mhd::Momentum_Density mom{};
 	const pamhd::mhd::Total_Energy_Density nrj{};
@@ -351,26 +371,45 @@ template <
 			abort();
 		}
 		#undef SOLVER
-
-		max_dt = std::min(max_dt, cell_size / max_vel);
 		flux[mas] *= face_area*dt;
 		flux[mom] *= face_area*dt;
 		flux[nrj] *= face_area*dt;
-		flux[mag] *= face_area*dt;
+
+		max_dt = std::min(max_dt, cell_size / max_vel);
 
 		if (cell_i > 0) {
 			// positive flux flows neg->pos, i.e. out of current cell
 			Mas_f(cell) -= flux[mas];
 			Mom_f(cell) -= flux[mom];
 			Nrj_f(cell) -= flux[nrj];
-			Mag_f(cell) -= flux[mag];
 		}
 		if (cell_i < std::tuple_size<Grid>::value - 2) {
 			Mas_f(neighbor) += flux[mas];
 			Mom_f(neighbor) += flux[mom];
 			Nrj_f(neighbor) += flux[nrj];
-			Mag_f(neighbor) += flux[mag];
 		}
+
+		// upwind E = -VxB
+		const auto
+			v_c = (Mom(cell) / Mas(cell)).eval(),
+			v_n = (Mom(neighbor) / Mas(neighbor)).eval();
+		Ele(cell)(0,-1,-1) = 0;
+		if (v_c[0] + v_n[0] > 0) {
+			Ele(cell)(1,-1,-1) = v_c[0]*Mag(cell)[2] - v_c[2]*Mag(cell)[0];
+			Ele(cell)(2,-1,-1) = v_c[1]*Mag(cell)[0] - v_c[0]*Mag(cell)[1];
+		} else {
+			Ele(cell)(1,-1,-1) = v_n[0]*Mag(neighbor)[2] - v_n[2]*Mag(cell)[0];
+			Ele(cell)(2,-1,-1) = v_n[1]*Mag(cell)[0] - v_n[0]*Mag(neighbor)[1];
+		}
+
+		Mag_f(cell)[0] = 0;
+		Mag_f(cell)[1] = Ele(cell)(2,-1,-1);
+		Mag_f(cell)[2] = -Ele(cell)(1,-1,-1);
+		if (cell_i > 0) {
+			Mag_f(cell)[1] -= Ele(grid[cell_i-1])(2,-1,-1);
+			Mag_f(cell)[2] += Ele(grid[cell_i-1])(1,-1,-1);
+		}
+		Mag_f(cell) *= dt;
 	}
 
 	// apply fluxes
@@ -418,26 +457,10 @@ std::string plot_mhd(
 		<< size_t(simulation_time * 1000);
 
 	const std::string
-		gnuplot_file_name(
-			"mhd_"
-			+ time_string.str()
-			+ "_ms.dat"
-		),
-		plot_file_name(
-			"mhd_"
-			+ time_string.str()
-			+ "_ms.png"
-		),
-		B_plot_file_name(
-			"mhd_B_"
-			+ time_string.str()
-			+ "_ms.png"
-		),
-		v_plot_file_name(
-			"mhd_v_"
-			+ time_string.str()
-			+ "_ms.png"
-		);
+		gnuplot_file_name("mhd_" + time_string.str() + "_ms.dat"),
+		plot_file_name("mhd_" + time_string.str() + "_ms.png"),
+		B_plot_file_name("mhd_B_" + time_string.str() + "_ms.png"),
+		v_plot_file_name("mhd_v_" + time_string.str() + "_ms.png");
 
 	std::ofstream gnuplot_file(gnuplot_file_name);
 
@@ -472,12 +495,8 @@ std::string plot_mhd(
 		gnuplot_file
 			<< x << " "
 			<< pamhd::mhd::get_pressure(
-				Mas(cell_data),
-				Mom(cell_data),
-				Nrj(cell_data),
-				Mag(cell_data),
-				adiabatic_index,
-				vacuum_permeability
+				Mas(cell_data), Mom(cell_data), Nrj(cell_data),
+				Mag(cell_data), adiabatic_index, vacuum_permeability
 			)
 			<< "\n";
 	}
@@ -576,10 +595,8 @@ void save_mhd(
 
 	for (auto& cell_data: grid) {
 		outfile
-			<< Mas(cell_data) << " "
-			<< Mom(cell_data)[0] << " "
-			<< Mom(cell_data)[1] << " "
-			<< Mom(cell_data)[2] << " "
+			<< Mas(cell_data) << " " << Mom(cell_data)[0] << " "
+			<< Mom(cell_data)[1] << " " << Mom(cell_data)[2] << " "
 			<< Nrj(cell_data) << " "
 			<< Mag(cell_data)[0] + Bg_Mag(cell_data)[0] << " "
 			<< Mag(cell_data)[1] + Bg_Mag(cell_data)[1] << " "
@@ -635,14 +652,8 @@ void verify_mhd(
 		auto ref_nrj = nrj;
 		auto ref_mag = mag;
 		infile
-			>> ref_rho
-			>> ref_mom[0]
-			>> ref_mom[1]
-			>> ref_mom[2]
-			>> ref_nrj
-			>> ref_mag[0]
-			>> ref_mag[1]
-			>> ref_mag[2];
+			>> ref_rho >> ref_mom[0] >> ref_mom[1] >> ref_mom[2]
+			>> ref_nrj >> ref_mag[0] >> ref_mag[1] >> ref_mag[2];
 
 		if (
 			(rho > min_value or ref_rho > min_value)
@@ -734,7 +745,7 @@ void verify_mhd(
 int main(int argc, char* argv[])
 {
 	bool save = false, plot = false, no_verify = false, verbose = false;
-	std::string solver_str("hlld_athena");
+	std::string solver_str("rusanov");
 	boost::program_options::options_description options(
 		"Usage: program_name [options], where options are:"
 	);
@@ -743,7 +754,7 @@ int main(int argc, char* argv[])
 		("solver",
 			boost::program_options::value<std::string>(&solver_str)
 				->default_value(solver_str),
-			"Solver to use, available: rusanov, hll_athena, hlld_athena, roe_athena")
+			"Solver to use, available: rusanov")
 		("save", "Save end result to ascii file")
 		("plot", "Plot results using gnuplot")
 		("no-verify", "Do not verify against reference results")
@@ -803,7 +814,7 @@ int main(int argc, char* argv[])
 		grid,
 		adiabatic_index,
 		vacuum_permeability,
-		Mas, Mom, Nrj, Mag,
+		Mas, Mom, Nrj, Mag, Ele,
 		Mas_f, Mom_f, Nrj_f, Mag_f
 	);
 
@@ -841,13 +852,9 @@ int main(int argc, char* argv[])
 		max_dt = std::min(
 			max_dt,
 			solve_mhd(
-				solver,
-				grid,
-				time_step,
-				adiabatic_index,
-				vacuum_permeability,
-				Mas, Mom, Nrj, Mag,
-				Mas_f, Mom_f, Nrj_f, Mag_f
+				solver, grid, time_step, adiabatic_index,
+				vacuum_permeability, Mas, Mom, Nrj, Mag,
+				Ele, Mas_f, Mom_f, Nrj_f, Mag_f
 			)
 		);
 
@@ -862,10 +869,8 @@ int main(int argc, char* argv[])
 			const std::string
 				mhd_gnuplot_file_name
 					= plot_mhd(
-						grid,
-						simulation_time,
-						adiabatic_index,
-						vacuum_permeability
+						grid, simulation_time,
+						adiabatic_index, vacuum_permeability
 					);
 			system(("gnuplot " + mhd_gnuplot_file_name).c_str());
 		}

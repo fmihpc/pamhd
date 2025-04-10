@@ -597,7 +597,6 @@ template<
 	// planetary boundary cells
 	for (const auto& cell: planet_cells) {
 		Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
-		const auto cilen = grid.mapping.get_cell_length_in_indices(cell.id);
 
 		for (const int dir: {-3,-2,-1,+1,+2,+3}) {
 			Face_B.data(*cell.data)(dir) = 0;
