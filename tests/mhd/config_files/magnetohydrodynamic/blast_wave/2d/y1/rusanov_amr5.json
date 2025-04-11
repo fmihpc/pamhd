@@ -1,6 +1,6 @@
 {
 	"comment": "dynamic amr",
-	"output-directory": "results/magnetohydrodynamic/blast_wave/2d/y1/rusanov_staggered_amr5",
+	"output-directory": "results/magnetohydrodynamic/blast_wave/2d/y1/rusanov_amr5",
 	"time-start": 0,
 	"time-length": 0.2,
 	"minimum-pressure": 0,

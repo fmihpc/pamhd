@@ -1,5 +1,5 @@
 {
-	"output-directory": "results/magnetohydrodynamic/blast_wave/2d/y1/rusanov_staggered_amr4",
+	"output-directory": "results/magnetohydrodynamic/blast_wave/2d/x1/rusanov_amr3",
 	"time-start": 0,
 	"time-length": 0.2,
 	"minimum-pressure": 0,
@@ -12,16 +12,16 @@
 	"mhd-time-step-factor": 0.5,
 	"grid-options": {
 		"periodic": "{true, true, true}",
-		"cells": "{20, 1, 20}",
+		"cells": "{1, 20, 20}",
 		"volume": "{1, 1, 1}",
 		"start": "{-0.5, -0.5, -0.5}",
 		"max-ref-lvl": 1,
 		"amr-n": 0,
-		"ref-lvl-at-least": "x+z < 1e-6 ? 0 : 1",
-		"ref-lvl-at-most": "x+z < 1e-6 ? 0 : 1"
+		"ref-lvl-at-least": "y+z < 1e-6 ? 1 : 0",
+		"ref-lvl-at-most": "y+z < 1e-6 ? 1 : 0"
 	},
 	"number-density": {"default": 1},
 	"velocity": {"default": [0, 0, 0]},
-	"pressure": {"default": "x*x + z*z < 0.01 ? 10 : 0.1"},
-	"magnetic-field": {"default": "{1 / sqrt(2), 0, -1 / sqrt(2)}"}
+	"pressure": {"default": "y*y + z*z < 0.01 ? 10 : 0.1"},
+	"magnetic-field": {"default": "{0, 1 / sqrt(2), -1 / sqrt(2)}"}
 }
