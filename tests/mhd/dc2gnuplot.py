@@ -127,12 +127,15 @@ def plot1d(data, outname):
 			outfile.write('end\n')
 			for cell in cells:
 				mas = data[cell]['mhd     '][0]
+				mom = data[cell]['mhd     '][1]
 				vy = mom[1] / mas
-				if isnan(vx):
+				if isnan(vy):
 					vy = 0
 				outfile.write(str(data['centers'][cell][dim])+' '+str(vy)+'\n')
 			outfile.write('end\n')
 			for cell in cells:
+				mas = data[cell]['mhd     '][0]
+				mom = data[cell]['mhd     '][1]
 				vz = mom[2] / mas
 				if isnan(vz):
 					vz = 0
