@@ -1,5 +1,5 @@
 {
-	"output-directory": "results/magnetohydrodynamic/blast_wave/3d/rusanov_staggered_amr5",
+	"output-directory": "results/magnetohydrodynamic/blast_wave/3d/rusanov_amr1",
 	"time-start": 0,
 	"time-length": 0.2,
 	"minimum-pressure": 0,
@@ -16,9 +16,9 @@
 		"volume": "{1, 1, 1}",
 		"start": "{-0.5, -0.5, -0.5}",
 		"max-ref-lvl": 2,
-		"amr-n": 0.02,
-		"ref-lvl-at-least": "(radius < 1.4*max(t-0.04,0)) ? 1 : (radius > 0.2+2*t) ? 0 : 2",
-		"ref-lvl-at-most": "(radius < 1.4*max(t-0.04,0)) ? 1 : (radius > 0.2+2*t) ? 0 : 2"
+		"amr-n": 0,
+		"ref-lvl-at-least": "x+y-z < -1e-6 ? 2 : 0",
+		"ref-lvl-at-most": "x+y-z < -1e-6 ? 2 : 0"
 	},
 	"number-density": {"default": 1},
 	"velocity": {"default": [0, 0, 0]},
