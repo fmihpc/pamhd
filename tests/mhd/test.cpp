@@ -465,7 +465,7 @@ int main(int argc, char* argv[]) {
 			not pamhd::mhd::save_staggered(
 				boost::filesystem::canonical(
 					boost::filesystem::path(options_sim.output_directory)
-				).append("mhd_staggered_").generic_string(),
+				).append("mhd_").generic_string(),
 				grid,
 				file_version,
 				simulation_step,
@@ -555,7 +555,7 @@ int main(int argc, char* argv[]) {
 				not pamhd::mhd::save_staggered(
 					boost::filesystem::canonical(
 						boost::filesystem::path(options_sim.output_directory)
-					).append("mhd_staggered_").generic_string(),
+					).append("mhd_").generic_string(),
 					grid,
 					file_version,
 					simulation_step,

@@ -1,6 +1,6 @@
 {
-	"comment": "flow direction: +x, maximum refinement level: 1, no time dependence",
-	"output-directory": "tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered_amr1",
+	"comment": "same as in +x directory but flow is in +z direction",
+	"output-directory": "tests/mhd/results/hydrodynamic/density_advection/1d/+z/rusanov_amr1",
 	"time-start": 0,
 	"time-length": 1,
 	"minimum-pressure": 0,
@@ -13,16 +13,16 @@
 	"mhd-time-step-factor": 0.5,
 	"grid-options": {
 		"periodic": "{true, true, true}",
-		"cells": "{20, 1, 1}",
+		"cells": "{1, 1, 20}",
 		"volume": "{1, 1, 1}",
 		"start": "{0, 0, 0}",
 		"max-ref-lvl": 1,
 		"amr-n": 0,
-		"ref-lvl-at-least": "(abs(x - 0.5) < 0.3) ? 1 : 0",
-		"ref-lvl-at-most": "(abs(x - 0.5) < 0.3) ? 1 : 0"
+		"ref-lvl-at-least": "(abs(z - 0.5) < 0.3) ? 1 : 0",
+		"ref-lvl-at-most": "(abs(z - 0.5) < 0.3) ? 1 : 0"
 	},
-	"number-density": {"default": "(abs(x - 0.5) < 0.25) ? 2 : 1"},
-	"velocity": {"default": [1, 0, 0]},
+	"number-density": {"default": "(abs(z - 0.5) < 0.25) ? 2 : 1"},
+	"velocity": {"default": [0, 0, 1]},
 	"pressure": {"default": 1},
 	"magnetic-field": {"default": [0, 0, 0]}
 }

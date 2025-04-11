@@ -1,6 +1,6 @@
 {
 	"comment": "flow direction: +x, maximum refinement level: 1, density-based time-dependent",
-	"output-directory": "tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_staggered_amr3",
+	"output-directory": "tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov_amr3",
 	"time-start": 0,
 	"time-length": 1,
 	"minimum-pressure": 0,

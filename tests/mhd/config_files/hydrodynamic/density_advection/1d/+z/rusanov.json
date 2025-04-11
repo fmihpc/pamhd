@@ -1,5 +1,5 @@
 {
-	"output-directory": "tests/mhd/results/hydrodynamic/density_advection/1d/-y/rusanov_staggered",
+	"output-directory": "tests/mhd/results/hydrodynamic/density_advection/1d/+z/rusanov",
 	"time-start": 0,
 	"time-length": 1,
 	"minimum-pressure": 0,
@@ -12,12 +12,12 @@
 	"mhd-time-step-factor": 0.5,
 	"grid-options": {
 		"periodic": "{true, true, true}",
-		"cells": "{1, 200, 1}",
+		"cells": "{1, 1, 200}",
 		"volume": "{1, 1, 1}",
 		"start": "{0, 0, 0}"
 	},
-	"number-density": {"default": "(abs(y - 0.5) < 0.25) ? 1.01 : 1"},
-	"velocity": {"default": [0, -1, 0]},
+	"number-density": {"default": "(abs(z - 0.5) < 0.25) ? 1.01 : 1"},
+	"velocity": {"default": [0, 0, 1]},
 	"pressure": {"default": 1},
 	"magnetic-field": {"default": [0, 0, 0]}
 }

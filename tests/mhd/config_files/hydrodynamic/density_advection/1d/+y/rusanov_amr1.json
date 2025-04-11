@@ -1,6 +1,6 @@
 {
-	"comment": "same as in +x directory but flow is in -y direction",
-	"output-directory": "tests/mhd/results/hydrodynamic/density_advection/1d/-y/rusanov_staggered_amr1",
+	"comment": "same as in +x directory but flow is in +y direction",
+	"output-directory": "tests/mhd/results/hydrodynamic/density_advection/1d/+y/rusanov_amr1",
 	"time-start": 0,
 	"time-length": 1,
 	"minimum-pressure": 0,
@@ -22,7 +22,7 @@
 		"ref-lvl-at-most": "(abs(y - 0.5) < 0.3) ? 1 : 0"
 	},
 	"number-density": {"default": "(abs(y - 0.5) < 0.25) ? 2 : 1"},
-	"velocity": {"default": [0, -1, 0]},
+	"velocity": {"default": [0, 1, 0]},
 	"pressure": {"default": 1},
 	"magnetic-field": {"default": [0, 0, 0]}
 }
