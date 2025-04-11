@@ -1,5 +1,5 @@
 {
-	"output-directory": "results/magnetohydrodynamic/blast_wave/1d/x/rusanov_staggered_amr",
+	"output-directory": "results/magnetohydrodynamic/blast_wave/1d/x/rusanov_amr",
 	"time-start": 0,
 	"time-length": 0.009,
 	"minimum-pressure": 0,
