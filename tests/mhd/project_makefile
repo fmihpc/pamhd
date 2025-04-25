@@ -115,8 +115,7 @@ TEST_MHD_PROGRAM_DEPS = \
   source/mhd/options.hpp \
   source/mhd/save.hpp \
   source/mhd/solar_wind_box.hpp \
-  source/mhd/solve.hpp \
-  source/mhd/solve.hpp \
+  source/mhd/solve_staggered.hpp \
   source/mhd/N_solve.hpp
 
 TEST_MHD_COMPILE_COMMOM = \
