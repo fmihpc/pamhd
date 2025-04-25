@@ -19,7 +19,7 @@ TESTS_PARTICLE_EXECUTABLES = \
   tests/particle/accumulate_dccrg.exe \
   tests/particle/accumulate_dccrg_periodic.exe \
   tests/particle/massless.exe \
-  tests/particle/test_staggered.exe \
+  tests/particle/test.exe \
   tests/particle/particle2gnuplot.exe \
   tests/particle/particle_time_series2gnuplot.exe \
   tests/particle/particle_time_averages2gnuplot.exe \
@@ -245,8 +245,8 @@ tests/particle/massless.exe: \
 	  $(MUPARSERX_LIBS) \
 	  $(PHIPROF_CPPFLAGS)
 
-tests/particle/test_staggered.exe: \
-  tests/particle/test_staggered.cpp \
+tests/particle/test.exe: \
+  tests/particle/test.cpp \
   $(TEST_PARTICLE_COMMON_DEPS) \
   source/background_magnetic_field.hpp \
   source/boundaries/geometries.hpp \
