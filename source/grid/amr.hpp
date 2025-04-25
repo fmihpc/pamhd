@@ -71,8 +71,7 @@ struct Target_Refinement_Level_Max {
 };
 
 
-/*! Common accessors for values stored on cell faces.
-*/
+//! Common accessors for values stored on cell faces.
 template<class Data_Type> struct Face_Type {
 	static constexpr size_t nr_faces = 6;
 	std::array<Data_Type, nr_faces> face;
@@ -80,7 +79,7 @@ template<class Data_Type> struct Face_Type {
 	/*! Returns data of given cell face.
 	dir: -1 == -x, +1 == +x, -2 == -y, ..., +3 == +z face
 	*/
-	const Data_Type& operator()(const int dir) const {
+	const Data_Type& operator()(const int& dir) const {
 		using std::to_string;
 
 		if (dir == 0 or dir < -3 or dir > +3) {
@@ -102,7 +101,7 @@ template<class Data_Type> struct Face_Type {
 	}
 
 	// https://stackoverflow.com/a/123995
-	Data_Type& operator()(const int dir) {
+	Data_Type& operator()(const int& dir) {
 		return const_cast<Data_Type&>(static_cast<const Face_Type<Data_Type>&>(*this).operator()(dir));
 	}
 
@@ -111,8 +110,8 @@ template<class Data_Type> struct Face_Type {
 	side: -1 == negative side of cell from center, +1 == positive
 	*/
 	const Data_Type& operator()(
-		const size_t dim,
-		const int side
+		const size_t& dim,
+		const int& side
 	) const {
 		using std::domain_error;
 		using std::to_string;
@@ -135,11 +134,13 @@ template<class Data_Type> struct Face_Type {
 		} else throw std::runtime_error("Internal error");
 	}
 
-	Data_Type& operator()(const size_t dim, const int side) {
+	Data_Type& operator()(const size_t& dim, const int& side) {
 		return const_cast<Data_Type&>(static_cast<const Face_Type<Data_Type>&>(*this).operator()(dim, side));
 	}
 
-	Face_Type<Data_Type>& operator=(const Face_Type<Data_Type>& other) noexcept {
+	Face_Type<Data_Type>& operator=(
+		const Face_Type<Data_Type>& other
+	) noexcept {
 		if (this == &other) {
 			return *this;
 		}
@@ -147,12 +148,16 @@ template<class Data_Type> struct Face_Type {
 		return *this;
 	}
 
-	decltype(face)& operator=(const decltype(face)& other) noexcept {
+	decltype(Face_Type::face)& operator=(
+		const decltype(Face_Type::face)& other
+	) noexcept {
 		this->face = other;
 		return this->face;
 	}
 
-	decltype(face)& operator=(const std::initializer_list<Data_Type>& other) {
+	decltype(Face_Type::face)& operator=(
+		const std::initializer_list<Data_Type>& other
+	) {
 		if (other.size() != this->face.size()) {
 			throw std::runtime_error(__FILE__"(" + std::to_string(__LINE__) + ")");
 		}
@@ -278,8 +283,7 @@ template<class Data_Type> struct Face_Type {
 };
 
 
-/*! Common accessors for values stored on cell edges.
-*/
+//! Common accessors for values stored on cell edges.
 template<class Data_Type> struct Edge_Type {
 	std::array<Data_Type, 12> edge;
 
@@ -302,9 +306,9 @@ template<class Data_Type> struct Edge_Type {
 	    2     |        +1        |     +1      | z dir:      +x, +y
 	*/
 	const Data_Type& operator()(
-		const int par_dim_i,
-		const int first_perp_dim_i,
-		const int second_perp_dim_i
+		const int& par_dim_i,
+		const int& first_perp_dim_i,
+		const int& second_perp_dim_i
 	) const {
 		using std::domain_error;
 		using std::to_string;
@@ -326,14 +330,16 @@ template<class Data_Type> struct Edge_Type {
 
 	// https://stackoverflow.com/a/123995
 	Data_Type& operator()(
-		const int par_dim_i,
-		const int first_perp_dim_i,
-		const int second_perp_dim_i
+		const int& par_dim_i,
+		const int& first_perp_dim_i,
+		const int& second_perp_dim_i
 	) {
 		return const_cast<Data_Type&>(static_cast<const Edge_Type<Data_Type>&>(*this).operator()(par_dim_i, first_perp_dim_i, second_perp_dim_i));
 	}
 
-	Edge_Type<Data_Type>& operator=(const Edge_Type<Data_Type>& other) {
+	Edge_Type<Data_Type>& operator=(
+		const Edge_Type<Data_Type>& other
+	) noexcept {
 		if (this == &other) {
 			return *this;
 		}
@@ -341,12 +347,16 @@ template<class Data_Type> struct Edge_Type {
 		return *this;
 	}
 
-	decltype(edge)& operator=(const decltype(edge)& other) {
+	decltype(Edge_Type::edge)& operator=(
+		const decltype(Edge_Type::edge)& other
+	) noexcept {
 		this->edge = other;
 		return this->edge;
 	}
 
-	decltype(edge)& operator=(const std::initializer_list<Data_Type>& other) {
+	decltype(Edge_Type::edge)& operator=(
+		const std::initializer_list<Data_Type>& other
+	) {
 		if (other.size() != this->edge.size()) {
 			throw std::runtime_error(__FILE__"(" + std::to_string(__LINE__) + ")");
 		}
@@ -397,6 +407,140 @@ template<class Data_Type> struct Edge_Type {
 			return make_tuple((void*) this->edge.data(), this->edge.size(), MPI_CXX_BOOL);
 		} else {
 			static_assert(false, "Unsupported edge item type for MPI");
+		}
+	}
+	#endif
+};
+
+
+//! Common accessors for values stored on cell vertices.
+template<class Data_Type> struct Vertex_Type {
+	std::array<Data_Type, 8> vertex;
+
+	/*
+	Vertex defined by direction from cell center in each dimension.
+
+	Valid values are -1 and +1.
+	*/
+	const Data_Type& operator()(
+		const int& x_offset,
+		const int& y_offset,
+		const int& z_offset
+	) const {
+		using std::domain_error;
+		using std::to_string;
+
+		if (x_offset != -1 and x_offset != 1) {
+			throw domain_error("x offset of vertex not -1 nor 1: " + to_string(x_offset));
+		}
+		if (y_offset != -1 and y_offset != 1) {
+			throw domain_error("y offset of vertex not -1 nor 1: " + to_string(y_offset));
+		}
+		if (z_offset != -1 and z_offset != 1) {
+			throw domain_error("z offset of vertex not -1 nor 1: " + to_string(z_offset));
+		}
+		const size_t
+			i = [&](){if (x_offset < 0) return 0; else return 1;}(),
+			j = [&](){if (y_offset < 0) return 0; else return 1;}(),
+			k = [&](){if (z_offset < 0) return 0; else return 1;}();
+		return this->vertex[k*2*2 + j*2 + i];
+	}
+
+	// https://stackoverflow.com/a/123995
+	Data_Type& operator()(
+		const int& x_offset,
+		const int& y_offset,
+		const int& z_offset
+	) {
+		return const_cast<Data_Type&>(
+			static_cast<const Vertex_Type<Data_Type>&>(*this)
+				.operator()(x_offset, y_offset, z_offset));
+	}
+
+	const Data_Type& operator()(
+		const std::array<int, 3>& offsets
+	) const {
+		return this->operator()(offsets[0], offsets[1], offsets[2]);
+	}
+
+	Data_Type& operator()(
+		const std::array<int, 3>& offsets
+	) {
+		return const_cast<Data_Type&>(
+			static_cast<const Vertex_Type<Data_Type>&>(*this)
+				.operator()(offsets));
+	}
+
+	Vertex_Type<Data_Type>& operator=(
+		const Vertex_Type<Data_Type>& other
+	) noexcept {
+		if (this == &other) {
+			return *this;
+		}
+		this->vertex = other.vertex;
+		return *this;
+	}
+
+	decltype(Vertex_Type::vertex)& operator=(
+		const decltype(Vertex_Type::vertex)& other
+	) noexcept {
+		this->vertex = other;
+		return this->vertex;
+	}
+
+	decltype(Vertex_Type::vertex)& operator=(
+		const std::initializer_list<Data_Type>& other
+	) {
+		if (other.size() != this->vertex.size()) {
+			throw std::runtime_error(__FILE__"(" + std::to_string(__LINE__) + ")");
+		}
+		std::copy(other.begin(), other.end(), this->vertex.begin());
+		return this->vertex;
+	}
+
+	#ifdef MPI_VERSION
+	std::tuple<void*, int, MPI_Datatype> get_mpi_datatype() const {
+		using std::is_same_v;
+		using std::make_tuple;
+
+		if constexpr (is_same_v<Data_Type, double>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_DOUBLE);
+		} else if constexpr (is_same_v<Data_Type, float>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_FLOAT);
+		} else if constexpr (is_same_v<Data_Type, uint64_t>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_UINT64_T);
+		} else if constexpr (is_same_v<Data_Type, uint32_t>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_UINT32_T);
+		} else if constexpr (is_same_v<Data_Type, uint16_t>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_UINT16_T);
+		} else if constexpr (is_same_v<Data_Type, uint8_t>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_UINT8_T);
+		} else if constexpr (is_same_v<Data_Type, int64_t>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_INT64_T);
+		} else if constexpr (is_same_v<Data_Type, int32_t>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_INT32_T);
+		} else if constexpr (is_same_v<Data_Type, int16_t>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_INT16_T);
+		} else if constexpr (is_same_v<Data_Type, int8_t>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_INT8_T);
+		} else if constexpr (is_same_v<Data_Type, long long>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_LONG_LONG);
+		} else if constexpr (is_same_v<Data_Type, long>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_LONG);
+		} else if constexpr (is_same_v<Data_Type, int>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_INT);
+		} else if constexpr (is_same_v<Data_Type, short>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_SHORT);
+		} else if constexpr (is_same_v<Data_Type, char>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_CHAR);
+		} else if constexpr (is_same_v<Data_Type, signed char>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_SIGNED_CHAR);
+		} else if constexpr (is_same_v<Data_Type, unsigned char>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_UNSIGNED_CHAR);
+		} else if constexpr (is_same_v<Data_Type, bool>) {
+			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_CXX_BOOL);
+		} else {
+			static_assert(false, "Unsupported vertex item type for MPI");
 		}
 	}
 	#endif

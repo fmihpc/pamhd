@@ -1014,7 +1014,7 @@ template<
 }
 
 
-/*! Classifies primary faces of cells.
+/*! Classifies cell faces.
 
 Types: normal cell/face == 1, boundary == 0, dont_solve == -1.
 
