@@ -53,7 +53,7 @@ Author(s): Ilja Honkonen
 #include "common.hpp"
 #include "interpolate.hpp"
 #include "math/staggered.hpp"
-#include "mhd/solve_staggered.hpp"
+#include "mhd/solve.hpp"
 #include "particle/solve.hpp"
 #include "substepping.hpp"
 #include "variables.hpp"

@@ -63,7 +63,7 @@ Author(s): Ilja Honkonen
 #include "mhd/rusanov.hpp"
 #include "mhd/save.hpp"
 #include "mhd/solar_wind_box.hpp"
-#include "mhd/solve_staggered.hpp"
+#include "mhd/solve.hpp"
 #include "mhd/variables.hpp"
 #include "particle/accumulate_dccrg.hpp"
 #include "particle/boundaries.hpp"

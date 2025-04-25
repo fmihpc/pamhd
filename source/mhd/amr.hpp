@@ -55,7 +55,7 @@ Author(s): Ilja Honkonen
 #include "mhd/boundaries.hpp"
 #include "mhd/common.hpp"
 #include "mhd/options.hpp"
-#include "mhd/solve_staggered.hpp"
+#include "mhd/solve.hpp"
 #include "mhd/variables.hpp"
 #include "variables.hpp"
 

@@ -52,7 +52,7 @@ Author(s): Ilja Honkonen
 
 #include "grid/amr.hpp"
 #include "mhd/common.hpp"
-#include "mhd/solve_staggered.hpp"
+#include "mhd/solve.hpp"
 #include "mhd/variables.hpp"
 
 
