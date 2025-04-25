@@ -146,7 +146,6 @@ struct Resistivity {
 	static const std::string get_option_help() { return {"Electrical resistivity"}; }
 };
 
-
 /*!
 Information for solver(s) on how to handle a simulation cell.
 
@@ -157,6 +156,34 @@ Information for solver(s) on how to handle a simulation cell.
 struct Solver_Info {
 	static bool is_stale;
 	using data_type = int;
+};
+
+struct Timestep {
+	static bool is_stale;
+	using data_type = double;
+};
+
+/*! Determines how often cell is solved during time substepping.
+
+N == solved every Nth substep
+*/
+struct Substepping_Period {
+	static bool is_stale;
+	using data_type = int;
+};
+
+//! Minimum substep period, solved no more often than every Nth substep
+struct Substep_Min {
+	static bool is_stale;
+	using data_type = int;
+	static const std::string get_name() { return {"Minimum substepping period"}; }
+};
+
+//! Maximum substep period, solved no less often than every Nth substep
+struct Substep_Max {
+	static bool is_stale;
+	using data_type = int;
+	static const std::string get_name() { return {"Maximum substepping period"}; }
 };
 
 

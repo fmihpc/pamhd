@@ -287,49 +287,49 @@ template <class Grid> bool save_staggered(
 	if (variables.count("substep") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Cell::set_transfer_all(true, pamhd::mhd::Substepping_Period());
+		Cell::set_transfer_all(true, pamhd::Substepping_Period());
 		const string varname = "substep ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Cell::set_transfer_all(false, pamhd::mhd::Substepping_Period());
+		Cell::set_transfer_all(false, pamhd::Substepping_Period());
 	}
 
 	if (variables.count("substmin") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Cell::set_transfer_all(true, pamhd::mhd::Substep_Min());
+		Cell::set_transfer_all(true, pamhd::Substep_Min());
 		const string varname = "substmin";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Cell::set_transfer_all(false, pamhd::mhd::Substep_Min());
+		Cell::set_transfer_all(false, pamhd::Substep_Min());
 	}
 
 	if (variables.count("substmax") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Cell::set_transfer_all(true, pamhd::mhd::Substep_Max());
+		Cell::set_transfer_all(true, pamhd::Substep_Max());
 		const string varname = "substmax";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Cell::set_transfer_all(false, pamhd::mhd::Substep_Max());
+		Cell::set_transfer_all(false, pamhd::Substep_Max());
 	}
 
 	if (variables.count("timestep") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Cell::set_transfer_all(true, pamhd::mhd::Timestep());
+		Cell::set_transfer_all(true, pamhd::Timestep());
 		const string varname = "timestep";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Cell::set_transfer_all(false, pamhd::mhd::Timestep());
+		Cell::set_transfer_all(false, pamhd::Timestep());
 	}
 
 	if (grid.get_rank() == 0) {

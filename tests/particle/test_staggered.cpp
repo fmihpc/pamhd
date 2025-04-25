@@ -140,17 +140,17 @@ bool pamhd::particle::Max_Spatial_Velocity::is_stale = true;
 const auto Max_ω_part = pamhd::Variable_Getter<pamhd::particle::Max_Angular_Velocity>();
 bool pamhd::particle::Max_Angular_Velocity::is_stale = true;
 
-const auto Substep = pamhd::Variable_Getter<pamhd::mhd::Substepping_Period>();
-bool pamhd::mhd::Substepping_Period::is_stale = true;
+const auto Substep = pamhd::Variable_Getter<pamhd::Substepping_Period>();
+bool pamhd::Substepping_Period::is_stale = true;
 
-const auto Substep_Min = pamhd::Variable_Getter<pamhd::mhd::Substep_Min>();
-bool pamhd::mhd::Substep_Min::is_stale = true;
+const auto Substep_Min = pamhd::Variable_Getter<pamhd::Substep_Min>();
+bool pamhd::Substep_Min::is_stale = true;
 
-const auto Substep_Max = pamhd::Variable_Getter<pamhd::mhd::Substep_Max>();
-bool pamhd::mhd::Substep_Max::is_stale = true;
+const auto Substep_Max = pamhd::Variable_Getter<pamhd::Substep_Max>();
+bool pamhd::Substep_Max::is_stale = true;
 
-const auto Timestep = pamhd::Variable_Getter<pamhd::mhd::Timestep>();
-bool pamhd::mhd::Timestep::is_stale = true;
+const auto Timestep = pamhd::Variable_Getter<pamhd::Timestep>();
+bool pamhd::Timestep::is_stale = true;
 
 const auto Max_v_wave = pamhd::Variable_Getter<pamhd::mhd::Max_Velocity>();
 bool pamhd::mhd::Max_Velocity::is_stale = true;
