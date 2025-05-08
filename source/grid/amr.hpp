@@ -420,7 +420,8 @@ template<class Data_Type> struct Vertex_Type {
 	/*
 	Vertex defined by direction from cell center in each dimension.
 
-	Valid values are -1 and +1.
+	Negative values mean vertex negative side from cell center,
+	positive values mean positive side.
 	*/
 	const Data_Type& operator()(
 		const int& x_offset,
@@ -428,16 +429,15 @@ template<class Data_Type> struct Vertex_Type {
 		const int& z_offset
 	) const {
 		using std::domain_error;
-		using std::to_string;
 
-		if (x_offset != -1 and x_offset != 1) {
-			throw domain_error("x offset of vertex not -1 nor 1: " + to_string(x_offset));
+		if (x_offset == 0) {
+			throw domain_error("x offset of vertex cannot be 0");
 		}
-		if (y_offset != -1 and y_offset != 1) {
-			throw domain_error("y offset of vertex not -1 nor 1: " + to_string(y_offset));
+		if (y_offset == 0) {
+			throw domain_error("y offset of vertex cannot be 0");
 		}
-		if (z_offset != -1 and z_offset != 1) {
-			throw domain_error("z offset of vertex not -1 nor 1: " + to_string(z_offset));
+		if (z_offset == 0) {
+			throw domain_error("z offset of vertex cannot be 0");
 		}
 		const size_t
 			i = [&](){if (x_offset < 0) return 0; else return 1;}(),
