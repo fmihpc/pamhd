@@ -4,7 +4,8 @@ TESTS_MATH_EXECUTABLES = \
   tests/math/get2d_div.exe \
   tests/math/get3d_div.exe \
   tests/math/get3d_div_amr.exe \
-  tests/math/volume2vertex1.exe
+  tests/math/volume2vertex1.exe \
+  tests/math/vertex2volume1.exe
 
 TESTS_MATH_TESTS = \
   tests/math/get1d_div.tst \
@@ -18,7 +19,9 @@ TESTS_MATH_TESTS = \
   tests/math/get3d_div.mtst \
   tests/math/get3d_div_amr.mtst \
   tests/math/volume2vertex1.tst \
-  tests/math/volume2vertex1.mtst
+  tests/math/volume2vertex1.mtst \
+  tests/math/vertex2volume1.tst \
+  tests/math/vertex2volume1.mtst
 
 tests/math_executables: $(TESTS_MATH_EXECUTABLES)
 
@@ -87,5 +90,10 @@ tests/math/get3d_div_amr.exe: \
 
 tests/math/volume2vertex1.exe: \
   tests/math/volume2vertex1.cpp \
+  $(TEST_MATH_COMMON_DEPS)
+	@printf "MPICXX $<\n" && $(MPICXX_TESTS_MATH_MPICXX)
+
+tests/math/vertex2volume1.exe: \
+  tests/math/vertex2volume1.cpp \
   $(TEST_MATH_COMMON_DEPS)
 	@printf "MPICXX $<\n" && $(MPICXX_TESTS_MATH_MPICXX)
