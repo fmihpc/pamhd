@@ -1,7 +1,7 @@
 /*
 Common definitions for tests in this directory.
 
-Copyright 2023, 2024 Finnish Meteorological Institute
+Copyright 2023, 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -36,11 +36,14 @@ Author(s): Ilja Honkonen
 #ifndef TESTS_MATH_COMMON_HPP
 #define TESTS_MATH_COMMON_HPP
 
+
 #include "array"
 
 #include "gensimcell.hpp"
 
 #include "grid/amr.hpp"
+#include "variable_getter.hpp"
+
 
 struct Vector {
 	using data_type = pamhd::grid::Face_Type<double>;
@@ -55,6 +58,7 @@ struct Is_Primary_Face {
 };
 
 struct Type {
+	static bool is_stale;
 	using data_type = int;
 };
 
@@ -64,6 +68,21 @@ using Cell = gensimcell::Cell<
 	Divergence,
 	Is_Primary_Face,
 	Type
+>;
+
+struct Source {
+	static bool is_stale;
+	using data_type = double;
+};
+
+struct Target {
+	static bool is_stale;
+	using data_type = pamhd::grid::Vertex_Type<double>;
+};
+
+using Cell_interp = gensimcell::Cell<
+	gensimcell::Optional_Transfer,
+	Source, Target, Type
 >;
 
 #endif

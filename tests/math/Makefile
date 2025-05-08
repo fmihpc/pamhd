@@ -1,5 +1,5 @@
 all:
-	@$(MAKE) tests/math_executables tests/math_tests -C ../..
+	@$(MAKE) tests/math_executables -C ../..
 
 t: test
 test:

@@ -3,7 +3,8 @@ TESTS_MATH_EXECUTABLES = \
   tests/math/get1d_div_amr.exe \
   tests/math/get2d_div.exe \
   tests/math/get3d_div.exe \
-  tests/math/get3d_div_amr.exe
+  tests/math/get3d_div_amr.exe \
+  tests/math/volume2vertex1.exe
 
 TESTS_MATH_TESTS = \
   tests/math/get1d_div.tst \
@@ -15,7 +16,9 @@ TESTS_MATH_TESTS = \
   tests/math/get1d_div_amr.mtst \
   tests/math/get2d_div.mtst \
   tests/math/get3d_div.mtst \
-  tests/math/get3d_div_amr.mtst
+  tests/math/get3d_div_amr.mtst \
+  tests/math/volume2vertex1.tst \
+  tests/math/volume2vertex1.mtst
 
 tests/math_executables: $(TESTS_MATH_EXECUTABLES)
 
@@ -34,6 +37,7 @@ CLEAN += tests/math_clean
 TEST_MATH_COMMON_DEPS = \
   source/grid/amr.hpp \
   source/grid/variables.hpp \
+  source/math/interpolation.hpp \
   source/math/staggered.hpp \
   tests/math/common.hpp \
   tests/math/project_makefile \
@@ -78,5 +82,10 @@ tests/math/get3d_div.exe: \
 
 tests/math/get3d_div_amr.exe: \
   tests/math/get3d_div_amr.cpp \
+  $(TEST_MATH_COMMON_DEPS)
+	@printf "MPICXX $<\n" && $(MPICXX_TESTS_MATH_MPICXX)
+
+tests/math/volume2vertex1.exe: \
+  tests/math/volume2vertex1.cpp \
   $(TEST_MATH_COMMON_DEPS)
 	@printf "MPICXX $<\n" && $(MPICXX_TESTS_MATH_MPICXX)
