@@ -70,7 +70,7 @@ Author(s): Ilja Honkonen
 
 
 // data stored in every cell of simulation grid
-using Cell = pamhd::mhd::Cell_Staggered;
+using Cell = pamhd::mhd::Cell;
 using Grid = dccrg::Dccrg<
 	Cell,
 	dccrg::Cartesian_Geometry,
@@ -462,7 +462,7 @@ int main(int argc, char* argv[]) {
 			cout << "Saving MHD at time " << simulation_time << endl;
 		}
 		if (
-			not pamhd::mhd::save_staggered(
+			not pamhd::mhd::save(
 				boost::filesystem::canonical(
 					boost::filesystem::path(options_sim.output_directory)
 				).append("mhd_").generic_string(),
@@ -552,7 +552,7 @@ int main(int argc, char* argv[]) {
 					* ceil(max(options_mhd.save_n, simulation_time - next_mhd_save) / options_mhd.save_n);
 			}
 			if (
-				not pamhd::mhd::save_staggered(
+				not pamhd::mhd::save(
 					boost::filesystem::canonical(
 						boost::filesystem::path(options_sim.output_directory)
 					).append("mhd_").generic_string(),

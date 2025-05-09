@@ -158,26 +158,6 @@ struct HD_Flux_Conservative {
 	}
 };
 
-// cell type for MHD test program
-using Cell = gensimcell::Cell<
-	gensimcell::Optional_Transfer,
-	pamhd::mhd::HD_State_Conservative,
-	pamhd::Electric_Current_Density,
-	pamhd::Solver_Info,
-	pamhd::MPI_Rank,
-	pamhd::Resistivity,
-	pamhd::Magnetic_Field,
-	// TODO: move background fields to inner cell?
-	pamhd::Bg_Magnetic_Field,
-	pamhd::Magnetic_Field_Resistive,
-	pamhd::Magnetic_Field_Temp,
-	pamhd::Magnetic_Field_Divergence,
-	pamhd::mhd::HD_Flux_Conservative,
-	pamhd::Magnetic_Field_Flux,
-	pamhd::Face_Magnetic_Field,
-	pamhd::Edge_Electric_Field
->;
-
 
 struct HD2_State_Conservative { using data_type = HD_Conservative; };
 struct HD2_Flux_Conservative { using data_type = HD_Conservative; };
@@ -227,8 +207,8 @@ struct Max_Velocity {
 	using data_type = pamhd::grid::Face_Type<double>;
 };
 
-// cell type for staggered solver MHD test program
-using Cell_Staggered = gensimcell::Cell<
+// cell type for MHD test program
+using Cell = gensimcell::Cell<
 	gensimcell::Optional_Transfer,
 	pamhd::mhd::Mass_Density,
 	pamhd::mhd::Momentum_Density,

@@ -740,10 +740,10 @@ int main(int argc, char* argv[]) {
 			cout << "Saving MHD at time " << simulation_time << endl;
 		}
 		if (
-			not pamhd::mhd::save_staggered(
+			not pamhd::mhd::save(
 				boost::filesystem::canonical(
 					boost::filesystem::path(options_sim.output_directory)
-				).append("mhd_staggered_").generic_string(),
+				).append("mhd_").generic_string(),
 				grid, file_version,
 				simulation_step, simulation_time,
 				options_sim.adiabatic_index,
@@ -910,10 +910,10 @@ int main(int argc, char* argv[]) {
 					* ceil(max(options_mhd.save_n, simulation_time - next_mhd_save) / options_mhd.save_n);
 			}
 			if (
-				not pamhd::mhd::save_staggered(
+				not pamhd::mhd::save(
 					boost::filesystem::canonical(
 						boost::filesystem::path(options_sim.output_directory)
-					).append("mhd_staggered_").generic_string(),
+					).append("mhd_").generic_string(),
 					grid,
 					file_version,
 					simulation_step,
