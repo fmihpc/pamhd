@@ -539,6 +539,8 @@ template<class Data_Type> struct Vertex_Type {
 			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_UNSIGNED_CHAR);
 		} else if constexpr (is_same_v<Data_Type, bool>) {
 			return make_tuple((void*) this->vertex.data(), this->vertex.size(), MPI_CXX_BOOL);
+		} else if constexpr (is_same_v<Data_Type, std::array<double, 3>>) {
+			return make_tuple((void*) this->vertex.data(), 3*this->vertex.size(), MPI_DOUBLE);
 		} else {
 			static_assert(false, "Unsupported vertex item type for MPI");
 		}

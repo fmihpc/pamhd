@@ -1,5 +1,5 @@
 /*
-vertex2volume test in non-periodic grid.
+edge2vertex test in non-periodic grid.
 
 Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
@@ -48,15 +48,19 @@ Author(s): Ilja Honkonen
 #include "tests/math/common.hpp"
 
 
-double function(const std::array<double, 3>& r)
+std::array<double, 3> function(const std::array<double, 3>& r)
 {
-	return -std::sin(r[0] / 2) * std::cos(2 * r[1]) / (r[2] + 10);
+	return {
+		std::exp(2*r[0]) + 5*r[0] + 6,
+		std::sin(r[1])*std::cos(r[1]) + 4*r[1] + 5,
+		3*r[2]*r[2]*r[2] - 2*r[2]*r[2] + r[2] - 2
+	};
 }
 
 using Grid = dccrg::Dccrg<
 	gensimcell::Cell<
 		gensimcell::Optional_Transfer,
-		Volume_Scalar, Vertex_Scalar, Type
+		Edge_Scalar, Vertex_Vector, Type
 	>,
 	dccrg::Cartesian_Geometry,
 	std::tuple<>,
@@ -66,12 +70,11 @@ using Grid = dccrg::Dccrg<
 		pamhd::grid::Vertex_Neighbor>
 >;
 
-const auto Tgt = pamhd::Variable_Getter<Volume_Scalar>();
-bool Volume_Scalar::is_stale = true;
+const auto Src = pamhd::Variable_Getter<Edge_Scalar>();
+bool Edge_Scalar::is_stale = true;
 
-// source must be vertex type
-const auto Src = pamhd::Variable_Getter<Vertex_Scalar>();
-bool Vertex_Scalar::is_stale = true;
+const auto Tgt = pamhd::Variable_Getter<Vertex_Vector>();
+bool Vertex_Vector::is_stale = true;
 
 const auto Typ = pamhd::Variable_Getter<Type>();
 bool Type::is_stale = true;
@@ -88,11 +91,26 @@ template<class Grid> double get_diff_lp_norm(
 			continue;
 		}
 
-		const auto center = grid.geometry.get_center(cell.id);
-		local_norm = std::max(
-			local_norm,
-			std::fabs(Tgt.data(*cell.data) - function(center))
-		);
+		const auto
+			center = grid.geometry.get_center(cell.id),
+			length = grid.geometry.get_length(cell.id);
+
+		for (int dx: {-1, +1})
+		for (int dy: {-1, +1})
+		for (int dz: {-1, +1}) {
+			const std::array<double, 3> r{
+				center[0] + 0.5*dx*length[0],
+				center[1] + 0.5*dy*length[1],
+				center[2] + 0.5*dz*length[2]
+			};
+			const auto f = function(r);
+			for (size_t dim: {0, 1, 2}) {
+				local_norm = std::max(
+					local_norm,
+					std::fabs(Tgt.data(*cell.data)(dx,dy,dz)[dim] - f[dim])
+				);
+			}
+		}
 	}
 	local_norm *= cell_volume;
 
@@ -170,15 +188,29 @@ int main(int argc, char* argv[])
 			const auto
 				center = grid.geometry.get_center(cell.id),
 				length = grid.geometry.get_length(cell.id);
-			for (int dx: {-1, +1})
-			for (int dy: {-1, +1})
-			for (int dz: {-1, +1}) {
-				const std::array<double, 3> r{
-					center[0] + 0.5*dx*length[0],
-					center[1] + 0.5*dy*length[1],
-					center[2] + 0.5*dz*length[2]
+
+			for (int d1: {-1, +1})
+			for (int d2: {-1, +1}) {
+				const std::array<double, 3> r0{
+					center[0],
+					center[1] + 0.5*d1*length[1],
+					center[2] + 0.5*d2*length[2]
 				};
-				Src.data(*cell.data)(dx,dy,dz) = function(r);
+				Src.data(*cell.data)(0, d1, d2) = function(r0)[0];
+
+				const std::array<double, 3> r1{
+					center[0] + 0.5*d1*length[0],
+					center[1],
+					center[2] + 0.5*d2*length[2]
+				};
+				Src.data(*cell.data)(1, d1, d2) = function(r1)[1];
+
+				const std::array<double, 3> r2{
+					center[0] + 0.5*d1*length[0],
+					center[1] + 0.5*d2*length[1],
+					center[2]
+				};
+				Src.data(*cell.data)(2, d1, d2) = function(r2)[2];
 			}
 		}
 		Src.type().is_stale = true;
@@ -219,7 +251,7 @@ int main(int argc, char* argv[])
 			abort();
 		}
 
-		pamhd::math::vertex2volume(grid, Src, Tgt, Typ);
+		pamhd::math::edge2vertex(grid, Src, Tgt, Typ);
 
 		const double norm = get_diff_lp_norm(grid, cell_volume);
 
@@ -240,7 +272,7 @@ int main(int argc, char* argv[])
 				= -log(norm / old_norm)
 				/ log(double(solve_cells_global) / old_nr_of_cells);
 
-			if (order_of_accuracy < 1.2) {
+			if (order_of_accuracy < 0.7) {
 				if (grid.get_rank() == 0) {
 					std::cerr << __FILE__ << ":" << __LINE__
 						<< ": Order of accuracy from "

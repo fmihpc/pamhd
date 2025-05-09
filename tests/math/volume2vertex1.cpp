@@ -38,7 +38,6 @@ Author(s): Ilja Honkonen
 #include "cstdlib"
 #include "iostream"
 #include "limits"
-#include "utility"
 
 #include "dccrg.hpp"
 #include "dccrg_cartesian_geometry.hpp"
