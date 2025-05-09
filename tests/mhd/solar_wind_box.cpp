@@ -69,7 +69,7 @@ Author(s): Ilja Honkonen
 #include "simulation_options.hpp"
 #include "solar_wind_box_options.hpp"
 #include "variable_getter.hpp"
-#include "variables.hpp"
+#include "common_variables.hpp"
 
 
 // data stored in every cell of simulation grid

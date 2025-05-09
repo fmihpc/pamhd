@@ -41,12 +41,12 @@ Author(s): Ilja Honkonen
 
 #include "gensimcell.hpp"
 
-#include "grid/amr.hpp"
+#include "common_variables.hpp"
 #include "variable_getter.hpp"
 
 
 struct Vector {
-	using data_type = pamhd::grid::Face_Type<double>;
+	using data_type = pamhd::Face_Type<double>;
 };
 
 struct Divergence {
@@ -54,7 +54,7 @@ struct Divergence {
 };
 
 struct Is_Primary_Face {
-	using data_type = pamhd::grid::Face_Type<bool>;
+	using data_type = pamhd::Face_Type<bool>;
 };
 
 struct Type {
@@ -77,22 +77,22 @@ struct Volume_Scalar {
 
 struct Face_Scalar {
 	static bool is_stale;
-	using data_type = pamhd::grid::Face_Type<double>;
+	using data_type = pamhd::Face_Type<double>;
 };
 
 struct Edge_Scalar {
 	static bool is_stale;
-	using data_type = pamhd::grid::Edge_Type<double>;
+	using data_type = pamhd::Edge_Type<double>;
 };
 
 struct Vertex_Scalar {
 	static bool is_stale;
-	using data_type = pamhd::grid::Vertex_Type<double>;
+	using data_type = pamhd::Vertex_Type<double>;
 };
 
 struct Vertex_Vector {
 	static bool is_stale;
-	using data_type = pamhd::grid::Vertex_Type<std::array<double, 3>>;
+	using data_type = pamhd::Vertex_Type<std::array<double, 3>>;
 };
 
 #endif

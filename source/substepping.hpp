@@ -42,7 +42,7 @@ Author(s): Ilja Honkonen
 #include "string"
 
 #include "mhd/options.hpp"
-#include "variables.hpp"
+#include "common_variables.hpp"
 
 
 namespace pamhd {

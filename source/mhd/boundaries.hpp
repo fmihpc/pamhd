@@ -312,7 +312,7 @@ template<
 		auto& c_face_b = Face_B.data(*cell.data);
 		const auto& cfinfo = FInfo.data(*cell.data);
 
-		pamhd::grid::Face_Type<int> nr_values{0, 0, 0, 0, 0, 0};
+		pamhd::Face_Type<int> nr_values{0, 0, 0, 0, 0, 0};
 		for (auto dim: {0, 1, 2}) {
 			for (auto side: {-1, +1}) {
 				if (cfinfo(dim, side) < 1) c_face_b(dim, side) = 0;

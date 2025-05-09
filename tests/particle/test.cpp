@@ -46,6 +46,7 @@ Author(s): Ilja Honkonen
 #include "boundaries/geometries.hpp"
 #include "boundaries/multivariable_boundaries.hpp"
 #include "boundaries/multivariable_initial_conditions.hpp"
+#include "common_variables.hpp"
 #include "grid/options.hpp"
 #include "grid/variables.hpp"
 #include "math/staggered.hpp"
@@ -73,7 +74,6 @@ Author(s): Ilja Honkonen
 #include "simulation_options.hpp"
 #include "substepping.hpp"
 #include "variable_getter.hpp"
-#include "variables.hpp"
 
 
 // counter for assigning unique id to particles

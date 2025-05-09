@@ -37,7 +37,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "Eigen/Core"
 #include "gensimcell.hpp"
 
-#include "variables.hpp"
+#include "common_variables.hpp"
 #include "mhd/common.hpp"
 #include "mhd/N_hll_athena.hpp"
 #include "mhd/N_rusanov.hpp"

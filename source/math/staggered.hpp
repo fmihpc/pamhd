@@ -51,7 +51,7 @@ namespace math {
 /*!
 Same as get_divergence() but for vector variable that's stored on cell faces.
 
-Face_Var must have same () operator as provided by grid::Face_Type.
+Face_Var must have same () operator as provided by pamhd::Face_Type.
 
 Returns average absolute divergence in cells of all processes.
 */

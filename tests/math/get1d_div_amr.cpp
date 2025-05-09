@@ -47,7 +47,7 @@ Author(s): Ilja Honkonen
 #include "dccrg_cartesian_geometry.hpp"
 #include "gensimcell.hpp"
 
-#include "grid/amr.hpp"
+#include "common_variables.hpp"
 #include "grid/variables.hpp"
 #include "math/staggered.hpp"
 #include "tests/math/common.hpp"

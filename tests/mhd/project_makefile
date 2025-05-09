@@ -96,7 +96,7 @@ TEST_MHD_PROGRAM_DEPS = \
   source/grid/amr.hpp \
   source/grid/options.hpp \
   source/grid/solar_wind_box.hpp \
-  source/variables.hpp \
+  source/common_variables.hpp \
   source/boundaries/boundaries.hpp \
   source/boundaries/box.hpp \
   source/boundaries/common.hpp \

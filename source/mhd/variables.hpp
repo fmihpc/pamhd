@@ -40,7 +40,7 @@ Author(s): Ilja Honkonen
 #include "Eigen/Core" // must be included before gensimcell.hpp
 #include "gensimcell.hpp"
 
-#include "../variables.hpp"
+#include "common_variables.hpp"
 #include "grid/amr.hpp"
 #include "grid/variables.hpp"
 
@@ -193,18 +193,18 @@ using MHD_Conservative = gensimcell::Cell<
 
 //! Flux to/from cell from/to its neighbors
 struct MHD_Flux {
-	using data_type = pamhd::grid::Face_Type<MHD_Conservative>;
+	using data_type = pamhd::Face_Type<MHD_Conservative>;
 };
 
 struct Face_Boundary_Type {
 	static bool is_stale;
-	using data_type = pamhd::grid::Face_Type<int>;
+	using data_type = pamhd::Face_Type<int>;
 };
 
 //! maximum wave velocity away from cell faces
 struct Max_Velocity {
 	static bool is_stale;
-	using data_type = pamhd::grid::Face_Type<double>;
+	using data_type = pamhd::Face_Type<double>;
 };
 
 // cell type for MHD test program

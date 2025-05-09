@@ -43,9 +43,9 @@ Author(s): Ilja Honkonen
 #include "string"
 #include "vector"
 
-#include "grid/amr.hpp"
 #include "simulation_options.hpp"
 #include "solar_wind_box_options.hpp"
+#include "common_variables.hpp"
 
 
 namespace pamhd {
@@ -298,9 +298,9 @@ template<
 
 	// outflow
 	// boundary and normal cell share face
-	pamhd::grid::Face_Type<cell_list_t> face_bdy;
+	pamhd::Face_Type<cell_list_t> face_bdy;
 	// boundary and normal cell share edge
-	pamhd::grid::Edge_Type<cell_list_t> edge_bdy;
+	pamhd::Edge_Type<cell_list_t> edge_bdy;
 	// boundary and normal cell share vertex
 	cell_list_t vert_bdy;
 	for (const auto& cell: grid.local_cells()) {

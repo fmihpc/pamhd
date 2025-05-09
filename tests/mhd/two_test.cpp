@@ -57,7 +57,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "mhd/N_rusanov.hpp"
 #include "mhd/variables.hpp"
 #include "simulation_options.hpp"
-#include "variables.hpp"
+#include "common_variables.hpp"
 
 
 using namespace std;

@@ -66,7 +66,7 @@ Author(s): Ilja Honkonen
 #include "mhd/variables.hpp"
 #include "simulation_options.hpp"
 #include "variable_getter.hpp"
-#include "variables.hpp"
+#include "common_variables.hpp"
 
 
 // data stored in every cell of simulation grid

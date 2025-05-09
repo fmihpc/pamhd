@@ -1,4 +1,11 @@
-#! /usr/bin/env python3
+#! /usr/bin/env -S uv --quiet run --script
+# /// script
+# requires-python = '>=3.8'
+# dependencies = ['numpy']
+# [tool.uv]
+# exclude-newer = '2025-01-01T00:00:00Z'
+# ///
+
 '''
 Converts output from MHD test program of PAMHD to ASCII format.
 

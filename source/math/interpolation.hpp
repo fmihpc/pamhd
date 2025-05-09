@@ -39,7 +39,7 @@ Author(s): Ilja Honkonen
 
 #include "string"
 
-#include "grid/amr.hpp"
+#include "common_variables.hpp"
 
 
 namespace pamhd {
@@ -49,7 +49,7 @@ namespace math {
 /*! Interpolates cell volume average to cell vertices.
 
 Assumes that both source and target are same type.
-Assumes target variable is of type grid::Vertex_Type.
+Assumes target variable is of type pamhd::Vertex_Type.
 
 Interpolation is performed for cells with type > 0,
 cells with type < 0 are ignored.
@@ -90,7 +90,7 @@ template<
 	for (const auto& cell: grid.local_cells()) {
 		if (Type.data(*cell.data) <= 0) continue;
 
-		grid::Vertex_Type<int> nr_values;
+		pamhd::Vertex_Type<int> nr_values;
 		auto& tgt = Tgt.data(*cell.data);
 
 		for (int x: {-1, +1})
@@ -173,7 +173,7 @@ template<
 /*! Interpolates cell vertex data to cell center.
 
 Assumes that both source and target are same type.
-Assumes source variable is of type grid::Vertex_Type.
+Assumes source variable is of type pamhd::Vertex_Type.
 
 Interpolation is performed for cells with type > 0.
 */
@@ -210,7 +210,7 @@ template<
 
 /*! Interpolates cell faces to cell center.
 
-Assumes source is grid::Face_Type and target is 3d.
+Assumes source is pamhd::Face_Type and target is 3d.
 Data from faces with normal in N dimension is interpolated
 to component N of target.
 
@@ -306,7 +306,7 @@ template<
 	for (const auto& cell: grid.local_cells()) {
 		if (Type.data(*cell.data) <= 0) continue;
 
-		grid::Vertex_Type<int> nr_values;
+		pamhd::Vertex_Type<int> nr_values;
 		auto& tgt = Tgt.data(*cell.data);
 
 		tgt(-1, -1, -1) =

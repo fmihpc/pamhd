@@ -47,7 +47,7 @@ Author(s): Ilja Honkonen
 #include "mhd/roe_athena.hpp"
 #include "mhd/rusanov.hpp"
 #include "mhd/variables.hpp"
-#include "variables.hpp"
+#include "common_variables.hpp"
 
 
 using namespace std;
