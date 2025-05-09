@@ -70,19 +70,29 @@ using Cell = gensimcell::Cell<
 	Type
 >;
 
-struct Source {
+struct Volume_Scalar {
 	static bool is_stale;
 	using data_type = double;
 };
 
-struct Target {
+struct Face_Scalar {
+	static bool is_stale;
+	using data_type = pamhd::grid::Face_Type<double>;
+};
+
+struct Edge_Scalar {
+	static bool is_stale;
+	using data_type = pamhd::grid::Edge_Type<double>;
+};
+
+struct Vertex_Scalar {
 	static bool is_stale;
 	using data_type = pamhd::grid::Vertex_Type<double>;
 };
 
-using Cell_interp = gensimcell::Cell<
-	gensimcell::Optional_Transfer,
-	Source, Target, Type
->;
+struct Vertex_Vector {
+	static bool is_stale;
+	using data_type = pamhd::grid::Vertex_Type<std::array<double, 3>>;
+};
 
 #endif

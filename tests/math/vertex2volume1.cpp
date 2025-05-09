@@ -54,13 +54,25 @@ double function(const std::array<double, 3>& r)
 	return -std::sin(r[0] / 2) * std::cos(2 * r[1]) / (r[2] + 10);
 }
 
-// target cannot be vertex type
-const auto Tgt = pamhd::Variable_Getter<Source>();
-bool Source::is_stale = true;
+using Grid = dccrg::Dccrg<
+	gensimcell::Cell<
+		gensimcell::Optional_Transfer,
+		Volume_Scalar, Vertex_Scalar, Type
+	>,
+	dccrg::Cartesian_Geometry,
+	std::tuple<>,
+	std::tuple<
+		pamhd::grid::Face_Neighbor,
+		pamhd::grid::Edge_Neighbor,
+		pamhd::grid::Vertex_Neighbor>
+>;
+
+const auto Tgt = pamhd::Variable_Getter<Volume_Scalar>();
+bool Volume_Scalar::is_stale = true;
 
 // source must be vertex type
-const auto Src = pamhd::Variable_Getter<Target>();
-bool Target::is_stale = true;
+const auto Src = pamhd::Variable_Getter<Vertex_Scalar>();
+bool Vertex_Scalar::is_stale = true;
 
 const auto Typ = pamhd::Variable_Getter<Type>();
 bool Type::is_stale = true;
@@ -124,21 +136,10 @@ int main(int argc, char* argv[])
 	double old_norm = std::numeric_limits<double>::max();
 	size_t old_nr_of_cells = 0;
 	for (size_t nr_of_cells = 8; nr_of_cells <= 64; nr_of_cells *= 2) {
-
-		dccrg::Dccrg<
-			Cell_interp,
-			dccrg::Cartesian_Geometry,
-			std::tuple<>,
-			std::tuple<
-				pamhd::grid::Face_Neighbor,
-				pamhd::grid::Edge_Neighbor,
-				pamhd::grid::Vertex_Neighbor>
-		> grid;
-
 		const std::array<uint64_t, 3> grid_size{
 			nr_of_cells + 2, nr_of_cells + 2, nr_of_cells + 2};
 
-		grid
+		Grid grid; grid
 			.set_load_balancing_method("RANDOM")
 			.set_initial_length(grid_size)
 			.set_neighborhood_length(neighborhood_size)
