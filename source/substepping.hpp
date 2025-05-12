@@ -195,12 +195,13 @@ Assumes that substep is stored in 2^N format.
 */
 template <
 	class Grid,
+	class Options,
 	class Substep_Min_Getter,
 	class Substep_Max_Getter
 > void set_minmax_substepping_period(
 	double time,
 	Grid& grid,
-	pamhd::mhd::Options& options,
+	Options& options,
 	const Substep_Min_Getter Substep_Min,
 	const Substep_Max_Getter Substep_Max
 ) try {

@@ -676,7 +676,7 @@ int main(int argc, char* argv[]) {
 
 	// final init with timestep of 0
 	pamhd::particle::timestep(
-		options_sim.time_start, grid, options_mhd, Part_Int,
+		options_sim.time_start, grid, options_sim, Part_Int,
 		Part_Pos, Part_Mas, Part_Mas_Cell, Part_SpM,
 		Part_SpM_Cell, Part_Vel, Part_Vel_Cell, Part_Ekin,
 		Nr_Particles, Part_Nr, Bulk_Mass_Getter,
@@ -766,7 +766,7 @@ int main(int argc, char* argv[]) {
 		const double
 			until_end = time_end - simulation_time,
 			dt = pamhd::particle::timestep(
-				simulation_time, grid, options_mhd, Part_Int,
+				simulation_time, grid, options_sim, Part_Int,
 				Part_Pos, Part_Mas, Part_Mas_Cell, Part_SpM,
 				Part_SpM_Cell, Part_Vel, Part_Vel_Cell, Part_Ekin,
 				Nr_Particles, Part_Nr, Bulk_Mass_Getter,

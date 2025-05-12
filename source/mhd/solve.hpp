@@ -1797,6 +1797,7 @@ template <
 template <
 	class Solver,
 	class Grid,
+	class Sim_Options,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
@@ -1817,7 +1818,7 @@ template <
 > double timestep(
 	const Solver solver,
 	Grid& grid,
-	Options& options_mhd,
+	Sim_Options& options,
 	const double simulation_time,
 	double max_time_step,
 	const double time_step_factor,
@@ -1842,7 +1843,7 @@ template <
 	const Max_Velocity_Getter& Max_v
 ) try {
 	set_minmax_substepping_period(
-		simulation_time, grid, options_mhd,
+		simulation_time, grid, options,
 		Substep_Min, Substep_Max
 	);
 

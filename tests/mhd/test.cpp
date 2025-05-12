@@ -443,7 +443,7 @@ int main(int argc, char* argv[]) {
 
 	// final init with timestep of 0
 	pamhd::mhd::timestep(
-		mhd_solver, grid, options_mhd, options_sim.time_start,
+		mhd_solver, grid, options_sim, options_sim.time_start,
 		0, options_mhd.time_step_factor,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
@@ -489,7 +489,7 @@ int main(int argc, char* argv[]) {
 			// don't step over the final simulation time
 			until_end = time_end - simulation_time,
 			dt = pamhd::mhd::timestep(
-				mhd_solver, grid, options_mhd, simulation_time,
+				mhd_solver, grid, options_sim, simulation_time,
 				until_end, options_mhd.time_step_factor,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
