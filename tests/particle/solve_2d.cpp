@@ -75,8 +75,8 @@ bool pamhd::particle::Particles_External::is_stale = true;
 const auto Nr_Ext = pamhd::Variable_Getter<pamhd::particle::Nr_Particles_External>();
 bool pamhd::particle::Nr_Particles_External::is_stale = true;
 
-const auto SInfo = pamhd::Variable_Getter<pamhd::Solver_Info>();
-bool pamhd::Solver_Info::is_stale = true;
+const auto CType = pamhd::Variable_Getter<pamhd::Cell_Type>();
+bool pamhd::Cell_Type::is_stale = true;
 
 const auto Max_v_part = pamhd::Variable_Getter<pamhd::particle::Max_Spatial_Velocity>();
 bool pamhd::particle::Max_Spatial_Velocity::is_stale = true;
@@ -269,7 +269,7 @@ int main(int argc, char* argv[])
 			1.0, cells, grid, bg_B, 1, false, Ele, Vol_B,
 			Nr_Ext, Part_Int, Part_Ext, Max_v_part,
 			Max_ω_part, Part_Pos, Part_Vel, Part_C2M,
-			Part_Mas, Part_Des, SInfo
+			Part_Mas, Part_Des, CType
 		);
 	};
 

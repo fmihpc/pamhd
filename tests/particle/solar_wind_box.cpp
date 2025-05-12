@@ -137,8 +137,8 @@ bool pamhd::particle::Electric_Field::is_stale = true;
 0 for read-only cells
 1 for read-write cells
 */
-const auto SInfo = pamhd::Variable_Getter<pamhd::Solver_Info>();
-bool pamhd::Solver_Info::is_stale = true;
+const auto CType = pamhd::Variable_Getter<pamhd::Cell_Type>();
+bool pamhd::Cell_Type::is_stale = true;
 
 const auto Substep = pamhd::Variable_Getter<pamhd::Substepping_Period>();
 bool pamhd::Substepping_Period::is_stale = true;
@@ -525,18 +525,18 @@ int main(int argc, char* argv[]) {
 		edge_cells, vert_cells, planet_cells
 	] = pamhd::grid::prepare_grid(
 		options_sim, options_grid, options_box,
-		grid, SInfo, Ref_max, Ref_min
+		grid, CType, Ref_max, Ref_min
 	);
 	if (rank == 0) {
 		cout << "done" << endl;
 	}
 
 	for (const auto& cell: solar_wind_cells) {
-		if (SInfo.data(*cell.data) != 0) {
+		if (CType.data(*cell.data) != 0) {
 			throw runtime_error(
 				__FILE__"(" + to_string(__LINE__)
 				+ ") Solar wind cell " + to_string(cell.id)
-				+ " is of type " + to_string(SInfo.data(*cell.data))
+				+ " is of type " + to_string(CType.data(*cell.data))
 			);
 		}
 		if (Ref_max.data(*cell.data) != 0)
@@ -544,11 +544,11 @@ int main(int argc, char* argv[]) {
 	}
 	for (int dir: {-3,-2,-1,+1,+2,+3}) {
 		for (const auto& cell: face_cells(dir)) {
-			if (SInfo.data(*cell.data) != 0) {
+			if (CType.data(*cell.data) != 0) {
 				throw runtime_error(
 					__FILE__"(" + to_string(__LINE__)
 					+ ") Face boundary cell " + to_string(cell.id)
-					+ " is of type " + to_string(SInfo.data(*cell.data))
+					+ " is of type " + to_string(CType.data(*cell.data))
 				);
 			}
 			if (Ref_max.data(*cell.data) != 0)
@@ -559,11 +559,11 @@ int main(int argc, char* argv[]) {
 	for (int dir1: {-1, +1})
 	for (int dir2: {-1, +1}) {
 		for (const auto& cell: edge_cells(dim, dir1, dir2)) {
-			if (SInfo.data(*cell.data) != 0) {
+			if (CType.data(*cell.data) != 0) {
 				throw runtime_error(
 					__FILE__"(" + to_string(__LINE__)
 					+ ") Edge boundary cell " + to_string(cell.id)
-					+ " is of type " + to_string(SInfo.data(*cell.data))
+					+ " is of type " + to_string(CType.data(*cell.data))
 				);
 			}
 			if (Ref_max.data(*cell.data) != 0)
@@ -571,22 +571,22 @@ int main(int argc, char* argv[]) {
 		}
 	}
 	for (const auto& cell: vert_cells) {
-		if (SInfo.data(*cell.data) != 0) {
+		if (CType.data(*cell.data) != 0) {
 			throw runtime_error(
 				__FILE__"(" + to_string(__LINE__)
 				+ ") Vertex boundary cell " + to_string(cell.id)
-				+ " is of type " + to_string(SInfo.data(*cell.data))
+				+ " is of type " + to_string(CType.data(*cell.data))
 			);
 		}
 		if (Ref_max.data(*cell.data) != 0)
 			throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}
 	for (const auto& cell: planet_cells) {
-		if (SInfo.data(*cell.data) != 0) {
+		if (CType.data(*cell.data) != 0) {
 			throw runtime_error(
 				__FILE__"(" + to_string(__LINE__)
 				+ ") Planet boundary cell " + to_string(cell.id)
-				+ " is of type " + to_string(SInfo.data(*cell.data))
+				+ " is of type " + to_string(CType.data(*cell.data))
 			);
 		}
 		if (Ref_max.data(*cell.data) != grid.get_maximum_refinement_level())
@@ -641,7 +641,7 @@ int main(int argc, char* argv[]) {
 	pamhd::mhd::update_B_consistency(
 		0, grid.local_cells(), grid,
 		Mas, Mom, Nrj, Vol_B, Face_B,
-		SInfo, Substep,
+		CType, Substep,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		true
@@ -653,7 +653,7 @@ int main(int argc, char* argv[]) {
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		options_sim.proton_mass,
-		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, SInfo
+		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, CType
 	);
 	uint64_t simulation_step = 0;
 	next_particle_id = pamhd::particle::apply_boundaries_sw_box(
@@ -671,7 +671,7 @@ int main(int argc, char* argv[]) {
 		planet_cells,
 		random_source,
 		Part_Int,
-		SInfo
+		CType
 	);
 
 	// final init with timestep of 0
@@ -692,7 +692,7 @@ int main(int argc, char* argv[]) {
 		Accu_List_Getter,
 		pamhd::particle::Nr_Accumulated_To_Cells(),
 		pamhd::particle::Accumulated_To_Cells(),
-		pamhd::particle::Bulk_Velocity(), SInfo,
+		pamhd::particle::Bulk_Velocity(), CType,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		options_sim.temp2nrj,
@@ -782,7 +782,7 @@ int main(int argc, char* argv[]) {
 				Accu_List_Getter,
 				pamhd::particle::Nr_Accumulated_To_Cells(),
 				pamhd::particle::Accumulated_To_Cells(),
-				pamhd::particle::Bulk_Velocity(), SInfo,
+				pamhd::particle::Bulk_Velocity(), CType,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
 				options_sim.temp2nrj,
@@ -805,7 +805,7 @@ int main(int argc, char* argv[]) {
 
 		const auto avg_div = pamhd::math::get_divergence_staggered(
 			grid.local_cells(), grid,
-			Face_B, Div_B, SInfo
+			Face_B, Div_B, CType
 		);
 		if (rank == 0) {
 			cout << ", average divergence " << avg_div;
@@ -813,7 +813,7 @@ int main(int argc, char* argv[]) {
 
 		const uint64_t splits_local = pamhd::particle::split_particles(
 			options_particle.min_particles, random_source,
-			grid, Part_Int, Part_Pos, Part_Mas, SInfo
+			grid, Part_Int, Part_Pos, Part_Mas, CType
 		);
 		uint64_t splits_global = 0;
 		if (MPI_Reduce(
@@ -838,7 +838,7 @@ int main(int argc, char* argv[]) {
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			options_sim.proton_mass,
-			Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, SInfo
+			Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, CType
 		);
 		next_particle_id = pamhd::particle::apply_boundaries_sw_box(
 			next_particle_id,
@@ -855,7 +855,7 @@ int main(int argc, char* argv[]) {
 			planet_cells,
 			random_source,
 			Part_Int,
-			SInfo
+			CType
 		);
 
 		if (

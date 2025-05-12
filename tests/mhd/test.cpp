@@ -110,8 +110,8 @@ const auto Div_B = pamhd::Variable_Getter<pamhd::Magnetic_Field_Divergence>();
 0 for read-only cells
 1 for read-write cells
 */
-const auto SInfo = pamhd::Variable_Getter<pamhd::Solver_Info>();
-bool pamhd::Solver_Info::is_stale = true;
+const auto CType = pamhd::Variable_Getter<pamhd::Cell_Type>();
+bool pamhd::Cell_Type::is_stale = true;
 
 const auto Substep = pamhd::Variable_Getter<pamhd::Substepping_Period>();
 bool pamhd::Substepping_Period::is_stale = true;
@@ -412,7 +412,7 @@ int main(int argc, char* argv[]) {
 	pamhd::mhd::update_B_consistency(
 		0, grid.local_cells(), grid,
 		Mas, Mom, Nrj, Vol_B, Face_B,
-		SInfo, Substep,
+		CType, Substep,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		false // fluid not initialized yet
@@ -429,8 +429,8 @@ int main(int argc, char* argv[]) {
 	);
 
 	// classify cells & faces into normal, boundary and dont_solve
-	pamhd::mhd::set_solver_info(grid, boundaries_mhd, geometries, SInfo);
-	pamhd::mhd::classify_faces(grid, SInfo, FInfo);
+	pamhd::mhd::set_solver_info(grid, boundaries_mhd, geometries, CType);
+	pamhd::mhd::classify_faces(grid, CType, FInfo);
 
 	pamhd::mhd::apply_boundaries(
 		grid, geometries, boundaries_mhd,
@@ -438,7 +438,7 @@ int main(int argc, char* argv[]) {
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		Mas, Mom, Nrj, Vol_B,
-		Face_B, SInfo, FInfo, Substep
+		Face_B, CType, FInfo, Substep
 	);
 
 	// final init with timestep of 0
@@ -448,7 +448,7 @@ int main(int argc, char* argv[]) {
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
-		Mas_f, Mom_f, Nrj_f, Mag_f, SInfo, Timestep,
+		Mas_f, Mom_f, Nrj_f, Mag_f, CType, Timestep,
 		Substep, Substep_Min, Substep_Max, Max_v
 	);
 	if (rank == 0) {
@@ -494,7 +494,7 @@ int main(int argc, char* argv[]) {
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
 				Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
-				Mas_f, Mom_f, Nrj_f, Mag_f, SInfo, Timestep,
+				Mas_f, Mom_f, Nrj_f, Mag_f, CType, Timestep,
 				Substep, Substep_Min, Substep_Max, Max_v
 			);
 		if (rank == 0) {
@@ -517,7 +517,7 @@ int main(int argc, char* argv[]) {
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
 				Mas, Mom, Nrj, Vol_B, Face_B, Bg_B,
-				SInfo, FInfo, Ref_min, Ref_max,
+				CType, FInfo, Ref_min, Ref_max,
 				Substep, Max_v
 			);
 		}
@@ -528,12 +528,12 @@ int main(int argc, char* argv[]) {
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			Mas, Mom, Nrj, Vol_B,
-			Face_B, SInfo, FInfo, Substep
+			Face_B, CType, FInfo, Substep
 		);
 
 		const auto avg_div = pamhd::math::get_divergence_staggered(
 			grid.local_cells(), grid,
-			Face_B, Div_B, SInfo
+			Face_B, Div_B, CType
 		);
 		if (rank == 0) {
 			cout << " average divergence " << avg_div << endl;

@@ -114,8 +114,8 @@ bool pamhd::particle::Particles_External::is_stale = true;
 const auto Nr_Ext = pamhd::Variable_Getter<pamhd::particle::Nr_Particles_External>();
 bool pamhd::particle::Nr_Particles_External::is_stale = true;
 
-const auto SInfo = pamhd::Variable_Getter<pamhd::Solver_Info>();
-bool pamhd::Solver_Info::is_stale = true;
+const auto CType = pamhd::Variable_Getter<pamhd::Cell_Type>();
+bool pamhd::Cell_Type::is_stale = true;
 
 const auto Max_v_part = pamhd::Variable_Getter<pamhd::particle::Max_Spatial_Velocity>();
 bool pamhd::particle::Max_Spatial_Velocity::is_stale = true;
@@ -427,7 +427,7 @@ int main(int argc, char* argv[])
 			Bdy_Nr_Par,
 			Bdy_SpM,
 			Bdy_C2M,
-			SInfo
+			CType
 		);
 	next_particle_id += nr_particles_created * grid.get_comm_size();
 
@@ -452,7 +452,7 @@ int main(int argc, char* argv[])
 			next_particle_id,
 			grid.get_comm_size(),
 			true,
-			SInfo,
+			CType,
 			Ele,
 			Vol_B,
 			Part_Int,
@@ -473,11 +473,11 @@ int main(int argc, char* argv[])
 	Classify cells into normal, boundary and dont_solve
 	*/
 
-	Cell::set_transfer_all(true, pamhd::Solver_Info());
-	pamhd::particle::set_solver_info<pamhd::Solver_Info>(
-		grid, boundaries, geometries, SInfo
+	Cell::set_transfer_all(true, pamhd::Cell_Type());
+	pamhd::particle::set_solver_info<pamhd::Cell_Type>(
+		grid, boundaries, geometries, CType
 	);
-	Cell::set_transfer_all(false, pamhd::Solver_Info());
+	Cell::set_transfer_all(false, pamhd::Cell_Type());
 
 
 	size_t simulated_steps = 0;
@@ -534,7 +534,7 @@ int main(int argc, char* argv[])
 			background_B, options_sim.vacuum_permeability,
 			false, Ele, Vol_B, Nr_Ext, Part_Int, Part_Ext,
 			Max_v_part, Max_ω_part, Part_Pos, Part_Vel,
-			Part_C2M, Part_Mas, Part_Des, SInfo
+			Part_C2M, Part_Mas, Part_Des, CType
 		);
 
 		Cell::set_transfer_all(true, pamhd::particle::Nr_Particles_External());
@@ -545,7 +545,7 @@ int main(int argc, char* argv[])
 			background_B, options_sim.vacuum_permeability,
 			false, Ele, Vol_B, Nr_Ext, Part_Int, Part_Ext,
 			Max_v_part, Max_ω_part, Part_Pos, Part_Vel,
-			Part_C2M, Part_Mas, Part_Des, SInfo
+			Part_C2M, Part_Mas, Part_Des, CType
 		);
 		max_dt = std::numeric_limits<double>::max();
 		for (const auto& cell: grid.local_cells()) {
@@ -625,7 +625,7 @@ int main(int argc, char* argv[])
 				next_particle_id,
 				grid.get_comm_size(),
 				false,
-				SInfo,
+				CType,
 				Ele,
 				Vol_B,
 				Part_Int,

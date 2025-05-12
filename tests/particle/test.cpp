@@ -131,8 +131,8 @@ bool pamhd::particle::Electric_Field::is_stale = true;
 0 for read-only cells
 1 for read-write cells
 */
-const auto SInfo = pamhd::Variable_Getter<pamhd::Solver_Info>();
-bool pamhd::Solver_Info::is_stale = true;
+const auto CType = pamhd::Variable_Getter<pamhd::Cell_Type>();
+bool pamhd::Cell_Type::is_stale = true;
 
 const auto Max_v_part = pamhd::Variable_Getter<pamhd::particle::Max_Spatial_Velocity>();
 bool pamhd::particle::Max_Spatial_Velocity::is_stale = true;
@@ -664,7 +664,7 @@ int main(int argc, char* argv[]) {
 	pamhd::mhd::update_B_consistency(
 		0, grid.local_cells(), grid,
 		Mas, Mom, Nrj, Vol_B, Face_B,
-		SInfo, Substep,
+		CType, Substep,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		false // fluid not initialized yet
@@ -711,7 +711,7 @@ int main(int argc, char* argv[]) {
 			Bdy_Nr_Par,
 			Bdy_SpM,
 			Bdy_C2M,
-			SInfo
+			CType
 		);
 		next_particle_id += nr_particles_created * grid.get_comm_size();
 	}
@@ -737,7 +737,7 @@ int main(int argc, char* argv[]) {
 			next_particle_id,
 			grid.get_comm_size(),
 			true,
-			SInfo,
+			CType,
 			Part_Int,
 			Bdy_N,
 			Bdy_V,
@@ -773,7 +773,7 @@ int main(int argc, char* argv[]) {
 			pamhd::particle::Nr_Accumulated_To_Cells(),
 			pamhd::particle::Accumulated_To_Cells(),
 			pamhd::particle::Bulk_Velocity(),
-			SInfo
+			CType
 		);
 	} catch (const std::exception& e) {
 		std::cerr << __FILE__ "(" << __LINE__ << ": "
@@ -795,7 +795,7 @@ int main(int argc, char* argv[]) {
 			Bulk_Relative_Velocity2_Getter,
 			Part_Int,
 			Mas, Mom, Nrj, Vol_B,
-			SInfo
+			CType
 		);
 	} catch (const std::exception& e) {
 		std::cerr << __FILE__ "(" << __LINE__ << ": "
@@ -808,19 +808,8 @@ int main(int argc, char* argv[]) {
 	Classify cells & faces into normal, boundary and dont_solve
 	*/
 
-	pamhd::mhd::set_solver_info(grid, boundaries_mhd, geometries, SInfo);
-	pamhd::mhd::classify_faces(grid, SInfo, FInfo);
-
-	/*pamhd::mhd::apply_fluid_boundaries(
-		grid,
-		boundaries,
-		geometries,
-		simulation_time,
-		Mas, Mom, Nrj, Vol_B, SInfo,
-		options_sim.proton_mass,
-		options_sim.adiabatic_index,
-		options_sim.vacuum_permeability
-	);*/
+	pamhd::mhd::set_solver_info(grid, boundaries_mhd, geometries, CType);
+	pamhd::mhd::classify_faces(grid, CType, FInfo);
 
 	pamhd::mhd::apply_magnetic_field_boundaries_staggered(
 		grid,
@@ -833,7 +822,7 @@ int main(int argc, char* argv[]) {
 	pamhd::mhd::update_B_consistency(
 		0, grid.local_cells(), grid,
 		Mas, Mom, Nrj, Vol_B, Face_B,
-		SInfo, Substep,
+		CType, Substep,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		true
@@ -872,7 +861,7 @@ int main(int argc, char* argv[]) {
 		Accu_List_Getter,
 		pamhd::particle::Nr_Accumulated_To_Cells(),
 		pamhd::particle::Accumulated_To_Cells(),
-		pamhd::particle::Bulk_Velocity(), SInfo,
+		pamhd::particle::Bulk_Velocity(), CType,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		options_sim.temp2nrj,
@@ -965,7 +954,7 @@ int main(int argc, char* argv[]) {
 				Accu_List_Getter,
 				pamhd::particle::Nr_Accumulated_To_Cells(),
 				pamhd::particle::Accumulated_To_Cells(),
-				pamhd::particle::Bulk_Velocity(), SInfo,
+				pamhd::particle::Bulk_Velocity(), CType,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
 				options_sim.temp2nrj,
@@ -1023,7 +1012,7 @@ int main(int argc, char* argv[]) {
 		pamhd::mhd::update_B_consistency(
 			0, grid.local_cells(), grid,
 			Mas, Mom, Nrj, Vol_B, Face_B,
-			SInfo, Substep,
+			CType, Substep,
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			true
@@ -1031,7 +1020,7 @@ int main(int argc, char* argv[]) {
 
 		const auto avg_div = pamhd::math::get_divergence_staggered(
 			grid.local_cells(), grid,
-			Face_B, Div_B, SInfo
+			Face_B, Div_B, CType
 		);
 		if (rank == 0) {
 			cout << " average divergence " << avg_div << endl;
@@ -1039,7 +1028,7 @@ int main(int argc, char* argv[]) {
 
 		pamhd::particle::split_particles(
 			options_particle.min_particles, random_source,
-			grid, Part_Int, Part_Pos, Part_Mas, SInfo
+			grid, Part_Int, Part_Pos, Part_Mas, CType
 		);
 
 		nr_particles_created += pamhd::particle::apply_boundaries<
@@ -1056,7 +1045,7 @@ int main(int argc, char* argv[]) {
 			options_sim.temp2nrj,
 			options_sim.vacuum_permeability,
 			next_particle_id, grid.get_comm_size(), true,
-			SInfo, Part_Int, Bdy_N, Bdy_V, Bdy_T,
+			CType, Part_Int, Bdy_N, Bdy_V, Bdy_T,
 			Bdy_Nr_Par, Bdy_SpM, Bdy_C2M
 		);
 		next_particle_id += nr_particles_created * grid.get_comm_size();

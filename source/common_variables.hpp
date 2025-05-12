@@ -647,7 +647,7 @@ Information for solver(s) on how to handle a simulation cell.
 0 means boundary read-only cell
 1 means normal read-write cell
 */
-struct Solver_Info {
+struct Cell_Type {
 	static bool is_stale;
 	using data_type = int;
 };

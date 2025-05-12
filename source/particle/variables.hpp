@@ -300,7 +300,7 @@ dccrg uses to save the file.
 using Cell_test_particle = gensimcell::Cell<
 	gensimcell::Optional_Transfer,
 	pamhd::Electric_Current_Density, // output compatible with regular model
-	pamhd::Solver_Info,
+	pamhd::Cell_Type,
 	pamhd::MPI_Rank,
 	pamhd::Magnetic_Field,
 	pamhd::particle::Max_Spatial_Velocity,
@@ -328,7 +328,7 @@ using Cell_hyb_particle = gensimcell::Cell<
 	gensimcell::Optional_Transfer,
 	pamhd::mhd::HD_State_Conservative,
 	pamhd::Electric_Current_Density,
-	pamhd::Solver_Info,
+	pamhd::Cell_Type,
 	pamhd::MPI_Rank,
 	pamhd::Resistivity,
 	pamhd::Magnetic_Field,
@@ -369,7 +369,7 @@ using Cell_hyb_particle_staggered = gensimcell::Cell<
 	pamhd::Electric_Current_Density,
 	pamhd::grid::Target_Refinement_Level_Max,
 	pamhd::grid::Target_Refinement_Level_Min,
-	pamhd::Solver_Info,
+	pamhd::Cell_Type,
 	pamhd::mhd::Mass_Density,
 	pamhd::mhd::Momentum_Density,
 	pamhd::mhd::Total_Energy_Density,

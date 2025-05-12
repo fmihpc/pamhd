@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #include "algorithm"
@@ -68,7 +71,7 @@ using Cell = gensimcell::Cell<
 	gensimcell::Optional_Transfer,
 	pamhd::particle::Particles_Internal,
 	Mass_Density,
-	pamhd::Solver_Info,
+	pamhd::Cell_Type,
 	// only following two are transferred between processes
 	pamhd::particle::Nr_Accumulated_To_Cells,
 	Accumulated_To_Cells
@@ -156,7 +159,7 @@ const auto accumulation_list_length_getter
 		return cell_data[pamhd::particle::Nr_Accumulated_To_Cells()];
 	};
 
-const auto solver_info_getter = pamhd::Variable_Getter<pamhd::Solver_Info>();
+const auto cell_type_getter = pamhd::Variable_Getter<pamhd::Cell_Type>();
 
 const auto accumulate_from_remote_neighbors
 	= [](Grid& grid){
@@ -166,7 +169,7 @@ const auto accumulate_from_remote_neighbors
 			list_bulk_value_getter,
 			list_target_getter,
 			accumulation_list_getter,
-			solver_info_getter
+			cell_type_getter
 		);
 	};
 
@@ -287,7 +290,7 @@ int main(int argc, char* argv[])
 
 		for (const auto& cell: grid.local_cells()) {
 			bulk_value_getter.data(*cell.data) = 0;
-			solver_info_getter.data(*cell.data) = 0;
+			cell_type_getter.data(*cell.data) = 0;
 		}
 		pamhd::particle::accumulate(
 			grid.local_cells(),
@@ -310,7 +313,7 @@ int main(int argc, char* argv[])
 			list_target_getter,
 			accumulation_list_length_getter,
 			accumulation_list_getter,
-			solver_info_getter
+			cell_type_getter
 		);
 
 		Cell::set_transfer_all(true, pamhd::particle::Nr_Accumulated_To_Cells());

@@ -238,13 +238,13 @@ template <class Grid> bool save(
 	if (variables.count("mhd info") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Cell::set_transfer_all(true, pamhd::Solver_Info());
+		Cell::set_transfer_all(true, pamhd::Cell_Type());
 		const string varname = "mhd info";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Cell::set_transfer_all(false, pamhd::Solver_Info());
+		Cell::set_transfer_all(false, pamhd::Cell_Type());
 	}
 
 	if (variables.count("ref lvls") > 0) {

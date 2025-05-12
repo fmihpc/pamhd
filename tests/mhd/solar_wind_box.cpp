@@ -113,8 +113,8 @@ const auto Div_B = pamhd::Variable_Getter<pamhd::Magnetic_Field_Divergence>();
 0 for read-only cells
 1 for read-write cells
 */
-const auto SInfo = pamhd::Variable_Getter<pamhd::Solver_Info>();
-bool pamhd::Solver_Info::is_stale = true;
+const auto CType = pamhd::Variable_Getter<pamhd::Cell_Type>();
+bool pamhd::Cell_Type::is_stale = true;
 
 const auto Substep = pamhd::Variable_Getter<pamhd::Substepping_Period>();
 bool pamhd::Substepping_Period::is_stale = true;
@@ -346,19 +346,19 @@ int main(int argc, char* argv[]) {
 		edge_cells, vert_cells, planet_cells
 	] = pamhd::grid::prepare_grid(
 		options_sim, options_grid, options_box,
-		grid, SInfo, Ref_max, Ref_min
+		grid, CType, Ref_max, Ref_min
 	);
 	if (rank == 0) {
 		cout << "done" << endl;
 	}
 
 	for (const auto& cell: solar_wind_cells) {
-		if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (CType.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}
 	for (int dir: {-3,-2,-1,+1,+2,+3}) {
 		for (const auto& cell: face_cells(dir)) {
-			if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (CType.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 	}
@@ -366,16 +366,16 @@ int main(int argc, char* argv[]) {
 	for (int dir1: {-1, +1})
 	for (int dir2: {-1, +1}) {
 		for (const auto& cell: edge_cells(dim, dir1, dir2)) {
-			if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+			if (CType.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 	}
 	for (const auto& cell: vert_cells) {
-		if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (CType.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}
 	for (const auto& cell: planet_cells) {
-		if (SInfo.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		if (CType.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (Ref_max.data(*cell.data) != grid.get_maximum_refinement_level()) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}
 
@@ -417,7 +417,7 @@ int main(int argc, char* argv[]) {
 	pamhd::mhd::update_B_consistency(
 		0, grid.local_cells(), grid,
 		Mas, Mom, Nrj, Vol_B, Face_B,
-		SInfo, Substep,
+		CType, Substep,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		true
@@ -429,7 +429,7 @@ int main(int argc, char* argv[]) {
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		options_sim.proton_mass,
-		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, SInfo
+		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, CType
 	);
 
 	// final init with timestep of 0
@@ -439,7 +439,7 @@ int main(int argc, char* argv[]) {
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
-		Mas_f, Mom_f, Nrj_f, Mag_f, SInfo, Timestep,
+		Mas_f, Mom_f, Nrj_f, Mag_f, CType, Timestep,
 		Substep, Substep_Min, Substep_Max, Max_v_wave
 	);
 	if (rank == 0) {
@@ -485,7 +485,7 @@ int main(int argc, char* argv[]) {
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
 				Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
-				Mas_f, Mom_f, Nrj_f, Mag_f, SInfo, Timestep,
+				Mas_f, Mom_f, Nrj_f, Mag_f, CType, Timestep,
 				Substep, Substep_Min, Substep_Max, Max_v_wave
 			);
 		if (rank == 0) {
@@ -500,12 +500,12 @@ int main(int argc, char* argv[]) {
 			options_sim.adiabatic_index,
 			options_sim.vacuum_permeability,
 			options_sim.proton_mass,
-			Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, SInfo
+			Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, CType
 		);
 
 		const auto avg_div = pamhd::math::get_divergence_staggered(
 			grid.local_cells(), grid,
-			Face_B, Div_B, SInfo
+			Face_B, Div_B, CType
 		);
 		if (rank == 0) {
 			cout << " average divergence " << avg_div << endl;
