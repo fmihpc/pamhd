@@ -318,6 +318,55 @@ template<
 }
 
 
+/*! Interpolates data from cell's faces to arbitrary location.
+
+Assumes data is scalar wrapped in pamhd::Face_Type. Data from
+faces with normal in N dimension is interpolated to component N.
+
+Uses linear interpolation.
+*/
+auto face2r(
+	const auto& r,
+	const auto& cell_end,
+	const auto& cell_length,
+	const auto& data
+) try {
+	static_assert(requires{r[0];r[1];r[2];});
+
+	using std::max;
+	using std::min;
+
+	pamhd::Face_Type<double> weight;
+	for (int dir: {-3,-2,-1,+1,+2,+3}) {
+		weight(dir) = 1;
+	}
+
+	const double neg_x = min(1.0, max(0.0, (cell_end[0] - r[0]) / cell_length[0]));
+	weight(-1) *= neg_x;
+	weight(+1) *= 1 - neg_x;
+
+	const double neg_y = min(1.0, max(0.0, (cell_end[1] - r[1]) / cell_length[1]));
+	weight(-2) *= neg_y;
+	weight(+2) *= 1 - neg_y;
+
+	const double neg_z = min(1.0, max(0.0, (cell_end[2] - r[2]) / cell_length[2]));
+	weight(-3) *= neg_z;
+	weight(+3) *= 1 - neg_z;
+
+	const std::array<double, 3> result{
+		weight(-1)*data(-1) + weight(+1)*data(+1),
+		weight(-2)*data(-2) + weight(+2)*data(+2),
+		weight(-3)*data(-3) + weight(+3)*data(+3)
+	};
+	return result;
+
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
+
+
 template<
 	class Grid,
 	class Source_Getter,
