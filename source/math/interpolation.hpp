@@ -325,7 +325,7 @@ faces with normal in N dimension is interpolated to component N.
 
 Uses linear interpolation.
 */
-auto face2r(
+std::array<double, 3> face2r(
 	const auto& r,
 	const auto& cell_end,
 	const auto& cell_length,
@@ -378,6 +378,7 @@ template<
 	const Target_Getter& Tgt,
 	const Cell_Type_Getter& Type
 ) try {
+	throw std::runtime_error("vertex2face not implemented");
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {
@@ -505,6 +506,66 @@ template<
 			}
 		}
 	}
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
+
+
+/*! Interpolates data from cell's edges to arbitrary location.
+
+Assumes data is scalar wrapped in pamhd::Edge_Type. Data from
+edges along N dimension is interpolated to component N.
+
+Uses bilinear interpolation.
+*/
+std::array<double, 3> edge2r(
+	const auto& r,
+	const auto& cell_end,
+	const auto& cell_length,
+	const auto& data
+) try {
+	static_assert(requires{r[0];r[1];r[2];});
+
+	using std::max;
+	using std::min;
+
+	pamhd::Edge_Type<double> weight;
+	for (size_t dim: {0, 1, 2})
+	for (int dir1: {-1, +1})
+	for (int dir2: {-1, +1}) {
+		weight(dim, dir1, dir2) = 1;
+	}
+
+	const double
+		neg_x = min(1.0, max(0.0, (cell_end[0] - r[0]) / cell_length[0])),
+		neg_y = min(1.0, max(0.0, (cell_end[1] - r[1]) / cell_length[1])),
+		neg_z = min(1.0, max(0.0, (cell_end[2] - r[2]) / cell_length[2]));
+
+	weight(0, -1, -1) *=      neg_y  *      neg_z ;
+	weight(0, +1, -1) *= (1 - neg_y) *      neg_z ;
+	weight(0, -1, +1) *=      neg_y  * (1 - neg_z);
+	weight(0, +1, +1) *= (1 - neg_y) * (1 - neg_z);
+
+	weight(1, -1, -1) *=      neg_x  *      neg_z ;
+	weight(1, +1, -1) *= (1 - neg_x) *      neg_z ;
+	weight(1, -1, +1) *=      neg_x  * (1 - neg_z);
+	weight(1, +1, +1) *= (1 - neg_x) * (1 - neg_z);
+
+	weight(2, -1, -1) *=      neg_x  *      neg_z ;
+	weight(2, +1, -1) *= (1 - neg_x) *      neg_z ;
+	weight(2, -1, +1) *=      neg_x  * (1 - neg_z);
+	weight(2, +1, +1) *= (1 - neg_x) * (1 - neg_z);
+
+	std::array<double, 3> result{0, 0, 0};
+	for (size_t dim: {0, 1, 2})
+	for (int dir1: {-1, +1})
+	for (int dir2: {-1, +1}) {
+		result[dim] += weight(dim, dir1, dir2) * data(dim, dir1, dir2);
+	}
+	return result;
+
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
 } catch (...) {

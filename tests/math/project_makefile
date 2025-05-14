@@ -9,7 +9,8 @@ TESTS_MATH_EXECUTABLES = \
   tests/math/edge2vertex1.exe \
   tests/math/vertex2r1.exe \
   tests/math/vertex2r2.exe \
-  tests/math/face2r1.exe
+  tests/math/face2r1.exe \
+  tests/math/edge2r1.exe
 
 TESTS_MATH_TESTS = \
   tests/math/get1d_div.tst \
@@ -30,7 +31,8 @@ TESTS_MATH_TESTS = \
   tests/math/edge2vertex1.mtst \
   tests/math/vertex2r1.tst \
   tests/math/vertex2r2.tst \
-  tests/math/face2r1.tst
+  tests/math/face2r1.tst \
+  tests/math/edge2r1.tst
 
 tests/math_executables: $(TESTS_MATH_EXECUTABLES)
 
@@ -125,5 +127,10 @@ tests/math/vertex2r2.exe: \
 
 tests/math/face2r1.exe: \
   tests/math/face2r1.cpp \
+  $(TEST_MATH_COMMON_DEPS)
+	@printf "MPICXX $<\n" && $(MPICXX_TESTS_MATH_MPICXX)
+
+tests/math/edge2r1.exe: \
+  tests/math/edge2r1.cpp \
   $(TEST_MATH_COMMON_DEPS)
 	@printf "MPICXX $<\n" && $(MPICXX_TESTS_MATH_MPICXX)
