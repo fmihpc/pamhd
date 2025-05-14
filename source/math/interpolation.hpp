@@ -49,7 +49,7 @@ namespace math {
 /*! Interpolates cell volume average to cell vertices.
 
 Assumes that both source and target are same type.
-Assumes target variable is of type pamhd::Vertex_Type.
+Assumes target variable is wrapped in pamhd::Vertex_Type.
 
 Interpolation is performed for cells with type > 0,
 cells with type < 0 are ignored.
@@ -170,10 +170,85 @@ template<
 }
 
 
+/*! Interpolates data from cell's vertices to arbitrary location.
+
+Assumes data is wrapped in pamhd::Vertex_Type.
+
+Uses trilinear interpolation.
+*/
+auto vertex2r(
+	const auto& r,
+	const auto& cell_end,
+	const auto& cell_length,
+	const auto& data
+) try {
+	static_assert(requires{r[0];r[1];r[2];});
+
+	using std::max;
+	using std::min;
+
+	pamhd::Vertex_Type<double> weight;
+	for (int x: {-1, +1})
+	for (int y: {-1, +1})
+	for (int z: {-1, +1}) {
+		weight(x, y, z) = 1;
+	}
+
+	const double neg_x = min(1.0, max(0.0, (cell_end[0] - r[0]) / cell_length[0]));
+	for (int y: {-1, +1})
+	for (int z: {-1, +1}) {
+		weight(-1, y, z) *= neg_x;
+		weight(+1, y, z) *= 1 - neg_x;
+	}
+
+	const double neg_y = min(1.0, max(0.0, (cell_end[1] - r[1]) / cell_length[1]));
+	for (int x: {-1, +1})
+	for (int z: {-1, +1}) {
+		weight(x, -1, z) *= neg_y;
+		weight(x, +1, z) *= 1 - neg_y;
+	}
+
+	const double neg_z = min(1.0, max(0.0, (cell_end[2] - r[2]) / cell_length[2]));
+	for (int x: {-1, +1})
+	for (int y: {-1, +1}) {
+		weight(x, y, -1) *= neg_z;
+		weight(x, y, +1) *= 1 - neg_z;
+	}
+
+	std::remove_cv_t<std::remove_reference_t<decltype(data(0,0,0))>> result;
+	if constexpr(requires {result = 0;}) {
+		result = 0;
+	} else if constexpr(requires {result.fill(0);}) {
+		result.fill(0);
+	} else {
+		static_assert("Given data is of unsupported type");
+	}
+	for (int x: {-1, +1})
+	for (int y: {-1, +1})
+	for (int z: {-1, +1}) {
+		if constexpr(requires {result = 0;}) {
+			result += weight(x,y,z) * data(x,y,z);
+		} else if constexpr (requires {result[result.size()-1] = 0;}) {
+			for (size_t i = 0; i < result.size(); i++) {
+				result[i] += weight(x,y,z) * data(x,y,z)[i];
+			}
+		} else {
+			static_assert("Given data is of unsupported type");
+		}
+	}
+	return result;
+
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
+
+
 /*! Interpolates cell vertex data to cell center.
 
 Assumes that both source and target are same type.
-Assumes source variable is of type pamhd::Vertex_Type.
+Assumes source variable is wrapped in pamhd::Vertex_Type.
 
 Interpolation is performed for cells with type > 0.
 */
@@ -210,9 +285,9 @@ template<
 
 /*! Interpolates cell faces to cell center.
 
-Assumes source is pamhd::Face_Type and target is 3d.
-Data from faces with normal in N dimension is interpolated
-to component N of target.
+Assumes source is scalar wrapped in pamhd::Face_Type
+and target is 3d. Data from faces with normal in N
+dimension is interpolated to component N of target.
 
 Interpolation is performed for cells with type > 0.
 */
@@ -263,9 +338,10 @@ template<
 
 /*! Interpolates cell edges to cell vertices.
 
-Assumes source is 1d Edge_Type and target is 3d Vertex_Type.
-Data from edges along N dimension is interpolated
-to component N of targets.
+Assumes source is scalar wrapped in Edge_Type and
+target is 3d wrapped in Vertex_Type. Data from edges
+along N dimension is interpolated to component N of
+targets.
 
 Interpolation is performed for cells with type > 0,
 cells with type < 0 are ignored.
