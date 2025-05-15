@@ -1,5 +1,5 @@
 /*
-Functions for working with divergence of vector field.
+Functions involving nabla/del.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
 Copyright 2018, 2019, 2022,
@@ -35,8 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Author(s): Ilja Honkonen
 */
 
-#ifndef PAMHD_MATH_STAGGERED_HPP
-#define PAMHD_MATH_STAGGERED_HPP
+#ifndef PAMHD_MATH_NABLA_HPP
+#define PAMHD_MATH_NABLA_HPP
 
 
 #include "string"
@@ -48,10 +48,10 @@ namespace pamhd {
 namespace math {
 
 
-/*!
-Same as get_divergence() but for vector variable that's stored on cell faces.
+/*! Calculates divergence of cell face variable at cell center.
 
-Face_Var must have same () operator as provided by pamhd::Face_Type.
+Assumes Face_Var is scalar wrapped in pamhd::Face_Type and
+Divergence is scalar.
 
 Returns average absolute divergence in cells of all processes.
 */
@@ -61,7 +61,7 @@ template <
 	class Face_Var_Getter,
 	class Divergence_Getter,
 	class Cell_Type_Getter
-> double get_divergence_staggered(
+> double get_divergence_face2volume(
 	const Cell_Iterator& cells,
 	Grid& grid,
 	const Face_Var_Getter& Face_Var,
@@ -166,11 +166,11 @@ template <
 		// get distance between neighbors in same dimension
 		array<double, 3>
 			// distance from current cell on neg and pos side (> 0)
-			neigh_neg_dist{{0, 0, 0}},
-			neigh_pos_dist{{0, 0, 0}};
+			neigh_neg_dist{0, 0, 0},
+			neigh_pos_dist{0, 0, 0};
 
 		// number of neighbors in each dimension
-		array<size_t, 3> nr_neighbors{{0, 0, 0}};
+		array<size_t, 3> nr_neighbors{0, 0, 0};
 
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
@@ -265,4 +265,4 @@ template <
 
 }} // namespaces
 
-#endif // ifndef PAMHD_MATH_STAGGERED_HPP
+#endif // ifndef PAMHD_MATH_NABLA_HPP

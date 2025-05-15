@@ -51,7 +51,7 @@ Author(s): Ilja Honkonen
 #include "grid/options.hpp"
 #include "grid/solar_wind_box.hpp"
 #include "grid/variables.hpp"
-#include "math/staggered.hpp"
+#include "math/nabla.hpp"
 #include "mhd/amr.hpp"
 #include "mhd/boundaries.hpp"
 #include "mhd/common.hpp"
@@ -503,7 +503,7 @@ int main(int argc, char* argv[]) {
 			Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, CType
 		);
 
-		const auto avg_div = pamhd::math::get_divergence_staggered(
+		const auto avg_div = pamhd::math::get_divergence_face2volume(
 			grid.local_cells(), grid,
 			Face_B, Div_B, CType
 		);

@@ -77,7 +77,7 @@ CLEAN += tests/mhd_clean
 
 TEST_MHD_COMMON_DEPS = \
   source/simulation_options.hpp \
-  source/math/staggered.hpp \
+  source/math/nabla.hpp \
   source/mhd/amr.hpp \
   source/mhd/common.hpp \
   source/mhd/variables.hpp \

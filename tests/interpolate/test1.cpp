@@ -2,6 +2,7 @@
 Tests for interpolate function of PAMHD.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 
@@ -37,7 +41,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "iostream"
 
 #include "interpolate.hpp"
-#include "volume_range.hpp"
 
 
 using namespace std;
@@ -88,15 +91,18 @@ void test(
 		f(end[0], end[1], end[2]),
 	}};
 
-	for (size_t samples = 1; samples <= 5; samples++) {
-	for (const auto& coord: volume_range(start, end, samples)) {
+	for (size_t samples = 1; samples <= 5; samples++)
+	for (double x = start[0]; x <= end[0]; x += (end[0] - start[0])/samples)
+	for (double y = start[1]; y <= end[1]; y += (end[1] - start[1])/samples)
+	for (double z = start[2]; z <= end[2]; z += (end[2] - start[2])/samples) {
+		const std::array<double, 3> coord{x, y, z};
 		const double
 			interpolated = interpolate(coord, start, end, data),
 			exact = f(coord[0], coord[1], coord[2]);
 		if (fabs(interpolated - exact) > 1e-10) {
 			abort();
 		}
-	}}
+	}
 }
 
 int main()

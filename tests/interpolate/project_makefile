@@ -21,7 +21,6 @@ CLEAN += tests/interpolate_clean
 
 tests/interpolate/test1.exe: \
   tests/interpolate/test1.cpp \
-  source/volume_range.hpp \
   source/interpolate.hpp \
   tests/interpolate/project_makefile \
   $(ENVIRONMENT_MAKEFILE) \
@@ -36,7 +35,6 @@ tests/interpolate/test1.exe: \
 
 tests/interpolate/eigen.exe: \
   tests/interpolate/eigen.cpp \
-  source/volume_range.hpp \
   source/interpolate.hpp \
   tests/interpolate/project_makefile \
   $(ENVIRONMENT_MAKEFILE) \

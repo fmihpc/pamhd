@@ -226,21 +226,21 @@ int main(int argc, char* argv[])
 		const auto Vector_Getter = pamhd::Variable_Getter<Vector>();
 		const auto Divergence_Getter = pamhd::Variable_Getter<Divergence>();
 		const auto Type_Getter = pamhd::Variable_Getter<Type>();
-		pamhd::math::get_divergence_staggered(
+		pamhd::math::get_divergence_face2volume(
 			grid_x.local_cells(),
 			grid_x,
 			Vector_Getter,
 			Divergence_Getter,
 			Type_Getter
 		);
-		pamhd::math::get_divergence_staggered(
+		pamhd::math::get_divergence_face2volume(
 			grid_y.local_cells(),
 			grid_y,
 			Vector_Getter,
 			Divergence_Getter,
 			Type_Getter
 		);
-		pamhd::math::get_divergence_staggered(
+		pamhd::math::get_divergence_face2volume(
 			grid_z.local_cells(),
 			grid_z,
 			Vector_Getter,

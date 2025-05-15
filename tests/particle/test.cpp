@@ -1018,7 +1018,7 @@ int main(int argc, char* argv[]) {
 			true
 		);
 
-		const auto avg_div = pamhd::math::get_divergence_staggered(
+		const auto avg_div = pamhd::math::get_divergence_face2volume(
 			grid.local_cells(), grid,
 			Face_B, Div_B, CType
 		);
