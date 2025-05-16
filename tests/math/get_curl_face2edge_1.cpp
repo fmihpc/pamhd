@@ -1,9 +1,7 @@
 /*
-Staggered version of get2d_div.cpp.
+get_curl_face2edge test with non-periodic grid.
 
-Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2018, 2022, 2023,
-          2024, 2025 Finnish Meteorological Institute
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -46,70 +44,83 @@ Author(s): Ilja Honkonen
 #include "dccrg_cartesian_geometry.hpp"
 #include "gensimcell.hpp"
 
-#include "grid/amr.hpp"
 #include "grid/variables.hpp"
 #include "math/nabla.hpp"
 #include "tests/math/common.hpp"
 #include "variable_getter.hpp"
 
 
-// assigned to y component of vector field
-double function(const double x, const double y)
+std::array<double, 3> function(const std::array<double, 3>& r)
 {
-	return x*x/y;
+	return {r[1]*r[2], 2*r[0]*r[2], -r[0]*r[1]};
 }
 
-double div_of_function(const double x, const double y)
+std::array<double, 3> curl_of_function(const std::array<double, 3>& r)
 {
-	return -std::pow(x/y, 2);
+	return {-3*r[0], 2*r[1], r[2]};
 }
 
 
-/*!
-Returns maximum norm if p == 0
-*/
-template<class Grid> double get_diff_lp_norm(
+const auto Src = pamhd::Variable_Getter<Face_Scalar>();
+bool Face_Scalar::is_stale = true;
+
+const auto Tgt = pamhd::Variable_Getter<Edge_Scalar>();
+bool Edge_Scalar::is_stale = true;
+
+const auto Typ = pamhd::Variable_Getter<Type>();
+bool Type::is_stale = true;
+
+template<class Grid> double get_norm(
 	const Grid& grid,
-	const double p,
 	const double cell_volume
 ) {
+	using std::abs;
+	using std::array;
+	using std::max;
+
 	double local_norm = 0, global_norm = 0;
 	for (const auto& cell: grid.local_cells()) {
-		if ((*cell.data)[Type()] != 1) {
+		if (Typ.data(*cell.data) < 1) {
 			continue;
 		}
 
-		const auto center = grid.geometry.get_center(cell.id);
+		const auto
+			center = grid.geometry.get_center(cell.id),
+			length = grid.geometry.get_length(cell.id);
+		for (int d1: {-1, +1})
+		for (int d2: {-1, +1}) {
+			const array<double, 3> r0{
+				center[0],
+				center[1] + 0.5*d1*length[1],
+				center[2] + 0.5*d2*length[2]
+			};
+			local_norm = max(local_norm, abs(
+				Tgt.data(*cell.data)(0, d1, d2) - function(r0)[0]));
 
-		const auto div_of = div_of_function(center[0], center[1]);
+			const array<double, 3> r1{
+				center[0] + 0.5*d1*length[0],
+				center[1],
+				center[2] + 0.5*d2*length[2]
+			};
+			local_norm = max(local_norm, abs(
+				Tgt.data(*cell.data)(1, d1, d2) - function(r1)[1]));
 
-		if (p == 0) {
-			local_norm = std::max(
-				local_norm,
-				std::fabs((*cell.data)[Divergence()] - div_of)
-			);
-		} else {
-			local_norm += std::pow(
-				std::fabs((*cell.data)[Divergence()] - div_of),
-				p
-			);
+			const array<double, 3> r2{
+				center[0] + 0.5*d1*length[0],
+				center[1] + 0.5*d2*length[1],
+				center[2]
+			};
+			local_norm = max(local_norm, abs(
+				Tgt.data(*cell.data)(2, d1, d2) - function(r2)[2]));
 		}
 	}
 	local_norm *= cell_volume;
 
-	if (p == 0) {
-		MPI_Comm comm = grid.get_communicator();
-		MPI_Allreduce(&local_norm, &global_norm, 1, MPI_DOUBLE, MPI_MAX, comm);
-		MPI_Comm_free(&comm);
-		return global_norm;
-	} else {
-		MPI_Comm comm = grid.get_communicator();
-		MPI_Allreduce(&local_norm, &global_norm, 1, MPI_DOUBLE, MPI_SUM, comm);
-		MPI_Comm_free(&comm);
-		return std::pow(global_norm, 1.0 / p);
-	}
+	MPI_Comm comm = grid.get_communicator();
+	MPI_Allreduce(&local_norm, &global_norm, 1, MPI_DOUBLE, MPI_MAX, comm);
+	MPI_Comm_free(&comm);
+	return global_norm;
 }
-
 
 int main(int argc, char* argv[])
 {
@@ -143,20 +154,21 @@ int main(int argc, char* argv[])
 
 	double old_norm = std::numeric_limits<double>::max();
 	size_t old_nr_of_cells = 0;
-	for (size_t nr_of_cells = 8; nr_of_cells <= 256; nr_of_cells *= 2) {
+	for (size_t nr_of_cells = 8; nr_of_cells <= 64; nr_of_cells *= 2) {
+		const std::array<uint64_t, 3> grid_size{
+			nr_of_cells + 2, nr_of_cells + 2, nr_of_cells + 2};
 
 		dccrg::Dccrg<
-			Cell,
+			gensimcell::Cell<
+				gensimcell::Optional_Transfer,
+				Face_Scalar,
+				Edge_Scalar,
+				Type
+			>,
 			dccrg::Cartesian_Geometry,
 			std::tuple<>,
-			std::tuple<
-				pamhd::grid::Face_Neighbor,
-				pamhd::grid::Relative_Size>
-		> grid;
-
-		const std::array<uint64_t, 3> grid_size{{nr_of_cells + 2, nr_of_cells + 2, 1}};
-
-		grid
+			std::tuple<pamhd::grid::Edge_Neighbor>
+		> grid; grid
 			.set_load_balancing_method("RANDOM")
 			.set_initial_length(grid_size)
 			.set_neighborhood_length(neighborhood_size)
@@ -165,12 +177,16 @@ int main(int argc, char* argv[])
 			.balance_load();
 
 		const std::array<double, 3>
-			cell_length{{
-				double(5) / (grid_size[0] - 2),
-				double(5) / (grid_size[1] - 2),
-				1
-			}},
-			grid_start{{1, 1, 0}};
+			cell_length{
+				3.0 / (grid_size[0] - 2),
+				1.5 / (grid_size[1] - 2),
+				4.0 / (grid_size[2] - 2)
+			},
+			grid_start{
+				-1 - cell_length[0],
+				-M_PI / 4 - cell_length[1],
+				-2 - cell_length[2]
+			};
 
 		const double cell_volume
 			= cell_length[0] * cell_length[1] * cell_length[2];
@@ -183,66 +199,79 @@ int main(int argc, char* argv[])
 		for (const auto& cell: grid.local_cells()) {
 			const auto
 				center = grid.geometry.get_center(cell.id),
-				length = grid.geometry.get_length(cell.id);
-
-			auto& vec = (*cell.data)[Vector()];
-			vec = {0, 0, 0, 0, 0, 0};
-			vec(1, +1) = function(center[0], center[1] + length[1]/2);
-			vec(1, -1) = function(center[0], center[1] - length[1]/2);
+				start = grid.geometry.get_min(cell.id),
+				end = grid.geometry.get_max(cell.id);
+			auto& src = Src.data(*cell.data);
+			src(-3) = function({center[0], center[1],  start[2]})[2];
+			src(-2) = function({center[0],  start[1], center[2]})[1];
+			src(-1) = function({ start[0], center[1], center[2]})[0];
+			src(+1) = function({   end[0], center[1], center[2]})[0];
+			src(+2) = function({center[0],    end[1], center[2]})[1];
+			src(+3) = function({center[0], center[1],    end[2]})[2];
 		}
-		grid.update_copies_of_remote_neighbors();
 
+		uint64_t solve_cells_local = 0, solve_cells_global = 0;
 		for (const auto& cell: grid.local_cells()) {
 			const auto index = grid.mapping.get_indices(cell.id);
 			if (
+				index[0] > 1
+				and index[0] < grid_size[0] - 2
+				and index[1] > 1
+				and index[1] < grid_size[1] - 2
+				and index[2] > 1
+				and index[2] < grid_size[2] - 2
+			) {
+				Typ.data(*cell.data) = 1;
+				solve_cells_local++;
+			} else if (
 				index[0] > 0
 				and index[0] < grid_size[0] - 1
 				and index[1] > 0
 				and index[1] < grid_size[1] - 1
+				and index[2] > 0
+				and index[2] < grid_size[2] - 1
 			) {
-				(*cell.data)[Type()] = 1;
+				Typ.data(*cell.data) = 0;
 			} else {
-				(*cell.data)[Type()] = 0;
+				Typ.data(*cell.data) = -1;
 			}
 		}
+		if (
+			MPI_Allreduce(
+				&solve_cells_local, &solve_cells_global,
+				1, MPI_UINT64_T, MPI_SUM, comm
+			) != MPI_SUCCESS
+		) {
+			std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+			abort();
+		}
 
-		const auto Vector_Getter = pamhd::Variable_Getter<Vector>();
-		const auto Divergence_Getter = pamhd::Variable_Getter<Divergence>();
-		const auto Type_Getter = pamhd::Variable_Getter<Type>();
-		pamhd::math::get_divergence_face2volume(
-			grid.local_cells(),
-			grid,
-			Vector_Getter,
-			Divergence_Getter,
-			Type_Getter
-		);
+		pamhd::math::get_curl_face2edge(grid, Src, Tgt, Typ);
 
-		const double
-			p_of_norm = 2,
-			norm = get_diff_lp_norm(grid, p_of_norm, cell_volume);
+		const double norm = get_norm(grid, cell_volume);
 
 		if (norm > old_norm) {
 			if (grid.get_rank() == 0) {
 				std::cerr << __FILE__ << ":" << __LINE__
-					<< ": Norm with " << nr_of_cells
+					<< ": Norm with " << solve_cells_global
 					<< " cells " << norm
-					<< " is larger than with " << nr_of_cells / 2
+					<< " is larger than with " << old_nr_of_cells
 					<< " cells " << old_norm
 					<< std::endl;
 			}
 			abort();
 		}
 
-		if (old_nr_of_cells > 16) {
+		if (old_nr_of_cells > 0) {
 			const double order_of_accuracy
 				= -log(norm / old_norm)
-				/ log(double(nr_of_cells) / old_nr_of_cells);
+				/ log(double(solve_cells_global) / old_nr_of_cells);
 
-			if (order_of_accuracy < 1.6) {
+			if (order_of_accuracy < 0.3) {
 				if (grid.get_rank() == 0) {
 					std::cerr << __FILE__ << ":" << __LINE__
 						<< ": Order of accuracy from "
-						<< old_nr_of_cells << " to " << nr_of_cells
+						<< old_nr_of_cells << " to " << solve_cells_global
 						<< " is too low: " << order_of_accuracy
 						<< std::endl;
 				}
@@ -250,7 +279,7 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		old_nr_of_cells = nr_of_cells;
+		old_nr_of_cells = solve_cells_global;
 		old_norm = norm;
 	}
 

@@ -48,7 +48,7 @@ Author(s): Ilja Honkonen
 
 #include "grid/amr.hpp"
 #include "grid/variables.hpp"
-#include "math/staggered.hpp"
+#include "math/nabla.hpp"
 #include "tests/math/common.hpp"
 #include "variable_getter.hpp"
 

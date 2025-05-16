@@ -120,12 +120,12 @@ template <
 	class Grid,
 	class Volume_Magnetic_Field_Getter,
 	class Volume_Current_Density_Getter,
-	class Solver_Info_Getter
+	class Cell_Type_Getter
 > void get_curl_B(
 	Grid& grid,
 	const Volume_Magnetic_Field_Getter& Vol_B,
 	const Volume_Current_Density_Getter& Vol_J,
-	const Solver_Info_Getter& SInfo
+	const Cell_Type_Getter& CType
 ) {
 	using std::abs;
 	using std::array;
@@ -135,10 +135,10 @@ template <
 	using Cell = Grid::cell_data_type;
 
 	bool update_copies = false;
-	if (SInfo.type().is_stale) {
+	if (CType.type().is_stale) {
 		update_copies = true;
-		Cell::set_transfer_all(true, SInfo.type());
-		SInfo.type().is_stale = false;
+		Cell::set_transfer_all(true, CType.type());
+		CType.type().is_stale = false;
 	}
 	if (Vol_B.type().is_stale) {
 		update_copies = true;
@@ -148,10 +148,10 @@ template <
 	if (update_copies) {
 		grid.update_copies_of_remote_neighbors();
 	}
-	Cell::set_transfer_all(false, SInfo.type(), Vol_B.type());
+	Cell::set_transfer_all(false, CType.type(), Vol_B.type());
 
 	for (const auto& cell: grid.local_cells()) {
-		if (SInfo.data(*cell.data) < 0) {
+		if (CType.data(*cell.data) < 0) {
 			continue;
 		}
 
@@ -175,7 +175,7 @@ template <
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
 			if (fn == 0) continue;
-			if (SInfo.data(*neighbor.data) < 0) continue;
+			if (CType.data(*neighbor.data) < 0) continue;
 
 			const size_t dim = abs(fn) - 1;
 			nr_neighbors[dim]++;
@@ -235,7 +235,7 @@ template <
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
 			if (fn == 0) continue;
-			if (SInfo.data(*neighbor.data) < 0) continue;
+			if (CType.data(*neighbor.data) < 0) continue;
 
 			const size_t dim0 = abs(fn) - 1;
 			if (nr_neighbors[dim0] != 2) {
@@ -262,6 +262,166 @@ template <
 	}
 	Vol_J.type().is_stale = true;
 }
+
+
+/*! Calculates curl of cells' face variable at cells' edges.
+
+Assumes source Src is scalar wrapped in pamhd::Face_Type,
+target Tgt is scalar wrapped in pamhd::Edge_Type and both
++ CType are wrapped in pamhd::Variable_Getter.
+
+Assumes cells' coinciding face variables have identical values.
+*/
+template <
+	class Grid,
+	class Source_Getter,
+	class Target_Getter,
+	class Cell_Type_Getter
+> void get_curl_face2edge(
+	Grid& grid,
+	const Source_Getter& Src,
+	const Target_Getter& Tgt,
+	const Cell_Type_Getter& CType
+) {
+	using std::abs;
+	using std::array;
+	using std::cerr;
+	using std::endl;
+
+	using Cell = Grid::cell_data_type;
+
+	Tgt.type().is_stale = true;
+
+	bool update_copies = false;
+	if (CType.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, CType.type());
+		CType.type().is_stale = false;
+	}
+	if (Src.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, Src.type());
+		Src.type().is_stale = false;
+	}
+	if (update_copies) {
+		grid.update_copies_of_remote_neighbors();
+	}
+	Cell::set_transfer_all(false, CType.type(), Src.type());
+
+	for (const auto& cell: grid.local_cells()) {
+		if (CType.data(*cell.data) <= 0) continue;
+
+		if (grid.get_refinement_level(cell.id) != 0) {
+			throw std::runtime_error(
+				__FILE__ "(" + std::to_string(__LINE__)
+				+ "): Adaptive mesh refinement not supported");
+		}
+
+		for (size_t dim: {0, 1, 2})
+		for (int dir1: {-1, +1})
+		for (int dir2: {-1, +1}) {
+			Tgt.data(*cell.data)(dim, dir1, dir2) = 0;
+		}
+	}
+
+	for (const auto& cell: grid.local_cells()) {
+		if (CType.data(*cell.data) <= 0) continue;
+
+		const auto clength = grid.geometry.get_length(cell.id);
+		const auto& csrc = Src.data(*cell.data);
+		auto& tgt = Tgt.data(*cell.data);
+
+		// assumes no mesh refinement
+		tgt(0, -1, -1) += csrc(-2) / clength[2];
+		tgt(0, -1, -1) += csrc(-3) / clength[1];
+		tgt(0, -1, +1) -= csrc(-2) / clength[2];
+		tgt(0, -1, +1) += csrc(+3) / clength[1];
+		tgt(0, +1, -1) += csrc(+2) / clength[2];
+		tgt(0, +1, -1) -= csrc(-3) / clength[1];
+		tgt(0, +1, +1) -= csrc(+2) / clength[2];
+		tgt(0, +1, +1) -= csrc(+3) / clength[1];
+
+		tgt(1, -1, -1) += csrc(-1) / clength[2];
+		tgt(1, -1, -1) += csrc(-3) / clength[0];
+		tgt(1, -1, +1) -= csrc(-1) / clength[2];
+		tgt(1, -1, +1) += csrc(+3) / clength[0];
+		tgt(1, +1, -1) += csrc(+1) / clength[2];
+		tgt(1, +1, -1) -= csrc(-3) / clength[0];
+		tgt(1, +1, +1) -= csrc(+1) / clength[2];
+		tgt(1, +1, +1) -= csrc(+3) / clength[0];
+
+		tgt(2, -1, -1) += csrc(-1) / clength[1];
+		tgt(2, -1, -1) += csrc(-2) / clength[0];
+		tgt(2, -1, +1) -= csrc(-1) / clength[1];
+		tgt(2, -1, +1) += csrc(+2) / clength[0];
+		tgt(2, +1, -1) += csrc(+1) / clength[1];
+		tgt(2, +1, -1) -= csrc(-2) / clength[0];
+		tgt(2, +1, +1) -= csrc(+1) / clength[1];
+		tgt(2, +1, +1) -= csrc(+2) / clength[0];
+
+		for (const auto& neighbor: cell.neighbors_of) {
+			// assumes no substepping
+			const auto& en = neighbor.edge_neighbor;
+			if (en[0] < 0) continue;
+			if (CType.data(*neighbor.data) < 0) continue;
+
+			const auto& nsrc = Src.data(*neighbor.data);
+
+			// signs in ?= and src(? are opposite to above
+			if (en[0] == 0 and en[1] < 0 and en[2] < 0) {
+				tgt(en[0], en[1], en[2]) -= nsrc(+2) / clength[2];
+				tgt(en[0], en[1], en[2]) -= nsrc(+3) / clength[1];
+			}
+			if (en[0] == 0 and en[1] < 0 and en[2] > 0) {
+				tgt(en[0], en[1], en[2]) += nsrc(+2) / clength[2];
+				tgt(en[0], en[1], en[2]) -= nsrc(-3) / clength[1];
+			}
+			if (en[0] == 0 and en[1] > 0 and en[2] < 0) {
+				tgt(en[0], en[1], en[2]) -= nsrc(-2) / clength[2];
+				tgt(en[0], en[1], en[2]) += nsrc(+3) / clength[1];
+			}
+			if (en[0] == 0 and en[1] > 0 and en[2] > 0) {
+				tgt(en[0], en[1], en[2]) += nsrc(-2) / clength[2];
+				tgt(en[0], en[1], en[2]) += nsrc(-3) / clength[1];
+			}
+
+			if (en[0] == 1 and en[1] < 0 and en[2] < 0) {
+				tgt(en[0], en[1], en[2]) -= nsrc(+1) / clength[2];
+				tgt(en[0], en[1], en[2]) -= nsrc(+3) / clength[0];
+			}
+			if (en[0] == 1 and en[1] < 0 and en[2] > 0) {
+				tgt(en[0], en[1], en[2]) += nsrc(+1) / clength[2];
+				tgt(en[0], en[1], en[2]) -= nsrc(-3) / clength[0];
+			}
+			if (en[0] == 1 and en[1] > 0 and en[2] < 0) {
+				tgt(en[0], en[1], en[2]) -= nsrc(-1) / clength[2];
+				tgt(en[0], en[1], en[2]) += nsrc(+3) / clength[0];
+			}
+			if (en[0] == 1 and en[1] > 0 and en[2] > 0) {
+				tgt(en[0], en[1], en[2]) += nsrc(-1) / clength[2];
+				tgt(en[0], en[1], en[2]) += nsrc(-3) / clength[0];
+			}
+
+			if (en[0] == 2 and en[1] < 0 and en[2] < 0) {
+				tgt(en[0], en[1], en[2]) -= nsrc(+1) / clength[1];
+				tgt(en[0], en[1], en[2]) -= nsrc(+2) / clength[0];
+			}
+			if (en[0] == 2 and en[1] < 0 and en[2] > 0) {
+				tgt(en[0], en[1], en[2]) += nsrc(+1) / clength[1];
+				tgt(en[0], en[1], en[2]) -= nsrc(-2) / clength[0];
+			}
+			if (en[0] == 2 and en[1] > 0 and en[2] < 0) {
+				tgt(en[0], en[1], en[2]) -= nsrc(-1) / clength[1];
+				tgt(en[0], en[1], en[2]) += nsrc(+2) / clength[0];
+			}
+			if (en[0] == 2 and en[1] > 0 and en[2] > 0) {
+				tgt(en[0], en[1], en[2]) += nsrc(-1) / clength[1];
+				tgt(en[0], en[1], en[2]) += nsrc(-2) / clength[0];
+			}
+		}
+	}
+}
+
 
 }} // namespaces
 

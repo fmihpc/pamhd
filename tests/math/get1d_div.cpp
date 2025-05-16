@@ -49,7 +49,7 @@ Author(s): Ilja Honkonen
 
 #include "common_variables.hpp"
 #include "grid/variables.hpp"
-#include "math/staggered.hpp"
+#include "math/nabla.hpp"
 #include "tests/math/common.hpp"
 #include "variable_getter.hpp"
 
