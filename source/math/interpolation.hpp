@@ -266,15 +266,34 @@ template<
 	Tgt.type().is_stale = true;
 	for (const auto& cell: grid.local_cells()) {
 		if (Type.data(*cell.data) <= 0) continue;
-		Tgt.data(*cell.data)
-			=(Src.data(*cell.data)(-1, -1, -1)
-			+ Src.data(*cell.data)(-1, -1, +1)
-			+ Src.data(*cell.data)(-1, +1, -1)
-			+ Src.data(*cell.data)(-1, +1, +1)
-			+ Src.data(*cell.data)(+1, -1, -1)
-			+ Src.data(*cell.data)(+1, -1, +1)
-			+ Src.data(*cell.data)(+1, +1, -1)
-			+ Src.data(*cell.data)(+1, +1, +1)) / 8;
+		if constexpr (requires {
+			Tgt.data(*cell.data) += Src.data(*cell.data)(-1, -1, -1);
+		}) {
+			Tgt.data(*cell.data)
+				=(Src.data(*cell.data)(-1, -1, -1)
+				+ Src.data(*cell.data)(-1, -1, +1)
+				+ Src.data(*cell.data)(-1, +1, -1)
+				+ Src.data(*cell.data)(-1, +1, +1)
+				+ Src.data(*cell.data)(+1, -1, -1)
+				+ Src.data(*cell.data)(+1, -1, +1)
+				+ Src.data(*cell.data)(+1, +1, -1)
+				+ Src.data(*cell.data)(+1, +1, +1)) / 8;
+		} else if constexpr (requires {
+			Tgt.data(*cell.data)[0] += Src.data(*cell.data)(-1, -1, -1)[0];
+		}) {
+			for (size_t d = 0; d < Tgt.data(*cell.data).size(); d++) {
+				Tgt.data(*cell.data)[d]
+					=(Src.data(*cell.data)(-1, -1, -1)[d]
+					+ Src.data(*cell.data)(-1, -1, +1)[d]
+					+ Src.data(*cell.data)(-1, +1, -1)[d]
+					+ Src.data(*cell.data)(-1, +1, +1)[d]
+					+ Src.data(*cell.data)(+1, -1, -1)[d]
+					+ Src.data(*cell.data)(+1, -1, +1)[d]
+					+ Src.data(*cell.data)(+1, +1, -1)[d]
+					+ Src.data(*cell.data)(+1, +1, +1)[d]) / 8;}
+		} else {
+			static_assert("Unsupported type");
+		}
 	}
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
