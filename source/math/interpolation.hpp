@@ -215,7 +215,7 @@ auto vertex2r(
 		weight(x, y, +1) *= 1 - neg_z;
 	}
 
-	std::remove_cv_t<std::remove_reference_t<decltype(data(0,0,0))>> result;
+	auto result = data(0,0,0);
 	if constexpr(requires {result = 0;}) {
 		result = 0;
 	} else if constexpr(requires {result.fill(0);}) {
