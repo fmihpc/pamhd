@@ -1,4 +1,7 @@
 TESTS_MATH_EXECUTABLES = \
+  tests/math/add.exe \
+  tests/math/mul.exe \
+  tests/math/dot.exe \
   tests/math/get1d_div.exe \
   tests/math/get1d_div_amr.exe \
   tests/math/get2d_div.exe \
@@ -14,6 +17,9 @@ TESTS_MATH_EXECUTABLES = \
   tests/math/get_curl_face2edge_1.exe
 
 TESTS_MATH_TESTS = \
+  tests/math/add.tst \
+  tests/math/mul.tst \
+  tests/math/dot.tst \
   tests/math/get1d_div.tst \
   tests/math/get1d_div_amr.tst \
   tests/math/get2d_div.tst \
@@ -52,6 +58,7 @@ CLEAN += tests/math_clean
 
 
 TEST_MATH_COMMON_DEPS = \
+  source/common_functions.hpp \
   source/grid/amr.hpp \
   source/grid/variables.hpp \
   source/math/interpolation.hpp \
@@ -60,6 +67,13 @@ TEST_MATH_COMMON_DEPS = \
   tests/math/project_makefile \
   $(ENVIRONMENT_MAKEFILE) \
   Makefile
+
+CXX_TESTS_MATH = \
+  $(CXX) $< -o $@ -I . -I source \
+  $(CPPFLAGS) \
+  $(CXXFLAGS) \
+  $(LDFLAGS) \
+  $(PRETTYPRINT_CPPFLAGS)
 
 MPICXX_TESTS_MATH_MPICXX = \
   $(MPICXX) $< -o $@ -I . -I source \
@@ -73,10 +87,26 @@ MPICXX_TESTS_MATH_MPICXX = \
   $(MUPARSERX_CPPFLAGS) \
   $(MUPARSERX_LDFLAGS) \
   $(MUPARSERX_LIBS) \
+  $(PRETTYPRINT_CPPFLAGS) \
   $(RAPIDJSON_CPPFLAGS) \
   $(ZOLTAN_CPPFLAGS) \
   $(ZOLTAN_LDFLAGS) \
   $(ZOLTAN_LIBS)
+
+tests/math/add.exe: \
+  tests/math/add.cpp \
+  $(TEST_MATH_COMMON_DEPS)
+	@printf "CXX $<\n" && $(CXX_TESTS_MATH)
+
+tests/math/mul.exe: \
+  tests/math/mul.cpp \
+  $(TEST_MATH_COMMON_DEPS)
+	@printf "CXX $<\n" && $(CXX_TESTS_MATH)
+
+tests/math/dot.exe: \
+  tests/math/dot.cpp \
+  $(TEST_MATH_COMMON_DEPS)
+	@printf "CXX $<\n" && $(CXX_TESTS_MATH)
 
 tests/math/get1d_div.exe: \
   tests/math/get1d_div.cpp \
