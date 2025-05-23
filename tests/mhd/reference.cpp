@@ -41,6 +41,7 @@ Author(s): Ilja Honkonen
 
 #include "gensimcell.hpp"
 
+#include "common_functions.hpp"
 #include "mhd/common.hpp"
 #include "mhd/hll_athena.hpp"
 #include "mhd/hlld_athena.hpp"
@@ -372,7 +373,7 @@ template <
 		}
 		#undef SOLVER
 		flux[mas] *= face_area*dt;
-		flux[mom] *= face_area*dt;
+		flux[mom] = pamhd::mul(flux[mom], face_area*dt);
 		flux[nrj] *= face_area*dt;
 
 		max_dt = std::min(max_dt, cell_size / max_vel);
@@ -380,19 +381,19 @@ template <
 		if (cell_i > 0) {
 			// positive flux flows neg->pos, i.e. out of current cell
 			Mas_f(cell) -= flux[mas];
-			Mom_f(cell) -= flux[mom];
+			Mom_f(cell) = pamhd::add(Mom_f(cell), pamhd::neg(flux[mom]));
 			Nrj_f(cell) -= flux[nrj];
 		}
 		if (cell_i < std::tuple_size<Grid>::value - 2) {
 			Mas_f(neighbor) += flux[mas];
-			Mom_f(neighbor) += flux[mom];
+			Mom_f(neighbor) = pamhd::add(Mom_f(neighbor), flux[mom]);
 			Nrj_f(neighbor) += flux[nrj];
 		}
 
 		// upwind E = -VxB
 		const auto
-			v_c = (Mom(cell) / Mas(cell)).eval(),
-			v_n = (Mom(neighbor) / Mas(neighbor)).eval();
+			v_c = pamhd::mul(Mom(cell), 1 / Mas(cell)),
+			v_n = pamhd::mul(Mom(neighbor), 1 / Mas(neighbor));
 		Ele(cell)(0,-1,-1) = 0;
 		if (v_c[0] + v_n[0] > 0) {
 			Ele(cell)(1,-1,-1) = v_c[0]*Mag(cell)[2] - v_c[2]*Mag(cell)[0];
@@ -409,7 +410,7 @@ template <
 			Mag_f(cell)[1] -= Ele(grid[cell_i-1])(2,-1,-1);
 			Mag_f(cell)[2] += Ele(grid[cell_i-1])(1,-1,-1);
 		}
-		Mag_f(cell) *= dt;
+		Mag_f(cell) = pamhd::mul(Mag_f(cell), dt);
 	}
 
 	// apply fluxes
@@ -644,8 +645,7 @@ void verify_mhd(
 		const auto rho = Mas(cell);
 		const auto mom = Mom(cell);
 		const auto nrj = Nrj(cell);
-		auto mag = Mag(cell);
-		mag += Bg_Mag(cell);
+		auto mag = pamhd::add(Mag(cell), Bg_Mag(cell));
 
 		auto ref_rho = rho;
 		auto ref_mom = mom;

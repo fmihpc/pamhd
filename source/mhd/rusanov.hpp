@@ -2,6 +2,7 @@
 Rusanov MHD solver of PAMHD.
 
 Copyright 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 
@@ -181,9 +185,23 @@ template <
 		);
 	}
 
-	MHD flux
-		= (flux_neg + flux_pos) / 2
-		- (state_pos - state_neg) * (max_signal / 2);
+	MHD flux;
+	flux[Mas]
+		= (flux_neg[Mas] + flux_pos[Mas]) / 2
+		- (state_pos[Mas] - state_neg[Mas]) * (max_signal / 2);
+	flux[Nrj]
+		= (flux_neg[Nrj] + flux_pos[Nrj]) / 2
+		- (state_pos[Nrj] - state_neg[Nrj]) * (max_signal / 2);
+	flux[Mom] = pamhd::add(
+		pamhd::mul(pamhd::add(flux_neg[Mom], flux_pos[Mom]), 0.5),
+		pamhd::mul(
+			pamhd::add(state_pos[Mom], pamhd::neg(state_neg[Mom])),
+			-max_signal / 2));
+	flux[Mag] = pamhd::add(
+		pamhd::mul(pamhd::add(flux_neg[Mag], flux_pos[Mag]), 0.5),
+		pamhd::mul(
+			pamhd::add(state_pos[Mag], pamhd::neg(state_neg[Mag])),
+			-max_signal / 2));
 
 	if (not isfinite(flux[Mas])) {
 		throw domain_error(

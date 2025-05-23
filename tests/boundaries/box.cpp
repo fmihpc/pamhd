@@ -2,6 +2,7 @@
 Box boundary geometry test of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,18 +29,16 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #include "array"
 #include "cstdlib"
 #include "iostream"
 
-#ifdef USE_EIGEN
-#include "Eigen/Core"
 #define MAKE_BOX(a, b, c, d, e, f) {a, b, c}, {d, e, f}
-#else
-#define MAKE_BOX(a, b, c, d, e, f) {{a, b, c}}, {{d, e, f}}
-#endif
 
 #include "rapidjson/document.h"
 
@@ -76,12 +75,7 @@ int main()
 
 	try {
 		const auto box_fail = Box<
-			#ifdef HAVE_EIGEN
-			Eigen::Vector3d,
-			#else
-			std::array<double, 3>,
-			#endif
-			int
+			std::array<double, 3>, int
 		>(document["asdf"][2]["box"]);
 
 		std::cerr <<  __FILE__ << "(" << __LINE__<< "): "
@@ -92,23 +86,11 @@ int main()
 	}
 
 
-	Box<
-		#ifdef HAVE_EIGEN
-		Eigen::Vector3d,
-		#else
-		std::array<double, 3>,
-		#endif
-		int
-	> box;
+	Box<std::array<double, 3>, int> box;
 
 	try {
 		box = Box<
-			#ifdef HAVE_EIGEN
-			Eigen::Vector3d,
-			#else
-			std::array<double, 3>,
-			#endif
-			int
+			std::array<double, 3>, int
 		>(document["asdf"][0]["box"]);
 	} catch (...) {
 		std::cerr <<  __FILE__ << "(" << __LINE__<< "): "

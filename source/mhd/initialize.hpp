@@ -45,6 +45,7 @@ Author(s): Ilja Honkonen
 
 #include "dccrg.hpp"
 
+#include "common_functions.hpp"
 #include "mhd/common.hpp"
 #include "mhd/variables.hpp"
 
@@ -463,7 +464,7 @@ template <
 			);
 
 		Mas.data(*cell.data) = mass_density;
-		Mom.data(*cell.data) = mass_density * velocity;
+		Mom.data(*cell.data) = pamhd::mul(mass_density, velocity);
 		if (mass_density > 0 and pressure > 0) {
 			Nrj.data(*cell.data) = get_total_energy_density(
 				mass_density,
@@ -551,7 +552,7 @@ template <
 				abort();
 			}
 
-			Mom.data(*cell_data) = Mas.data(*cell_data) * velocity;
+			Mom.data(*cell_data) = pamhd::mul(Mas.data(*cell_data), velocity);
 		}
 	}
 

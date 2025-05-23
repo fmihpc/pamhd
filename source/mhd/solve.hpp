@@ -366,16 +366,20 @@ template <
 			if (fn == +1) {
 				if (solver != Solver::hybrid and cell.is_local) {
 					Mas_f(*cell.data, +1) += cfac * flux[mas_int];
-					Mom_f(*cell.data, +1) += cfac * flux[mom_int];
+					Mom_f(*cell.data, +1) = pamhd::add(Mom_f(*cell.data, +1),
+						pamhd::mul(cfac, flux[mom_int]));
 					Nrj_f(*cell.data, +1) += cfac * flux[nrj_int];
-					Mag_f(*cell.data, +1) += cfac * flux[mag_int];
+					Mag_f(*cell.data, +1) = pamhd::add(Mag_f(*cell.data, +1),
+						pamhd::mul(cfac, flux[mag_int]));
 				}
 
 				if (solver != Solver::hybrid and neighbor.is_local) {
 					Mas_f(*neighbor.data, -1) += nfac * flux[mas_int];
-					Mom_f(*neighbor.data, -1) += nfac * flux[mom_int];
+					Mom_f(*neighbor.data, -1) = pamhd::add(Mom_f(*neighbor.data, -1),
+						pamhd::mul(nfac, flux[mom_int]));
 					Nrj_f(*neighbor.data, -1) += nfac * flux[nrj_int];
-					Mag_f(*neighbor.data, -1) += nfac * flux[mag_int];
+					Mag_f(*neighbor.data, -1) = pamhd::add(Mag_f(*neighbor.data, -1),
+						pamhd::mul(nfac, flux[mag_int]));
 				}
 
 				const auto E_source = [&]()->array<double, 3> {
@@ -414,16 +418,20 @@ template <
 			if (fn == +2) {
 				if (solver != Solver::hybrid and cell.is_local) {
 					Mas_f(*cell.data, +2) += cfac * flux[mas_int];
-					Mom_f(*cell.data, +2) += cfac * flux[mom_int];
+					Mom_f(*cell.data, +2) = pamhd::add(Mom_f(*cell.data, +2),
+						pamhd::mul(cfac, flux[mom_int]));
 					Nrj_f(*cell.data, +2) += cfac * flux[nrj_int];
-					Mag_f(*cell.data, +2) += cfac * flux[mag_int];
+					Mag_f(*cell.data, +2) = pamhd::add(Mag_f(*cell.data, +2),
+						pamhd::mul(cfac, flux[mag_int]));
 				}
 
 				if (solver != Solver::hybrid and neighbor.is_local) {
 					Mas_f(*neighbor.data, -2) += nfac * flux[mas_int];
-					Mom_f(*neighbor.data, -2) += nfac * flux[mom_int];
+					Mom_f(*neighbor.data, -2) = pamhd::add(Mom_f(*neighbor.data, -2),
+						pamhd::mul(nfac, flux[mom_int]));
 					Nrj_f(*neighbor.data, -2) += nfac * flux[nrj_int];
-					Mag_f(*neighbor.data, -2) += nfac * flux[mag_int];
+					Mag_f(*neighbor.data, -2) = pamhd::add(Mag_f(*neighbor.data, -2),
+						pamhd::mul(nfac, flux[mag_int]));
 				}
 
 				const auto E_source = [&]()->array<double, 3> {
@@ -460,16 +468,20 @@ template <
 			if (fn == +3) {
 				if (solver != Solver::hybrid and cell.is_local) {
 					Mas_f(*cell.data, +3) += cfac * flux[mas_int];
-					Mom_f(*cell.data, +3) += cfac * flux[mom_int];
+					Mom_f(*cell.data, +3) = pamhd::add(Mom_f(*cell.data, +3),
+						pamhd::mul(cfac, flux[mom_int]));
 					Nrj_f(*cell.data, +3) += cfac * flux[nrj_int];
-					Mag_f(*cell.data, +3) += cfac * flux[mag_int];
+					Mag_f(*cell.data, +3) = pamhd::add(Mag_f(*cell.data, +3),
+						pamhd::mul(cfac, flux[mag_int]));
 				}
 
 				if (solver != Solver::hybrid and neighbor.is_local) {
 					Mas_f(*neighbor.data, -3) += nfac * flux[mas_int];
-					Mom_f(*neighbor.data, -3) += nfac * flux[mom_int];
+					Mom_f(*neighbor.data, -3) = pamhd::add(Mom_f(*neighbor.data, -3),
+						pamhd::mul(nfac, flux[mom_int]));
 					Nrj_f(*neighbor.data, -3) += nfac * flux[nrj_int];
-					Mag_f(*neighbor.data, -3) += nfac * flux[mag_int];
+					Mag_f(*neighbor.data, -3) = pamhd::add(Mag_f(*neighbor.data, -3),
+						pamhd::mul(nfac, flux[mag_int]));
 				}
 
 				const auto E_source = [&]()->array<double, 3> {
@@ -1513,6 +1525,10 @@ template <
 	using std::runtime_error;
 	using std::to_string;
 
+	using pamhd::add;
+	using pamhd::mul;
+	using pamhd::neg;
+
 	for (const auto& cell: cells) {
 		if (SInfo.data(*cell.data) > 0) {
 			if (current_substep % Substep.data(*cell.data) != 0) {
@@ -1521,18 +1537,43 @@ template <
 
 			const auto [dx, dy, dz] = grid.geometry.get_length(cell.id);
 
-			Mas.data(*cell.data) += (Mas_f(*cell.data, -1) - Mas_f(*cell.data, +1)) / dx;
-			Mas.data(*cell.data) += (Mas_f(*cell.data, -2) - Mas_f(*cell.data, +2)) / dy;
-			Mas.data(*cell.data) += (Mas_f(*cell.data, -3) - Mas_f(*cell.data, +3)) / dz;
-			Mom.data(*cell.data) += (Mom_f(*cell.data, -1) - Mom_f(*cell.data, +1)) / dx;
-			Nrj.data(*cell.data) += (Nrj_f(*cell.data, -1) - Nrj_f(*cell.data, +1)) / dx;
-			Vol_B.data(*cell.data) += (Mag_f(*cell.data, -1) - Mag_f(*cell.data, +1)) / dx;
-			Mom.data(*cell.data) += (Mom_f(*cell.data, -2) - Mom_f(*cell.data, +2)) / dy;
-			Nrj.data(*cell.data) += (Nrj_f(*cell.data, -2) - Nrj_f(*cell.data, +2)) / dy;
-			Vol_B.data(*cell.data) += (Mag_f(*cell.data, -2) - Mag_f(*cell.data, +2)) / dy;
-			Mom.data(*cell.data) += (Mom_f(*cell.data, -3) - Mom_f(*cell.data, +3)) / dz;
-			Nrj.data(*cell.data) += (Nrj_f(*cell.data, -3) - Nrj_f(*cell.data, +3)) / dz;
-			Vol_B.data(*cell.data) += (Mag_f(*cell.data, -3) - Mag_f(*cell.data, +3)) / dz;
+			auto& mas = Mas.data(*cell.data);
+			const auto mas_f = [&](const int dir){
+				return Mas_f(*cell.data, dir);
+			};
+			mas += (mas_f(-1) - mas_f(+1)) / dx;
+			mas += (mas_f(-2) - mas_f(+2)) / dy;
+			mas += (mas_f(-3) - mas_f(+3)) / dz;
+
+			auto& mom = Mom.data(*cell.data);
+			const auto mom_f = [&](const int dir){
+				return Mom_f(*cell.data, dir);
+			};
+			mom = add(mom,
+				mul(1/dx, add(mom_f(-1), neg(mom_f(+1)))));
+			mom = add(mom,
+				mul(1/dy, add(mom_f(-2), neg(mom_f(+2)))));
+			mom = add(mom,
+				mul(1/dz, add(mom_f(-3), neg(mom_f(+3)))));
+
+			auto& nrj = Nrj.data(*cell.data);
+			const auto nrj_f = [&](const int dir){
+				return Nrj_f(*cell.data, dir);
+			};
+			nrj += (nrj_f(-1) - nrj_f(+1)) / dx;
+			nrj += (nrj_f(-2) - nrj_f(+2)) / dy;
+			nrj += (nrj_f(-3) - nrj_f(+3)) / dz;
+
+			auto& vol_b = Vol_B.data(*cell.data);
+			const auto mag_f = [&](const int dir){
+				return Mag_f(*cell.data, dir);
+			};
+			vol_b = add(vol_b,
+				mul(1/dx, add(mag_f(-1), neg(mag_f(+1)))));
+			vol_b = add(vol_b,
+				mul(1/dy, add(mag_f(-2), neg(mag_f(+2)))));
+			vol_b = add(vol_b,
+				mul(1/dz, add(mag_f(-3), neg(mag_f(+3)))));
 
 			const std::array<double, 3> area{dy*dz, dx*dz, dx*dy};
 			for (size_t dim: {0, 1, 2}) {
@@ -1659,9 +1700,11 @@ template <
 			Vol_B.data(*cell.data)[dim] = 0.5 * (c_face_b(dim, -1) + c_face_b(dim, +1));
 		}
 		if (constant_thermal_pressure) {
-			const auto vel = (Mom.data(*cell.data)/Mas.data(*cell.data)).eval();
+			const auto vel = pamhd::mul(
+				Mom.data(*cell.data), 1 / Mas.data(*cell.data));
 			Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
-				Mas.data(*cell.data), vel, old_pressure, Vol_B.data(*cell.data),
+				Mas.data(*cell.data), vel,
+				old_pressure, Vol_B.data(*cell.data),
 				adiabatic_index, vacuum_permeability
 			);
 		}

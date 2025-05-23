@@ -863,7 +863,7 @@ template<
 				throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 			}
 
-			Mom.data(*cell_data) = Mas.data(*cell_data) * velocity;
+			Mom.data(*cell_data) = pamhd::mul(Mas.data(*cell_data), velocity);
 		}
 	}
 
@@ -881,24 +881,28 @@ template<
 		for (const auto& neighbor: cell.neighbors_of) {
 			if (CInfo.data(*neighbor.data) < 1) continue;
 			if (neighbor.face_neighbor != 0) {
-				source_f_value += pamhd::mhd::get_velocity(
+				source_f_value = pamhd::add(source_f_value, pamhd::mhd::get_velocity(
 					Mom.data(*neighbor.data),
 					Mas.data(*neighbor.data)
-				);
+				));
 				nr_face_values++;
 			}
 			if (neighbor.edge_neighbor[0] >= 0) {
-				source_e_value += pamhd::mhd::get_velocity(
+				source_e_value = pamhd::add(source_e_value, pamhd::mhd::get_velocity(
 					Mom.data(*neighbor.data),
 					Mas.data(*neighbor.data)
-				);
+				));
 				nr_edge_values++;
 			}
 		}
 		if (nr_face_values > 0) {
-			Mom.data(*cell.data) = Mas.data(*cell.data) * source_f_value / nr_face_values;
+			Mom.data(*cell.data) = pamhd::mul(
+				pamhd::mul(Mas.data(*cell.data), source_f_value),
+				1 / nr_face_values);
 		} else if (nr_edge_values > 0) {
-			Mom.data(*cell.data) = Mas.data(*cell.data) * source_e_value / nr_edge_values;
+			Mom.data(*cell.data) = pamhd::mul(
+				pamhd::mul(Mas.data(*cell.data), source_e_value),
+				1 / nr_edge_values);
 		}
 	}
 

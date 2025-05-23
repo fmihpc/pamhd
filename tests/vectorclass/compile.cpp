@@ -2,6 +2,7 @@
 Tests compilation with vectorclass (www.agner.org/optimize/#vectorclass).
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -15,12 +16,14 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+
+Author(s): Ilja Honkonen
 */
 
 #include "array"
 #include "cstdlib"
 
-#include "Eigen/Core"
 #include "vectorclass.h"
 
 int main()
@@ -40,22 +43,10 @@ int main()
 			e[0] * e[1]
 		}};
 
-	const Eigen::Matrix<Vec4i, 2, 1>
-		g{
-			Vec4i{1, 2, 3, 4},
-			Vec4i{-4, -3, -2, -1}
-		},
-		h{
-			g[0] + g[1],
-			g[0] * g[1]
-		};
-
 	if (
 		c[0] == -3
 		and f[0][0] == -3
 		and f[1][0] == -4
-		and h[0][0] == -3
-		and h[1][0] == -4
 	) {
 		return EXIT_SUCCESS;
 	} else {

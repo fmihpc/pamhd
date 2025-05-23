@@ -2,6 +2,7 @@
 Sphere boundary geometry test of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #include "array"
@@ -36,12 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rapidjson/document.h"
 
-#ifdef USE_EIGEN
-#include "Eigen/Core"
 #define MAKE_BOX(a, b, c, d, e, f) {a, b, c}, {d, e, f}
-#else
-#define MAKE_BOX(a, b, c, d, e, f) {{a, b, c}}, {{d, e, f}}
-#endif
 
 #include "boundaries/sphere.hpp"
 
@@ -76,13 +75,7 @@ int main()
 
 	try {
 		const auto sphere_fail = Sphere<
-			#ifdef HAVE_EIGEN
-			Eigen::Vector3d,
-			#else
-			std::array<double, 3>,
-			#endif
-			double,
-			int
+			std::array<double, 3>, double, int
 		>(document["asdf"][2]["sphere"]);
 
 		std::cerr <<  __FILE__ << "(" << __LINE__<< "): "
@@ -93,25 +86,11 @@ int main()
 	}
 
 
-	Sphere<
-		#ifdef HAVE_EIGEN
-		Eigen::Vector3d,
-		#else
-		std::array<double, 3>,
-		#endif
-		double,
-		int
-	> sphere;
+	Sphere<std::array<double, 3>, double, int> sphere;
 
 	try {
 		sphere = Sphere<
-			#ifdef HAVE_EIGEN
-			Eigen::Vector3d,
-			#else
-			std::array<double, 3>,
-			#endif
-			double,
-			int
+			std::array<double, 3>, double, int
 		>(document["asdf"][1]["sphere"]);
 	} catch (...) {
 		std::cerr <<  __FILE__ << "(" << __LINE__<< "): "

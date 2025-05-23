@@ -37,6 +37,7 @@ Author(s): Ilja Honkonen
 #define PAMHD_MHD_SW_BOX_HPP
 
 
+#include "array"
 #include "cmath"
 #include "stdexcept"
 #include "string"
@@ -178,7 +179,7 @@ template<
 
 		const auto cell_center = grid.geometry.get_center(cell.id);
 		const auto v_factor = std::max(0.0, cell_center[0]/grid_end[0]);
-		const Eigen::Vector3d velocity{
+		const std::array<double, 3> velocity{
 			v_factor * options.sw_velocity[0],
 			v_factor * options.sw_velocity[1],
 			v_factor * options.sw_velocity[2]};

@@ -2,6 +2,7 @@
 Tests initial condition class of PAMHD with vector simulation variable.
 
 Copyright 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #include "array"
@@ -37,10 +41,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "string"
 #include "vector"
 
-#ifdef USE_EIGEN
-#include "Eigen/Core" // must be included before boundaries/initial_condition.hpp
-#endif
-
 #include "boundaries/initial_condition.hpp"
 
 
@@ -48,12 +48,7 @@ using namespace pamhd::boundaries;
 
 
 struct Momentum_Density {
-	using data_type
-		#ifdef USE_EIGEN
-		= Eigen::Vector2d;
-		#else
-		= std::array<double, 2>;
-		#endif
+	using data_type = std::array<double, 2>;
 	static const std::string get_name(){ return {"momentum density"}; }
 };
 

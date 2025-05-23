@@ -2,6 +2,7 @@
 Class for evaluating math expression of a simulation variable.
 
 Copyright 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_MATH_EXPRESSION_HPP
@@ -289,62 +293,6 @@ private:
 
 		return ret_val;
 	}
-
-
-	#ifdef EIGEN_WORLD_VERSION
-
-	//! used to evaluate math expression if Variable::data_type is Eigen::Matrix<double or float, N, 1>
-	template<class V = Variable> typename std::enable_if<
-		V::data_type::ColsAtCompileTime == 1
-			&& V::data_type::RowsAtCompileTime >= 1
-			&& std::is_floating_point<typename V::data_type::value_type>::value,
-		typename V::data_type
-	>::type evaluate_impl()
-	{
-		const auto& evaluated
-			= [this](){
-				const auto& temp = this->parser.Eval();
-				if (temp.GetType() != 'm') {
-					throw std::invalid_argument(
-						std::string("Expression ")
-						+ this->parser.GetExpr()
-						+ std::string(" is not an array.")
-					);
-				}
-				return temp.GetArray();
-			}();
-
-		if (evaluated.GetRows() != 1) {
-			throw std::invalid_argument(
-				std::string("Invalid number of rows in expression ")
-				+ parser.GetExpr()
-				+ std::string(" for variable ")
-				+ Variable::get_name()
-				+ std::string(", should be 1\n")
-			);
-		}
-
-		constexpr size_t size = V::data_type::RowsAtCompileTime;
-
-		if (evaluated.GetCols() != size) {
-			throw std::invalid_argument(
-				std::string("Invalid number of columns in expression ")
-				+ parser.GetExpr()
-				+ std::string(" for variable ")
-				+ Variable::get_name()
-				+ std::string("\n")
-			);
-		}
-
-		typename Variable::data_type ret_val;
-		for (size_t i = 0; i < size; i++) {
-			ret_val(i) = evaluated.At(int(i)).GetFloat();
-		}
-
-		return ret_val;
-	}
-
-	#endif // ifdef EIGEN_WORLD_VERSION
 };
 
 }} // namespaces

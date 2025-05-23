@@ -22,7 +22,6 @@ TEST_VECTORCLASS_COMPILE_COMMAND = \
     $(CPPFLAGS) \
     $(CXXFLAGS) \
     $(LDFLAGS) \
-    $(EIGEN_CPPFLAGS) \
     $(VECTORCLASS_CPPFLAGS)
 
 tests/vectorclass/compile.exe: \

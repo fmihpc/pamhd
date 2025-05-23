@@ -1,13 +1,10 @@
 TESTS_BOUNDARIES_EXECUTABLES = \
   tests/boundaries/rapidjson.exe \
   tests/boundaries/box.exe \
-  tests/boundaries/box_eigen.exe \
   tests/boundaries/sphere.exe \
-  tests/boundaries/sphere_eigen.exe \
   tests/boundaries/geometries.exe \
   tests/boundaries/initial_condition_scalar.exe \
   tests/boundaries/initial_condition_vector.exe \
-  tests/boundaries/initial_condition_vector_eigen.exe \
   tests/boundaries/initial_conditions_scalar.exe \
   tests/boundaries/initial_conditions_vector.exe \
   tests/boundaries/multivar_init_cond.exe \
@@ -28,13 +25,10 @@ TESTS_BOUNDARIES_EXECUTABLES = \
 
 TESTS_BOUNDARIES_TESTS = \
   tests/boundaries/box.tst \
-  tests/boundaries/box_eigen.tst \
   tests/boundaries/sphere.tst \
-  tests/boundaries/sphere_eigen.tst \
   tests/boundaries/geometries.tst \
   tests/boundaries/initial_condition_scalar.tst \
   tests/boundaries/initial_condition_vector.tst \
-  tests/boundaries/initial_condition_vector_eigen.tst \
   tests/boundaries/initial_conditions_scalar.tst \
   tests/boundaries/initial_conditions_vector.tst \
   tests/boundaries/multivar_init_cond.tst \
@@ -102,21 +96,11 @@ tests/boundaries/box.exe: \
   $(TESTS_BOUNDARIES_COMMON_DEPS)
 	$(TESTS_BOUNDARIES_COMPILE) $(RAPIDJSON_CPPFLAGS)
 
-tests/boundaries/box_eigen.exe: \
-  tests/boundaries/box.cpp \
-  $(TESTS_BOUNDARIES_COMMON_DEPS)
-	$(TESTS_BOUNDARIES_COMPILE) $(EIGEN_CPPFLAGS) -DUSE_EIGEN $(RAPIDJSON_CPPFLAGS)
-
 
 tests/boundaries/sphere.exe: \
   tests/boundaries/sphere.cpp \
   $(TESTS_BOUNDARIES_COMMON_DEPS)
 	$(TESTS_BOUNDARIES_COMPILE) $(RAPIDJSON_CPPFLAGS)
-
-tests/boundaries/sphere_eigen.exe: \
-  tests/boundaries/sphere.cpp \
-  $(TESTS_BOUNDARIES_COMMON_DEPS)
-	$(TESTS_BOUNDARIES_COMPILE) $(EIGEN_CPPFLAGS) -DUSE_EIGEN $(RAPIDJSON_CPPFLAGS)
 
 
 tests/boundaries/geometries.exe: \
@@ -139,12 +123,6 @@ tests/boundaries/initial_condition_vector.exe: \
   source/boundaries/initial_condition.hpp \
   $(TESTS_BOUNDARIES_COMMON_DEPS)
 	$(TESTS_BOUNDARIES_COMPILE) $(MUPARSERX_CPPFLAGS) $(MUPARSERX_LDFLAGS) $(MUPARSERX_LIBS) $(RAPIDJSON_CPPFLAGS)
-tests/boundaries/initial_condition_vector_eigen.exe: \
-  tests/boundaries/initial_condition_vector.cpp \
-  source/math/expression.hpp \
-  source/boundaries/initial_condition.hpp \
-  $(TESTS_BOUNDARIES_COMMON_DEPS)
-	$(TESTS_BOUNDARIES_COMPILE) $(EIGEN_CPPFLAGS) -DUSE_EIGEN $(MUPARSERX_CPPFLAGS) $(MUPARSERX_LDFLAGS) $(MUPARSERX_LIBS) $(RAPIDJSON_CPPFLAGS)
 
 
 tests/boundaries/initial_conditions_scalar.exe: \

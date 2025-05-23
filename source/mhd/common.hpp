@@ -2,6 +2,7 @@
 Common MHD functions of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_MHD_COMMON_HPP
@@ -38,6 +42,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "stdexcept"
 #include "sstream"
 #include "string"
+
+#include "common_functions.hpp"
 
 
 namespace pamhd {
@@ -117,7 +123,7 @@ template<
 	Scalar& mass
 ) {
 	if (mass > 0) {
-		return momentum / mass;
+		return pamhd::mul(momentum, 1 / mass);
 	} else {
 		return {0, 0, 0};
 	}
@@ -165,7 +171,7 @@ template <
 		);
 	}
 
-	const auto mag_tot = Mag(data) + bg_face_magnetic_field;
+	const auto mag_tot = pamhd::add(Mag(data), bg_face_magnetic_field);
 	const auto
 		inv_permeability = 1.0 / vacuum_permeability,
 		pressure_B0
@@ -211,23 +217,27 @@ template <
 		);
 	}
 
-	Mom(flux)
-		= Mom(data) * velocity[0]
-		- inv_permeability * (
-			mag_tot[0] * mag_tot
-			- bg_face_magnetic_field[0] * bg_face_magnetic_field
+	Mom(flux) = pamhd::add(
+		pamhd::mul(Mom(data), velocity[0]),
+		pamhd::mul(-inv_permeability,
+			pamhd::add(pamhd::mul(mag_tot[0], mag_tot),
+			pamhd::mul(-bg_face_magnetic_field[0], bg_face_magnetic_field)))
 		);
 	Mom(flux)[0] += pressure_thermal + pressure_B_tot - pressure_B0;
 
 	Nrj(flux)
 		= velocity[0] * (Nrj(data) + pressure_thermal + pressure_B1)
-		- Mag(data)[0] * velocity.dot(Mag(data)) * inv_permeability
+		- Mag(data)[0] * pamhd::dot(velocity, Mag(data)) * inv_permeability
 		+ inv_permeability * (
 			Mag(data)[1] * (velocity[0] * bg_face_magnetic_field[1] - velocity[1] * bg_face_magnetic_field[0])
-			+ Mag(data)[2] * (velocity[0] * bg_face_magnetic_field[2] - velocity[2] * bg_face_magnetic_field[0])
+			+ Mag(data)[2] * (
+				velocity[0] * bg_face_magnetic_field[2]
+				- velocity[2] * bg_face_magnetic_field[0])
 		);
 
-	Mag(flux) = velocity[0] * mag_tot - mag_tot[0] * velocity;
+	Mag(flux) = pamhd::add(
+		pamhd::mul(velocity[0], mag_tot),
+		pamhd::mul(-mag_tot[0], velocity));
 	Mag(flux)[0] = 0;
 
 	return flux;
@@ -420,7 +430,7 @@ template <
 	using std::sqrt;
 	using std::to_string;
 
-	const auto mag_tot = mag + bg_mag;
+	const auto mag_tot = pamhd::add(mag, bg_mag);
 	if (not isfinite(mag_tot[0])) {
 		throw std::domain_error(
 			"Invalid total magnetic field x: "
@@ -711,9 +721,9 @@ template <
 	using std::to_string;
 
 	Mas(data) += Mas_f(data) * factor;
-	Mom(data) += Mom_f(data) * factor;
+	Mom(data) = pamhd::add(Mom(data), pamhd::mul(Mom_f(data), factor));
 	Nrj(data) += Nrj_f(data) * factor;
-	Mag(data) += Mag_f(data) * factor;
+	Mag(data) = pamhd::add(Mag(data), pamhd::mul(Mag_f(data), factor));
 
 	if (Mas(data) <= 0) {
 		throw std::domain_error(
@@ -721,15 +731,10 @@ template <
 		);
 	}
 
-	const auto pressure
-		= get_pressure(
-			Mas(data),
-			Mom(data),
-			Nrj(data),
-			Mag(data),
-			adiabatic_index,
-			vacuum_permeability
-		);
+	const auto pressure = get_pressure(
+		Mas(data), Mom(data), Nrj(data), Mag(data),
+		adiabatic_index, vacuum_permeability
+	);
 	if (pressure <= 0) {
 		throw std::domain_error(
 			"New state has negative pressure: " + to_string(pressure)

@@ -5,6 +5,7 @@ Copyright 2003 Thomas A. Gardiner
 Copyright 2003 Peter J. Teuben
 Copyright 2003 John F. Hawley
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,6 +18,9 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_MHD_ROE_ATHENA_HPP
@@ -783,13 +787,8 @@ template <
 		max_signal = std::max(fast_magnetosonic_neg, fast_magnetosonic_pos);
 
 	const auto
-		flow_v_neg
-			= state_neg[Mom]
-			/ state_neg[Mas],
-
-		flow_v_pos
-			= state_pos[Mom]
-			/ state_pos[Mas];
+		flow_v_neg = pamhd::mul(state_neg[Mom], 1 / state_neg[Mas]),
+		flow_v_pos = pamhd::mul(state_pos[Mom], 1 / state_pos[Mas]);
 
 	const auto
 		max_signal_neg

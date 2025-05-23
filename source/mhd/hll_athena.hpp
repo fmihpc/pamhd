@@ -5,6 +5,7 @@ Copyright 2003 Thomas A. Gardiner
 Copyright 2003 Peter J. Teuben
 Copyright 2003 John F. Hawley
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,6 +18,9 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_MHD_HLL_ATHENA_HPP
@@ -28,6 +32,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "string"
 #include "tuple"
 
+#include "common_functions.hpp"
 #include "mhd/common.hpp"
 
 
@@ -64,8 +69,12 @@ template <
 	const Scalar& adiabatic_index,
 	const Scalar& vacuum_permeability
 ) {
+	using std::abs;
+	using std::domain_error;
 	using std::isnormal;
 	using std::isfinite;
+	using std::make_tuple;
+	using std::max;
 	using std::to_string;
 
 	const Mass_Density Mas{};
@@ -99,10 +108,12 @@ template <
 			),
 
 		pressure_magnetic_neg
-			= state_neg[Mag].squaredNorm() / (2 * vacuum_permeability),
+			= pamhd::norm2(state_neg[Mag])
+			/ (2 * vacuum_permeability),
 
 		pressure_magnetic_pos
-			= state_pos[Mag].squaredNorm() / (2 * vacuum_permeability),
+			= pamhd::norm2(state_pos[Mag])
+			/ (2 * vacuum_permeability),
 
 		fast_magnetosonic_neg
 			= get_fast_magnetosonic_speed(
@@ -126,7 +137,7 @@ template <
 				vacuum_permeability
 			),
 
-		max_signal = std::max(fast_magnetosonic_neg, fast_magnetosonic_pos),
+		max_signal = max(fast_magnetosonic_neg, fast_magnetosonic_pos),
 
 		max_signal_neg
 			= (flow_v_neg[0] <= flow_v_pos[0])
@@ -139,22 +150,22 @@ template <
 			: flow_v_neg[0] + max_signal,
 
 		bm = std::min(max_signal_neg, 0.0),
-		bp = std::max(max_signal_pos, 0.0);
+		bp = max(max_signal_pos, 0.0);
 
 	if (not isnormal(pressure_thermal_neg) or pressure_thermal_neg < 0) {
-		throw std::domain_error(
+		throw domain_error(
 			"Invalid thermal pressure in state_neg: "
 			+ to_string(pressure_thermal_neg)
 		);
 	}
 	if (not isfinite(pressure_magnetic_neg) or pressure_magnetic_neg < 0) {
-		throw std::domain_error(
+		throw domain_error(
 			"Invalid magnetic pressure in state_neg: "
 			+ to_string(pressure_magnetic_neg)
 		);
 	}
 	if (not isfinite(max_signal_neg)) {
-		throw std::domain_error(
+		throw domain_error(
 			"Invalid max signal speed in state_neg: " + to_string(max_signal_neg)
 			+ ", max signal: " + to_string(max_signal)
 			+ ", flow_v_neg[0]: " + to_string(flow_v_neg[0])
@@ -162,19 +173,19 @@ template <
 	}
 
 	if (not isnormal(pressure_thermal_pos) or pressure_thermal_pos < 0) {
-		throw std::domain_error(
+		throw domain_error(
 			"Invalid thermal pressure in state_pos: "
 			+ to_string(pressure_thermal_pos)
 		);
 	}
 	if (not isfinite(pressure_magnetic_pos) or pressure_magnetic_pos < 0) {
-		throw std::domain_error(
+		throw domain_error(
 			"Invalid magnetic pressure in state_pos: "
 			+ to_string(pressure_magnetic_pos)
 		);
 	}
 	if (not isfinite(max_signal_pos)) {
-		throw std::domain_error(
+		throw domain_error(
 			"Invalid max signal speed in state_pos: "
 			+ to_string(max_signal_pos)
 		);
@@ -192,7 +203,7 @@ template <
 		flux[Mag][1] =
 		flux[Mag][2] = 0;
 
-		return std::make_tuple(flux, 0);
+		return make_tuple(flux, 0);
 	}
 
 	constexpr auto Mas_getter
@@ -231,16 +242,36 @@ template <
 			);
 
 	// compute L/R fluxes along the lines bm/bp: F_{L}-S_{L}U_{L}; F_{R}-S_{R}U_{R}
-	flux_neg -= state_neg * bm;
-	flux_pos -= state_pos * bp;
+	flux_neg[Mas] -= state_neg[Mas]*bm;
+	flux_neg[Mom] = pamhd::add(flux_neg[Mom], pamhd::mul(state_neg[Mom], -bm));
+	flux_neg[Nrj] -= state_neg[Nrj]*bm;
+	flux_neg[Mag] = pamhd::add(flux_neg[Mag], pamhd::mul(state_neg[Mag], -bm));
+	flux_pos[Mas] -= state_pos[Mas]*bp;
+	flux_pos[Mom] = pamhd::add(flux_pos[Mom], pamhd::mul(state_pos[Mom], -bp));
+	flux_pos[Nrj] -= state_pos[Nrj]*bp;
+	flux_pos[Mag] = pamhd::add(flux_pos[Mag], pamhd::mul(state_pos[Mag], -bp));
 	flux_pos[Mag][0] =
 	flux_neg[Mag][0] = 0;
 
-	MHD flux
-		= (flux_neg + flux_pos) / 2
-		+ (flux_neg - flux_pos) * (bp + bm) / (bp - bm) / 2.0;
+	MHD flux;
+	flux[Mas]
+		= (flux_neg[Mas] + flux_pos[Mas]) / 2
+		+ (flux_neg[Mas] - flux_pos[Mas]) * (bp + bm) / (bp - bm) / 2.0;
+	flux[Nrj]
+		= (flux_neg[Nrj] + flux_pos[Nrj]) / 2
+		+ (flux_neg[Nrj] - flux_pos[Nrj]) * (bp + bm) / (bp - bm) / 2.0;
+	flux[Mom] = pamhd::add(
+		pamhd::mul(0.5, pamhd::add(flux_neg[Mom], flux_pos[Mom])),
+		pamhd::mul(
+			pamhd::add(flux_neg[Mom], pamhd::neg(flux_pos[Mom])),
+			(bp + bm) / (bp - bm) / 2.0));
+	flux[Mag] = pamhd::add(
+		pamhd::mul(0.5, pamhd::add(flux_neg[Mag], flux_pos[Mag])),
+		pamhd::mul(
+			pamhd::add(flux_neg[Mag], pamhd::neg(flux_pos[Mag])),
+			(bp + bm) / (bp - bm) / 2.0));
 
-	return std::make_tuple(flux, std::max(std::fabs(bp), std::fabs(bm)));
+	return make_tuple(flux, max(abs(bp), abs(bm)));
 }
 
 

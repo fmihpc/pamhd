@@ -37,7 +37,8 @@ Author(s): Ilja Honkonen
 #ifndef PAMHD_MHD_VARIABLES_HPP
 #define PAMHD_MHD_VARIABLES_HPP
 
-#include "Eigen/Core" // must be included before gensimcell.hpp
+#include "array"
+
 #include "gensimcell.hpp"
 
 #include "common_variables.hpp"
@@ -63,7 +64,7 @@ struct Mass_Density {
 
 struct Momentum_Density {
 	static bool is_stale;
-	using data_type = Eigen::Vector3d;
+	using data_type = std::array<double, 3>;
 	static const std::string get_name() { return {"momentum density"}; }
 	static const std::string get_option_name() { return {"momentum-density"}; }
 	static const std::string get_option_help() { return {"Plasma momentum density (kg / m^3 * m / s)"}; }
@@ -78,7 +79,7 @@ struct Total_Energy_Density {
 };
 
 struct Velocity {
-	using data_type = Eigen::Vector3d;
+	using data_type = std::array<double, 3>;
 	static const std::string get_name() { return {"velocity"}; }
 	static const std::string get_option_name() { return {"velocity"}; }
 	static const std::string get_option_help() { return {"Plasma velocity (m / s)"}; }
@@ -86,7 +87,7 @@ struct Velocity {
 
 // velocity for initial/boundary conditions of two population version of test program
 struct Velocity2 {
-	using data_type = Eigen::Vector3d;
+	using data_type = std::array<double, 3>;
 	static const std::string get_name() { return {"velocity2"}; }
 	static const std::string get_option_name() { return {"velocity2"}; }
 	static const std::string get_option_help() { return {"Plasma velocity, second population (m / s)"}; }
