@@ -46,6 +46,7 @@ Author(s): Ilja Honkonen
 #include "dccrg.hpp"
 #include "rapidjson/document.h"
 
+#include "common_functions.hpp"
 #include "grid/amr.hpp"
 #include "mhd/common.hpp"
 #include "mhd/solve.hpp"
@@ -183,7 +184,7 @@ template<
 			v_factor * options.sw_velocity[0],
 			v_factor * options.sw_velocity[1],
 			v_factor * options.sw_velocity[2]};
-		Mom.data(*cell.data) = mass * velocity;
+		Mom.data(*cell.data) = pamhd::mul(mass, velocity);
 
 		Vol_B.data(*cell.data)[0]   =
 		Face_B.data(*cell.data)(-1) =
@@ -273,7 +274,7 @@ template<
 
 			const auto& mas = Mas.data(*neighbor.data);
 			const auto& mom = Mom.data(*neighbor.data);
-			const auto velocity = mom / mas;
+			const auto velocity = pamhd::mul(mom, 1 / mas);
 			const auto pressure = pamhd::mhd::get_pressure(
 				mas, mom,
 				Nrj.data(*neighbor.data),
@@ -417,7 +418,7 @@ template<
 			};
 			Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
 				Mas.data(*cell.data),
-				Mom.data(*cell.data) / Mas.data(*cell.data),
+				pamhd::mul(Mom.data(*cell.data), 1 / Mas.data(*cell.data)),
 				pressure,
 				Vol_B.data(*cell.data),
 				adiabatic_index,
@@ -514,7 +515,7 @@ template<
 			};
 			Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
 				Mas.data(*cell.data),
-				Mom.data(*cell.data) / Mas.data(*cell.data),
+				pamhd::mul(Mom.data(*cell.data), 1 / Mas.data(*cell.data)),
 				pressure,
 				Vol_B.data(*cell.data),
 				adiabatic_index,
@@ -587,7 +588,7 @@ template<
 		};
 		Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
 			Mas.data(*cell.data),
-			Mom.data(*cell.data) / Mas.data(*cell.data),
+			pamhd::mul(Mom.data(*cell.data), 1 / Mas.data(*cell.data)),
 			pressure,
 			Vol_B.data(*cell.data),
 			adiabatic_index,

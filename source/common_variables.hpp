@@ -38,7 +38,7 @@ Author(s): Ilja Honkonen
 #define PAMHD_VARIABLES_HPP
 
 
-#include "Eigen/Core"
+#include "array"
 
 
 namespace pamhd {
@@ -187,34 +187,8 @@ template<class Data_Type> struct Face_Type {
 			return make_tuple((void*) this->face.data(), this->face.size(), MPI_UNSIGNED_CHAR);
 		} else if constexpr (is_same_v<Data_Type, bool>) {
 			return make_tuple((void*) this->face.data(), this->face.size(), MPI_CXX_BOOL);
-		#ifdef EIGEN_WORLD_VERSION
-		} else if constexpr (is_same_v<Data_Type, Eigen::Vector3d>) {
-			array<void*, nr_faces> addresses;
-			array<int, nr_faces> counts;
-			array<MPI_Datatype, nr_faces> datatypes;
-			array<MPI_Aint, nr_faces> displacements;
-
-			MPI_Datatype final_datatype = MPI_DATATYPE_NULL;
-			for (size_t i = 0; i < nr_faces; i++) {
-				addresses[i] = (void*)this->face[i].data();
-				counts[i] = 3;
-				datatypes[i] = MPI_DOUBLE;
-				displacements[i]
-					= static_cast<char*>(addresses[i])
-					- static_cast<char*>(addresses[0]);
-			}
-			const auto result = MPI_Type_create_struct(
-				int(counts.size()),
-				counts.data(),
-				displacements.data(),
-				datatypes.data(),
-				&final_datatype
-			);
-			if (result != MPI_SUCCESS) {
-				throw runtime_error("Couldn't create MPI datatype for MHD flux");
-			}
-			return make_tuple(addresses[0], 1, final_datatype);
-		#endif
+		} else if constexpr (is_same_v<Data_Type, array<double, 3>>) {
+			return make_tuple((void*) this->face.data(), 3*this->face.size(), MPI_DOUBLE);
 		} else { // assume Data_Type has get_mpi_datatype()
 			array<void*, nr_faces> addresses;
 			array<int, nr_faces> counts;
@@ -546,14 +520,14 @@ Variables used by magnetohydrodynamic (MHD) solver
 
 struct Magnetic_Field {
 	static bool is_stale;
-	using data_type = Eigen::Vector3d;
+	using data_type = std::array<double, 3>;
 	static const std::string get_name() { return {"magnetic field"}; }
 	static const std::string get_option_name() { return {"magnetic-field"}; }
 	static const std::string get_option_help() { return {"Plasma magnetic field (T)"}; }
 };
 
 struct Magnetic_Field_Flux {
-	using data_type = Eigen::Vector3d;
+	using data_type = std::array<double, 3>;
 	static const std::string get_name() { return {"magnetic field flux"}; }
 	static const std::string get_option_name() { return {"magnetic-field-flux"}; }
 	static const std::string get_option_help() { return {"Flux of magnetic field (T)"}; }
@@ -561,7 +535,7 @@ struct Magnetic_Field_Flux {
 
 //! stores B before divergence removal so B can be restored after failed removal
 struct Magnetic_Field_Temp {
-	using data_type = Eigen::Vector3d;
+	using data_type = std::array<double, 3>;
 	static const std::string get_name() { return {"temporary magnetic field"}; }
 	static const std::string get_option_name() { return {"temporary-magnetic-field"}; }
 	static const std::string get_option_help() { return {"Temporary value of magnetic field in plasma (T)"}; }
@@ -569,7 +543,7 @@ struct Magnetic_Field_Temp {
 
 //! stores change in B due to resistivity
 struct Magnetic_Field_Resistive {
-	using data_type = Eigen::Vector3d;
+	using data_type = std::array<double, 3>;
 	static const std::string get_name() { return {"resistive magnetic field"}; }
 	static const std::string get_option_name() { return {"resistive-magnetic-field"}; }
 	static const std::string get_option_help() { return {"Change in magnetic field due to resistivity"}; }
@@ -578,7 +552,7 @@ struct Magnetic_Field_Resistive {
 //! Background magnetic field vector at cell faces
 struct Bg_Magnetic_Field {
 	static bool is_stale;
-	using data_type = pamhd::Face_Type<Eigen::Vector3d>;
+	using data_type = pamhd::Face_Type<std::array<double, 3>>;
 	static const std::string get_name() { return {"face background magnetic fields"}; }
 	static const std::string get_option_name() { return {"bg-b"}; }
 	static const std::string get_option_help() { return {"background magnetic field vector on cell faces"}; }
@@ -626,7 +600,7 @@ struct Magnetic_Field_Divergence {
 //! J in J = ∇×B
 struct Electric_Current_Density {
 	static bool is_stale;
-	using data_type = Eigen::Vector3d;
+	using data_type = std::array<double, 3>;
 	static const std::string get_name() { return {"current density"}; }
 	static const std::string get_option_name() { return {"current-density"}; }
 	static const std::string get_option_help() { return {"Density of electric current"}; }

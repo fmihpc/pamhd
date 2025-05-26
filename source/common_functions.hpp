@@ -120,6 +120,16 @@ auto cube(const auto& in) {
 	}
 }
 
+auto sum(const auto& in) {
+	if constexpr (requires {in[0];}) {
+		auto out = in[0]; out = 0;
+		for (const auto& i: in) out += i;
+		return out;
+	} else {
+		return in;
+	}
+}
+
 auto dot(const auto& in1, const auto& in2) {
 	// scalar and scalar
 	if constexpr (requires {in1 * in2;}) {
@@ -127,15 +137,19 @@ auto dot(const auto& in1, const auto& in2) {
 	// rest supported by mul
 	} else if constexpr (requires {mul(in1, in2);}) {
 		const auto out = mul(in1, in2);
-		return std::reduce(out.cbegin(), out.cend());
+		return sum(out);
 	} else {
 		static_assert(false, "Unsupported operand(s).");
 	}
 }
 
+auto norm2(const auto& in) {
+	return dot(in, in);
+}
+
 auto norm(const auto& in) {
 	using std::sqrt;
-	return sqrt(dot(in, in));
+	return sqrt(norm2(in));
 }
 
 auto cross(const auto& in1, const auto& in2) {
@@ -150,6 +164,17 @@ auto cross(const auto& in1, const auto& in2) {
 		return out;
 	} else {
 		static_assert(false, "Unsupported operand(s).");
+	}
+}
+
+//! negates (all components of) in
+auto neg(const auto& in) {
+	if constexpr (requires {in[0];}) {
+		auto out = in;
+		for (auto& o: out) o *= -1;
+		return out;
+	} else {
+		return -in;
 	}
 }
 

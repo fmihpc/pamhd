@@ -5,6 +5,7 @@ Copyright 2003 Thomas A. Gardiner
 Copyright 2003 Peter J. Teuben
 Copyright 2003 John F. Hawley
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,6 +18,9 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_MHD_HLLD_ATHENA_HPP
@@ -62,6 +66,12 @@ template <
 	const Scalar& adiabatic_index,
 	const Scalar& vacuum_permeability
 ) {
+	using std::abs;
+	using std::domain_error;
+	using std::make_tuple;
+	using std::max;
+	using std::string;
+	using std::sqrt;
 	using std::to_string;
 
 	const Vector bg_face_magnetic_field{0, 0, 0};
@@ -73,18 +83,18 @@ template <
 	const Magnetic_Field_T Mag{};
 
 	if (state_neg[Mas] <= 0) {
-		throw std::domain_error(
-			std::string("Non-positive mass density on negative side given to ")
+		throw domain_error(
+			string("Non-positive mass density on negative side given to ")
 			+ __func__
-			+ std::string(": ")
+			+ string(": ")
 			+ to_string(state_neg[Mas])
 		);
 	}
 	if (state_pos[Mas] <= 0) {
-		throw std::domain_error(
-			std::string("Non-positive mass density on positive side given to ")
+		throw domain_error(
+			string("Non-positive mass density on positive side given to ")
 			+ __func__
-			+ std::string(": ")
+			+ string(": ")
 			+ to_string(state_pos[Mas])
 		);
 	}
@@ -117,10 +127,10 @@ template <
 			vacuum_permeability
 		);
 	if (pressure_neg <= 0) {
-		throw std::domain_error(
-			std::string("Non-positive pressure on negative side given to ")
+		throw domain_error(
+			string("Non-positive pressure on negative side given to ")
 			+ __func__
-			+ std::string(": ")
+			+ string(": ")
 			+ to_string(pressure_neg)
 		);
 	}
@@ -135,10 +145,10 @@ template <
 			vacuum_permeability
 		);
 	if (pressure_pos <= 0) {
-		throw std::domain_error(
-			std::string("Non-positive pressure on positive side given to ")
+		throw domain_error(
+			string("Non-positive pressure on positive side given to ")
 			+ __func__
-			+ std::string(": ")
+			+ string(": ")
 			+ to_string(pressure_pos)
 		);
 	}
@@ -176,7 +186,7 @@ template <
 	// compute left & right wave speeds (equation 67)
 	const auto
 		inv_permeability = 1.0 / vacuum_permeability,
-		inv_permeability_sqrt = 1.0 / std::sqrt(vacuum_permeability),
+		inv_permeability_sqrt = 1.0 / sqrt(vacuum_permeability),
 		// div B = 0 is assumed between states
 		interface_Bx = (state_neg[Mag][0] + state_pos[Mag][0]) / 2,
 		interface_Bx2 = std::pow(interface_Bx, 2),
@@ -203,16 +213,11 @@ template <
 				vacuum_permeability
 			),
 
-		max_signal = std::max(fast_magnetosonic_neg, fast_magnetosonic_pos);
+		max_signal = max(fast_magnetosonic_neg, fast_magnetosonic_pos);
 
 	const auto
-		flow_v_neg
-			= state_neg[Mom]
-			/ state_neg[Mas],
-
-		flow_v_pos
-			= state_pos[Mom]
-			/ state_pos[Mas];
+		flow_v_neg = pamhd::mul(state_neg[Mom], 1 / state_neg[Mas]),
+		flow_v_pos = pamhd::mul(state_pos[Mom], 1 / state_pos[Mas]);
 
 	const auto
 		max_signal_neg
@@ -246,17 +251,17 @@ template <
 
 	// return upwind flux if flow is supermagnetosonic
 	if (max_signal_neg >= 0.0) {
-		return std::make_tuple(flux_neg, std::fabs(max_signal_pos));
+		return make_tuple(flux_neg, abs(max_signal_pos));
 	} else if (max_signal_pos <= 0.0) {
-		return std::make_tuple(flux_pos, std::fabs(max_signal_neg));
+		return make_tuple(flux_pos, abs(max_signal_neg));
 	}
 
 	const auto
 		signal_flow_diff_neg = max_signal_neg - flow_v_neg[0],
 		signal_flow_diff_pos = max_signal_pos - flow_v_pos[0],
 
-		nrj_magnetic_neg = 0.5 * state_neg[Mag].squaredNorm() * inv_permeability,
-		nrj_magnetic_pos = 0.5 * state_pos[Mag].squaredNorm() * inv_permeability,
+		nrj_magnetic_neg = pamhd::mul(pamhd::norm2(state_neg[Mag]), inv_permeability / 2),
+		nrj_magnetic_pos = pamhd::mul(pamhd::norm2(state_pos[Mag]), inv_permeability / 2),
 
 		// eqn 38
 		signal_middle
@@ -278,23 +283,23 @@ template <
 			= state_neg[Mas]
 			* signal_flow_diff_neg
 			/ signal_max_middle_diff_neg,
-		density_s_sqrt_neg = std::sqrt(density_s_neg),
+		density_s_sqrt_neg = sqrt(density_s_neg),
 
 		density_s_pos
 			= state_pos[Mas]
 			* signal_flow_diff_pos
 			/ signal_max_middle_diff_pos,
-		density_s_sqrt_pos = std::sqrt(density_s_pos),
+		density_s_sqrt_pos = sqrt(density_s_pos),
 
 		// eqn 51
 		signal_s_neg
 			= signal_middle
-			- std::fabs(interface_Bx)
-				/ std::sqrt(density_s_neg * vacuum_permeability),
+			- abs(interface_Bx)
+				/ sqrt(density_s_neg * vacuum_permeability),
 		signal_s_pos
 			= signal_middle
-			+ std::fabs(interface_Bx)
-				/ std::sqrt(density_s_pos * vacuum_permeability),
+			+ abs(interface_Bx)
+				/ sqrt(density_s_pos * vacuum_permeability),
 
 
 		/*
@@ -313,9 +318,9 @@ template <
 		= state_neg[Mas] * signal_flow_diff_neg * signal_max_middle_diff_neg
 		- interface_Bx2 * inv_permeability;
 
-	if (std::fabs(tmp_neg) < epsilon * ptst) {
+	if (abs(tmp_neg) < epsilon * ptst) {
 		// degenerate case
-		state_s_neg[Mom] = density_s_neg * flow_v_neg;
+		state_s_neg[Mom] = pamhd::mul(density_s_neg, flow_v_neg);
 		state_s_neg[Mag] = state_neg[Mag];
 	} else {
 		// eqns 44 and 46
@@ -324,7 +329,11 @@ template <
 			* (signal_middle - flow_v_neg[0])
 			* inv_permeability
 			/ tmp_neg;
-		state_s_neg[Mom] = density_s_neg * (flow_v_neg - state_neg[Mag] * tmp1);
+		state_s_neg[Mom] = pamhd::mul(
+			density_s_neg,
+			pamhd::add(
+				flow_v_neg,
+				pamhd::mul(state_neg[Mag], -tmp1)));
 
 		// eqns 45 and 47
 		const auto tmp2
@@ -332,13 +341,13 @@ template <
 				state_neg[Mas] * std::pow(signal_flow_diff_neg, 2)
 				- interface_Bx2 * inv_permeability
 			) / tmp_neg;
-		state_s_neg[Mag] = state_neg[Mag] * tmp2;
+		state_s_neg[Mag] = pamhd::mul(state_neg[Mag], tmp2);
 	}
 	state_s_neg[Mas] = density_s_neg;
 	state_s_neg[Mom][0] = density_s_neg * signal_middle;
 	state_s_neg[Mag][0] = interface_Bx;
 
-	const auto v_dot_b_s_neg = state_s_neg[Mom].dot(state_s_neg[Mag]) / density_s_neg;
+	const auto v_dot_b_s_neg = pamhd::dot(state_s_neg[Mom], state_s_neg[Mag]) / density_s_neg;
 
 	// eqn 48
 	state_s_neg[Nrj]
@@ -347,7 +356,7 @@ template <
 			- (pressure_neg + nrj_magnetic_neg) * flow_v_neg[0]
 			+ ptst * signal_middle
 			+ interface_Bx * inv_permeability
-				* (flow_v_neg.dot(state_neg[Mag]) - v_dot_b_s_neg)
+				* (pamhd::dot(flow_v_neg, state_neg[Mag]) - v_dot_b_s_neg)
 		) / signal_max_middle_diff_neg;
 
 	MHD state_s_pos;
@@ -355,8 +364,8 @@ template <
 		= state_pos[Mas] * signal_flow_diff_pos * signal_max_middle_diff_pos
 		- interface_Bx2 * inv_permeability;
 
-	if (std::fabs(tmp_pos) < epsilon * ptst) {
-		state_s_pos[Mom] = density_s_pos * flow_v_pos;
+	if (abs(tmp_pos) < epsilon * ptst) {
+		state_s_pos[Mom] = pamhd::mul(density_s_pos, flow_v_pos);
 		state_s_pos[Mag] = state_pos[Mag];
 	} else {
 		const auto tmp1
@@ -364,20 +373,22 @@ template <
 			* (signal_middle - flow_v_pos[0])
 			* inv_permeability
 			/ tmp_pos;
-		state_s_pos[Mom] = density_s_pos * (flow_v_pos - state_pos[Mag] * tmp1);
+		state_s_pos[Mom] = pamhd::mul(
+			density_s_pos,
+			pamhd::add(flow_v_pos, pamhd::mul(state_pos[Mag], -tmp1)));
 
 		const auto tmp2
 			= (
 				state_pos[Mas] * std::pow(signal_flow_diff_pos, 2)
 				- interface_Bx2 * inv_permeability
 			) / tmp_pos;
-		state_s_pos[Mag] = state_pos[Mag] * tmp2;
+		state_s_pos[Mag] = pamhd::mul(state_pos[Mag], tmp2);
 	}
 	state_s_pos[Mas] = density_s_pos;
 	state_s_pos[Mom][0] = density_s_pos * signal_middle;
 	state_s_pos[Mag][0] = interface_Bx;
 
-	const auto v_dot_b_s_pos = state_s_pos[Mom].dot(state_s_pos[Mag]) / density_s_pos;
+	const auto v_dot_b_s_pos = pamhd::dot(state_s_pos[Mom], state_s_pos[Mag]) / density_s_pos;
 
 	// eqn 48
 	state_s_pos[Nrj]
@@ -386,12 +397,12 @@ template <
 			- (pressure_pos + nrj_magnetic_pos) * flow_v_pos[0]
 			+ ptst * signal_middle
 			+ interface_Bx * inv_permeability
-				* (flow_v_pos.dot(state_pos[Mag]) - v_dot_b_s_pos)
+				* (pamhd::dot(flow_v_pos, state_pos[Mag]) - v_dot_b_s_pos)
 		) / signal_max_middle_diff_pos;
 
 	const auto
-		flow_v_s_neg = state_s_neg[Mom] / density_s_neg,
-		flow_v_s_pos = state_s_pos[Mom] / density_s_pos;
+		flow_v_s_neg = pamhd::mul(state_s_neg[Mom], 1 / density_s_neg),
+		flow_v_s_pos = pamhd::mul(state_s_pos[Mom], 1 / density_s_pos);
 
 	MHD state_s2_neg, state_s2_pos;
 	if (interface_Bx2 / 2 < epsilon * ptst) {
@@ -408,14 +419,13 @@ template <
 
 		const auto flow_v_s2
 			= [&](){
-				typename Momentum_Density_T::data_type temp
-					= inv_sum_density_sqrt
-					* (
-						density_s_sqrt_neg * flow_v_s_neg
-						+ density_s_sqrt_pos * flow_v_s_pos
-						+ Bx_sign * inv_permeability_sqrt
-							* (state_s_pos[Mag] - state_s_neg[Mag])
-					);
+				auto temp = pamhd::mul(
+					inv_sum_density_sqrt,
+					pamhd::add(pamhd::add(
+						pamhd::mul(density_s_sqrt_neg, flow_v_s_neg),
+						pamhd::mul(density_s_sqrt_pos, flow_v_s_pos)),
+						pamhd::mul(Bx_sign * inv_permeability_sqrt,
+							pamhd::add(state_s_pos[Mag], pamhd::neg(state_s_neg[Mag])))));
 
 				temp[0] = signal_middle;
 
@@ -423,28 +433,28 @@ template <
 			}();
 
 		// eqs 59 & 60
-		state_s2_neg[Mom] = state_s_neg[Mas] * flow_v_s2;
+		state_s2_neg[Mom] = pamhd::mul(state_s_neg[Mas], flow_v_s2);
 		state_s2_neg[Mom][0] = state_s_neg[Mom][0];
 
-		state_s2_pos[Mom] = state_s_pos[Mas] * flow_v_s2;
+		state_s2_pos[Mom] = pamhd::mul(state_s_pos[Mas], flow_v_s2);
 		state_s2_pos[Mom][0] = state_s_pos[Mom][0];
 
 		// eqs 61 & 62
 		state_s2_neg[Mag] =
-		state_s2_pos[Mag]
-			= inv_sum_density_sqrt
-			* (
-				density_s_sqrt_neg * state_s_pos[Mag]
-				+ density_s_sqrt_pos * state_s_neg[Mag]
-				+ Bx_sign * density_s_sqrt_neg * density_s_sqrt_pos
-					* (flow_v_s_pos - flow_v_s_neg)
-					* std::sqrt(vacuum_permeability)
+		state_s2_pos[Mag] = pamhd::mul(
+			inv_sum_density_sqrt,
+			pamhd::add(pamhd::add(
+				pamhd::mul(density_s_sqrt_neg, state_s_pos[Mag]),
+				pamhd::mul(density_s_sqrt_pos, state_s_neg[Mag])),
+				pamhd::mul(
+					Bx_sign * density_s_sqrt_neg * density_s_sqrt_pos * sqrt(vacuum_permeability),
+					pamhd::add(flow_v_s_pos, pamhd::neg(flow_v_s_neg))))
 			);
 		state_s2_neg[Mag][0] =
 		state_s2_pos[Mag][0] = interface_Bx;
 
 		// eqn 63
-		const auto v_dot_b_s2 = flow_v_s2.dot(state_s2_neg[Mag]);
+		const auto v_dot_b_s2 = pamhd::dot(flow_v_s2, state_s2_neg[Mag]);
 
 		state_s2_neg[Nrj]
 			= state_s_neg[Nrj]
@@ -464,37 +474,87 @@ template <
 	MHD flux;
 	if (signal_s_neg >= 0) {
 
-		flux = flux_neg + (state_s_neg - state_neg) * max_signal_neg;
+		flux[Mas] = flux_neg[Mas] + (state_s_neg[Mas] - state_neg[Mas]) * max_signal_neg;
+		flux[Nrj] = flux_neg[Nrj] + (state_s_neg[Nrj] - state_neg[Nrj]) * max_signal_neg;
+
+		flux[Mom] = pamhd::add(
+			flux_neg[Mom],
+			pamhd::mul(
+				max_signal_neg,
+				pamhd::add(state_s_neg[Mom], pamhd::neg(state_neg[Mom]))));
+		flux[Mag] = pamhd::add(
+			flux_neg[Mag],
+			pamhd::mul(
+				max_signal_neg,
+				pamhd::add(state_s_neg[Mag], pamhd::neg(state_neg[Mag]))));
 
 	} else if (signal_middle >= 0) {
 
-		flux
-			= flux_neg
-			+ state_s2_neg * signal_s_neg
-			- state_s_neg * (signal_s_neg - max_signal_neg)
-			- state_neg * max_signal_neg;
+		flux[Mas]
+			= flux_neg[Mas]
+			+ state_s2_neg[Mas] * signal_s_neg
+			- state_s_neg[Mas] * (signal_s_neg - max_signal_neg)
+			- state_neg[Mas] * max_signal_neg;
+		flux[Nrj]
+			= flux_neg[Nrj]
+			+ state_s2_neg[Nrj] * signal_s_neg
+			- state_s_neg[Nrj] * (signal_s_neg - max_signal_neg)
+			- state_neg[Nrj] * max_signal_neg;
+		flux[Mom] = pamhd::add(pamhd::add(pamhd::add(
+			flux_neg[Mom],
+			pamhd::mul(state_s2_neg[Mom], signal_s_neg)),
+			pamhd::mul(state_s_neg[Mom], -(signal_s_neg - max_signal_neg))),
+			pamhd::mul(state_neg[Mom], -max_signal_neg));
+		flux[Mag] = pamhd::add(pamhd::add(pamhd::add(
+			flux_neg[Mag],
+			pamhd::mul(state_s2_neg[Mag], signal_s_neg)),
+			pamhd::mul(state_s_neg[Mag], -(signal_s_neg - max_signal_neg))),
+			pamhd::mul(state_neg[Mag], -max_signal_neg));
 
 	} else if (signal_s_pos > 0) {
 
-		flux
-			= flux_pos
-			+ state_s2_pos * signal_s_pos
-			- state_s_pos * (signal_s_pos - max_signal_pos)
-			- state_pos * max_signal_pos;
+		flux[Mas]
+			= flux_pos[Mas]
+			+ state_s2_pos[Mas] * signal_s_pos
+			- state_s_pos[Mas] * (signal_s_pos - max_signal_pos)
+			- state_pos[Mas] * max_signal_pos;
+		flux[Nrj]
+			= flux_pos[Nrj]
+			+ state_s2_pos[Nrj] * signal_s_pos
+			- state_s_pos[Nrj] * (signal_s_pos - max_signal_pos)
+			- state_pos[Nrj] * max_signal_pos;
+		flux[Mom] = pamhd::add(pamhd::add(pamhd::add(
+			flux_pos[Mom],
+			pamhd::mul(state_s2_pos[Mom], signal_s_pos)),
+			pamhd::mul(state_s_pos[Mom], -(signal_s_pos - max_signal_pos))),
+			pamhd::mul(state_pos[Mom], -max_signal_pos));
+		flux[Mag] = pamhd::add(pamhd::add(pamhd::add(
+			flux_pos[Mag],
+			pamhd::mul(state_s2_pos[Mag], signal_s_pos)),
+			pamhd::mul(state_s_pos[Mag], -(signal_s_pos - max_signal_pos))),
+			pamhd::mul(state_pos[Mag], -max_signal_pos));
 
 	} else {
 
-		flux = flux_pos + (state_s_pos - state_pos) * max_signal_pos;
+		flux[Mas] = flux_pos[Mas] + (state_s_pos[Mas] - state_pos[Mas]) * max_signal_pos;
+		flux[Nrj] = flux_pos[Nrj] + (state_s_pos[Nrj] - state_pos[Nrj]) * max_signal_pos;
+		flux[Mom] = pamhd::add(
+			flux_pos[Mom],
+			pamhd::mul(
+				max_signal_pos,
+				pamhd::add(state_s_pos[Mom], pamhd::neg(state_pos[Mom]))));
+		flux[Mag] = pamhd::add(
+			flux_pos[Mag],
+			pamhd::mul(
+				max_signal_pos,
+				pamhd::add(state_s_pos[Mag], pamhd::neg(state_pos[Mag]))));
 
 	}
 	flux[Mag][0] = 0;
 
-	return std::make_tuple(
+	return make_tuple(
 		flux,
-		std::max(
-			std::fabs(max_signal_neg),
-			std::fabs(max_signal_pos)
-		)
+		max(abs(max_signal_neg), abs(max_signal_pos))
 	);
 }
 

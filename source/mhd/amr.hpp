@@ -133,12 +133,17 @@ template <
 
 		const auto [cdx, cdy, cdz] = grid.geometry.get_length(cell.id);
 		const auto
-			cpre = max(options_mhd.pressure_min_mrg, get_pressure(
-				Mas.data(*cell.data), Mom.data(*cell.data), Nrj.data(*cell.data),
-				Vol_B.data(*cell.data), adiabatic_index, vacuum_permeability)),
-			cmas = max(Mas.data(*cell.data) / proton_mass, options_mhd.number_density_min_mrg),
-			cvel = max((Mom.data(*cell.data) / Mas.data(*cell.data)).norm(), options_mhd.vel_min_mrg),
-			cmag = max(Vol_B.data(*cell.data).norm(), options_mhd.mag_min_mrg);
+			cpre = max(options_mhd.pressure_min_mrg,
+				get_pressure(
+					Mas.data(*cell.data), Mom.data(*cell.data),
+					Nrj.data(*cell.data), Vol_B.data(*cell.data),
+					adiabatic_index, vacuum_permeability)),
+			cmas = max(options_mhd.number_density_min_mrg,
+				Mas.data(*cell.data) / proton_mass),
+			cvel = max(options_mhd.vel_min_mrg,
+				pamhd::norm(Mom.data(*cell.data)) / Mas.data(*cell.data)),
+			cmag = max(options_mhd.mag_min_mrg,
+				pamhd::norm(Vol_B.data(*cell.data)));
 
 		// maximum relative gradients w.r.t. neighbors
 		double
@@ -157,12 +162,17 @@ template <
 
 			const auto [ndx, ndy, ndz] = grid.geometry.get_length(neighbor.id);
 			const auto
-				npre = max(options_mhd.pressure_min_mrg, get_pressure(
-					Mas.data(*neighbor.data), Mom.data(*neighbor.data), Nrj.data(*neighbor.data),
-					Vol_B.data(*neighbor.data), adiabatic_index, vacuum_permeability)),
-				nmas = max(Mas.data(*neighbor.data) / proton_mass, options_mhd.number_density_min_mrg),
-				nvel = max((Mom.data(*neighbor.data) / Mas.data(*neighbor.data)).norm(), options_mhd.vel_min_mrg),
-				nmag = max(Vol_B.data(*neighbor.data).norm(), options_mhd.mag_min_mrg);
+				npre = max(options_mhd.pressure_min_mrg,
+					get_pressure(
+						Mas.data(*neighbor.data), Mom.data(*neighbor.data),
+						Nrj.data(*neighbor.data), Vol_B.data(*neighbor.data),
+						adiabatic_index, vacuum_permeability)),
+				nmas = max(options_mhd.number_density_min_mrg,
+					Mas.data(*neighbor.data) / proton_mass),
+				nvel = max(options_mhd.vel_min_mrg,
+					pamhd::norm(Mom.data(*neighbor.data)) / Mas.data(*neighbor.data)),
+				nmag = max(options_mhd.mag_min_mrg,
+					pamhd::norm(Vol_B.data(*neighbor.data)));
 
 			const auto len = [&](){
 				switch (neighbor.face_neighbor) {
@@ -327,7 +337,7 @@ template <
 			}
 			Nrj.data(*cell_data) = get_total_energy_density(
 				Mas.data(*cell_data),
-				(Mom.data(*cell_data) / Mas.data(*cell_data)).eval(),
+				pamhd::mul(Mom.data(*cell_data), 1 / Mas.data(*cell_data)),
 				parent_pressure,
 				Vol_B.data(*cell_data),
 				adiabatic_index,
@@ -476,7 +486,8 @@ template <
 					Max_v.data(*removed_cell_data)(dir));
 			}
 			Mas.data(*parent_data) += Mas.data(*removed_cell_data) / 8;
-			Mom.data(*parent_data) += Mom.data(*removed_cell_data) / 8;
+			Mom.data(*parent_data) = pamhd::add(Mom.data(*parent_data),
+				pamhd::mul(Mom.data(*removed_cell_data), 1.0 / 8.0));
 			// temporarily store pressure in energy density variable
 			try {
 				Nrj.data(*parent_data) += get_pressure(
@@ -547,7 +558,7 @@ template <
 
 			Nrj.data(*parent_data) = get_total_energy_density(
 				Mas.data(*parent_data),
-				(Mom.data(*parent_data) / Mas.data(*parent_data)).eval(),
+				pamhd::mul(Mom.data(*parent_data), 1 / Mas.data(*parent_data)),
 				Nrj.data(*parent_data),
 				Vol_B.data(*parent_data),
 				adiabatic_index,
