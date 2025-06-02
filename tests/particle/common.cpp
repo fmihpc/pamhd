@@ -2,6 +2,7 @@
 Tests for common particle functions of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,22 +29,22 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
+#include "array"
 #include "cmath"
 #include "cstdlib"
 #include "iostream"
 #include "random"
-
-#include "Eigen/Core"
-#include "Eigen/Geometry"
 
 #include "particle/common.hpp"
 #include "particle/variables.hpp"
 
 
 using namespace std;
-using namespace Eigen;
 using namespace pamhd::particle;
 
 
@@ -61,17 +62,17 @@ int main()
 	const Charge_Mass_Ratio C2M{};
 
 	Particle_T<> particle;
-	Eigen::Vector3d electric_field, magnetic_field;
+	std::array<double, 3> electric_field, magnetic_field;
 
 	// not needed
 	particle[Mas] = 0;
-	particle[Pos] = Vector3d(0, 0, 0);
+	particle[Pos] = {0, 0, 0};
 
 	// test get_gyro_info
-	particle[Vel] = Vector3d(6, 2, 3);
+	particle[Vel] = {6, 2, 3};
 	particle[C2M] = -2;
-	electric_field = Vector3d(0, 0, 0);
-	magnetic_field = Vector3d(2, 3, 6);
+	electric_field = {0, 0, 0};
+	magnetic_field = {2, 3, 6};
 	const auto B_mag = 7.0, v_perp_mag = sqrt(54145.0) / 49.0, c2m_abs = 2.0;
 
 	const auto gyro_info = get_gyro_info(particle[C2M], particle[Vel], magnetic_field);

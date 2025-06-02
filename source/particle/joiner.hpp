@@ -1,7 +1,7 @@
 /*
 Particle joiner of PAMHD.
 
-Copyright 2018 Finnish Meteorological Institute
+Copyright 2018, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,13 +28,18 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_PARTICLE_JOINER_HPP
 #define PAMHD_PARTICLE_JOINER_HPP
 
 
+#include "array"
 #include "utility"
+#include "vector"
 
 #include "dccrg.hpp"
 
@@ -66,7 +71,7 @@ template<
 	std::tuple<
 		uint64_t, // cell id
 		double, // total removed mass
-		Eigen::Vector3d, // total removed momentum
+		std::array<double, 3>, // total removed momentum
 		double // total removed temperature, 0 if < 2 removed particles
 	>
 > join_particles(
@@ -79,7 +84,7 @@ template<
 ) {
 	using std::get;
 
-	std::vector<std::tuple<uint64_t, double, Eigen::Vector3d, double>> ret_val;
+	std::vector<std::tuple<uint64_t, double, std::array<double, 3>, double>> ret_val;
 
 	for (const auto& cell: grid.cells) {
 		if (Sol_Info(*cell.data) != normal_cell) {

@@ -2,6 +2,7 @@
 Handles background magnetic field of MHD part of PAMHD.
 
 Copyright 2014, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -16,6 +17,9 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_BACKGROUND_MAGNETIC_FIELD_HPP
@@ -27,6 +31,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "string"
 
 #include "rapidjson/document.h"
+
+#include "common_functions.hpp"
 
 
 namespace pamhd {
@@ -54,13 +60,8 @@ template<class Scalar> struct Line_Dipole
 };
 
 
-//! Vector assumed to support Eigen API.
 template<class Scalar, class Vector> class Background_Magnetic_Field
 {
-	static_assert(
-		Vector::SizeAtCompileTime == 3,
-		"Only 3 component Eigen vectors supported"
-	);
 
 private:
 	Vector constant = {0, 0, 0};
@@ -362,9 +363,9 @@ public:
 					}
 					return pos;
 				}(),
-				r = field_position - dip_pos;
+				r = pamhd::add(field_position, pamhd::neg(dip_pos));
 
-			const Scalar r1 = r.norm();
+			const Scalar r1 = pamhd::norm(r);
 			if (r1 < this->min_distance) {
 				if (line_dipole.line_dimension == abs(line_dipole.field_direction_through_line)) {
 					ret_val[line_dipole.line_dimension - 1]
@@ -467,20 +468,25 @@ public:
 
 		for (const auto& dip_mom_pos: this->dipole_moments_positions) {
 
-			const Vector r = field_position - dip_mom_pos.second;
-			const Scalar r1 = r.norm();
+			const Vector r = pamhd::add(field_position, pamhd::neg(dip_mom_pos.second));
+			const Scalar r1 = pamhd::norm(r);
 			if (r1 < this->min_distance) {
-				ret_val
-					+= vacuum_permeability * dip_mom_pos.first
-					/ (2 * M_PI * std::pow(this->min_distance, 3));
+				ret_val = pamhd::add(ret_val,
+					pamhd::mul(
+						dip_mom_pos.first,
+						vacuum_permeability / (2 * M_PI * std::pow(this->min_distance, 3))));
 			} else {
 				const Vector
-					r_unit = r / r1,
-					projected_dip_mom = dip_mom_pos.first.dot(r_unit) * r_unit;
-				ret_val
-					+= vacuum_permeability / (4 * M_PI)
-					* (3 * projected_dip_mom - dip_mom_pos.first)
-					/ (r1*r1*r1);
+					r_unit = pamhd::mul(r, 1 / r1),
+					projected_dip_mom = pamhd::mul(
+						pamhd::dot(dip_mom_pos.first, r_unit),
+						r_unit);
+				ret_val = pamhd::add(ret_val,
+					pamhd::mul(
+						pamhd::add(
+							pamhd::mul(3, projected_dip_mom),
+							pamhd::neg(dip_mom_pos.first)),
+						vacuum_permeability / (4 * M_PI) / (r1*r1*r1)));
 			}
 		}
 

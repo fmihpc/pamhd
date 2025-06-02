@@ -2,6 +2,7 @@
 Tests bulk pressure accumulation from particles in PAMHD.
 
 Copyright 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,35 +29,36 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
+#include "array"
 #include "cmath"
 #include "cstdlib"
 #include "iostream"
 #include "random"
 
-#include "Eigen/Core"
-#include "Eigen/Geometry"
-
+#include "common_functions.hpp"
 #include "particle/accumulate.hpp"
 #include "particle/common.hpp"
 #include "particle/variables.hpp"
 
 
 using namespace std;
-using namespace Eigen;
 using namespace pamhd::particle;
 
 
 bool test_accumulation(
 	const size_t nr_particles,
-	const Vector3d particle_min,
-	const Vector3d particle_max,
-	const Vector3d cell_min,
-	const Vector3d cell_max,
+	const std::array<double, 3> particle_min,
+	const std::array<double, 3> particle_max,
+	const std::array<double, 3> cell_min,
+	const std::array<double, 3> cell_max,
 	const double particle_temp_nrj_ratio,
-	const Vector3d bulk_velocity,
-	const Vector3d temperature,
+	const std::array<double, 3> bulk_velocity,
+	const std::array<double, 3> temperature,
 	const double total_mass,
 	const double species_mass,
 	const size_t seed
@@ -136,7 +138,7 @@ bool test_accumulation(
 	}
 
 	// bulk velocity
-	std::pair<Vector3d, double> accu_vel{{0, 0, 0}, 0};
+	std::pair<std::array<double, 3>, double> accu_vel{{0, 0, 0}, 0};
 	for (const auto& part: particles) {
 		const auto temp = get_accumulated_value_weighted(
 			part[Velocity()],
@@ -144,10 +146,10 @@ bool test_accumulation(
 			particle_min, particle_max,
 			cell_min, cell_max
 		);
-		accu_vel.first += temp.first;
+		accu_vel.first = pamhd::add(accu_vel.first, temp.first);
 		accu_vel.second += temp.second;
 	}
-	accu_vel.first /= accu_vel.second;
+	accu_vel.first = pamhd::mul(accu_vel.first, 1 / accu_vel.second);
 
 	for (size_t dim = 0; dim < 3; dim++) {
 		if (abs(accu_vel.first[dim] - bulk_velocity[dim]) / abs(bulk_velocity[dim]) > 1e-1) {
@@ -162,7 +164,7 @@ bool test_accumulation(
 	double accu_ekin = 0;
 	for (const auto& part: particles) {
 		accu_ekin += get_accumulated_value(
-			0.5 * part[Mass()] * (part[Velocity()] - bulk_velocity).squaredNorm(),
+			0.5 * part[Mass()] * pamhd::norm2(pamhd::add(part[Velocity()], pamhd::neg(bulk_velocity))),
 			particle_min, particle_max,
 			cell_min, cell_max
 		);
@@ -171,7 +173,7 @@ bool test_accumulation(
 	// temperature
 	const double
 		temp = 2 * accu_ekin / 3.0 / accu_nr_real / particle_temp_nrj_ratio,
-		ref_temp = temperature.sum() / 3;
+		ref_temp = pamhd::sum(temperature) / 3;
 	if (abs(temp - ref_temp) / abs(ref_temp) > 1e-2) {
 		std::cerr <<  __FILE__ << "(" << __LINE__ << "): "
 			<< temp << " " << ref_temp

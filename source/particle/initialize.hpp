@@ -38,6 +38,7 @@ Author(s): Ilja Honkonen
 #define PAMHD_PARTICLE_INITIALIZE_HPP
 
 
+#include "array"
 #include "algorithm"
 #include "iostream"
 #include "random"
@@ -172,6 +173,8 @@ template<
 	const Boundary_Species_Mass_Getter Bdy_SpM,
 	const Solver_Info_Getter SInfo
 ) {
+	using std::array;
+
 	if (verbose && grid.get_rank() == 0) {
 		std::cout << "Setting initial particle state... ";
 		std::cout.flush();
@@ -487,9 +490,9 @@ template<
 				Particle_Species_Mass_T
 			>(
 				Bdy_V(*cell.data),
-				Eigen::Vector3d{cell_start[0], cell_start[1], cell_start[2]},
-				Eigen::Vector3d{cell_end[0], cell_end[1], cell_end[2]},
-				Eigen::Vector3d{Bdy_T(*cell.data), Bdy_T(*cell.data), Bdy_T(*cell.data)},
+				array<double, 3>{cell_start[0], cell_start[1], cell_start[2]},
+				array<double, 3>{cell_end[0], cell_end[1], cell_end[2]},
+				array<double, 3>{Bdy_T(*cell.data), Bdy_T(*cell.data), Bdy_T(*cell.data)},
 				Bdy_Nr_Par(*cell.data),
 				Bdy_C2M(*cell.data),
 				Bdy_SpM(*cell.data) * Bdy_N(*cell.data) * cell_length[0] * cell_length[1] * cell_length[2],

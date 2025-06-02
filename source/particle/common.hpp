@@ -40,6 +40,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "random"
 #include "vector"
 
+#include "common_functions.hpp"
+
 
 namespace pamhd {
 namespace particle {
@@ -47,21 +49,17 @@ namespace particle {
 
 /*!
 Returns kinetic energy of given particle.
-
-Assumes Vector provides an API identical to Eigen vectors.
 */
 template <class Vector> double get_kinetic_energy(
 	const double mass,
 	const Vector& velocity
 ) {
-	return 0.5 * mass * velocity.squaredNorm();
+	return 0.5 * mass * pamhd::dot(velocity, velocity);
 }
 
 
 /*!
 Returns momentum of given particle.
-
-Assumes Vector provides an API identical to Eigen vectors.
 */
 template <class Vector> Vector get_momentum(
 	const double mass,
@@ -74,8 +72,6 @@ template <class Vector> Vector get_momentum(
 /*!
 Returns radius and frequency of gyration of a particle in a magnetic field.
 
-Assumes Vector provides an API identical to Eigen vectors.
-
 Returns positive values, pair.first == radius, pair.second == frequency.
 */
 template<class Vector> std::pair<double, double> get_gyro_info(
@@ -87,15 +83,15 @@ template<class Vector> std::pair<double, double> get_gyro_info(
 	using std::make_pair;
 
 	const double
-		B_magnitude = magnetic_field.norm(),
+		B_magnitude = pamhd::norm(magnetic_field),
 		c2m_abs = fabs(charge_to_mass_ratio);
 
 	const Vector
-		unit_B = magnetic_field / B_magnitude,
-		perpendicular_velocity = velocity - velocity.dot(unit_B) * unit_B;
+		unit_B = pamhd::mul(magnetic_field, 1 / B_magnitude),
+		perpendicular_velocity = pamhd::add(velocity, pamhd::mul(-pamhd::dot(velocity, unit_B), unit_B));
 
 	return make_pair(
-		perpendicular_velocity.norm() / c2m_abs / B_magnitude,
+		pamhd::norm(perpendicular_velocity) / c2m_abs / B_magnitude,
 		c2m_abs * B_magnitude / 2 / M_PI
 	);
 }
@@ -129,7 +125,7 @@ template<class Vector> std::pair<double, double> get_step_size(
 
 	const auto displacement // max allowed, due to electric field
 		= [&](){
-			const auto E_mag = electric_field.norm();
+			const auto E_mag = pamhd::norm(electric_field);
 			if (E_mag > 0) {
 				return sqrt(
 					2 * cell_length
@@ -144,7 +140,7 @@ template<class Vector> std::pair<double, double> get_step_size(
 		ret_val.first = min(displacement, ret_val.first);
 	}
 
-	const auto travel_time = cell_length / velocity.norm();
+	const auto travel_time = cell_length / pamhd::norm(velocity);
 	if (not isnan(travel_time)) {
 		ret_val.first = min(travel_time, ret_val.first);
 	}

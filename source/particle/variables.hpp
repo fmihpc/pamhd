@@ -38,12 +38,12 @@ Author(s): Ilja Honkonen
 #define PAMHD_PARTICLE_VARIABLES_HPP
 
 
+#include "array"
 #include "vector"
 
 #ifndef DONT_USE_MPI
 #include "mpi.h" // must be included before gensimcell.hpp
 #endif
-#include "Eigen/Core" // must be included before gensimcell.hpp
 #include "gensimcell.hpp"
 
 #include "mhd/variables.hpp"
@@ -59,14 +59,14 @@ Variables used by particle solver
 */
 
 struct Position {
-	using data_type = Eigen::Vector3d;
+	using data_type = std::array<double, 3>;
 	static const std::string get_name() { return {"position"}; }
 	static const std::string get_option_name() { return {"position"}; }
 	static const std::string get_option_help() { return {"Particle position"}; }
 };
 
 struct Velocity {
-	using data_type = Eigen::Vector3d;
+	using data_type = std::array<double, 3>;
 	static const std::string get_name() { return {"velocity"}; }
 	static const std::string get_option_name() { return {"velocity"}; }
 	static const std::string get_option_help() { return {"Particle velocity"}; }
@@ -175,7 +175,7 @@ struct Max_Gyrofrequency {
 
 struct Electric_Field {
 	static bool is_stale;
-	using data_type = Eigen::Vector3d;
+	using data_type = std::array<double, 3>;
 	static const std::string get_name() { return {"electric field"}; }
 	static const std::string get_option_name() { return {"electric-field"}; }
 	static const std::string get_option_help() { return {"Cell-centered electric field"}; }
@@ -207,7 +207,7 @@ struct Bdy_Number_Density {
 
 // velocity of particles in initial & boundary conditions
 struct Bdy_Velocity {
-	using data_type = Eigen::Vector3d;
+	using data_type = std::array<double, 3>;
 	static const std::string get_name() { return {"velocity"}; }
 	static const std::string get_option_name() { return {"velocity"}; }
 	static const std::string get_option_help() { return {""}; }
@@ -239,7 +239,7 @@ struct Bulk_Mass {
 
 struct Bulk_Momentum {
 	static bool is_stale;
-	using data_type = Eigen::Vector3d;
+	using data_type = std::array<double, 3>;
 	static const std::string get_name() { return {"bulk momentum"}; }
 	static const std::string get_option_name() { return {"bulk-momentum"}; }
 	static const std::string get_option_help() { return {"bulk mass * bulk velocity"}; }
@@ -248,7 +248,7 @@ struct Bulk_Momentum {
 struct Bulk_Velocity {
 	//! second value used for tracking total weight of particles in cell
 	static bool is_stale;
-	using data_type = std::pair<Eigen::Vector3d, double>; // TODO: another cell type?
+	using data_type = std::pair<std::array<double, 3>, double>; // TODO: another cell type?
 	static const std::string get_name() { return {"bulk velocity"}; }
 	static const std::string get_option_name() { return {"bulk-velocity"}; }
 	static const std::string get_option_help() { return {"Accumulated velocity of particles"}; }
@@ -282,7 +282,7 @@ using Accumulated_To_Cells = Accumulated_To_Cells_T<Accumulated_To_Cell>;
 
 struct Current_Minus_Velocity {
 	static bool is_stale;
-	using data_type = Eigen::Vector3d;
+	using data_type = std::array<double, 3>;
 	static const std::string get_name() { return {"J-V"}; }
 	static const std::string get_option_name() { return {"J-V"}; }
 	static const std::string get_option_help() { return {"Current minus Velocity for interpolating electric field to particle position"}; }
@@ -415,6 +415,67 @@ struct Is_Local {
 	) {
 		is_local = grid.is_local(neighbor.id);
 	}
+};
+
+
+struct Volume_Ion_Current_Density {
+	static bool is_stale;
+	using data_type = std::array<double, 3>;
+};
+
+struct Vertex_Ion_Current_Density {
+	static bool is_stale;
+	using data_type = pamhd::Vertex_Type<std::array<double, 3>>;
+};
+
+struct Volume_Ion_Charge_Density {
+	static bool is_stale;
+	using data_type = double;
+};
+
+struct Vertex_Ion_Charge_Density {
+	static bool is_stale;
+	using data_type = pamhd::Vertex_Type<double>;
+};
+
+struct Volume_Magnetic_Field {
+	static bool is_stale;
+	using data_type = std::array<double, 3>;
+};
+
+struct Vertex_Magnetic_Field {
+	static bool is_stale;
+	using data_type = pamhd::Vertex_Type<std::array<double, 3>>;
+};
+
+struct Volume_Electric_Current_Density {
+	static bool is_stale;
+	using data_type = std::array<double, 3>;
+};
+
+struct Vertex_Electric_Current_Density {
+	static bool is_stale;
+	using data_type = pamhd::Vertex_Type<std::array<double, 3>>;
+};
+
+struct Edge_Electric_Current_Density {
+	static bool is_stale;
+	using data_type = pamhd::Edge_Type<double>;
+};
+
+struct Vertex_Electric_Field {
+	static bool is_stale;
+	using data_type = pamhd::Vertex_Type<std::array<double, 3>>;
+};
+
+struct Volume_Electron_Velocity {
+	static bool is_stale;
+	using data_type = std::array<double, 3>;
+};
+
+struct Vertex_Electron_Velocity {
+	static bool is_stale;
+	using data_type = pamhd::Vertex_Type<std::array<double, 3>>;
 };
 
 

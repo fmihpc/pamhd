@@ -37,6 +37,7 @@ Author(s): Ilja Honkonen
 #define PAMHD_PARTICLE_SW_BOX_HPP
 
 
+#include "array"
 #include "cmath"
 #include "random"
 #include "set"
@@ -72,6 +73,8 @@ template<
 	std::mt19937_64& random_source,
 	const Internal_Particle_Getter& Part_Int
 ) try {
+	using std::array;
+
 	using Cell = std::remove_reference_t<decltype(grid)>::cell_data_type;
 
 	if (grid.get_rank() == 0) {
@@ -97,7 +100,7 @@ template<
 			cell_length = grid.geometry.get_length(cell.id),
 			cell_center = grid.geometry.get_center(cell.id);
 		const auto v_factor = std::max(0.0, cell_center[0]/grid_end[0]);
-		const Eigen::Vector3d velocity{
+		const array<double, 3> velocity{
 			v_factor * options_box.sw_velocity[0],
 			v_factor * options_box.sw_velocity[1],
 			v_factor * options_box.sw_velocity[2]};
@@ -113,9 +116,9 @@ template<
 			pamhd::particle::Species_Mass
 		>(
 			velocity,
-			Eigen::Vector3d{cell_start[0], cell_start[1], cell_start[2]},
-			Eigen::Vector3d{cell_end[0], cell_end[1], cell_end[2]},
-			Eigen::Vector3d{temperature, temperature, temperature},
+			array<double, 3>{cell_start[0], cell_start[1], cell_start[2]},
+			array<double, 3>{cell_end[0], cell_end[1], cell_end[2]},
+			array<double, 3>{temperature, temperature, temperature},
 			options_part.particles_in_cell,
 			options_sim.charge2mass,
 			options_sim.proton_mass * options_box.sw_nr_density
@@ -187,6 +190,8 @@ template<
 	std::mt19937_64& random_source,
 	const Internal_Particle_Getter& Part_Int
 ) try {
+	using std::array;
+
 	const uint64_t id_increase = grid.get_comm_size();
 	const auto temperature
 		= options_box.sw_pressure
@@ -210,13 +215,13 @@ template<
 			pamhd::particle::Particle_ID,
 			pamhd::particle::Species_Mass
 		>(
-			Eigen::Vector3d{
+			array<double, 3>{
 				options_box.sw_velocity[0],
 				options_box.sw_velocity[1],
 				options_box.sw_velocity[2]},
-			Eigen::Vector3d{cell_start[0], cell_start[1], cell_start[2]},
-			Eigen::Vector3d{cell_end[0], cell_end[1], cell_end[2]},
-			Eigen::Vector3d{temperature, temperature, temperature},
+			array<double, 3>{cell_start[0], cell_start[1], cell_start[2]},
+			array<double, 3>{cell_end[0], cell_end[1], cell_end[2]},
+			array<double, 3>{temperature, temperature, temperature},
 			options_part.particles_in_cell,
 			options_sim.charge2mass,
 			options_sim.proton_mass * options_box.sw_nr_density
@@ -265,6 +270,7 @@ template<
 	const Solver_Info_Getter& SInfo
 ) try {
 	using std::abs;
+	using std::array;
 	using std::runtime_error;
 	using std::to_string;
 	using std::vector;
@@ -371,10 +377,10 @@ template<
 			pamhd::particle::Particle_ID,
 			pamhd::particle::Species_Mass
 		>(
-			Eigen::Vector3d{0,0,0},
-			Eigen::Vector3d{cell_start[0], cell_start[1], cell_start[2]},
-			Eigen::Vector3d{cell_end[0], cell_end[1], cell_end[2]},
-			Eigen::Vector3d{temperature, temperature, temperature},
+			array<double, 3>{0,0,0},
+			array<double, 3>{cell_start[0], cell_start[1], cell_start[2]},
+			array<double, 3>{cell_end[0], cell_end[1], cell_end[2]},
+			array<double, 3>{temperature, temperature, temperature},
 			options_part.particles_in_cell,
 			options_sim.charge2mass,
 			options_sim.proton_mass * options_box.sw_nr_density

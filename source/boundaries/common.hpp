@@ -2,6 +2,7 @@
 Functionality used by different parts of PAMHD boundaries.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_BOUNDARIES_COMMON_HPP
@@ -221,48 +225,6 @@ template<class Variable> typename std::enable_if<
 	}
 	return ret_val;
 }
-
-
-#ifdef EIGEN_WORLD_VERSION
-
-//! returns value of type Variable::data_type when it's Eigen::Vector of floating point values with compile time size.
-template<class Variable> typename std::enable_if<
-	Variable::data_type::ColsAtCompileTime == 1
-		&& Variable::data_type::RowsAtCompileTime >= 1
-		&& std::is_floating_point<typename Variable::data_type::value_type>::value,
-	typename Variable::data_type
->::type get_json_value(const rapidjson::Value& object)
-{
-	constexpr auto size = Variable::data_type::RowsAtCompileTime;
-
-	if (not object.IsArray()) {
-		throw std::invalid_argument(
-			std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
-			+ "Object isn't an array."
-		);
-	}
-	if (object.Size() != size) {
-		throw std::invalid_argument(
-			std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
-			+ "Array has wrong size: " + std::to_string(object.Size())
-			+ ", should be " + std::to_string(size)
-		);
-	}
-
-	typename Variable::data_type ret_val;
-	for (size_t i = 0; i < size; i++) {
-		if (not object[i].IsNumber()) {
-			throw std::invalid_argument(
-				std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
-				+ "Element of array isn't a number."
-			);
-		}
-		ret_val(i) = object[i].GetDouble();
-	}
-	return ret_val;
-}
-
-#endif
 
 
 /*!

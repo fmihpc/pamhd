@@ -2,7 +2,7 @@
 Handles boundary logic of particle part of PAMHD.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2019 Finnish Meteorological Institute
+Copyright 2019, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_PARTICLE_BOUNDARIES_HPP
@@ -36,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include "algorithm"
+#include "array"
 #include "cmath"
 #include "limits"
 #include "random"
@@ -722,9 +726,9 @@ template<
 					Particle_Species_Mass_T
 				>(
 					Bdy_V(*cell_data),
-					Eigen::Vector3d{cell_start[0], cell_start[1], cell_start[2]},
-					Eigen::Vector3d{cell_end[0], cell_end[1], cell_end[2]},
-					Eigen::Vector3d{Bdy_T(*cell_data), Bdy_T(*cell_data), Bdy_T(*cell_data)},
+					std::array<double, 3>{cell_start[0], cell_start[1], cell_start[2]},
+					std::array<double, 3>{cell_end[0], cell_end[1], cell_end[2]},
+					std::array<double, 3>{Bdy_T(*cell_data), Bdy_T(*cell_data), Bdy_T(*cell_data)},
 					Bdy_NPIC(*cell_data),
 					Bdy_C2M(*cell_data),
 					Bdy_SpM(*cell_data) * Bdy_N(*cell_data) * cell_length[0] * cell_length[1] * cell_length[2],
@@ -1445,9 +1449,9 @@ template<
 					Particle_Species_Mass_T
 				>(
 					Bdy_V(*cell_data),
-					Eigen::Vector3d{cell_start[0], cell_start[1], cell_start[2]},
-					Eigen::Vector3d{cell_end[0], cell_end[1], cell_end[2]},
-					Eigen::Vector3d{Bdy_T(*cell_data), Bdy_T(*cell_data), Bdy_T(*cell_data)},
+					std::array<double, 3>{cell_start[0], cell_start[1], cell_start[2]},
+					std::array<double, 3>{cell_end[0], cell_end[1], cell_end[2]},
+					std::array<double, 3>{Bdy_T(*cell_data), Bdy_T(*cell_data), Bdy_T(*cell_data)},
 					Bdy_NPIC(*cell_data),
 					Bdy_C2M(*cell_data),
 					Bdy_SpM(*cell_data) * Bdy_N(*cell_data) * cell_length[0] * cell_length[1] * cell_length[2],

@@ -2,6 +2,7 @@
 Tests for bulk value functions of PAMHD.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #include "cmath"
@@ -35,31 +39,28 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "iostream"
 #include "random"
 
-#include "Eigen/Core"
-#include "Eigen/Geometry"
-
 #include "particle/common.hpp"
 #include "particle/variables.hpp"
 
 
 using namespace std;
-using namespace Eigen;
 using namespace pamhd::particle;
 
 
 int main()
 {
-	using std::fabs;
+	using std::abs;
+	using std::array;
 	using std::min;
 	using std::pow;
 	using std::sqrt;
 
 	size_t nr_particles = 10000;
-	Vector3d
-		bulk_velocity_ref(0, -3, 8),
-		volume_min_ref(-2, 4, 9),
-		volume_max_ref(-1, 200, 9.5),
-		temperature_ref(3, 2 * M_PI, 42);
+	array<double, 3>
+		bulk_velocity_ref{0, -3, 8},
+		volume_min_ref{-2, 4, 9},
+		volume_max_ref{-1, 200, 9.5},
+		temperature_ref{3, 2 * M_PI, 42};
 	double
 		volume
 			= (volume_max_ref[0] - volume_min_ref[0])
@@ -106,23 +107,23 @@ int main()
 			random_source
 		);
 
-	Vector3d bulk_velocity = get_bulk_velocity<Mass, Velocity, Species_Mass>(particles);
+	array<double, 3> bulk_velocity = get_bulk_velocity<Mass, Velocity, Species_Mass>(particles);
 
-	if (fabs(bulk_velocity[0] - bulk_velocity_ref[0]) > 0.1) {
+	if (abs(bulk_velocity[0] - bulk_velocity_ref[0]) > 0.1) {
 		std::cerr <<  __FILE__ << " (" << __LINE__ << "): "
 			<< "Incorrect x component of bulk velocity for particles: "
 			<< bulk_velocity[0] << ", should be " << bulk_velocity_ref[0]
 			<< endl;
 		abort();
 	}
-	if (fabs(bulk_velocity[1] - bulk_velocity_ref[1]) > 0.1) {
+	if (abs(bulk_velocity[1] - bulk_velocity_ref[1]) > 0.1) {
 		std::cerr <<  __FILE__ << " (" << __LINE__ << "): "
 			<< "Incorrect y component of bulk velocity for particles: "
 			<< bulk_velocity[1] << ", should be " << bulk_velocity_ref[1]
 			<< endl;
 		abort();
 	}
-	if (fabs(bulk_velocity[2] - bulk_velocity_ref[2]) > 0.1) {
+	if (abs(bulk_velocity[2] - bulk_velocity_ref[2]) > 0.1) {
 		std::cerr <<  __FILE__ << " (" << __LINE__ << "): "
 			<< "Incorrect z component of bulk velocity for particles: "
 			<< bulk_velocity[2] << ", should be " << bulk_velocity_ref[2]
@@ -140,7 +141,7 @@ int main()
 			particle_temp_nrj_ratio
 		);
 
-	if (fabs(scalar_temperature - scalar_temp_ref) > 0.1) {
+	if (abs(scalar_temperature - scalar_temp_ref) > 0.1) {
 		std::cerr <<  __FILE__ << " (" << __LINE__ << "): "
 			<< "Incorrect scalar temperature for particles: "
 			<< scalar_temperature << ", should be " << scalar_temp_ref
@@ -159,7 +160,7 @@ int main()
 			volume
 		);
 
-	if (fabs(pressure - pressure_ref) > 4) {
+	if (abs(pressure - pressure_ref) > 4) {
 		std::cerr <<  __FILE__ << " (" << __LINE__ << "): "
 			<< "Incorrect pressure for particles: "
 			<< pressure << ", should be " << pressure_ref
@@ -195,21 +196,21 @@ int main()
 
 	bulk_velocity = get_bulk_velocity<Mass, Velocity, Species_Mass>(particles);
 
-	if (fabs(bulk_velocity[0] - bulk_velocity_ref[0]) > 0.1) {
+	if (abs(bulk_velocity[0] - bulk_velocity_ref[0]) > 0.1) {
 		std::cerr <<  __FILE__ << " (" << __LINE__ << "): "
 			<< "Incorrect x component of bulk velocity for particles: "
 			<< bulk_velocity[0] << ", should be " << bulk_velocity_ref[0]
 			<< endl;
 		abort();
 	}
-	if (fabs(bulk_velocity[1] - bulk_velocity_ref[1]) > 0.1) {
+	if (abs(bulk_velocity[1] - bulk_velocity_ref[1]) > 0.1) {
 		std::cerr <<  __FILE__ << " (" << __LINE__ << "): "
 			<< "Incorrect y component of bulk velocity for particles: "
 			<< bulk_velocity[1] << ", should be " << bulk_velocity_ref[1]
 			<< endl;
 		abort();
 	}
-	if (fabs(bulk_velocity[2] - bulk_velocity_ref[2]) > 0.1) {
+	if (abs(bulk_velocity[2] - bulk_velocity_ref[2]) > 0.1) {
 		std::cerr <<  __FILE__ << " (" << __LINE__ << "): "
 			<< "Incorrect z component of bulk velocity for particles: "
 			<< bulk_velocity[2] << ", should be " << bulk_velocity_ref[2]
@@ -227,7 +228,7 @@ int main()
 			particle_temp_nrj_ratio
 		);
 
-	if (fabs(scalar_temperature - scalar_temp_ref) > 0.5) {
+	if (abs(scalar_temperature - scalar_temp_ref) > 0.5) {
 		std::cerr <<  __FILE__ << " (" << __LINE__ << "): "
 			<< "Incorrect scalar temperature for particles: "
 			<< scalar_temperature << ", should be " << scalar_temp_ref
@@ -250,7 +251,7 @@ int main()
 			particle_temp_nrj_ratio,
 			volume
 		);
-	if (fabs(pressure - pressure_ref) > 4) {
+	if (abs(pressure - pressure_ref) > 4) {
 		std::cerr <<  __FILE__ << " (" << __LINE__ << "): "
 			<< "Incorrect pressure for particles: "
 			<< pressure << ", should be " << pressure_ref
@@ -302,7 +303,7 @@ int main()
 			particle_temp_nrj_ratio
 		);
 
-	if (fabs(scalar_temperature - scalar_temp_ref) > 0.5) {
+	if (abs(scalar_temperature - scalar_temp_ref) > 0.5) {
 		std::cerr <<  __FILE__ << " (" << __LINE__ << "): "
 			<< "Incorrect scalar temperature for particles: "
 			<< scalar_temperature << ", should be " << scalar_temp_ref
@@ -325,7 +326,7 @@ int main()
 			particle_temp_nrj_ratio,
 			volume
 		);
-	if (fabs(pressure - pressure_ref) > 4) {
+	if (abs(pressure - pressure_ref) > 4) {
 		std::cerr <<  __FILE__ << " (" << __LINE__ << "): "
 			<< "Incorrect pressure for particles: "
 			<< pressure << ", should be " << pressure_ref

@@ -36,6 +36,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "utility"
 
+#include "common_functions.hpp"
+
 
 namespace pamhd {
 namespace particle {
@@ -44,8 +46,6 @@ namespace particle {
 /*!
 Returns new position and velocity for given particle after given length of time.
 
-Assumes Vector provides an API identical to Eigen vectors.
-
 Particle accelerator based on translations and a rotation given in
 equations 25 and 26 of:
 J.P. Boris, Relativistic Plasma Simulation - Optimization of a Hybrid Code,
@@ -53,11 +53,11 @@ Proceedings of the conference on the numerical simulation of plasmas...,
 available at http://www.dtic.mil/dtic/tr/fulltext/u2/a023511.pdf
 Same notation is used here.
 */
-template<class Vector> std::pair<Vector, Vector> propagate(
-	const Vector& position,
-	const Vector& velocity,
-	const Vector& electric_field,
-	const Vector& magnetic_field,
+auto propagate(
+	const auto& position,
+	const auto& velocity,
+	const auto& electric_field,
+	const auto& magnetic_field,
 	const double charge_mass_ratio,
 	const double time_step
 ) {
@@ -66,17 +66,17 @@ template<class Vector> std::pair<Vector, Vector> propagate(
 
 	const double
 		coeff = charge_mass_ratio * time_step / 2.0,
-		B_mag = magnetic_field.norm(),
+		B_mag = norm(magnetic_field),
 		B_mag_non_zero = [B_mag](){if (B_mag != 0) return B_mag; else return 1.0;}(),
 		f1 = tan(coeff * B_mag) / B_mag_non_zero,
-		f2 = 2 * f1 / (1 + f1*f1 * B_mag*B_mag);
+		f2 = 2 * f1 / (1 + dot(f1, f1) * dot(B_mag, B_mag));
 
-	const Vector
-		new_pos = position + time_step * velocity,
-		v1 = velocity + coeff * electric_field,
-		v2 = v1 + f1 * v1.cross(magnetic_field),
-		v3 = v1 + f2 * v2.cross(magnetic_field),
-		new_vel = v3 + coeff * electric_field;
+	const auto
+		new_pos = add(position, mul(time_step, velocity)),
+		v1 = add(velocity, mul(coeff, electric_field)),
+		v2 = add(v1, mul(f1, cross(v1, magnetic_field))),
+		v3 = add(v1, mul(f2, cross(v2, magnetic_field))),
+		new_vel = add(v3, mul(coeff, electric_field));
 
 	return std::make_pair(new_pos, new_vel);
 }

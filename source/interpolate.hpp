@@ -2,6 +2,7 @@
 Interpolation functions of PAMHD.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_INTERPOLATE_HPP
@@ -45,13 +49,6 @@ template<class T> T ZERO()
 {
 	return 0;
 }
-
-#ifdef EIGEN_WORLD_VERSION
-template<> Eigen::Vector3d ZERO<Eigen::Vector3d>()
-{
-	return Eigen::Vector3d(0, 0, 0);
-}
-#endif
 
 } // namespace pamhd
 
@@ -203,7 +200,7 @@ template<class Coord_T, class Data_T> Data_T interpolate(
 			* max(0.0, 1 - (end[2] - coord[2]) / dr[2])
 	}};
 
-	Data_T ret_val = detail::ZERO<Data_T>();
+	Data_T ret_val = {0, 0, 0};
 	for (size_t i = 0; i < data.size(); i++) {
 		ret_val += weights[i] * data[i];
 	}

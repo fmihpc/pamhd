@@ -2,6 +2,7 @@
 Functions for accumulating particle data to grid cells.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #ifndef PAMHD_PARTICLE_ACCUMULATE_HPP
@@ -198,47 +202,6 @@ template<
 } catch (...) {
 	throw;
 }
-
-
-#ifdef EIGEN_WORLD_VERSION
-
-/*! Same as double version but accumulates separately all items of Eigen::Vector3d */
-template<class Vector> Eigen::Vector3d get_accumulated_value(
-	const Eigen::Vector3d& value,
-	const Vector& value_min,
-	const Vector& value_max,
-	const Vector& cell_min,
-	const Vector& cell_max
-) try {
-	const auto
-		value_vol
-			= (value_max[0] - value_min[0])
-			* (value_max[1] - value_min[1])
-			* (value_max[2] - value_min[2]),
-		intersection_vol = get_intersection_volume(value_min, value_max, cell_min, cell_max);
-
-	return value * intersection_vol / value_vol;
-} catch (...) {
-	throw;
-}
-
-/*! Same as double version but accumulates separately all items of Eigen::Vector3d */
-template<class Vector> std::pair<Eigen::Vector3d, double> get_accumulated_value_weighted(
-	const Eigen::Vector3d& value,
-	const double& weight,
-	const Vector& value_min,
-	const Vector& value_max,
-	const Vector& cell_min,
-	const Vector& cell_max
-) try {
-	const auto intersection_vol = get_intersection_volume(value_min, value_max, cell_min, cell_max);
-	const Eigen::Vector3d ret_val = value * weight * intersection_vol;
-	return std::make_pair(ret_val, weight * intersection_vol);
-} catch (...) {
-	throw;
-}
-
-#endif
 
 }} // namespaces
 
