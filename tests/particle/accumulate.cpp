@@ -201,7 +201,7 @@ int main()
 
 	const auto vec_accu3
 		= get_accumulated_value(
-			array<double, 3>{20, 30},
+			array<double, 2>{20, 30},
 			array<double, 3>{0, 0, 0},
 			array<double, 3>{1, 1, 1},
 			array<double, 3>{0, 0, 0},
@@ -209,7 +209,8 @@ int main()
 		);
 	if (vec_accu3.size() != 2) {
 		std::cerr <<  __FILE__ << " (" << __LINE__ << "): "
-			<< "Wrong number of dimensions in accumulated array."
+			<< "Wrong number of dimensions in accumulated array, "
+			<< "should be 2 but got: " << vec_accu3.size()
 			<< std::endl;
 		abort();
 	}
