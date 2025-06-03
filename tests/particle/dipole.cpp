@@ -36,8 +36,6 @@ Propagation test after http://dx.doi.org/10.1029/2005JA011382
 #include "array"
 #include "cmath"
 #include "cstdlib"
-#include "Eigen/Core"
-#include "Eigen/Geometry"
 #include "iomanip"
 #include "iostream"
 
@@ -45,7 +43,6 @@ Propagation test after http://dx.doi.org/10.1029/2005JA011382
 
 
 using namespace std;
-using namespace Eigen;
 using namespace pamhd::particle;
 
 
@@ -55,20 +52,20 @@ constexpr double
 	proton_charge_mass_ratio = elementary_charge / proton_mass,
 	earth_radius = 6.371e6;
 
-const Eigen::Vector3d dipole_moment{0, 0, -8e22};
+const std::array<double, 3> dipole_moment{0, 0, -8e22};
 
 // state[0] = particle position, state[1] = velocity
-using state_t = std::array<Vector3d, 2>;
+using state_t = std::array<std::array<double, 3>, 2>;
 
 
-Eigen::Vector3d get_earth_dipole(const Eigen::Vector3d& position)
+std::array<double, 3> get_earth_dipole(const std::array<double, 3>& position)
 {
-	const double distance = position.norm();
-	const Eigen::Vector3d
-		direction = position / distance,
-		projected_dip_mom = dipole_moment.dot(direction) * direction;
+	const double distance = pamhd::norm(position);
+	const std::array<double, 3>
+		direction = pamhd::mul(position, 1 / distance),
+		projected_dip_mom = pamhd::mul(pamhd::dot(dipole_moment, direction), direction);
 
-	return 1e-7 * (3 * projected_dip_mom - dipole_moment) / std::pow(distance, 3);
+	return pamhd::mul(pamhd::add(pamhd::mul(-3, projected_dip_mom), dipole_moment), -1e-7 / std::pow(distance, 3));
 }
 
 
@@ -78,13 +75,13 @@ bool check_result(
 	const size_t step_divisor,
 	const double nrj_error,
 	const double mom_error,
-	const Eigen::Vector3d& position
+	const std::array<double, 3>& position
 ) {
 	if (nrj_error > 1e-12) {
 		return false;
 	}
 
-	if (position.norm() > 7 * earth_radius) {
+	if (pamhd::norm(position) > 7 * earth_radius) {
 		if (initial_angle == 90) {
 			if (initial_energy == 1e4) {
 				if (step_divisor >= 2) {
@@ -148,26 +145,26 @@ bool check_result(
 int main()
 {
 	using std::cos;
-	using std::fabs;
+	using std::abs;
 	using std::sin;
 
-	const Eigen::Vector3d
+	const std::array<double, 3>
 		guiding_center_start{5 * earth_radius, 0, 0},
 		field_at_start{get_earth_dipole(guiding_center_start)};
 
 	const double gyroperiod
-		= 2 * M_PI / fabs(proton_charge_mass_ratio) / field_at_start.norm();
+		= 2 * M_PI / abs(proton_charge_mass_ratio) / pamhd::norm(field_at_start);
 
 	/*cout <<
 		"Energy (eV), pitch angle (deg), steps/gyroperiod: "
-		"order of convergence, max relative error in energy\n";*/
+		"max relative error in energy, magnetic moment\n";*/
 	for (auto kinetic_energy: {1e4, 1e7}) { // in eV
 	for (auto pitch_angle: {90.0, 30.0}) { // V from B, degrees
 
 		const double particle_speed
 			= sqrt(2 * kinetic_energy * proton_charge_mass_ratio);
 
-		const Eigen::Vector3d initial_velocity{
+		const std::array<double, 3> initial_velocity{
 			0,
 			sin(pitch_angle / 180 * M_PI) * particle_speed,
 			cos(pitch_angle / 180 * M_PI) * particle_speed
@@ -176,18 +173,18 @@ int main()
 		const double gyroradius
 			= initial_velocity[1]
 			/ proton_charge_mass_ratio
-			/ field_at_start.norm();
+			/ pamhd::norm(field_at_start);
 
-		const Eigen::Vector3d
+		const std::array<double, 3>
 			offset_from_gc{gyroradius, 0, 0},
-			initial_position{guiding_center_start + offset_from_gc};
+			initial_position{pamhd::add(guiding_center_start, offset_from_gc)};
 
 		const double
-			initial_energy = 0.5 * proton_mass * initial_velocity.squaredNorm(),
+			initial_energy = 0.5 * proton_mass * pamhd::dot(initial_velocity, initial_velocity),
 			initial_magnetic_moment
 				= proton_mass
 				* std::pow(initial_velocity[1], 2)
-				/ (2 * get_earth_dipole(initial_position).norm());
+				/ (2 * pamhd::norm(get_earth_dipole(initial_position)));
 
 		for (size_t step_divisor = 1; step_divisor <= (1 << 11); step_divisor *= 2) {
 
@@ -207,30 +204,29 @@ int main()
 				) = propagate(
 					state[0],
 					state[1],
-					Vector3d{0, 0, 0},
+					std::array<double, 3>{0, 0, 0},
 					get_earth_dipole(state[0]),
 					proton_charge_mass_ratio,
 					time_step
 				);
 
-				const Eigen::Vector3d
-					v(state[1]),
-					b(get_earth_dipole(state[0])),
-					v_perp_b(v - (v.dot(b) / b.squaredNorm()) * b);
+				const std::array<double, 3>
+					v{state[1]},
+					b{get_earth_dipole(state[0])},
+					v_perp_b{pamhd::add(v, pamhd::mul(-pamhd::dot(v, b) / pamhd::dot(b, b), b))};
 
 				const double
 					current_energy
-						= 0.5 * proton_mass * state[1].squaredNorm(),
+						= 0.5 * proton_mass * pamhd::norm2(state[1]),
 					current_magnetic_moment
-						= proton_mass * v_perp_b.squaredNorm() / (2 * b.norm());
-
+						= proton_mass * pamhd::norm2(v_perp_b) / (2 * pamhd::norm(b));
 				nrj_error = max(
 					nrj_error,
-					fabs(current_energy - initial_energy) / initial_energy
+					abs(current_energy - initial_energy) / initial_energy
 				);
 				mom_error = max(
 					mom_error,
-					fabs(current_magnetic_moment - initial_magnetic_moment)
+					abs(current_magnetic_moment - initial_magnetic_moment)
 						/ initial_magnetic_moment
 				);
 			}
