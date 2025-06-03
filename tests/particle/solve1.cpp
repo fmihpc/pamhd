@@ -51,7 +51,7 @@ using namespace pamhd::particle;
 
 int main()
 {
-	using std::fabs;
+	using std::abs;
 	using std::pow;
 
 	// short hand notation for variables
@@ -141,9 +141,9 @@ int main()
 	}
 
 	if (
-		fabs(particle[Pos][0] - gyro_radius) > 0.01
+		abs(particle[Pos][0] - gyro_radius) > 0.01
 		or particle[Pos][1] != 0
-		or fabs(particle[Pos][2] - gyro_radius) > 0.01
+		or abs(particle[Pos][2] - gyro_radius) > 0.01
 	) {
 		std::cerr <<  __FILE__ << ":" << __LINE__
 			<< " Particle1 at incorrect location: "
@@ -154,9 +154,9 @@ int main()
 	}
 
 	if (
-		fabs(particle[Vel][0]) > 1e-10
+		abs(particle[Vel][0]) > 1e-10
 		or particle[Vel][1] != 0
-		or fabs(particle[Vel][2] - 1) > 1e-10
+		or abs(particle[Vel][2] - 1) > 1e-10
 	) {
 		std::cerr <<  __FILE__ << ":" << __LINE__
 			<< " Particle1 has incorrect velocity: "
@@ -181,9 +181,9 @@ int main()
 	}
 
 	if (
-		fabs(particle[Pos][0]) > 0.02
+		abs(particle[Pos][0]) > 0.02
 		or particle[Pos][1] != 0
-		or fabs(particle[Pos][2] - 2 * gyro_radius) > 1e-5
+		or abs(particle[Pos][2] - 2 * gyro_radius) > 1e-5
 	) {
 		std::cerr <<  __FILE__ << ":" << __LINE__
 			<< " Particle1 at incorrect location: "
@@ -193,9 +193,9 @@ int main()
 	}
 
 	if (
-		fabs(particle[Vel][0] + 1) > 1e-10
+		abs(particle[Vel][0] + 1) > 1e-10
 		or particle[Vel][1] != 0
-		or fabs(particle[Vel][2]) > 1e-10
+		or abs(particle[Vel][2]) > 1e-10
 	) {
 		std::cerr <<  __FILE__ << ":" << __LINE__
 			<< " Particle1 has incorrect velocity: "
@@ -220,9 +220,9 @@ int main()
 	}
 
 	if (
-		fabs(particle[Pos][0]) > 1e-10
+		abs(particle[Pos][0]) > 1e-10
 		or particle[Pos][1] != 0
-		or fabs(particle[Pos][2]) > 1e-10
+		or abs(particle[Pos][2]) > 1e-10
 	) {
 		std::cerr <<  __FILE__ << ":" << __LINE__
 			<< " Particle1 at incorrect location: "
@@ -232,9 +232,9 @@ int main()
 	}
 
 	if (
-		fabs(particle[Vel][0] - 1) > 1e-10
+		abs(particle[Vel][0] - 1) > 1e-10
 		or particle[Vel][1] != 0
-		or fabs(particle[Vel][2]) > 1e-10
+		or abs(particle[Vel][2]) > 1e-10
 	) {
 		std::cerr <<  __FILE__ << ":" << __LINE__
 			<< " Particle1 has incorrect velocity: "
@@ -268,8 +268,8 @@ int main()
 
 	if (
 		particle[Pos][0] != 0
-		or fabs(particle[Pos][1]) > 1e-10
-		or fabs(particle[Pos][2]) > 1e-10
+		or abs(particle[Pos][1]) > 1e-10
+		or abs(particle[Pos][2]) > 1e-10
 	) {
 		std::cerr <<  __FILE__ << ":" << __LINE__
 			<< " Particle1 at incorrect location: "
@@ -280,8 +280,8 @@ int main()
 
 	if (
 		particle[Vel][0] != 0
-		or fabs(particle[Vel][1] - 1) > 1e-10
-		or fabs(particle[Vel][2]) > 1e-10
+		or abs(particle[Vel][1] - 1) > 1e-10
+		or abs(particle[Vel][2]) > 1e-10
 	) {
 		std::cerr <<  __FILE__ << ":" << __LINE__
 			<< " Particle1 has incorrect velocity: "
@@ -314,8 +314,8 @@ int main()
 	}
 
 	if (
-		fabs(particle[Pos][0]) > 1e-10
-		or fabs(particle[Pos][1]) > 1e-10
+		abs(particle[Pos][0]) > 1e-10
+		or abs(particle[Pos][1]) > 1e-10
 		or particle[Pos][2] != 0
 	) {
 		std::cerr <<  __FILE__ << ":" << __LINE__
@@ -326,8 +326,8 @@ int main()
 	}
 
 	if (
-		fabs(particle[Vel][0] - 1) > 1e-10
-		or fabs(particle[Vel][1]) > 1e-10
+		abs(particle[Vel][0] - 1) > 1e-10
+		or abs(particle[Vel][1]) > 1e-10
 		or particle[Vel][2] != 0
 	) {
 		std::cerr <<  __FILE__ << ":" << __LINE__
@@ -361,8 +361,8 @@ int main()
 	}
 
 	if (
-		fabs(particle[Pos][0]) > 0.002
-		or fabs(particle[Pos][1] + 2) > 1e-5
+		abs(particle[Pos][0]) > 0.002
+		or abs(particle[Pos][1] + 2) > 1e-5
 		or particle[Pos][2] != 0
 	) {
 		std::cerr <<  __FILE__ << ":" << __LINE__
@@ -373,8 +373,8 @@ int main()
 	}
 
 	if (
-		fabs(particle[Vel][0] - 1) > 1e-10
-		or fabs(particle[Vel][1]) > 1e-10
+		abs(particle[Vel][0] - 1) > 1e-10
+		or abs(particle[Vel][1]) > 1e-10
 		or particle[Vel][2] != 0
 	) {
 		std::cerr <<  __FILE__ << ":" << __LINE__
@@ -413,9 +413,9 @@ int main()
 	}
 
 	if (
-		fabs(particle[Pos][0]) > 1e-10
+		abs(particle[Pos][0]) > 1e-10
 		or particle[Pos][1] != 0
-		or fabs(particle[Pos][2] - vel_drift * gyro_period) > 1e-5
+		or abs(particle[Pos][2] - vel_drift * gyro_period) > 1e-5
 	) {
 		std::cerr <<  __FILE__ << ":" << __LINE__
 			<< " Particle1 at incorrect location: "
@@ -425,9 +425,9 @@ int main()
 	}
 
 	if (
-		fabs(particle[Vel][0]) > 1e-10
+		abs(particle[Vel][0]) > 1e-10
 		or particle[Vel][1] != 0
-		or fabs(particle[Vel][2] - 1) > 1e-10
+		or abs(particle[Vel][2] - 1) > 1e-10
 	) {
 		std::cerr <<  __FILE__ << ":" << __LINE__
 			<< " Particle1 has incorrect velocity: "
@@ -444,9 +444,9 @@ int main()
 	electric_field = {0.5, 0, 0};
 	magnetic_field = {0, 3, 0};
 	gyro_radius = particle[Vel][2] / magnetic_field[1] / particle[C2M];
-	gyro_period = fabs(2 * M_PI / particle[C2M] / magnetic_field[1]);
+	gyro_period = abs(2 * M_PI / particle[C2M] / magnetic_field[1]);
 	dt = gyro_period / 1000;
-	const auto E_change = pamhd::mul(1/100, electric_field);
+	const auto E_change = pamhd::mul(1.0/100, electric_field);
 	const double
 		ExB_drift = electric_field[0] / magnetic_field[1],
 		polarization_drift = E_change[0] / particle[C2M] / pow(magnetic_field[1], 2);
@@ -466,9 +466,9 @@ int main()
 	}
 
 	if (
-		fabs(particle[Pos][0] - 0.000277776) > 1e-5
+		abs(particle[Pos][0] - 0.000277776) > 1e-5
 		or particle[Pos][1] != 0
-		or fabs(particle[Pos][2] - ExB_drift * gyro_period) > 0.001
+		or abs(particle[Pos][2] - ExB_drift * gyro_period) > 0.001
 	) {
 		std::cerr <<  __FILE__ << ":" << __LINE__
 			<< " Particle1 at incorrect location: "
@@ -480,9 +480,9 @@ int main()
 	}
 
 	if (
-		fabs(particle[Vel][0]) > 1e-10
+		abs(particle[Vel][0]) > 1e-10
 		or particle[Vel][1] != 0
-		or fabs(particle[Vel][2] - 1) > 0.002
+		or abs(particle[Vel][2] - 1) > 0.002
 	) {
 		std::cerr <<  __FILE__ << ":" << __LINE__
 			<< " Particle1 has incorrect velocity: "
