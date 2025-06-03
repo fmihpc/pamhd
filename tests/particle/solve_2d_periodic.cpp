@@ -41,8 +41,6 @@ Author(s): Ilja Honkonen
 
 #include "dccrg.hpp"
 #include "dccrg_cartesian_geometry.hpp"
-#include "Eigen/Core" // must be included before gensimcell
-#include "Eigen/Geometry"
 #include "mpi.h" // must be included before gensimcell
 #include "gensimcell.hpp"
 
@@ -261,7 +259,7 @@ int main(int argc, char* argv[])
 	grid_y.update_copies_of_remote_neighbors();
 	grid_z.update_copies_of_remote_neighbors();
 
-	pamhd::Background_Magnetic_Field<double, Eigen::Vector3d> bg_B;
+	pamhd::Background_Magnetic_Field<double, std::array<double, 3>> bg_B;
 
 	// short hand notation for calling solvers
 	auto solve = [&bg_B](

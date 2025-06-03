@@ -49,7 +49,8 @@ Author(s): Ilja Honkonen
 #include "common_variables.hpp"
 #include "grid/options.hpp"
 #include "grid/variables.hpp"
-#include "math/staggered.hpp"
+#include "math/interpolation.hpp"
+#include "math/nabla.hpp"
 #include "mhd/boundaries.hpp"
 #include "mhd/common.hpp"
 #include "mhd/hll_athena.hpp"
@@ -277,10 +278,11 @@ const auto Part_Ekin = [](
 )->auto {
 	return
 		0.5 * particle[pamhd::particle::Mass()]
-		* (
-			particle[pamhd::particle::Velocity()]
-			- cell_data[pamhd::particle::Bulk_Velocity()].first
-		).squaredNorm();
+		* pamhd::norm2(
+			pamhd::add(
+				particle[pamhd::particle::Velocity()],
+				pamhd::neg(cell_data[pamhd::particle::Bulk_Velocity()].first))
+		);
 };
 
 // reference to accumulated number of particles in given cell

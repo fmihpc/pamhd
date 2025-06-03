@@ -2,7 +2,7 @@
 Program for plotting particle output of PAMHD with gnuplot.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
-Copyright 2024 Finnish Meteorological Institute
+Copyright 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #include "array"
@@ -49,10 +52,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "dccrg_mapping.hpp"
 #include "dccrg_topology.hpp"
 #include "mpi.h" // must be included before gensimcell
-#include "Eigen/Core" // must be included before gensimcell
+#include "Eigen/Core"
 #include "gensimcell.hpp"
 #include "prettyprint.hpp"
 
+#include "common_functions.hpp"
 #include "mhd/variables.hpp"
 #include "particle/common.hpp"
 #include "particle/save.hpp"
@@ -72,8 +76,8 @@ vacuum permeability and particle temperature to energy ratio
 Returns uninitialized value on error.
 */
 boost::optional<std::array<double, 4>> read_data(
-	const Eigen::Vector3d& volume_start,
-	const Eigen::Vector3d& volume_end,
+	const std::array<double, 3>& volume_start,
+	const std::array<double, 3>& volume_end,
 	dccrg::Mapping& cell_id_mapping,
 	dccrg::Grid_Topology& topology,
 	dccrg::Cartesian_Geometry& geometry,
@@ -348,10 +352,10 @@ std::tuple<Eigen::MatrixXd, double, double, double, double> prepare_plot_data(
 	const std::string& horizontal_variable,
 	const std::string& vertical_variable,
 	const std::string& plot_variable,
-	const Eigen::Vector3d& r_start,
-	const Eigen::Vector3d& r_end,
-	const Eigen::Vector3d& v_start,
-	const Eigen::Vector3d& v_end,
+	const std::array<double, 3>& r_start,
+	const std::array<double, 3>& r_end,
+	const std::array<double, 3>& v_start,
+	const std::array<double, 3>& v_end,
 	const size_t& horizontal_resolution,
 	const size_t& vertical_resolution,
 	const unordered_map<uint64_t, Cell_test_particle>& simulation_data,
@@ -541,10 +545,10 @@ std::tuple<Eigen::MatrixXd, double, double, double, double> prepare_plot_data(
 		horiz_max = real_v_end[2];
 	} else if (horizontal_variable == "v") {
 		horiz_min = 0;
-		horiz_max = max(real_v_start.norm(), real_v_end.norm());
+		horiz_max = max(pamhd::norm(real_v_start), pamhd::norm(real_v_end));
 	} else if (horizontal_variable == "r") {
 		horiz_min = 0;
-		horiz_max = max(real_r_start.norm(), real_r_end.norm());
+		horiz_max = max(pamhd::norm(real_r_start), pamhd::norm(real_r_end));
 	} else {
 		std::cerr <<  __FILE__ << "(" << __LINE__<< "): "
 			<< "Unsupported horizontal variable for plotting."
@@ -572,10 +576,10 @@ std::tuple<Eigen::MatrixXd, double, double, double, double> prepare_plot_data(
 		vert_max = real_v_end[2];
 	} else if (vertical_variable == "v") {
 		vert_min = 0;
-		vert_max = max(real_v_start.norm(), real_v_end.norm());
+		vert_max = max(pamhd::norm(real_v_start), pamhd::norm(real_v_end));
 	} else if (vertical_variable == "r") {
 		vert_min = 0;
-		vert_max = max(real_r_start.norm(), real_r_end.norm());
+		vert_max = max(pamhd::norm(real_r_start), pamhd::norm(real_r_end));
 	} else {
 		std::cerr <<  __FILE__ << "(" << __LINE__<< "): "
 			<< "Unsupported vertical variable for plotting."
@@ -653,9 +657,9 @@ std::tuple<Eigen::MatrixXd, double, double, double, double> prepare_plot_data(
 			} else if (plot_variable == "vz") {
 				value = v[2];
 			} else if (plot_variable == "r") {
-				value = r.norm();
+				value = pamhd::norm(r);
 			} else if (plot_variable == "v") {
-				value = v.norm();
+				value = pamhd::norm(v);
 			} else if (plot_variable == "mass") {
 				value = particle[Mass()];
 			} else if (plot_variable == "count") {
@@ -683,11 +687,11 @@ std::tuple<Eigen::MatrixXd, double, double, double, double> prepare_plot_data(
 				if (v[2] < horiz_min or v[2] > horiz_max) { continue; }
 				horiz = v[2];
 			} else if (horizontal_variable == "v") {
-			if (v.norm() < horiz_min or v.norm() > horiz_max) { continue; }
-				horiz = v.norm();
+			if (pamhd::norm(v) < horiz_min or pamhd::norm(v) > horiz_max) { continue; }
+				horiz = pamhd::norm(v);
 			} else if (horizontal_variable == "r") {
-				if (r.norm() < horiz_min or r.norm() > horiz_max) { continue; }
-				horiz = r.norm();
+				if (pamhd::norm(r) < horiz_min or pamhd::norm(r) > horiz_max) { continue; }
+				horiz = pamhd::norm(r);
 			}
 			if (vertical_variable == "rx") {
 				if (r[0] < vert_min or r[0] > vert_max) { continue; }
@@ -708,11 +712,11 @@ std::tuple<Eigen::MatrixXd, double, double, double, double> prepare_plot_data(
 				if (v[2] < vert_min or v[2] > vert_max) { continue; }
 				vert = v[2];
 			} else if (vertical_variable == "v") {
-				if (v.norm() < vert_min or v.norm() > vert_max) { continue; }
-				vert = v.norm();
+				if (pamhd::norm(v) < vert_min or pamhd::norm(v) > vert_max) { continue; }
+				vert = pamhd::norm(v);
 			} else if (vertical_variable == "r") {
-				if (r.norm() < vert_min or r.norm() > vert_max) { continue; }
-				vert = r.norm();
+				if (pamhd::norm(r) < vert_min or pamhd::norm(r) > vert_max) { continue; }
+				vert = pamhd::norm(r);
 			}
 
 			size_t
@@ -842,7 +846,7 @@ int main(int argc, char* argv[])
 			"set format cb \"%.2e\""
 		);
 	constexpr double inf = std::numeric_limits<double>::infinity();
-	Eigen::Vector3d
+	std::array<double, 3>
 		r_start{-inf, -inf, -inf},
 		r_end{inf, inf, inf},
 		v_start{-inf, -inf, -inf},

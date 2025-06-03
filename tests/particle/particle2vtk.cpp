@@ -2,6 +2,7 @@
 Program for converting particle output of PAMHD to vtk format.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #include "array"
@@ -51,6 +55,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "gensimcell.hpp"
 //#include "prettyprint.hpp"
 
+#include "common_functions.hpp"
 #include "particle/save.hpp"
 #include "particle/variables.hpp"
 
@@ -387,7 +392,7 @@ void convert(
 		for (const auto& particle:
 			simulation_data.at(cell)[Particles_Internal()]
 		) {
-			particle_file << particle[Velocity()].norm() << "\n";
+			particle_file << pamhd::norm(particle[Velocity()]) << "\n";
 		}
 	}
 }

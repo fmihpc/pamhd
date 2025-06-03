@@ -1206,9 +1206,11 @@ template<
 						Particle_Species_Mass_T
 					>(Par(*cell_data));
 
-					const auto bulk_v_offset = Bdy_V(*cell_data) - bulk_velocity;
+					const auto bulk_v_offset = pamhd::add(Bdy_V(*cell_data), pamhd::neg(bulk_velocity));
 					for (auto& particle: Par(*cell_data)) {
-						particle[Particle_Velocity_T()] += bulk_v_offset;
+						particle[Particle_Velocity_T()] = pamhd::add(
+							particle[Particle_Velocity_T()],
+							bulk_v_offset);
 					}
 				}
 			}

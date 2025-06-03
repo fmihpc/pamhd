@@ -2,6 +2,7 @@
 Tests for particle propagator of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,20 +29,23 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
+#include "array"
 #include "cmath"
 #include "cstdlib"
-#include "Eigen/Core"
-#include "Eigen/Geometry"
 #include "iostream"
+
+#include "prettyprint.hpp"
 
 #include "particle/variables.hpp"
 #include "particle/solve.hpp"
 
 
 using namespace std;
-using namespace Eigen;
 using namespace pamhd::particle;
 
 
@@ -58,18 +62,18 @@ int main()
 
 	double time, dt, gyro_radius, gyro_period;
 	Particle_T<> particle;
-	Eigen::Vector3d electric_field, magnetic_field;
+	std::array<double, 3> electric_field, magnetic_field;
 
 	// not needed
 	particle[Mas] = 0;
 
 	// only E
 	dt = 1;
-	particle[Pos] = Vector3d(0, 3, 6);
-	particle[Vel] = Vector3d(-3, 2, -1);
+	particle[Pos] = {0, 3, 6};
+	particle[Vel] = {-3, 2, -1};
 	particle[C2M] = 2;
-	electric_field = Vector3d(1, -2, 10.5);
-	magnetic_field = Vector3d(0, 0, 0);
+	electric_field = {1, -2, 10.5};
+	magnetic_field = {0, 0, 0};
 
 	time = 0;
 	for (size_t step = 0; step < 5; step++) {
@@ -114,11 +118,11 @@ int main()
 
 	// only B, rotate 90 degrees around y axis
 	dt = 5 * M_PI / 1000;
-	particle[Pos] = Vector3d(0, 0, 0);
-	particle[Vel] = Vector3d(1, 0, 0);
+	particle[Pos] = {0, 0, 0};
+	particle[Vel] = {1, 0, 0};
 	particle[C2M] = 1;
-	electric_field = Vector3d(0, 0, 0);
-	magnetic_field = Vector3d(0, 0.1, 0);
+	electric_field = {0, 0, 0};
+	magnetic_field = {0, 0.1, 0};
 	gyro_radius = particle[Vel][0] / magnetic_field[1] / particle[C2M];
 	gyro_period = 2 * M_PI / particle[C2M] / magnetic_field[1];
 
@@ -242,11 +246,11 @@ int main()
 
 	// only B, rotate 360 degrees around x axis
 	dt = 4 * M_PI / 1000;
-	particle[Pos] = Vector3d(0, 0, 0);
-	particle[Vel] = Vector3d(0, 1, 0);
+	particle[Pos] = {0, 0, 0};
+	particle[Vel] = {0, 1, 0};
 	particle[C2M] = 1;
-	electric_field = Vector3d(0, 0, 0);
-	magnetic_field = Vector3d(0.5, 0, 0);
+	electric_field = {0, 0, 0};
+	magnetic_field = {0.5, 0, 0};
 
 	for (size_t step = 0; step < 1000; step++) {
 		std::tie(
@@ -289,11 +293,11 @@ int main()
 
 	// only B, rotate 360 degrees around z axis
 	dt = 1 * M_PI / 1000;
-	particle[Pos] = Vector3d(0, 0, 0);
-	particle[Vel] = Vector3d(1, 0, 0);
+	particle[Pos] = {0, 0, 0};
+	particle[Vel] = {1, 0, 0};
 	particle[C2M] = 1;
-	electric_field = Vector3d(0, 0, 0);
-	magnetic_field = Vector3d(0, 0, -2);
+	electric_field = {0, 0, 0};
+	magnetic_field = {0, 0, -2};
 
 	for (size_t step = 0; step < 1000; step++) {
 		std::tie(
@@ -336,11 +340,11 @@ int main()
 
 	// only B, rotate 180 around z axis, opposite charge
 	dt = M_PI / 2000;
-	particle[Pos] = Vector3d(0, 0, 0);
-	particle[Vel] = Vector3d(-1, 0, 0);
+	particle[Pos] = {0, 0, 0};
+	particle[Vel] = {-1, 0, 0};
 	particle[C2M] = -1;
-	electric_field = Vector3d(0, 0, 0);
-	magnetic_field = Vector3d(0, 0, 1);
+	electric_field = {0, 0, 0};
+	magnetic_field = {0, 0, 1};
 
 	for (size_t step = 0; step < 2000; step++) {
 		std::tie(
@@ -384,11 +388,11 @@ int main()
 	/*
 	E.cross(B) drift, e.g. from https://en.wikipedia.org/wiki/Guiding_center
 	*/
-	particle[Pos] = Vector3d(0, 0, 0);
-	particle[Vel] = Vector3d(0, 0, 1);
+	particle[Pos] = {0, 0, 0};
+	particle[Vel] = {0, 0, 1};
 	particle[C2M] = 1;
-	electric_field = Vector3d(1, 0, 0);
-	magnetic_field = Vector3d(0, 3, 0);
+	electric_field = {1, 0, 0};
+	magnetic_field = {0, 3, 0};
 	gyro_radius = particle[Vel][2] / magnetic_field[1] / particle[C2M];
 	gyro_period = 2 * M_PI / particle[C2M] / magnetic_field[1];
 	dt = gyro_period / 1000;
@@ -434,15 +438,15 @@ int main()
 
 
 	// Polarization drift
-	particle[Pos] = Vector3d(0, 0, 0);
-	particle[Vel] = Vector3d(0, 0, 1);
+	particle[Pos] = {0, 0, 0};
+	particle[Vel] = {0, 0, 1};
 	particle[C2M] = 2;
-	electric_field = Vector3d(0.5, 0, 0);
-	magnetic_field = Vector3d(0, 3, 0);
+	electric_field = {0.5, 0, 0};
+	magnetic_field = {0, 3, 0};
 	gyro_radius = particle[Vel][2] / magnetic_field[1] / particle[C2M];
 	gyro_period = fabs(2 * M_PI / particle[C2M] / magnetic_field[1]);
 	dt = gyro_period / 1000;
-	const Vector3d E_change = electric_field / 100;
+	const auto E_change = pamhd::mul(1/100, electric_field);
 	const double
 		ExB_drift = electric_field[0] / magnetic_field[1],
 		polarization_drift = E_change[0] / particle[C2M] / pow(magnetic_field[1], 2);
@@ -454,7 +458,7 @@ int main()
 		) = propagate(
 			particle[Pos],
 			particle[Vel],
-			(electric_field + E_change * step * dt / gyro_period).eval(),
+			pamhd::add(electric_field, pamhd::mul(E_change, step * dt / gyro_period)),
 			magnetic_field,
 			particle[C2M],
 			dt

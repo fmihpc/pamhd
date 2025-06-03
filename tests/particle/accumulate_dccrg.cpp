@@ -44,7 +44,6 @@ Author(s): Ilja Honkonen
 
 #include "dccrg.hpp"
 #include "dccrg_cartesian_geometry.hpp"
-#include "Eigen/Core" // must be included before gensimcell.hpp
 #include "mpi.h" // must be included before gensimcell.hpp
 #include "gensimcell.hpp"
 
@@ -54,7 +53,7 @@ Author(s): Ilja Honkonen
 #include "variable_getter.hpp"
 
 
-Eigen::Vector3d f(const Eigen::Vector3d& r)
+std::array<double, 3> f(const std::array<double, 3>& r)
 {
 	return {
 		1.5 * sin(2 * M_PI * (r[0] + 3) / 9),
@@ -194,7 +193,7 @@ double get_norm(
 		norm_local = 0,
 		norm_global = 0;
 	for (const auto& cell: grid.local_cells()) {
-		const Eigen::Vector3d cell_center{
+		const std::array<double, 3> cell_center{
 			grid.geometry.get_center(cell.id)[0],
 			grid.geometry.get_center(cell.id)[1],
 			grid.geometry.get_center(cell.id)[2]

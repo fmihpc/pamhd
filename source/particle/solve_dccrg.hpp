@@ -45,14 +45,13 @@ Author(s): Ilja Honkonen
 #include "utility"
 
 #include "dccrg.hpp"
-#include "Eigen/Core"
-#include "Eigen/Geometry"
 #include "prettyprint.hpp"
 
 #include "accumulate_dccrg.hpp"
 #include "common.hpp"
 #include "interpolate.hpp"
-#include "math/staggered.hpp"
+#include "math/interpolation.hpp"
+#include "math/nabla.hpp"
 #include "mhd/solve.hpp"
 #include "particle/solve.hpp"
 #include "substepping.hpp"
@@ -91,7 +90,7 @@ template<
 	class Particle_Charge_Mass_Ratio_Getter,
 	class Particle_Mass_Getter,
 	class Particle_Destination_Cell_Getter,
-	class Solver_Info_Getter
+	class Cell_Type_Getter
 > void solve(
 	const double& dt,
 	const Cell_Iterator& cells,
@@ -112,7 +111,7 @@ template<
 	const Particle_Charge_Mass_Ratio_Getter& Part_C2M,
 	const Particle_Mass_Getter& Part_Mas,
 	const Particle_Destination_Cell_Getter& Part_Des,
-	const Solver_Info_Getter& SInfo
+	const Cell_Type_Getter& CType
 ) {
 	using std::abs;
 	using std::isnan;
@@ -154,7 +153,7 @@ template<
 	for (const auto& cell: cells) {
 		Max_v_part.data(*cell.data) =
 		Max_ω_part.data(*cell.data) = 0;
-		if (SInfo.data(*cell.data) < 0) {
+		if (CType.data(*cell.data) < 0) {
 			Part_Int(*cell.data).clear();
 			Part_Ext.data(*cell.data).clear();
 			Nr_Ext.data(*cell.data) = 0;
@@ -162,7 +161,7 @@ template<
 		}
 
 		// get field data from neighborhood for interpolation
-		std::array<Eigen::Vector3d, 27> current_minus_velocities, magnetic_fields;
+		std::array<std::array<double, 3>, 27> current_minus_velocities, magnetic_fields;
 
 		// default to current cell's data
 		current_minus_velocities.fill(JmV.data(*cell.data));
@@ -176,7 +175,7 @@ template<
 			) {
 				continue;
 			}
-			if (SInfo.data(*neighbor.data) < 0) {
+			if (CType.data(*neighbor.data) < 0) {
 				continue;
 			}
 
@@ -191,7 +190,7 @@ template<
 			cell_center = grid.geometry.get_center(cell.id),
 			cell_length = grid.geometry.get_length(cell.id);
 
-		const Eigen::Vector3d
+		const std::array<double, 3>
 			interpolation_start{
 				cell_center[0] - cell_length[0],
 				cell_center[1] - cell_length[1],
@@ -214,29 +213,29 @@ template<
 					bg_pos[dim] = grid_center[dim];
 				}
 			}
-			const Eigen::Vector3d B_at_pos
-				= interpolate(
+			const std::array<double, 3> B_at_pos = pamhd::add(
+				interpolate(
 					pos, interpolation_start,
-					interpolation_end, magnetic_fields)
-				+ bg_B.get_background_field(
-					bg_pos, vacuum_permeability);
+					interpolation_end, magnetic_fields),
+				bg_B.get_background_field(
+					bg_pos, vacuum_permeability));
 
 			auto vel = Part_Vel(Part_Int(*cell.data)[part_i]);
 			Max_v_part.data(*cell.data) = max(
 				Max_v_part.data(*cell.data),
-				vel.norm());
+				pamhd::norm(vel));
 			const auto& c2m = Part_C2M(Part_Int(*cell.data)[part_i]);
 			Max_ω_part.data(*cell.data) = max(
 				Max_ω_part.data(*cell.data),
-				abs(c2m) * B_at_pos.norm());
+				abs(c2m) * pamhd::norm(B_at_pos));
 
-			const Eigen::Matrix<double,3,1> E_at_pos = [&](){
+			const std::array<double, 3> E_at_pos = [&](){
 				if (E_is_derived_quantity) {
 					const auto J_m_V_at_pos = interpolate(
 						pos, interpolation_start,
 						interpolation_end, current_minus_velocities
 					);
-					return J_m_V_at_pos.cross(B_at_pos);
+					return pamhd::cross(J_m_V_at_pos, B_at_pos);
 				} else {
 					return interpolate(
 						pos, interpolation_start,
@@ -320,7 +319,7 @@ template<
 						<< " in cell " << cell.id
 						<< " of length " << cell_length
 						<< " at " << cell_center
-						<< " with E " << JmV.data(*cell.data).cross(Vol_B.data(*cell.data))
+						<< " with E " << pamhd::cross(JmV.data(*cell.data), Vol_B.data(*cell.data))
 						<< " and B " << Vol_B.data(*cell.data)
 						<< " from neighbors ";
 					for (const auto& neighbor: cell.neighbors_of) {
@@ -414,14 +413,14 @@ template<
 
 template <
 	class Grid,
-	class Solver_Info_Getter,
+	class Cell_Type_Getter,
 	class Timestep_Getter,
 	class Max_Spatial_Velocity_Getter,
 	class Max_Angular_Velocity_Getter
 > void minimize_timestep(
 	Grid& grid,
 	const double& dt_factor,
-	const Solver_Info_Getter& SInfo,
+	const Cell_Type_Getter& CType,
 	const Timestep_Getter& Timestep,
 	const Max_Spatial_Velocity_Getter& Max_v_part,
 	const Max_Angular_Velocity_Getter& Max_ω_part
@@ -435,7 +434,7 @@ template <
 	Timestep.type().is_stale = true;
 
 	for (const auto& cell: grid.local_cells()) {
-		if (SInfo.data(*cell.data) < 0) {
+		if (CType.data(*cell.data) < 0) {
 			continue;
 		}
 
@@ -490,7 +489,7 @@ double timestep(
 	const auto& Nr_Accumulated_To_Cells_Getter,
 	const auto& Accumulated_To_Cells_Getter,
 	const auto& Bulk_Velocity,
-	const auto& SInfo,
+	const auto& CType,
 	const auto& adiabatic_index,
 	const auto& vacuum_permeability,
 	const auto& boltzmann,
@@ -541,7 +540,7 @@ double timestep(
 
 	if (mhd_solver != mhd::Solver::hybrid) {
 		pamhd::mhd::minimize_timestep(
-			grid, mhd_time_step_factor, SInfo, Timestep, Max_v_wave
+			grid, mhd_time_step_factor, CType, Timestep, Max_v_wave
 		);
 	} else {
 		for (const auto& cell: grid.local_cells()) {
@@ -550,12 +549,12 @@ double timestep(
 	}
 
 	pamhd::particle::minimize_timestep(
-		grid, particle_time_step_factor, SInfo,
+		grid, particle_time_step_factor, CType,
 		Timestep, Max_v_part, Max_ω_part
 	);
 
 	const double sub_dt = set_minmax_substepping_period(
-		grid, max_time_step, SInfo,
+		grid, max_time_step, CType,
 		Timestep, Substep_Min, Substep_Max
 	);
 
@@ -563,10 +562,10 @@ double timestep(
 		grid,
 		Substep,
 		Substep_Max,
-		SInfo
+		CType
 	);
 
-	const int max_substep = update_substeps(grid, SInfo, Substep);
+	const int max_substep = update_substeps(grid, CType, Substep);
 	if (max_substep > 1) {
 		cerr << "Substep > 1 (level > 0) not supported." << endl;
 		MPI_Finalize();
@@ -598,7 +597,7 @@ double timestep(
 				Accu_List_Getter,
 				Nr_Accumulated_To_Cells_Getter,
 				Accumulated_To_Cells_Getter,
-				Bulk_Velocity, SInfo
+				Bulk_Velocity, CType
 			);
 		} catch (const std::exception& e) {
 			cerr << __FILE__ "(" << __LINE__ << "): "
@@ -613,7 +612,7 @@ double timestep(
 				boltzmann, min_pressure, Nr_Particles,
 				Bulk_Mass_Getter, Bulk_Momentum_Getter,
 				Bulk_Relative_Velocity2_Getter,
-				Part_Int, Mas, Mom, Nrj, Vol_B, SInfo
+				Part_Int, Mas, Mom, Nrj, Vol_B, CType
 			);
 		} catch (const std::exception& e) {
 			cerr << __FILE__ "(" << __LINE__ << ": "
@@ -623,15 +622,19 @@ double timestep(
 		}
 
 		// J for E = (J - V) x B
-		pamhd::math::get_curl_B(grid, Vol_B, Vol_J, SInfo);
+		pamhd::math::get_curl_B(grid, Vol_B, Vol_J, CType);
 
 		// E = (J - V) x B
 		for (const auto& cell: grid.local_cells()) {
-			J_m_V.data(*cell.data)
-				= Vol_J.data(*cell.data) / vacuum_permeability
-				- pamhd::mhd::get_velocity(Mom.data(*cell.data), Mas.data(*cell.data));
+			J_m_V.data(*cell.data) = pamhd::add(
+				pamhd::mul(Vol_J.data(*cell.data), 1 / vacuum_permeability),
+				pamhd::neg(pamhd::mhd::get_velocity(
+					Mom.data(*cell.data),
+					Mas.data(*cell.data))));
 			// calculate electric field for output file
-			Vol_E.data(*cell.data) = J_m_V.data(*cell.data).cross(Vol_B.data(*cell.data));
+			Vol_E.data(*cell.data) = pamhd::cross(
+				J_m_V.data(*cell.data),
+				Vol_B.data(*cell.data));
 		}
 		J_m_V.type().is_stale = true;
 
@@ -642,12 +645,12 @@ double timestep(
 			background_B, vacuum_permeability,
 			true, J_m_V, Vol_B, Nr_Ext, Part_Int, Part_Ext,
 			Max_v_part, Max_ω_part, Part_Pos, Part_Vel,
-			Part_C2M, Part_Mas, Part_Des, SInfo
+			Part_C2M, Part_Mas, Part_Des, CType
 		);
 
 		Cell::set_transfer_all(true,
 			Mas.type(), Mom.type(), Nrj.type(), Vol_B.type(),
-			Bg_B.type(), Substep.type(), SInfo.type(), Nr_Ext.type());
+			Bg_B.type(), Substep.type(), CType.type(), Nr_Ext.type());
 		grid.start_remote_neighbor_copy_updates();
 
 		// inner MHD
@@ -656,7 +659,7 @@ double timestep(
 			adiabatic_index, vacuum_permeability, sub_dt,
 			Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 			Mas_f, Mom_f, Nrj_f, Mag_f,
-			SInfo, Substep, Max_v_wave
+			CType, Substep, Max_v_wave
 		);
 
 		// inner particles
@@ -665,7 +668,7 @@ double timestep(
 			background_B, vacuum_permeability,
 			true, J_m_V, Vol_B, Nr_Ext, Part_Int, Part_Ext,
 			Max_v_part, Max_ω_part, Part_Pos, Part_Vel,
-			Part_C2M, Part_Mas, Part_Des, SInfo
+			Part_C2M, Part_Mas, Part_Des, CType
 		);
 
 		grid.wait_remote_neighbor_copy_update_receives();
@@ -676,7 +679,7 @@ double timestep(
 			adiabatic_index, vacuum_permeability, sub_dt,
 			Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 			Mas_f, Mom_f, Nrj_f, Mag_f,
-			SInfo, Substep, Max_v_wave
+			CType, Substep, Max_v_wave
 		);
 
 		pamhd::particle::resize_receiving_containers<
@@ -687,20 +690,20 @@ double timestep(
 		grid.wait_remote_neighbor_copy_update_sends();
 		Cell::set_transfer_all(false,
 			Mas.type(), Mom.type(), Nrj.type(), Vol_B.type(),
-			Bg_B.type(), Substep.type(), SInfo.type(), Nr_Ext.type());
+			Bg_B.type(), Substep.type(), CType.type(), Nr_Ext.type());
 
 		pamhd::mhd::get_fluxes(
 			mhd_solver, grid.remote_cells(), grid, substep,
 			adiabatic_index, vacuum_permeability, sub_dt,
 			Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 			Mas_f, Mom_f, Nrj_f, Mag_f,
-			SInfo, Substep, Max_v_wave
+			CType, Substep, Max_v_wave
 		);
 		Max_v_wave.type().is_stale = true;
 
 		pamhd::mhd::update_mhd_state(
 			grid.local_cells(), grid, substep,
-			Face_B, Face_dB, SInfo, Substep,
+			Face_B, Face_dB, CType, Substep,
 			Mas, Mom, Nrj, Vol_B,
 			Mas_f, Mom_f, Nrj_f, Mag_f
 		);
@@ -708,7 +711,7 @@ double timestep(
 		pamhd::mhd::update_B_consistency(
 			substep, grid.local_cells(), grid,
 			Mas, Mom, Nrj, Vol_B, Face_B,
-			SInfo, Substep,
+			CType, Substep,
 			adiabatic_index,
 			vacuum_permeability,
 			true

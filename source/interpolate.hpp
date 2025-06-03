@@ -40,6 +40,8 @@ Author(s): Ilja Honkonen
 
 #include "array"
 
+#include "common_functions.hpp"
+
 
 namespace pamhd {
 
@@ -202,7 +204,7 @@ template<class Coord_T, class Data_T> Data_T interpolate(
 
 	Data_T ret_val = {0, 0, 0};
 	for (size_t i = 0; i < data.size(); i++) {
-		ret_val += weights[i] * data[i];
+		ret_val = pamhd::add(ret_val, pamhd::mul(weights[i], data[i]));
 	}
 	return ret_val;
 }

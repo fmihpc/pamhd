@@ -2,6 +2,7 @@
 Program for propagating charged particles in 1+3d with analytic fields.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #include "cmath"
@@ -58,7 +62,6 @@ constexpr double
 
 using namespace std;
 using namespace boost::numeric::odeint;
-using namespace Eigen;
 
 
 /*
@@ -108,7 +111,7 @@ struct Fields
 				* cos(M_PI * position / this->length);
 	}
 
-	std::array<Eigen::Vector3d, 2> operator()(
+	std::array<std::array<double, 3>, 2> operator()(
 		const double time,
 		double position
 	) const {
@@ -128,7 +131,7 @@ struct Fields
 				}
 			}();
 
-		const Eigen::Vector3d
+		const std::array<double, 3>
 			E{
 				0,
 				this->e1 * sin(arg),
@@ -146,7 +149,7 @@ struct Fields
 
 
 // [0] == position, [1] == velocity
-using state_t = std::array<Vector3d, 2>;
+using state_t = std::array<Eigen::Vector3d, 2>;
 
 struct Propagator
 {
@@ -168,10 +171,12 @@ struct Propagator
 
 		const auto EB = this->fields(time, state[0][0]);
 		change[0] = state[1];
+		const Eigen::Map<Eigen::Vector3d>
+			eb0((double*)EB[0].data()),
+			eb1((double*)EB[1].data());
 		change[1]
-			= this->c2m
-			* relativity_factor
-			* (EB[0] + state[1].cross(EB[1]));
+			= this->c2m * relativity_factor
+			* (eb0 + state[1].cross(eb1));
 	}
 };
 
@@ -551,7 +556,7 @@ int main(int argc, char* argv[])
 		wavelength_ends
 	);
 
-	const Eigen::Vector3d
+	const std::array<double, 3>
 		initial_pos{0, 0, 0},
 		init_E = fields(0, initial_pos[0])[0],
 		init_B = fields(0, initial_pos[0])[1];
@@ -576,7 +581,7 @@ int main(int argc, char* argv[])
 			continue;
 		}
 
-		const Eigen::Vector3d v_in_E_B_ExB{
+		const std::array<double, 3> v_in_E_B_ExB{
 			v * cos(e_angle),
 
 			v * cos(b_angle),
@@ -606,7 +611,7 @@ int main(int argc, char* argv[])
 				}
 			}()
 		};
-		if (v_in_E_B_ExB.norm() >= max_particle_speed) {
+		if (pamhd::norm(v_in_E_B_ExB) >= max_particle_speed) {
 			continue;
 		}
 
@@ -614,39 +619,46 @@ int main(int argc, char* argv[])
 		Rotate initial velocity to x, y, z coordinate system
 		*/
 
-		const Eigen::Vector3d
-			old_x = init_E.normalized(),
-			old_y = init_B.normalized(),
-			old_z = init_E.cross(init_B).normalized(),
-			new_x = Eigen::Vector3d::UnitX(),
-			new_y = Eigen::Vector3d::UnitY(),
-			new_z = Eigen::Vector3d::UnitZ();
+		const std::array<double, 3>
+			old_x = pamhd::mul(init_E, 1 / pamhd::norm(init_E)),
+			old_y = pamhd::mul(init_B, 1 / pamhd::norm(init_B)),
+			init_ExB = pamhd::cross(init_E, init_B),
+			old_z = pamhd::mul(init_ExB, 1 / pamhd::norm(init_ExB)),
+			new_x{1, 0, 0},
+			new_y{0, 1, 0},
+			new_z{0, 0, 1};
 
 		// http://ocw.mit.edu/courses/aeronautics-and-astronautics/16-07-dynamics-fall-2009/lecture-notes/MIT16_07F09_Lec03.pdf
 		Eigen::Matrix3d transformer;
 		transformer <<
-			new_x.dot(old_x), new_x.dot(old_y), new_x.dot(old_z),
-			new_y.dot(old_x), new_y.dot(old_y), new_y.dot(old_z),
-			new_z.dot(old_x), new_z.dot(old_y), new_z.dot(old_z);
+			pamhd::dot(new_x, old_x), pamhd::dot(new_x, old_y), pamhd::dot(new_x, old_z),
+			pamhd::dot(new_y, old_x), pamhd::dot(new_y, old_y), pamhd::dot(new_y, old_z),
+			pamhd::dot(new_z, old_x), pamhd::dot(new_z, old_y), pamhd::dot(new_z, old_z);
 
-		const Eigen::Vector3d initial_vel = transformer * v_in_E_B_ExB;
-		if (initial_vel.norm() >= max_particle_speed) {
+		const Eigen::Map<Eigen::Vector3d> v_map((double*)v_in_E_B_ExB.data());
+		const Eigen::Vector3d temp = transformer * v_map;
+		const std::array<double, 3> initial_vel{temp[0], temp[1], temp[2]};
+		if (pamhd::norm(initial_vel) >= max_particle_speed) {
 			continue;
 		}
 
-		const auto angle_V_E = acos(initial_vel.normalized().dot(init_E.normalized()));
+		const auto angle_V_E = acos(pamhd::dot(pamhd::norm(initial_vel), pamhd::norm(init_E)));
 		if (angle_V_E < e_angle_min or angle_V_E > e_angle_max)  {
 			continue;
 		}
-		const auto angle_V_B = acos(initial_vel.normalized().dot(init_B.normalized()));
+		const auto angle_V_B = acos(pamhd::dot(pamhd::norm(initial_vel), pamhd::norm(init_B)));
 		if (angle_V_B < b_angle_min or angle_V_B > b_angle_max)  {
 			continue;
 		}
 
-		state_t state{
-			initial_pos,
-			initial_vel
-		};
+		Eigen::Vector3d temp1, temp2;
+		temp1[0] = initial_pos[0];
+		temp1[1] = initial_pos[1];
+		temp1[2] = initial_pos[2];
+		temp2[0] = initial_vel[0];
+		temp2[1] = initial_vel[1];
+		temp2[2] = initial_vel[2];
+		state_t state{temp1, temp2};
 
 		std::vector<double> data_to_save;
 		if (save_dt >= 0 or save_dx >= 0) {
@@ -703,14 +715,12 @@ int main(int argc, char* argv[])
 			}
 
 			double max_time_step = std::numeric_limits<double>::max();
+			const std::array<double, 3> state1{
+				state[1][0], state[1][1], state[1][2]};
 			const auto step_size
 				= pamhd::particle::get_step_size(
-					1.0 / 32.0,
-					min_wavelength / 8,
-					electron_c2m,
-					state[1],
-					EB[0],
-					EB[1]
+					1.0 / 32.0, min_wavelength / 8,
+					electron_c2m, state1, EB[0], EB[1]
 				);
 			max_time_step = std::min(
 				max_time_step,
@@ -755,7 +765,7 @@ int main(int argc, char* argv[])
 					<< initial_vel[0] << " "
 					<< initial_vel[1] << " "
 					<< initial_vel[2] << ", current velocity relative to initial "
-					<< state[1].norm() / initial_vel.norm() << " and current position "
+					<< state[1].norm() / pamhd::norm(initial_vel) << " and current position "
 					<< state[0][0] << " "
 					<< state[0][1] << " "
 					<< state[0][2]

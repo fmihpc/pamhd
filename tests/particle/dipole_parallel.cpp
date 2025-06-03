@@ -31,14 +31,13 @@ Author(s): Ilja Honkonen
 
 #include "dccrg.hpp"
 #include "dccrg_cartesian_geometry.hpp"
-#include "Eigen/Core" // must be included before gensimcell
-#include "Eigen/Geometry"
 #include "mpi.h" // must be included before gensimcell
 #include "gensimcell.hpp"
 #include "rapidjson/document.h"
 #include "rapidjson/error/en.h"
 
 #include "background_magnetic_field.hpp"
+#include "common_functions.hpp"
 #include "mhd/variables.hpp"
 #include "particle/save.hpp"
 #include "particle/solve_dccrg.hpp"
@@ -161,7 +160,7 @@ int main(int argc, char* argv[])
 
 	grid.set_geometry(geom_params);
 
-	pamhd::Background_Magnetic_Field<double, Eigen::Vector3d> bg_B;
+	pamhd::Background_Magnetic_Field<double, std::array<double, 3>> bg_B;
 
 	rapidjson::Document document;
 	document.Parse(
@@ -187,17 +186,17 @@ int main(int argc, char* argv[])
 	int initial_particles_local = 0, initial_particles = 0;
 	for (const auto& cell: grid.local_cells()) {
 		const auto cell_center = grid.geometry.get_center(cell.id);
-		const Eigen::Vector3d r{
+		const std::array<double, 3> r{
 			cell_center[0],
 			cell_center[1],
 			cell_center[2]
 		};
-		const auto distance = r.norm();
+		const auto distance = pamhd::norm(r);
 
 		Ele.data(*cell.data) = {0, 0, 0};
 		Vol_B.data(*cell.data)
 			= bg_B.get_background_field(
-				Eigen::Vector3d{cell_center[0], cell_center[1], cell_center[2]},
+				std::array<double, 3>{cell_center[0], cell_center[1], cell_center[2]},
 				1.257e-06
 			);
 
@@ -211,12 +210,14 @@ int main(int argc, char* argv[])
 
 		pamhd::particle::Particle_Internal particle;
 		Part_Pos(particle) = r;
-		Part_Vel(particle) = 2e6 * r / r.norm(); // m / s
+		Part_Vel(particle) = pamhd::mul(r, 2e6 / pamhd::norm(r)); // m / s
 		Part_Mas(particle) = 0;
 		Part_C2M(particle) = 95788335.8;
 		Part_Int(*cell.data).push_back(particle);
 
-		Part_Pos(particle) += Eigen::Vector3d{0.05 * Re, 0.05 * Re, 0.05 * Re};
+		Part_Pos(particle) = pamhd::add(
+			Part_Pos(particle),
+			std::array<double, 3>{0.05 * Re, 0.05 * Re, 0.05 * Re});
 		Part_C2M(particle) += 1e6;
 		Part_Int(*cell.data).push_back(particle);
 

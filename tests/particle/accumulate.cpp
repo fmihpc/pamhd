@@ -2,6 +2,7 @@
 Serial test for particle accumulator of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #include "array"
@@ -38,13 +42,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "utility"
 #include "vector"
 
-#include "Eigen/Core" // must be included before accumulate.hpp
-
 #include "particle/accumulate.hpp"
 
 
 using namespace std;
-using namespace Eigen;
 using namespace pamhd::particle;
 
 
@@ -83,19 +84,21 @@ double f(const double x)
 
 int main()
 {
+	using std::array;
+
 	double value = 0;
-	Vector3d
-		value_min(0, 0, 0),
-		value_max(0, 0, 0),
-		cell_min(0, 0, 0),
-		cell_max(0, 0, 0);
+	array<double, 3>
+		value_min{0, 0, 0},
+		value_max{0, 0, 0},
+		cell_min{0, 0, 0},
+		cell_max{0, 0, 0};
 
 	// test error detection
 	try {
-		value_min = Vector3d(0, 0, 1);
-		value_max = Vector3d(1, 1, 0);
-		cell_min = Vector3d(0, 0, 0);
-		cell_max = Vector3d(1, 1, 1);
+		value_min = {0, 0, 1};
+		value_max = {1, 1, 0};
+		cell_min = {0, 0, 0};
+		cell_max = {1, 1, 1};
 		get_accumulated_value(
 			value,
 			value_min,
@@ -111,10 +114,10 @@ int main()
 	} catch(const std::out_of_range& e) {}
 
 	try {
-		value_min = Vector3d(0, 0, 0);
-		value_max = Vector3d(1, 1, 1);
-		cell_min = Vector3d(0, 1, 0);
-		cell_max = Vector3d(1, 0, 1);
+		value_min = {0, 0, 0};
+		value_max = {1, 1, 1};
+		cell_min = {0, 1, 0};
+		cell_max = {1, 0, 1};
 		get_accumulated_value(
 			value,
 			value_min,
@@ -133,10 +136,10 @@ int main()
 	const auto accu1
 		= get_accumulated_value(
 			1.0,
-			Vector3d{-1, -1, -1},
-			Vector3d{ 1,  1,  1},
-			Vector3d{ 0,  0,  0},
-			Vector3d{ 2,  2,  2}
+			array<double, 3>{-1, -1, -1},
+			array<double, 3>{ 1,  1,  1},
+			array<double, 3>{ 0,  0,  0},
+			array<double, 3>{ 2,  2,  2}
 		);
 	if (fabs(accu1 - 1.0/8.0) > 1e-10) {
 		std::cerr <<  __FILE__ << " (" << __LINE__ << "): "
@@ -150,18 +153,18 @@ int main()
 		accu21 = get_accumulated_value_weighted(
 			-3.0,
 			2.0,
-			Vector3d{-1, -1, -1},
-			Vector3d{ 1,  1,  1},
-			Vector3d{ 0,  0,  0},
-			Vector3d{ 2,  2,  2}
+			array<double, 3>{-1, -1, -1},
+			array<double, 3>{ 1,  1,  1},
+			array<double, 3>{ 0,  0,  0},
+			array<double, 3>{ 2,  2,  2}
 		),
 		accu22 = get_accumulated_value_weighted(
 			10.0,
 			1.0,
-			Vector3d{ 0,  1,  1},
-			Vector3d{ 2,  3,  3},
-			Vector3d{ 0,  0,  0},
-			Vector3d{ 2,  2,  2}
+			array<double, 3>{ 0,  1,  1},
+			array<double, 3>{ 2,  3,  3},
+			array<double, 3>{ 0,  0,  0},
+			array<double, 3>{ 2,  2,  2}
 		);
 	if (fabs(accu21.first + accu22.first - 14) > 1e-10) {
 		std::cerr <<  __FILE__ << " (" << __LINE__ << "): "
@@ -179,11 +182,11 @@ int main()
 	// test vector accumulation
 	const auto vec_accu
 		= get_accumulated_value(
-			Vector3d{1, 2, 3},
-			Vector3d{0, 0, 0},
-			Vector3d{1, 1, 1},
-			Vector3d{0, 0, 0},
-			Vector3d{1, 1, 1}
+			array<double, 3>{1, 2, 3},
+			array<double, 3>{0, 0, 0},
+			array<double, 3>{1, 1, 1},
+			array<double, 3>{0, 0, 0},
+			array<double, 3>{1, 1, 1}
 		);
 	if (
 		fabs(vec_accu[0] - 1) > 1e-10
@@ -198,11 +201,11 @@ int main()
 
 	const auto vec_accu3
 		= get_accumulated_value(
-			std::array<double, 2>{20, 30},
-			std::array<double, 3>{0, 0, 0},
-			std::array<double, 3>{1, 1, 1},
-			std::array<double, 3>{0, 0, 0},
-			std::array<double, 3>{1, 1, 1}
+			array<double, 3>{20, 30},
+			array<double, 3>{0, 0, 0},
+			array<double, 3>{1, 1, 1},
+			array<double, 3>{0, 0, 0},
+			array<double, 3>{1, 1, 1}
 		);
 	if (vec_accu3.size() != 2) {
 		std::cerr <<  __FILE__ << " (" << __LINE__ << "): "
@@ -223,11 +226,11 @@ int main()
 	// test accumulation of negative values
 	const auto vec_accu2
 		= get_accumulated_value(
-			Vector3d{-1, -2, -3},
-			Vector3d{0, 0, 0},
-			Vector3d{1, 1, 1},
-			Vector3d{0, 0, 0},
-			Vector3d{1, 1, 1}
+			array<double, 3>{-1, -2, -3},
+			array<double, 3>{0, 0, 0},
+			array<double, 3>{1, 1, 1},
+			array<double, 3>{0, 0, 0},
+			array<double, 3>{1, 1, 1}
 		);
 	if (
 		fabs(vec_accu2[0] + 1) > 1e-10
@@ -272,10 +275,10 @@ int main()
 			for (size_t cell_i = 0; cell_i < nr_of_cells; cell_i++) {
 				const auto accumulated_value = get_accumulated_value(
 					item.first,
-					Vector3d(item.second - cell_length / 2, 0, 0),
-					Vector3d(item.second + cell_length / 2, 1, 1),
-					Vector3d(get_cell_min(cell_i, nr_of_cells), 0, 0),
-					Vector3d(get_cell_max(cell_i, nr_of_cells), 1, 1)
+					array<double, 3>{item.second - cell_length / 2, 0, 0},
+					array<double, 3>{item.second + cell_length / 2, 1, 1},
+					array<double, 3>{get_cell_min(cell_i, nr_of_cells), 0, 0},
+					array<double, 3>{get_cell_max(cell_i, nr_of_cells), 1, 1}
 				);
 
 				accumulated[cell_i] += accumulated_value;
@@ -284,17 +287,17 @@ int main()
 			// accumulate across periodic boundary
 			accumulated[0] += get_accumulated_value(
 				item.first,
-				Vector3d(item.second - cell_length / 2, 0, 0),
-				Vector3d(item.second + cell_length / 2, 1, 1),
-				Vector3d(get_cell_max(nr_of_cells - 1, nr_of_cells), 0, 0),
-				Vector3d(get_cell_max(nr_of_cells - 1, nr_of_cells) + cell_length, 1, 1)
+				array<double, 3>{item.second - cell_length / 2, 0, 0},
+				array<double, 3>{item.second + cell_length / 2, 1, 1},
+				array<double, 3>{get_cell_max(nr_of_cells - 1, nr_of_cells), 0, 0},
+				array<double, 3>{get_cell_max(nr_of_cells - 1, nr_of_cells) + cell_length, 1, 1}
 			);
 			accumulated[nr_of_cells - 1] += get_accumulated_value(
 				item.first,
-				Vector3d(item.second - cell_length / 2, 0, 0),
-				Vector3d(item.second + cell_length / 2, 1, 1),
-				Vector3d(get_cell_min(0, nr_of_cells) - cell_length, 0, 0),
-				Vector3d(get_cell_min(0, nr_of_cells), 1, 1)
+				array<double, 3>{item.second - cell_length / 2, 0, 0},
+				array<double, 3>{item.second + cell_length / 2, 1, 1},
+				array<double, 3>{get_cell_min(0, nr_of_cells) - cell_length, 0, 0},
+				array<double, 3>{get_cell_min(0, nr_of_cells), 1, 1}
 			);
 		}
 

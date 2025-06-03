@@ -2,6 +2,7 @@
 Program for plotting time series of particle output of PAMHD with gnuplot.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #include "array"
@@ -51,6 +55,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "gensimcell.hpp"
 #include "prettyprint.hpp"
 
+#include "common_functions.hpp"
 #include "particle/save.hpp"
 #include "particle/variables.hpp"
 
@@ -574,8 +579,8 @@ int main(int argc, char* argv[])
 
 			const auto& pos = particle[Position()];
 			if (
-				pos.norm() < r_mag_start
-				or pos.norm() > r_mag_end
+				pamhd::norm(pos) < r_mag_start
+				or pamhd::norm(pos) > r_mag_end
 				or pos[0] < r_start[0]
 				or pos[1] < r_start[1]
 				or pos[2] < r_start[2]
@@ -588,8 +593,8 @@ int main(int argc, char* argv[])
 
 			const auto& vel = particle[Velocity()];
 			if (
-				vel.norm() < v_mag_start
-				or vel.norm() > v_mag_end
+				pamhd::norm(vel) < v_mag_start
+				or pamhd::norm(vel) > v_mag_end
 				or vel[0] < v_start[0]
 				or vel[1] < v_start[1]
 				or vel[2] < v_start[2]
@@ -602,7 +607,7 @@ int main(int argc, char* argv[])
 
 			double vertical_value = 0, horizontal_value = 0;
 			if (vertical_variable == "r") {
-				vertical_value = pos.norm();
+				vertical_value = pamhd::norm(pos);
 			} else if (vertical_variable == "rx") {
 				vertical_value = pos[0];
 			} else if (vertical_variable == "ry") {
@@ -610,7 +615,7 @@ int main(int argc, char* argv[])
 			} else if (vertical_variable == "rz") {
 				vertical_value = pos[2];
 			} else if (vertical_variable == "v") {
-				vertical_value = vel.norm();
+				vertical_value = pamhd::norm(vel);
 			} else if (vertical_variable == "vx") {
 				vertical_value = vel[0];
 			} else if (vertical_variable == "vy") {
@@ -618,14 +623,14 @@ int main(int argc, char* argv[])
 			} else if (vertical_variable == "vz") {
 				vertical_value = vel[2];
 			} else if (vertical_variable == "E") {
-				vertical_value = cell_data[Electric_Field()].norm();
+				vertical_value = pamhd::norm(cell_data[Electric_Field()]);
 			} else if (vertical_variable == "B") {
-				vertical_value = cell_data[pamhd::Magnetic_Field()].norm();
+				vertical_value = pamhd::norm(cell_data[pamhd::Magnetic_Field()]);
 			}
 			if (horizontal_variable == "fileno") {
 				horizontal_value = 0;
 			} else if (horizontal_variable == "r") {
-				horizontal_value = pos.norm();
+				horizontal_value = pamhd::norm(pos);
 			} else if (horizontal_variable == "rx") {
 				horizontal_value = pos[0];
 			} else if (horizontal_variable == "ry") {
@@ -633,7 +638,7 @@ int main(int argc, char* argv[])
 			} else if (horizontal_variable == "rz") {
 				horizontal_value = pos[2];
 			} else if (horizontal_variable == "v") {
-				horizontal_value = vel.norm();
+				horizontal_value = pamhd::norm(vel);
 			} else if (horizontal_variable == "vx") {
 				horizontal_value = vel[0];
 			} else if (horizontal_variable == "vy") {
@@ -689,7 +694,7 @@ int main(int argc, char* argv[])
 
 				double vertical_value = 0, horizontal_value = 0;
 				if (vertical_variable == "r") {
-					vertical_value = pos.norm();
+					vertical_value = pamhd::norm(pos);
 				} else if (vertical_variable == "rx") {
 					vertical_value = pos[0];
 				} else if (vertical_variable == "ry") {
@@ -697,7 +702,7 @@ int main(int argc, char* argv[])
 				} else if (vertical_variable == "rz") {
 					vertical_value = pos[2];
 				} else if (vertical_variable == "v") {
-					vertical_value = vel.norm();
+					vertical_value = pamhd::norm(vel);
 				} else if (vertical_variable == "vx") {
 					vertical_value = vel[0];
 				} else if (vertical_variable == "vy") {
@@ -705,14 +710,14 @@ int main(int argc, char* argv[])
 				} else if (vertical_variable == "vz") {
 					vertical_value = vel[2];
 				} else if (vertical_variable == "E") {
-					vertical_value = cell_data[Electric_Field()].norm();
+					vertical_value = pamhd::norm(cell_data[Electric_Field()]);
 				} else if (vertical_variable == "B") {
-					vertical_value = cell_data[pamhd::Magnetic_Field()].norm();
+					vertical_value = pamhd::norm(cell_data[pamhd::Magnetic_Field()]);
 				}
 				if (horizontal_variable == "fileno") {
 					horizontal_value = double(i);
 				} else if (horizontal_variable == "r") {
-					horizontal_value = pos.norm();
+					horizontal_value = pamhd::norm(pos);
 				} else if (horizontal_variable == "rx") {
 					horizontal_value = pos[0];
 				} else if (horizontal_variable == "ry") {
@@ -720,7 +725,7 @@ int main(int argc, char* argv[])
 				} else if (horizontal_variable == "rz") {
 					horizontal_value = pos[2];
 				} else if (horizontal_variable == "v") {
-					horizontal_value = vel.norm();
+					horizontal_value = pamhd::norm(vel);
 				} else if (horizontal_variable == "vx") {
 					horizontal_value = vel[0];
 				} else if (horizontal_variable == "vy") {

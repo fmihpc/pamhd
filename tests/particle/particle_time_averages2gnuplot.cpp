@@ -2,6 +2,7 @@
 Program for plotting particle statistics from particle program of PAMHD with gnuplot.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 #include "array"
@@ -49,10 +53,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "dccrg_mapping.hpp"
 #include "dccrg_topology.hpp"
 #include "mpi.h" // must be included before gensimcell
-#include "Eigen/Core" // must be included before gensimcell
+#include "Eigen/Core"
 #include "gensimcell.hpp"
 #include "prettyprint.hpp"
 
+#include "common_functions.hpp"
 #include "particle/common.hpp"
 #include "particle/save.hpp"
 #include "particle/variables.hpp"
@@ -639,7 +644,7 @@ int main(int argc, char* argv[])
 				const auto& pos = particle[Position()];
 				double horizontal_value = 0;
 				if (horizontal_variable == "r") {
-					horizontal_value = pos.norm();
+					horizontal_value = pamhd::norm(pos);
 				} else if (horizontal_variable == "rx") {
 					horizontal_value = pos[0];
 				} else if (horizontal_variable == "ry") {
@@ -687,7 +692,7 @@ int main(int argc, char* argv[])
 			get<1>(plot_data[bin_i]) = particles.size();
 		} else if (vertical_variable == "V") {
 			const auto vel = get_bulk_velocity<Mass, Velocity, Species_Mass>(particles);
-			get<1>(plot_data[bin_i]) = vel.norm();
+			get<1>(plot_data[bin_i]) = pamhd::norm(vel);
 		} else if (vertical_variable == "T") {
 			get<1>(plot_data[bin_i])
 				= get_temperature<
