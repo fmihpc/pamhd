@@ -2,6 +2,7 @@
 Two population version rusanov.hpp
 
 Copyright 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -28,6 +29,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 */
 
 
@@ -135,11 +139,31 @@ template <
 		vacuum_permeability
 	);
 
-	flux_neg += state_neg * max_signal;
-	flux_pos -= state_pos * max_signal;
+	flux_neg[Mas] = 0.5 * area * dt
+		* (flux_neg[Mas] + state_neg[Mas] * max_signal);
+	flux_neg[Mom] = pamhd::mul(0.5 * area * dt,
+		pamhd::add(
+			flux_neg[Mom],
+			pamhd::mul(state_neg[Mom], max_signal)));
+	flux_neg[Nrj] = 0.5 * area * dt
+		* (flux_neg[Nrj] + state_neg[Nrj] * max_signal);
+	flux_neg[Mag] = pamhd::mul(0.5 * area * dt,
+		pamhd::add(
+			flux_neg[Mag],
+			pamhd::mul(state_neg[Mag], max_signal)));
 
-	flux_neg *= 0.5 * area * dt;
-	flux_pos *= 0.5 * area * dt;
+	flux_pos[Mas] = 0.5 * area * dt
+		* (flux_pos[Mas] - state_pos[Mas] * max_signal);
+	flux_pos[Mom] = pamhd::mul(0.5 * area * dt,
+		pamhd::add(
+			flux_pos[Mom],
+			pamhd::mul(state_pos[Mom], -max_signal)));
+	flux_pos[Nrj] = 0.5 * area * dt
+		* (flux_pos[Nrj] - state_pos[Nrj] * max_signal);
+	flux_pos[Mag] = pamhd::mul(0.5 * area * dt,
+		pamhd::add(
+			flux_pos[Mag],
+			pamhd::mul(state_pos[Mag], -max_signal)));
 
 	return std::make_tuple(flux_neg, flux_pos, max_signal);
 }

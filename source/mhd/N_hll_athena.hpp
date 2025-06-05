@@ -5,6 +5,7 @@ Copyright 2003 Thomas A. Gardiner
 Copyright 2003 Peter J. Teuben
 Copyright 2003 John F. Hawley
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,6 +29,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "string"
 #include "tuple"
 
+#include "common_functions.hpp"
 #include "mhd/common.hpp"
 #include "mhd/variables.hpp"
 
@@ -96,10 +98,10 @@ template <
 			),
 
 		pressure_magnetic_neg
-			= state_neg[Mag].squaredNorm() / (2 * vacuum_permeability),
+			= pamhd::norm2(state_neg[Mag]) / (2 * vacuum_permeability),
 
 		pressure_magnetic_pos
-			= state_pos[Mag].squaredNorm() / (2 * vacuum_permeability),
+			= pamhd::norm2(state_pos[Mag]) / (2 * vacuum_permeability),
 
 		fast_magnetosonic_neg
 			= get_fast_magnetosonic_speed(
@@ -207,10 +209,22 @@ template <
 		vacuum_permeability
 	);
 
-	flux_neg -= state_neg * bm;
-	flux_pos -= state_pos * bp;
-	flux_neg *= bp / (bp - bm) * area * dt;
-	flux_pos *= bm / (bm - bp) * area * dt;
+	const auto
+		neg_factor = bp / (bp - bm) * area * dt,
+		pos_factor = bm / (bm - bp) * area * dt;
+	flux_neg[Mas] = neg_factor * (flux_neg[Mas] - state_neg[Mas] * bm);
+	flux_neg[Mom] = pamhd::mul(neg_factor,
+		pamhd::add(flux_neg[Mom], pamhd::mul(state_neg[Mom], -bm)));
+	flux_neg[Nrj] = neg_factor * (flux_neg[Nrj] - state_neg[Nrj] * bm);
+	flux_neg[Mag] = pamhd::mul(neg_factor,
+		pamhd::add(flux_neg[Mag], pamhd::mul(state_neg[Mag], -bm)));
+
+	flux_pos[Mas] = pos_factor * (flux_pos[Mas] - state_pos[Mas] * bp);
+	flux_pos[Mom] = pamhd::mul(pos_factor,
+		pamhd::add(flux_pos[Mom], pamhd::mul(state_pos[Mom], -bp)));
+	flux_pos[Nrj] = pos_factor * (flux_pos[Nrj] - state_pos[Nrj] * bp);
+	flux_pos[Mom] = pamhd::mul(pos_factor,
+		pamhd::add(flux_pos[Mom], pamhd::mul(state_pos[Mom], -bp)));
 
 	return std::make_tuple(flux_neg, flux_pos, std::max(std::fabs(bp), std::fabs(bm)));
 }

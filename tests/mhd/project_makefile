@@ -141,7 +141,7 @@ tests/mhd/reference.exe: \
 tests/mhd/two_reference.exe: \
   tests/mhd/two_reference.cpp \
   $(TEST_MHD_COMMON_DEPS)
-	@printf "CXX $<\n" && $(CXX) $(TEST_MHD_COMPILE_COMMOM)
+	@printf "CXX $<\n" && $(CXX) $(TEST_MHD_COMPILE_COMMOM) $(PRETTYPRINT_CPPFLAGS)
 
 tests/mhd/test.exe: \
   tests/mhd/test.cpp \

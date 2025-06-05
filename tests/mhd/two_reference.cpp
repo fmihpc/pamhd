@@ -2,6 +2,7 @@
 Two-fluid reference test program for MHD solvers of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -16,6 +17,9 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+
+Author(s): Ilja Honkonen
 */
 
 
@@ -34,9 +38,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "string"
 #include "type_traits"
 
-#include "Eigen/Core"
 #include "gensimcell.hpp"
+#include "prettyprint.hpp"
 
+#include "common_functions.hpp"
 #include "common_variables.hpp"
 #include "mhd/common.hpp"
 #include "mhd/N_hll_athena.hpp"
@@ -141,7 +146,7 @@ const auto Mas
 	};
 const auto Mom
 	= [](Cell& cell_data)->typename pamhd::mhd::Momentum_Density::data_type{
-		return Mom1(cell_data) + Mom2(cell_data);
+		return pamhd::add(Mom1(cell_data), Mom2(cell_data));
 	};
 const auto Nrj
 	= [](Cell& cell_data)->typename pamhd::mhd::Total_Energy_Density::data_type{
@@ -418,45 +423,53 @@ template <
 			mass_frac_spec2_pos = Mas2(neighbor) / Mas(neighbor);
 		// no flux into first cell_i
 		if (cell_i > 0) {
-			Mag_f(cell) -= flux_neg[mag] + flux_pos[mag];
+			Mag_f(cell) = pamhd::add(Mag_f(cell),
+				pamhd::neg(pamhd::add(
+					flux_neg[mag],
+					flux_pos[mag])));
 			// positive flux flows neg->pos, i.e. out of current cell
 			Mas1_f(cell)
 				-= mass_frac_spec1_neg * flux_neg[mas]
 				+ mass_frac_spec1_pos * flux_pos[mas];
-			Mom1_f(cell)
-				-= mass_frac_spec1_neg * flux_neg[mom]
-				+ mass_frac_spec1_pos * flux_pos[mom];
+			Mom1_f(cell) = pamhd::add(Mom1_f(cell),
+				pamhd::neg(pamhd::add(
+					pamhd::mul(mass_frac_spec1_neg, flux_neg[mom]),
+					pamhd::mul(mass_frac_spec1_pos, flux_pos[mom]))));
 			Nrj1_f(cell)
 				-= mass_frac_spec1_neg * flux_neg[nrj]
 				+ mass_frac_spec1_pos * flux_pos[nrj];
 			Mas2_f(cell)
 				-= mass_frac_spec2_neg * flux_neg[mas]
 				+ mass_frac_spec2_pos * flux_pos[mas];
-			Mom2_f(cell)
-				-= mass_frac_spec2_neg * flux_neg[mom]
-				+ mass_frac_spec2_pos * flux_pos[mom];
+			Mom2_f(cell) = pamhd::add(Mom2_f(cell),
+				pamhd::neg(pamhd::add(
+					pamhd::mul(mass_frac_spec2_neg, flux_neg[mom]),
+					pamhd::mul(mass_frac_spec2_pos, flux_pos[mom]))));
 			Nrj2_f(cell)
 				-= mass_frac_spec2_neg * flux_neg[nrj]
 				+ mass_frac_spec2_pos * flux_pos[nrj];
 		}
 		// no flux into last cell_i
 		if (cell_i < std::tuple_size<Grid>::value - 2) {
-			Mag_f(neighbor) += flux_neg[mag] + flux_pos[mag];
+			Mag_f(neighbor) = pamhd::add(pamhd::add(
+				Mag_f(neighbor), flux_neg[mag]), flux_pos[mag]);
 			Mas1_f(neighbor)
 				+= mass_frac_spec1_neg * flux_neg[mas]
 				+ mass_frac_spec1_pos * flux_pos[mas];
-			Mom1_f(neighbor)
-				+= mass_frac_spec1_neg * flux_neg[mom]
-				+ mass_frac_spec1_pos * flux_pos[mom];
+			Mom1_f(neighbor) = pamhd::add(pamhd::add(
+				Mom1_f(neighbor),
+				pamhd::mul(mass_frac_spec1_neg, flux_neg[mom])),
+				pamhd::mul(mass_frac_spec1_pos, flux_pos[mom]));
 			Nrj1_f(neighbor)
 				+= mass_frac_spec1_neg * flux_neg[nrj]
 				+ mass_frac_spec1_pos * flux_pos[nrj];
 			Mas2_f(neighbor)
 				+= mass_frac_spec2_neg * flux_neg[mas]
 				+ mass_frac_spec2_pos * flux_pos[mas];
-			Mom2_f(neighbor)
-				+= mass_frac_spec2_neg * flux_neg[mom]
-				+ mass_frac_spec2_pos * flux_pos[mom];
+			Mom2_f(neighbor) = pamhd::add(pamhd::add(
+				Mom2_f(neighbor),
+				pamhd::mul(mass_frac_spec2_neg, flux_neg[mom])),
+				pamhd::mul(mass_frac_spec2_pos, flux_pos[mom]));
 			Nrj2_f(neighbor)
 				+= mass_frac_spec2_neg * flux_neg[nrj]
 				+ mass_frac_spec2_pos * flux_pos[nrj];

@@ -765,14 +765,17 @@ template <
 	const Total_Energy_Density_Flux_Getters Nrj_f,
 	const Magnetic_Field_Flux_Getter Mag_f
 ) {
-	Mag(data) += Mag_f(data) * factor;
+	Mag(data) = pamhd::add(Mag(data),
+		pamhd::mul(Mag_f(data), factor));
 
 	Mas.first(data) += Mas_f.first(data) * factor;
-	Mom.first(data) += Mom_f.first(data) * factor;
+	Mom.first(data) = pamhd::add(Mom.first(data),
+		pamhd::mul(Mom_f.first(data), factor));
 	Nrj.first(data) += Nrj_f.first(data) * factor;
 
 	Mas.second(data) += Mas_f.second(data) * factor;
-	Mom.second(data) += Mom_f.second(data) * factor;
+	Mom.second(data) = pamhd::add(Mom.second(data),
+		pamhd::mul(Mom_f.second(data), factor));
 	Nrj.second(data) += Nrj_f.second(data) * factor;
 }
 
