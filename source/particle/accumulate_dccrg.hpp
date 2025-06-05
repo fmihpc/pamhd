@@ -481,6 +481,123 @@ template<
 }
 
 
+//! accumulates ion electric charge and current densities.
+template<
+	class Cell_Iterator,
+	class Grid,
+	class Particles_Getter,
+	class Particle_Position_Getter,
+	class Particle_Velocity_Getter,
+	class Particle_Mass_Getter,
+	class Particle_Species_Mass_Getter,
+	class Particle_Charge_To_Mass_Ratio_Getter,
+	class Volume_Charge_Density_Getter,
+	class Volume_Current_Density_Getter,
+	class Cell_Type_Getter
+> void accumulate_hyb(
+	const Cell_Iterator& cells,
+	Grid& grid,
+	const Particles_Getter& Part,
+	const Particle_Position_Getter& PPos,
+	const Particle_Velocity_Getter& PVel,
+	const Particle_Mass_Getter& PMas,
+	const Particle_Species_Mass_Getter& PSMas,
+	const Particle_Charge_To_Mass_Ratio_Getter& PC2M,
+	const Volume_Charge_Density_Getter& Vol_Qi,
+	const Volume_Current_Density_Getter& Vol_Ji,
+	const Cell_Type_Getter& CType
+) {
+	using std::array;
+	using std::runtime_error;
+	using std::to_string;
+
+	if (
+		grid.topology.is_periodic(0)
+		or grid.topology.is_periodic(1)
+		or grid.topology.is_periodic(2)
+	) {
+		throw runtime_error(
+			__FILE__ "(" + to_string(__LINE__) + "): "
+			"Periodic grid not supported.");
+	}
+	if (grid.get_maximum_refinement_level() > 0) {
+		throw runtime_error(
+			__FILE__ "(" + to_string(__LINE__) + "): "
+			"Refined grid not supported.");
+	}
+
+	const auto
+		grid_start = grid.geometry.get_start(),
+		grid_end = grid.geometry.get_end();
+	const array<double, 3> grid_len{
+		grid_end[0] - grid_start[0],
+		grid_end[1] - grid_start[1],
+		grid_end[2] - grid_start[2]
+	};
+
+	for (const auto& cell: cells) {
+		auto& vol_qi = Vol_Qi.data(*cell.data);
+		vol_qi = 0;
+		auto& vol_ji = Vol_Ji.data(*cell.data);
+		vol_ji = {0, 0, 0};
+		if (CType.data(*cell.data) < 0) {
+			continue;
+		}
+
+		const auto [
+			cell_min, cell_max, cell_length, cell_center
+		] = get_cell_geometry(cell.id, grid.geometry);
+		const auto cell_vol = cell_length[0]*cell_length[1]*cell_length[2];
+
+		const auto accumulate_to_cell = [&](
+			const auto& cmin,
+			const auto& cmax,
+			auto& part
+		) {
+			const auto pos = PPos(part);
+			const std::array<double, 3>
+				length{
+					cmax[0] - cmin[0],
+					cmax[1] - cmin[1],
+					cmax[2] - cmin[2]
+				},
+				value_box_min{
+					pos[0] - length[0] / 2,
+					pos[1] - length[1] / 2,
+					pos[2] - length[2] / 2},
+				value_box_max{
+					pos[0] + length[0] / 2,
+					pos[1] + length[1] / 2,
+					pos[2] + length[2] / 2};
+			const auto intr_vol = get_intersection_volume(
+				value_box_min, value_box_max, cmin, cmax);
+
+			const auto qi = PMas(part) * PC2M(part);
+			const auto qi_contrib
+				= qi * intr_vol
+				/ (length[0]*length[1]*length[2]);
+			vol_qi += qi_contrib;
+			vol_ji[0] += qi_contrib * PVel(part)[0];
+			vol_ji[1] += qi_contrib * PVel(part)[1];
+			vol_ji[2] += qi_contrib * PVel(part)[2];
+		};
+		for (auto& particle: Part(*cell.data)) {
+			accumulate_to_cell(cell_min, cell_max, particle);
+		}
+		for (const auto& neighbor: cell.neighbors_of) {
+			const auto& fn = neighbor.face_neighbor;
+			const auto& en = neighbor.edge_neighbor;
+			const auto& vn = neighbor.vertex_neighbor;
+			if (fn == 0 and en[0] < 0 and vn[0] == 0) continue;
+
+			for (auto& particle: Part(*neighbor.data)) {
+				accumulate_to_cell(cell_min, cell_max, particle);
+			}
+		}
+	}
+}
+
+
 /*!
 Allocates memory for lists of accumulated particle data in copies of remote neighbors of local cells.
 */
