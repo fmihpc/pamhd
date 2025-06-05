@@ -340,6 +340,219 @@ template<
 }
 
 
+/*!
+Propagates particles in given cells for a given amount of time.
+
+Returns the longest allowed time step for given cells
+and their neighbors. Particles which end up outside of the
+cell in which they are stored are moved to the External_Particles_T
+list of their previous cell and added to Particle_Destinations_T
+information.
+
+Assumes grid was initialized with neighbhorhood size of 1 and
+maximum refinement level of 0.
+*/
+template<
+	class Cell_Iterator,
+	class Grid,
+	class Background_Magnetic_Field,
+	class Vertex_Electric_Field_Getter,
+	class Nr_Particles_External_Getter,
+	class Particles_Internal_Getter,
+	class Particles_External_Getter,
+	class Particle_Max_Spatial_Velocity_Getter,
+	class Particle_Max_Angular_Velocity_Getter,
+	class Particle_Position_Getter,
+	class Particle_Velocity_Getter,
+	class Particle_Charge_Mass_Ratio_Getter,
+	class Particle_Mass_Getter,
+	class Particle_Destination_Cell_Getter,
+	class Cell_Type_Getter
+> void solve_hyb(
+	const double& dt,
+	const Cell_Iterator& cells,
+	Grid& grid,
+	const Background_Magnetic_Field& bg_B,
+	const double& vacuum_permeability,
+	const Vertex_Electric_Field_Getter& Vert_E,
+	const Nr_Particles_External_Getter& Nr_Ext,
+	const Particles_Internal_Getter& Part_Int,
+	const Particles_External_Getter& Part_Ext,
+	const Particle_Max_Spatial_Velocity_Getter& Max_v_part,
+	const Particle_Max_Angular_Velocity_Getter& Max_ω_part,
+	const Particle_Position_Getter& Part_Pos,
+	const Particle_Velocity_Getter& Part_Vel,
+	const Particle_Charge_Mass_Ratio_Getter& Part_C2M,
+	const Particle_Mass_Getter& Part_Mas,
+	const Particle_Destination_Cell_Getter& Part_Des,
+	const Cell_Type_Getter& CType,
+	const auto& Vert_B
+) {
+	using std::abs;
+	using std::isnan;
+	using std::is_same;
+	using std::max;
+	using std::min;
+
+	if (grid.get_maximum_refinement_level() > 0) {
+		throw std::runtime_error("Only maximum refinement level 0 supported.");
+	}
+
+	bool update_copies = false;
+	if (update_copies) {
+		grid.update_copies_of_remote_neighbors();
+	}
+
+	std::pair<double, double> max_time_step{std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
+	const std::array<double, 3>
+		grid_start{grid.geometry.get_start()},
+		grid_end{grid.geometry.get_end()},
+		grid_center{
+			(grid_end[0]-grid_start[0]) / 2,
+			(grid_end[1]-grid_start[1]) / 2,
+			(grid_end[2]-grid_start[2]) / 2
+		};
+	for (const auto& cell: cells) {
+		Max_v_part.data(*cell.data) =
+		Max_ω_part.data(*cell.data) = 0;
+		if (CType.data(*cell.data) < 0) {
+			Part_Int(*cell.data).clear();
+			Part_Ext.data(*cell.data).clear();
+			Nr_Ext.data(*cell.data) = 0;
+			continue;
+		}
+
+		const auto
+			cell_min = grid.geometry.get_min(cell.id),
+			cell_max = grid.geometry.get_max(cell.id),
+			cell_center = grid.geometry.get_center(cell.id),
+			cell_length = grid.geometry.get_length(cell.id);
+
+		for (size_t part_i = 0; part_i < Part_Int(*cell.data).size(); part_i++) {
+			auto
+				pos = Part_Pos(Part_Int(*cell.data)[part_i]),
+				// emulate 2d,1d,0d sim from B0 perspective
+				bg_pos = pos;
+			const auto lvl0 = grid.mapping.length.get();
+			for (size_t dim = 0; dim < 3; dim++) {
+				if (lvl0[dim] == 1) {
+					bg_pos[dim] = grid_center[dim];
+				}
+			}
+			const std::array<double, 3> B_at_pos = pamhd::math::vertex2r(pos, cell_max, cell_length, Vert_B.data(*cell.data));
+			const double B_at_pos_abs = std::sqrt(
+				B_at_pos[0]*B_at_pos[0]
+				+ B_at_pos[1]*B_at_pos[1]
+				+ B_at_pos[2]*B_at_pos[2]
+			);
+
+			auto vel = Part_Vel(Part_Int(*cell.data)[part_i]);
+			Max_v_part.data(*cell.data) = max(
+				Max_v_part.data(*cell.data),
+				pamhd::norm(vel));
+			const auto& c2m = Part_C2M(Part_Int(*cell.data)[part_i]);
+			Max_ω_part.data(*cell.data) = max(
+				Max_ω_part.data(*cell.data),
+				abs(c2m) * B_at_pos_abs);
+
+			const auto E_at_pos = pamhd::math::vertex2r(
+				pos, cell_max, cell_length, Vert_E.data(*cell.data));
+
+			std::tie(pos, vel) = propagate(
+				pos, vel, E_at_pos, B_at_pos, c2m, dt
+			);
+			Part_Vel(Part_Int(*cell.data)[part_i]) = vel;
+
+			// take into account periodic grid
+			const auto real_pos
+				= grid.geometry.get_real_coordinate(
+					{pos[0], pos[1], pos[2]});
+
+			Part_Pos(Part_Int(*cell.data)[part_i]) = {
+				real_pos[0], real_pos[1], real_pos[2]
+			};
+
+			// remove from simulation if particle not inside of grid
+			if (
+				isnan(real_pos[0])
+				or isnan(real_pos[1])
+				or isnan(real_pos[2])
+			) {
+
+				Part_Int(*cell.data).erase(Part_Int(*cell.data).begin() + part_i);
+				part_i--;
+
+			// move to ext list if particle outside of current cell
+			} else if (
+				real_pos[0] < cell_min[0]
+				or real_pos[0] > cell_max[0]
+				or real_pos[1] < cell_min[1]
+				or real_pos[1] > cell_max[1]
+				or real_pos[2] < cell_min[2]
+				or real_pos[2] > cell_max[2]
+			) {
+				uint64_t destination = dccrg::error_cell;
+
+				for (const auto& neighbor: cell.neighbors_of) {
+					const auto
+						neighbor_min = grid.geometry.get_min(neighbor.id),
+						neighbor_max = grid.geometry.get_max(neighbor.id);
+
+					if (
+						real_pos[0] >= neighbor_min[0]
+						and real_pos[0] <= neighbor_max[0]
+						and real_pos[1] >= neighbor_min[1]
+						and real_pos[1] <= neighbor_max[1]
+						and real_pos[2] >= neighbor_min[2]
+						and real_pos[2] <= neighbor_max[2]
+					) {
+						destination = neighbor.id;
+						break;
+					}
+				}
+
+				if (destination != dccrg::error_cell) {
+
+					const auto index = Part_Ext.data(*cell.data).size();
+
+					Part_Ext.data(*cell.data).resize(index + 1);
+					assign(
+						Part_Ext.data(*cell.data)[index],
+						Part_Int(*cell.data)[part_i]
+					);
+					Part_Des(Part_Ext.data(*cell.data)[index]) = destination;
+
+					Part_Int(*cell.data).erase(Part_Int(*cell.data).begin() + part_i);
+					part_i--;
+
+				} else {
+
+					std::cerr << __FILE__ << "(" << __LINE__ << "): "
+						<< " No destination found for particle at " << real_pos
+						<< " propagated from " << real_pos
+						<< " with dt " << dt
+						<< " in cell " << cell.id
+						<< " of length " << cell_length
+						<< " at " << cell_center
+						<< " from neighbors ";
+					for (const auto& neighbor: cell.neighbors_of) {
+						std::cerr << neighbor.id << " ";
+					}
+					std::cerr << std::endl;
+					abort();
+				}
+			}
+		}
+
+		Nr_Ext.data(*cell.data) = Part_Ext.data(*cell.data).size();
+	}
+	Part_Ext.type().is_stale = true;
+	Nr_Ext.type().is_stale = true;
+	Max_v_part.type().is_stale = true;
+	Max_ω_part.type().is_stale = true;
+}
+
+
 template<
 	class Nr_Particles_T,
 	class Particles_T,
@@ -716,6 +929,235 @@ double timestep(
 			vacuum_permeability,
 			true
 		);
+
+		Cell::set_transfer_all(true, pamhd::particle::Particles_External());
+		grid.start_remote_neighbor_copy_updates();
+
+		pamhd::particle::incorporate_external_particles<
+			pamhd::particle::Nr_Particles_Internal,
+			pamhd::particle::Particles_Internal,
+			pamhd::particle::Particles_External,
+			pamhd::particle::Destination_Cell
+		>(grid.inner_cells(), grid);
+
+		grid.wait_remote_neighbor_copy_update_receives();
+
+		pamhd::particle::incorporate_external_particles<
+			pamhd::particle::Nr_Particles_Internal,
+			pamhd::particle::Particles_Internal,
+			pamhd::particle::Particles_External,
+			pamhd::particle::Destination_Cell
+		>(grid.outer_cells(), grid);
+
+		pamhd::particle::remove_external_particles<
+			pamhd::particle::Nr_Particles_External,
+			pamhd::particle::Particles_External
+		>(grid.inner_cells(), grid);
+
+		grid.wait_remote_neighbor_copy_update_sends();
+		Cell::set_transfer_all(false, pamhd::particle::Particles_External());
+
+		pamhd::particle::remove_external_particles<
+			pamhd::particle::Nr_Particles_External,
+			pamhd::particle::Particles_External
+		>(grid.outer_cells(), grid);
+	}
+
+	// update internal particles
+	for (const auto& cell: grid.local_cells()) {
+		// (ab)use external number counter as internal number counter
+		(*cell.data)[pamhd::particle::Nr_Particles_External()]
+			= (*cell.data)[pamhd::particle::Particles_Internal()].size();
+	}
+	Cell::set_transfer_all(true,
+		pamhd::particle::Nr_Particles_External()
+	);
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false,
+		pamhd::particle::Nr_Particles_External()
+	);
+
+	pamhd::particle::resize_receiving_containers<
+		pamhd::particle::Nr_Particles_External,
+		pamhd::particle::Particles_Internal
+	>(grid.remote_cells(), grid);
+	Cell::set_transfer_all(true, pamhd::particle::Particles_Internal());
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false, pamhd::particle::Particles_Internal());
+
+	for (const auto& cell: grid.local_cells()) {
+		(*cell.data)[pamhd::particle::Nr_Particles_External()] = 0;
+	}
+	Cell::set_transfer_all(true,
+		pamhd::particle::Nr_Particles_External()
+	);
+	grid.update_copies_of_remote_neighbors();
+	Cell::set_transfer_all(false,
+		pamhd::particle::Nr_Particles_External()
+	);
+
+	return total_dt;
+
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
+
+
+//! returns length of timestep taken
+double timestep_hyb(
+	const auto& simulation_time,
+	auto& grid,
+	auto& options,
+	const auto& Part_Int,
+	const auto& Part_Pos,
+	const auto& Part_Mas,
+	const auto& Part_Mas_Cell,
+	const auto& Part_SpM,
+	const auto& Part_SpM_Cell,
+	const auto& Part_Vel,
+	const auto& Part_Vel_Cell,
+	const auto& Part_Ekin,
+	const auto& Nr_Particles,
+	const auto& Part_Nr,
+	const auto& Accu_List_Number_Of_Particles_Getter,
+	const auto& Accu_List_Bulk_Mass_Getter,
+	const auto& Accu_List_Bulk_Velocity_Getter,
+	const auto& Accu_List_Bulk_Relative_Velocity2_Getter,
+	const auto& Accu_List_Target_Getter,
+	const auto& Accu_List_Length_Getter,
+	const auto& Accu_List_Getter,
+	const auto& Nr_Accumulated_To_Cells_Getter,
+	const auto& Accumulated_To_Cells_Getter,
+	const auto& Bulk_Velocity,
+	const auto& CType,
+	const auto& adiabatic_index,
+	const auto& vacuum_permeability,
+	const auto& boltzmann,
+	const auto& Vol_J,
+	const auto& Edge_J,
+	const auto& Vert_J,
+	const auto& Vert_E,
+	const auto& Nr_Ext,
+	const auto& Max_v_part,
+	const auto& Max_ω_part,
+	const auto& Part_Ext,
+	const auto& Part_C2M,
+	const auto& Part_Des,
+	const auto& Face_dB,
+	const auto& Bg_B,
+	const auto& Substep,
+	const auto& Substep_Min,
+	const auto& Substep_Max,
+	const auto& Face_B,
+	const auto& background_B,
+	const auto& Timestep,
+	const auto& max_time_step,
+	const auto& particle_time_step_factor,
+	const auto& Vol_Qi,
+	const auto& Vol_Ji,
+	const auto& Vert_B
+) try {
+	using std::cerr;
+	using std::cout;
+	using std::endl;
+	using std::min;
+	using std::numeric_limits;
+
+	using Cell = std::remove_reference_t<decltype(grid)>::cell_data_type;
+
+	set_minmax_substepping_period(
+		simulation_time, grid, options,
+		Substep_Min, Substep_Max
+	);
+
+	for (const auto& cell: grid.local_cells()) {
+		Timestep.data(*cell.data) = numeric_limits<double>::max();
+	}
+
+	pamhd::particle::minimize_timestep(
+		grid, particle_time_step_factor, CType,
+		Timestep, Max_v_part, Max_ω_part
+	);
+
+	const double sub_dt = set_minmax_substepping_period(
+		grid, max_time_step, CType,
+		Timestep, Substep_Min, Substep_Max
+	);
+
+	restrict_substepping_period(
+		grid,
+		Substep,
+		Substep_Max,
+		CType
+	);
+
+	const int max_substep = update_substeps(grid, CType, Substep);
+	if (max_substep > 1) {
+		cerr << "Substep > 1 (level > 0) not supported." << endl;
+		MPI_Finalize();
+		exit(EXIT_FAILURE);
+	}
+	if (grid.get_rank() == 0) {
+		cout << "Substep: " << sub_dt
+			<< ", largest substep period: " << max_substep << endl;
+	}
+
+	double total_dt = 0;
+	for (int substep = 1; substep <= max_substep; substep += 1) {
+		total_dt += sub_dt;
+
+		pamhd::math::get_curl_face2edge(grid, Face_B, Edge_J, CType);
+		pamhd::math::edge2vertex(grid, Edge_J, Vert_J, CType);
+		pamhd::math::vertex2volume(grid, Vert_J, Vol_J, CType);
+
+		pamhd::particle::accumulate_hyb(
+			grid.local_cells(),
+			grid,
+			Part_Int,
+			Part_Pos,
+			Part_Vel,
+			Part_Mas,
+			Part_SpM,
+			Part_C2M,
+			Vol_Qi,
+			Vol_Ji,
+			CType
+		);
+
+		// outer particles
+		pamhd::particle::solve_hyb(
+			sub_dt, grid.outer_cells(), grid,
+			background_B, vacuum_permeability,
+			Vert_E, Nr_Ext, Part_Int, Part_Ext,
+			Max_v_part, Max_ω_part, Part_Pos, Part_Vel,
+			Part_C2M, Part_Mas, Part_Des, CType, Vert_B
+		);
+
+		Cell::set_transfer_all(true,
+			Bg_B.type(), Substep.type(), CType.type(), Nr_Ext.type());
+		grid.start_remote_neighbor_copy_updates();
+
+		// inner particles
+		pamhd::particle::solve_hyb(
+			sub_dt, grid.inner_cells(), grid,
+			background_B, vacuum_permeability,
+			Vert_E, Nr_Ext, Part_Int, Part_Ext,
+			Max_v_part, Max_ω_part, Part_Pos, Part_Vel,
+			Part_C2M, Part_Mas, Part_Des, CType, Vert_B
+		);
+
+		grid.wait_remote_neighbor_copy_update_receives();
+
+		pamhd::particle::resize_receiving_containers<
+			pamhd::particle::Nr_Particles_External,
+			pamhd::particle::Particles_External
+		>(grid.remote_cells(), grid);
+
+		grid.wait_remote_neighbor_copy_update_sends();
+		Cell::set_transfer_all(false,
+			Bg_B.type(), Substep.type(), CType.type(), Nr_Ext.type());
 
 		Cell::set_transfer_all(true, pamhd::particle::Particles_External());
 		grid.start_remote_neighbor_copy_updates();

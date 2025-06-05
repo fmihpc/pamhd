@@ -25,7 +25,8 @@ TESTS_PARTICLE_EXECUTABLES = \
   tests/particle/particle_time_series2gnuplot.exe \
   tests/particle/particle_time_averages2gnuplot.exe \
   tests/particle/single1d.exe \
-  tests/particle/solar_wind_box.exe
+  tests/particle/solar_wind_box.exe \
+  tests/particle/hybrid_box.exe
 
 TESTS_PARTICLE_TESTS = \
   tests/particle/solve1.tst \
@@ -342,6 +343,29 @@ tests/particle/solar_wind_box.exe: \
   source/mhd/rusanov.hpp \
   source/mhd/solve.hpp \
   source/mhd/variables.hpp
+	@printf "MPICXX $<\n" && $(MPICXX) \
+	  $(TEST_PARTICLE_SOLVE_COMPILE) \
+	  $(MUPARSERX_CPPFLAGS) \
+	  $(MUPARSERX_LDFLAGS) \
+	  $(MUPARSERX_LIBS) \
+	  $(PHIPROF_CPPFLAGS)
+
+tests/particle/hybrid_box.exe: \
+  tests/particle/hybrid_box.cpp \
+  $(TEST_PARTICLE_COMMON_DEPS) \
+  source/background_magnetic_field.hpp \
+  source/math/interpolation.hpp \
+  source/math/nabla.hpp \
+  source/particle/save.hpp \
+  source/particle/initialize.hpp \
+  source/particle/accumulate.hpp \
+  source/particle/accumulate_dccrg.hpp \
+  source/particle/accumulation_variables.hpp \
+  source/particle/options.hpp \
+  source/particle/solve_dccrg.hpp \
+  source/particle/splitter.hpp \
+  source/solar_wind_box_options.hpp \
+  source/simulation_options.hpp
 	@printf "MPICXX $<\n" && $(MPICXX) \
 	  $(TEST_PARTICLE_SOLVE_COMPILE) \
 	  $(MUPARSERX_CPPFLAGS) \
