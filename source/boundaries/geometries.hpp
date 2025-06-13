@@ -77,7 +77,7 @@ public:
 
 	Geometries(const rapidjson::Value& object)
 	{
-		this->set_geometries(object);
+		this->set(object);
 	}
 
 
