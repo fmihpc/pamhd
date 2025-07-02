@@ -202,7 +202,12 @@ template<class Coord_T, class Data_T> Data_T interpolate(
 			* max(0.0, 1 - (end[2] - coord[2]) / dr[2])
 	}};
 
-	Data_T ret_val = {0, 0, 0};
+	Data_T ret_val;
+	if constexpr (requires {ret_val[2] = 0;}) {
+		ret_val = {0, 0, 0};
+	} else {
+		ret_val = 0;
+	}
 	for (size_t i = 0; i < data.size(); i++) {
 		ret_val = pamhd::add(ret_val, pamhd::mul(weights[i], data[i]));
 	}
