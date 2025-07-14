@@ -44,9 +44,6 @@ Author(s): Ilja Honkonen
 #include "rapidjson/error/en.h"
 
 #include "background_magnetic_field.hpp"
-#include "boundaries/geometries.hpp"
-#include "boundaries/multivariable_boundaries.hpp"
-#include "boundaries/multivariable_initial_conditions.hpp"
 #include "grid/amr.hpp"
 #include "grid/options.hpp"
 #include "grid/solar_wind_box.hpp"
