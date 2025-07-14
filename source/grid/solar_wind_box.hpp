@@ -84,14 +84,14 @@ template<
 		r8 = sqrt(ex*ex + ey*ey + ez*ez);
 	bool inside = false, outside = false;
 	if (
-		r1 < inner_boundary_radius
-		or r2 < inner_boundary_radius
-		or r3 < inner_boundary_radius
-		or r4 < inner_boundary_radius
-		or r5 < inner_boundary_radius
-		or r6 < inner_boundary_radius
-		or r7 < inner_boundary_radius
-		or r8 < inner_boundary_radius
+		r1 <= inner_boundary_radius
+		or r2 <= inner_boundary_radius
+		or r3 <= inner_boundary_radius
+		or r4 <= inner_boundary_radius
+		or r5 <= inner_boundary_radius
+		or r6 <= inner_boundary_radius
+		or r7 <= inner_boundary_radius
+		or r8 <= inner_boundary_radius
 	) inside = true;
 	if (
 		r1 > inner_boundary_radius

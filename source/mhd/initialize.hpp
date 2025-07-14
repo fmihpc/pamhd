@@ -45,6 +45,7 @@ Author(s): Ilja Honkonen
 
 #include "dccrg.hpp"
 
+#include "grid/amr.hpp"
 #include "common_functions.hpp"
 #include "mhd/common.hpp"
 #include "mhd/variables.hpp"
@@ -54,7 +55,12 @@ namespace pamhd {
 namespace mhd {
 
 
-//! sets initial state of MHD simulation and zeroes fluxes
+/*! Sets initial state of MHD simulation and zeroes fluxes
+
+Emulates 1d/2d system if grid length is initially 1 cell
+in some dimension(s), even if it has been refined, in which
+case some cells will overlap in affected dimension(s).
+*/
 template <
 	class Geometries,
 	class Init_Cond,
@@ -112,7 +118,7 @@ template <
 		Mom_f(*cell.data, -3) =
 		Mom_f(*cell.data, +3) = {0, 0, 0};
 
-		const auto c = grid.geometry.get_center(cell.id);
+		const auto [c, s, e] = pamhd::grid::get_cell_geom_emulated(grid, cell.id);
 		const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
 		const auto
 			lat = asin(c[2] / r),
@@ -172,7 +178,7 @@ template <
 		const auto& geometry_id = init_cond.get_geometry_id();
 		const auto& cells = geometries.get_cells(geometry_id);
 		for (const auto& cell: cells) {
-			const auto c = grid.geometry.get_center(cell);
+			const auto [c, s, e] = pamhd::grid::get_cell_geom_emulated(grid, cell);
 			const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
 			const auto
 				lat = asin(c[2] / r),
@@ -208,7 +214,7 @@ template <
 		const auto& geometry_id = init_cond.get_geometry_id();
 		const auto& cells = geometries.get_cells(geometry_id);
 		for (const auto& cell: cells) {
-			const auto c = grid.geometry.get_center(cell);
+			const auto [c, s, e] = pamhd::grid::get_cell_geom_emulated(grid, cell);
 			const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
 			const auto
 				lat = asin(c[2] / r),
@@ -244,7 +250,7 @@ template <
 		const auto& geometry_id = init_cond.get_geometry_id();
 		const auto& cells = geometries.get_cells(geometry_id);
 		for (const auto& cell: cells) {
-			const auto c = grid.geometry.get_center(cell);
+			const auto [c, s, e] = pamhd::grid::get_cell_geom_emulated(grid, cell);
 			const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
 			const auto
 				lat = asin(c[2] / r),

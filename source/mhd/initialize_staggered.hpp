@@ -46,6 +46,7 @@ Author(s): Ilja Honkonen
 
 #include "dccrg.hpp"
 
+#include "grid/amr.hpp"
 #include "mhd/common.hpp"
 #include "mhd/variables.hpp"
 
@@ -54,7 +55,12 @@ namespace pamhd {
 namespace mhd {
 
 
-// as initialize() below but for magnetic field only
+/*! Sets initial state of magnetic field and zeroes fluxes
+
+Emulates 1d/2d system if grid length is initially 1 cell
+in some dimension(s), even if it has been refined, in which
+case some cells will overlap in affected dimension(s).
+*/
 template <
 	class Boundary_Magnetic_Field,
 	class Geometries,
@@ -89,9 +95,12 @@ template <
 		Mag_f(*cell.data, -3) =
 		Mag_f(*cell.data, +3) = {0, 0, 0};
 
-		const auto [rx, ry, rz] = grid.geometry.get_center(cell.id);
-		const auto [sx, sy, sz] = grid.geometry.get_min(cell.id);
-		const auto [ex, ey, ez] = grid.geometry.get_max(cell.id);
+		const auto [
+			center, start, end
+		] = pamhd::grid::get_cell_geom_emulated(grid, cell.id);
+		const auto& [rx, ry, rz] = center;
+		const auto& [sx, sy, sz] = start;
+		const auto& [ex, ey, ez] = end;
 
 		Bg_B.data(*cell.data)(-1) = bg_B.get_background_field(
 			{sx, ry, rz},
@@ -180,9 +189,12 @@ template <
 					+ ") No data for cell: " + to_string(cell_id));
 			}
 
-			const auto [rx, ry, rz] = grid.geometry.get_center(cell_id);
-			const auto [sx, sy, sz] = grid.geometry.get_min(cell_id);
-			const auto [ex, ey, ez] = grid.geometry.get_max(cell_id);
+			const auto [
+				center, start, end
+			] = pamhd::grid::get_cell_geom_emulated(grid, cell_id);
+			const auto& [rx, ry, rz] = center;
+			const auto& [sx, sy, sz] = start;
+			const auto& [ex, ey, ez] = end;
 			for (const int dir: {-3,-2,-1,+1,+2,+3}) {
 				// center of face
 				const auto [x, y, z] = [&](){

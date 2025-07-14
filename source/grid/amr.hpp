@@ -271,6 +271,44 @@ template <
 	#endif
 }
 
+/*! Potentially emulates 1d/2d grid
+
+If length of grid is initially only one cell in a dimension, pretends
+that all cells are flat and in middle of grid in that dimension.
+
+Returns
+\verbatim
+array<
+	array<grid.geometry.get_center()>
+	array<...get_min()>,
+	array<...get_max()>
+>.
+\endverbatim
+*/
+std::array<std::array<double, 3>, 3> get_cell_geom_emulated(
+	const auto& grid, const auto& cell
+) {
+	const auto lvl0 = grid.mapping.length.get();
+	const auto
+		grid_start = grid.geometry.get_start(),
+		grid_end = grid.geometry.get_end();
+	decltype(grid_start) grid_mid{
+		(grid_end[0] + grid_start[0]) / 2,
+		(grid_end[1] + grid_start[1]) / 2,
+		(grid_end[2] + grid_start[2]) / 2
+	};
+	auto
+		cctr = grid.geometry.get_center(cell),
+		cmin = grid.geometry.get_min(cell),
+		cmax = grid.geometry.get_max(cell);
+	for (size_t dim: {0, 1, 2}) {
+		if (lvl0[dim] == 1) {
+			cctr[dim] = cmin[dim] = cmax[dim] = grid_mid[dim];
+		}
+	}
+	return {cctr, cmin, cmax};
+}
+
 
 /*! Sets min,max refinement levels based on geometry.
 
@@ -294,8 +332,9 @@ template <
 	using std::clamp;
 
 	for (const auto& cell: cells) {
-		const auto c = grid.geometry.get_center(cell.id);
-		const auto [rlmin, rlmax] = get_target_refinement_level(options, sim_time, c);
+		const auto [center, start, end]
+			= get_cell_geom_emulated(grid, cell.id);
+		const auto [rlmin, rlmax] = get_target_refinement_level(options, sim_time, center);
 		if (clamped) {
 			const auto
 				prev_min = RLMin.data(*cell.data),
