@@ -121,7 +121,10 @@ template <
 		const auto [c, s, e] = pamhd::grid::get_cell_geom_emulated(grid, cell.id);
 		const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
 		const auto
-			lat = asin(c[2] / r),
+			lat = [&](){
+				if (r == 0) return 0.0;
+				else return asin(c[2] / r);
+			}(),
 			lon = atan2(c[1], c[0]);
 
 		const auto mass_density
