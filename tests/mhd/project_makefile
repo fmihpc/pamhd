@@ -1,14 +1,11 @@
 TESTS_MHD_EXECUTABLES = \
   tests/mhd/reference.exe \
-  tests/mhd/two_reference.exe \
   tests/mhd/test.exe \
   tests/mhd/solar_wind_box.exe
 
 TESTS_MHD_TESTS = \
   tests/mhd/reference.tst_rusanov \
   tests/mhd/reference.tst_hll_athena \
-  tests/mhd/two_reference.tst_rusanov \
-  tests/mhd/two_reference.tst_hll_athena \
   tests/mhd/results/hydrodynamic/density_advection/1d/+x/rusanov.ok \
   tests/mhd/results/hydrodynamic/density_advection/1d/-x/rusanov.ok \
   tests/mhd/results/hydrodynamic/density_advection/1d/+y/rusanov.ok \
@@ -93,10 +90,14 @@ TEST_MHD_COMMON_DEPS = \
 
 TEST_MHD_PROGRAM_DEPS = \
   $(TEST_MHD_COMMON_DEPS) \
+  source/common_functions.hpp \
+  source/common_variables.hpp \
+  source/simulation_options.hpp \
+  source/substepping.hpp \
+  source/variable_getter.hpp \
   source/grid/amr.hpp \
   source/grid/options.hpp \
   source/grid/solar_wind_box.hpp \
-  source/common_variables.hpp \
   source/boundaries/boundaries.hpp \
   source/boundaries/box.hpp \
   source/boundaries/common.hpp \
@@ -111,7 +112,7 @@ TEST_MHD_PROGRAM_DEPS = \
   source/background_magnetic_field.hpp \
   source/mhd/boundaries.hpp \
   source/mhd/initialize.hpp \
-  source/mhd/initialize.hpp \
+  source/mhd/initialize_staggered.hpp \
   source/mhd/options.hpp \
   source/mhd/save.hpp \
   source/mhd/solar_wind_box.hpp \
