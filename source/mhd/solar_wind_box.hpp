@@ -92,25 +92,22 @@ template<
 	using std::runtime_error;
 	using std::to_string;
 
-	for (const size_t dim: {0, 1, 2}) {
-		if (
-			options.sw_dim == dim
-			and options.sw_magnetic_field[dim] != 0
-		) {
+	for (const auto& B: options.sw_magnetic_field) {
+		if (B[options.sw_dim] != 0) {
 			throw runtime_error(
 				__FILE__ "(" + to_string(__LINE__) + "): solar "
-				"wind boundary in " + to_string(dim) + " dimension"
-				" but corresponding B component non-zero: "
-				+ to_string(options.sw_magnetic_field[dim]));
+				"wind boundary in " + to_string(options.sw_dim) + " dimension"
+				" but corresponding B component(s) non-zero: "
+				+ to_string(B[options.sw_dim]));
 		}
 	}
 
 	if (grid.get_rank() == 0) {
 		std::cout << "Initializing run, solar wind: "
-		<< options.sw_nr_density << " #/m^3, "
-		<< options.sw_velocity << " m/s, "
-		<< options.sw_pressure << " Pa, "
-		<< options.sw_magnetic_field << " T"
+		<< options.sw_nr_density[0] << " #/m^3, "
+		<< options.sw_velocity[0] << " m/s, "
+		<< options.sw_pressure[0] << " Pa, "
+		<< options.sw_magnetic_field[0] << " T"
 		<< std::endl;
 	}
 
@@ -175,32 +172,32 @@ template<
 				);
 		}
 
-		const auto mass = options.sw_nr_density * proton_mass;
+		const auto mass = options.sw_nr_density[0] * proton_mass;
 		Mas.data(*cell.data) = mass;
 
 		const auto cell_center = grid.geometry.get_center(cell.id);
 		const auto v_factor = std::max(0.0, cell_center[0]/grid_end[0]);
 		const std::array<double, 3> velocity{
-			v_factor * options.sw_velocity[0],
-			v_factor * options.sw_velocity[1],
-			v_factor * options.sw_velocity[2]};
+			v_factor * options.sw_velocity[0][0],
+			v_factor * options.sw_velocity[0][1],
+			v_factor * options.sw_velocity[0][2]};
 		Mom.data(*cell.data) = pamhd::mul(mass, velocity);
 
 		Vol_B.data(*cell.data)[0]   =
 		Face_B.data(*cell.data)(-1) =
-		Face_B.data(*cell.data)(+1) = options.sw_magnetic_field[0];
+		Face_B.data(*cell.data)(+1) = options.sw_magnetic_field[0][0];
 		Vol_B.data(*cell.data)[1]   =
 		Face_B.data(*cell.data)(-2) =
-		Face_B.data(*cell.data)(+2) = options.sw_magnetic_field[1];
+		Face_B.data(*cell.data)(+2) = options.sw_magnetic_field[0][1];
 		Vol_B.data(*cell.data)[2]   =
 		Face_B.data(*cell.data)(-3) =
-		Face_B.data(*cell.data)(+3) = options.sw_magnetic_field[2];
+		Face_B.data(*cell.data)(+3) = options.sw_magnetic_field[0][2];
 		Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
 
 		Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
 			Mas.data(*cell.data),
 			velocity,
-			options.sw_pressure,
+			options.sw_pressure[0],
 			Vol_B.data(*cell.data),
 			adiabatic_index,
 			vacuum_permeability
@@ -230,7 +227,7 @@ template<
 > void apply_solar_wind_boundaries(
 	const Solar_Wind_Box_Options& options,
 	const Cells& solar_wind_cells,
-	const double& /*sim_time*/,
+	const double& sim_time,
 	const double& adiabatic_index,
 	const double& vacuum_permeability,
 	const double& proton_mass,
@@ -241,29 +238,36 @@ template<
 	const Face_Magnetic_Field_Getter& Face_B,
 	const Face_Magnetic_Field_Change_Getter& Face_dB
 ) try {
+	size_t sw_index = 0;
+	while (
+		sw_index < options.sw_timestamps.size()
+		and sim_time >= options.sw_timestamps[sw_index]
+	) {
+		sw_index++;
+	}
 	for (const auto& cell: solar_wind_cells) {
 		if (cell.is_local) {
-			const auto mass = options.sw_nr_density * proton_mass;
+			const auto mass = options.sw_nr_density[sw_index] * proton_mass;
 			Mas.data(*cell.data) = mass;
 			Mom.data(*cell.data) = {
-				mass*options.sw_velocity[0],
-				mass*options.sw_velocity[1],
-				mass*options.sw_velocity[2]
+				mass*options.sw_velocity[sw_index][0],
+				mass*options.sw_velocity[sw_index][1],
+				mass*options.sw_velocity[sw_index][2]
 			};
 			Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
 
 			Vol_B.data(*cell.data)[0]   =
 			Face_B.data(*cell.data)(-1) =
-			Face_B.data(*cell.data)(+1) = options.sw_magnetic_field[0];
+			Face_B.data(*cell.data)(+1) = options.sw_magnetic_field[sw_index][0];
 			Vol_B.data(*cell.data)[1]   =
 			Face_B.data(*cell.data)(-2) =
-			Face_B.data(*cell.data)(+2) = options.sw_magnetic_field[1];
+			Face_B.data(*cell.data)(+2) = options.sw_magnetic_field[sw_index][1];
 			Vol_B.data(*cell.data)[2]   =
 			Face_B.data(*cell.data)(-3) =
-			Face_B.data(*cell.data)(+3) = options.sw_magnetic_field[2];
+			Face_B.data(*cell.data)(+3) = options.sw_magnetic_field[sw_index][2];
 			Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
-				mass, options.sw_velocity,
-				options.sw_pressure, Vol_B.data(*cell.data),
+				mass, options.sw_velocity[sw_index],
+				options.sw_pressure[sw_index], Vol_B.data(*cell.data),
 				adiabatic_index, vacuum_permeability
 			);
 		}
@@ -283,7 +287,7 @@ template<
 			);
 
 			Face_B.data(*neighbor.data)(options.sw_dir)
-				= options.sw_magnetic_field[options.sw_dim];
+				= options.sw_magnetic_field[sw_index][options.sw_dim];
 			Vol_B.data(*neighbor.data)[options.sw_dim]
 				= Face_B.data(*neighbor.data)(+options.sw_dir) / 2
 				+ Face_B.data(*neighbor.data)(-options.sw_dir) / 2;
@@ -597,6 +601,12 @@ template<
 	}
 
 	// planetary boundary cells
+	const auto mass = options.inner_nr_density * proton_mass;
+	const std::array<double, 3> momentum{
+		mass * options.inner_velocity[0],
+		mass * options.inner_velocity[1],
+		mass * options.inner_velocity[2]
+	};
 	for (const auto& cell: planet_cells) {
 		Face_dB.data(*cell.data) = {0, 0, 0, 0, 0, 0};
 
@@ -604,12 +614,12 @@ template<
 			Face_B.data(*cell.data)(dir) = 0;
 		}
 		Vol_B.data(*cell.data) = {0, 0, 0};
-		Mas.data(*cell.data) = options.sw_nr_density * proton_mass;
-		Mom.data(*cell.data) = {0,0,0};
+		Mas.data(*cell.data) = mass;
+		Mom.data(*cell.data) = momentum;
 		Nrj.data(*cell.data) = pamhd::mhd::get_total_energy_density(
 			Mas.data(*cell.data),
 			Mom.data(*cell.data),
-			options.sw_pressure,
+			options.inner_pressure,
 			Vol_B.data(*cell.data),
 			adiabatic_index,
 			vacuum_permeability

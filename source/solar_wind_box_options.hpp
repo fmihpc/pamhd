@@ -41,6 +41,7 @@ Author(s): Ilja Honkonen
 #include "array"
 #include "stdexcept"
 #include "string"
+#include "vector"
 
 #include "rapidjson/document.h"
 
@@ -56,13 +57,12 @@ struct Solar_Wind_Box_Options
 	double
 		inner_radius{-1},
 		inner_nr_density{-1},
-		inner_pressure{-1},
-		sw_nr_density{-1},
-		sw_pressure{-1};
+		inner_pressure{-1};
 	std::array<double, 3>
 		inner_velocity{0, 0, 0},
-		sw_velocity{0, 0, 0},
-		sw_magnetic_field{0, 0, 0};
+		inner_magnetic_field{0, 0, 0};
+	std::vector<double> sw_nr_density, sw_pressure, sw_timestamps;
+	std::vector<std::array<double, 3>> sw_velocity, sw_magnetic_field;
 
 
 	Solar_Wind_Box_Options() = default;
@@ -135,13 +135,22 @@ struct Solar_Wind_Box_Options
 			);
 		}
 		const auto& sw_nr_json = sw["number-density"];
-		if (not sw_nr_json.IsNumber()) {
+		if (not sw_nr_json.IsArray()) {
 			throw invalid_argument(
 				string(__FILE__ "(") + to_string(__LINE__) + "): "
-				+ "'solar-wind' item 'number-density' is not a number."
+				+ "'solar-wind' item 'number-density' is not an array."
 			);
 		}
-		this->sw_nr_density = sw_nr_json.GetDouble();
+		const auto& sw_nr_array = sw_nr_json.GetArray();
+		for (size_t i = 0; i < sw_nr_array.Size(); i++) {
+			this->sw_nr_density.push_back(sw_nr_array[i].GetDouble());
+		}
+		if (this->sw_nr_density.size() == 0) {
+			throw invalid_argument(
+				string(__FILE__ "(") + to_string(__LINE__) + "): "
+				+ "Solar wind number density must have at least one item."
+			);
+		}
 
 		if (not sw.HasMember("pressure")) {
 			throw invalid_argument(
@@ -150,13 +159,23 @@ struct Solar_Wind_Box_Options
 			);
 		}
 		const auto& sw_p_json = sw["pressure"];
-		if (not sw_p_json.IsNumber()) {
+		if (not sw_p_json.IsArray()) {
 			throw invalid_argument(
 				string(__FILE__ "(") + to_string(__LINE__) + "): "
-				+ "'solar-wind' item 'pressure' is not a number."
+				+ "'solar-wind' item 'pressure' is not an array."
 			);
 		}
-		this->sw_pressure = sw_p_json.GetDouble();
+		const auto& sw_p_array = sw_p_json.GetArray();
+		for (size_t i = 0; i < sw_p_array.Size(); i++) {
+			this->sw_pressure.push_back(sw_p_array[i].GetDouble());
+		}
+		if (this->sw_pressure.size() != this->sw_nr_density.size()) {
+			throw invalid_argument(
+				string(__FILE__ "(") + to_string(__LINE__) + "): "
+				+ "Number of pressure items not equal to number of density items."
+
+			);
+		}
 
 		if (not sw.HasMember("velocity")) {
 			throw invalid_argument(
@@ -171,23 +190,40 @@ struct Solar_Wind_Box_Options
 				+ "'solar-wind' item 'velocity' is not an array."
 			);
 		}
-		const auto& sw_v_array = sw_v_json.GetArray();
-		if (sw_v_array.Size() != 3) {
+		const auto& sw_v_array2 = sw_v_json.GetArray();
+		for (size_t i = 0; i < sw_v_array2.Size(); i++) {
+			if (not sw_v_array2[i].IsArray()) {
+				throw invalid_argument(
+					string(__FILE__ "(") + to_string(__LINE__) + "): "
+					+ "Solar wind velocity item at array index "
+					+ to_string(i) + " is not an array."
+				);
+			}
+			const auto& sw_v_array = sw_v_array2[i].GetArray();
+			if (sw_v_array.Size() != 3) {
+				throw invalid_argument(
+					string(__FILE__ "(") + to_string(__LINE__) + "): "
+					+ "Invalid number of solar wind velocity components at index "
+					+ to_string(i) + ", should be 3."
+				);
+			}
+			this->sw_velocity.push_back({
+				sw_v_array[0].GetDouble(),
+				sw_v_array[1].GetDouble(),
+				sw_v_array[2].GetDouble()
+			});
+		}
+		if (this->sw_velocity.size() != this->sw_nr_density.size()) {
 			throw invalid_argument(
 				string(__FILE__ "(") + to_string(__LINE__) + "): "
-				+ "Invalid number of solar wind velocity components, should be 3."
+				+ "Number of velocity items not equal to number of density items."
 			);
 		}
-		this->sw_velocity = {
-			sw_v_array[0].GetDouble(),
-			sw_v_array[1].GetDouble(),
-			sw_v_array[2].GetDouble()
-		};
 
 		if (not sw.HasMember("magnetic-field")) {
 			throw invalid_argument(
 				string(__FILE__ "(") + to_string(__LINE__) + "): "
-				+ "'solar-wind' doesn't have a 'velocity' key."
+				+ "'solar-wind' doesn't have a 'magnetic-field' key."
 			);
 		}
 		const auto& sw_B_json = sw["magnetic-field"];
@@ -197,18 +233,72 @@ struct Solar_Wind_Box_Options
 				+ "'solar-wind' item 'magnetic-field' is not an array."
 			);
 		}
-		const auto& sw_B_array = sw_B_json.GetArray();
-		if (sw_B_array.Size() != 3) {
+		const auto& sw_B_array2 = sw_B_json.GetArray();
+		for (size_t i = 0; i < sw_B_array2.Size(); i++) {
+			if (not sw_B_array2[i].IsArray()) {
+				throw invalid_argument(
+					string(__FILE__ "(") + to_string(__LINE__) + "): "
+					+ "Solar wind magnetic field item at array index "
+					+ to_string(i) + " is not an array."
+				);
+			}
+			const auto& sw_B_array = sw_B_array2[i].GetArray();
+			if (sw_B_array.Size() != 3) {
+				throw invalid_argument(
+					string(__FILE__ "(") + to_string(__LINE__) + "): "
+					+ "Invalid number of solar wind magnetic field components "
+					"at index " + to_string(i) + ", should be 3."
+				);
+			}
+			this->sw_magnetic_field.push_back({
+				sw_B_array[0].GetDouble(),
+				sw_B_array[1].GetDouble(),
+				sw_B_array[2].GetDouble()
+			});
+		}
+		if (this->sw_magnetic_field.size() != this->sw_nr_density.size()) {
 			throw invalid_argument(
 				string(__FILE__ "(") + to_string(__LINE__) + "): "
-				+ "Invalid number of solar wind magnetic field components, should be 3."
+				+ "Number of magnetic field items not equal to number of density items."
 			);
 		}
-		this->sw_magnetic_field = {
-			sw_B_array[0].GetDouble(),
-			sw_B_array[1].GetDouble(),
-			sw_B_array[2].GetDouble()
-		};
+
+		if (not sw.HasMember("timestamps") and this->sw_nr_density.size() > 1) {
+			throw invalid_argument(
+				string(__FILE__ "(") + to_string(__LINE__) + "): "
+				+ "'solar-wind' doesn't have a 'timestamps' "
+				"key and number-density has more than one item."
+			);
+		}
+		if (sw.HasMember("timestamps")) {
+			const auto& sw_ts_json = sw["timestamps"];
+			if (not sw_ts_json.IsArray()) {
+				throw invalid_argument(
+					string(__FILE__ "(") + to_string(__LINE__) + "): "
+					+ "'solar-wind' item 'timestamps' is not an array."
+				);
+			}
+			const auto& sw_ts_array = sw_ts_json.GetArray();
+			for (size_t i = 0; i < sw_ts_array.Size(); i++) {
+				this->sw_timestamps.push_back(sw_ts_array[i].GetDouble());
+			}
+		}
+		if (this->sw_timestamps.size() != this->sw_nr_density.size() - 1) {
+			throw invalid_argument(
+				string(__FILE__ "(") + to_string(__LINE__) + "): "
+				+ "Number of timestamps not equal to one less than number of density items."
+			);
+		}
+		if (this->sw_timestamps.size() > 1) {
+			for (size_t i = 1; i < this->sw_timestamps.size(); i++) {
+				if (this->sw_timestamps[i-1] >= this->sw_timestamps[i]) {
+					throw invalid_argument(
+						string(__FILE__ "(") + to_string(__LINE__) + "): "
+						+ "Timestamp at array index " + to_string(i-1)
+						+ " is larger than at " + to_string(i));
+				}
+			}
+		}
 
 		if (not object.HasMember("inner-boundary")) {
 			throw invalid_argument(
@@ -269,26 +359,38 @@ struct Solar_Wind_Box_Options
 		}
 		this->inner_pressure = p_json.GetDouble();
 
-		if (not inner.HasMember("velocity")) {
-			throw invalid_argument(
-				string(__FILE__ "(") + to_string(__LINE__) + "): "
-				+ "'inner-boundary' doesn't have a 'velocity' key."
-			);
+		if (inner.HasMember("velocity")) {
+			const auto& v_json = inner["velocity"];
+			if (not v_json.IsArray()) {
+				throw invalid_argument(
+					string(__FILE__ "(") + to_string(__LINE__) + "): "
+					+ "'inner-boundary' item 'velocity' is not an array."
+				);
+			}
+			this->inner_velocity = {
+				v_json[0].GetDouble(),
+				v_json[1].GetDouble(),
+				v_json[2].GetDouble()
+			};
 		}
-		const auto& v_json = inner["velocity"];
-		if (not v_json.IsArray()) {
-			throw invalid_argument(
-				string(__FILE__ "(") + to_string(__LINE__) + "): "
-				+ "'inner-boundary' item 'velocity' is not an array."
-			);
+
+		if (inner.HasMember("magnetic-field")) {
+			const auto& b_json = inner["magnetic-field"];
+			if (not b_json.IsArray()) {
+				throw invalid_argument(
+					string(__FILE__ "(") + to_string(__LINE__) + "): "
+					+ "'inner-boundary' item 'magnetic-field' is not an array."
+				);
+			}
+			this->inner_magnetic_field = {
+				b_json[0].GetDouble(),
+				b_json[1].GetDouble(),
+				b_json[2].GetDouble()
+			};
 		}
-		this->inner_velocity = {
-			v_json[0].GetDouble(),
-			v_json[1].GetDouble(),
-			v_json[2].GetDouble()
-		};
 	}
 };
+
 
 } // namespace
 
