@@ -1847,12 +1847,13 @@ template <
 	class Magnetic_Field_Getter,
 	class Face_Magnetic_Field_Getter,
 	class Face_dB_Getter,
+	class Face_B_Error,
 	class Background_Magnetic_Field_Getter,
 	class Mass_Density_Flux_Getters,
 	class Momentum_Density_Flux_Getters,
 	class Total_Energy_Density_Flux_Getters,
 	class Magnetic_Field_Flux_Getters,
-	class Solver_Info_Getter,
+	class Cell_Type_Getter,
 	class Timestep_Getter,
 	class Substepping_Period_Getter,
 	class Substep_Min_Getter,
@@ -1873,12 +1874,13 @@ template <
 	const Magnetic_Field_Getter& Vol_B,
 	const Face_Magnetic_Field_Getter& Face_B,
 	const Face_dB_Getter& Face_dB,
+	const Face_B_Error& B_Error,
 	const Background_Magnetic_Field_Getter& Bg_B,
 	const Mass_Density_Flux_Getters& Mas_f,
 	const Momentum_Density_Flux_Getters& Mom_f,
 	const Total_Energy_Density_Flux_Getters& Nrj_f,
 	const Magnetic_Field_Flux_Getters& Mag_f,
-	const Solver_Info_Getter& SInfo,
+	const Cell_Type_Getter& CType,
 	const Timestep_Getter& Timestep,
 	const Substepping_Period_Getter& Substep,
 	const Substep_Min_Getter& Substep_Min,
@@ -1891,19 +1893,19 @@ template <
 	);
 
 	minimize_timestep(
-		grid, time_step_factor, SInfo, Timestep, Max_v
+		grid, time_step_factor, CType, Timestep, Max_v
 	);
 
 	const double sub_dt = pamhd::set_minmax_substepping_period(
-		grid, max_time_step, SInfo,
+		grid, max_time_step, CType,
 		Timestep, Substep_Min, Substep_Max
 	);
 
 	restrict_substepping_period(
-		grid, Substep, Substep_Max, SInfo
+		grid, Substep, Substep_Max, CType
 	);
 
-	const int max_substep = update_substeps(grid, SInfo, Substep);
+	const int max_substep = update_substeps(grid, CType, Substep);
 	if (grid.get_rank() == 0) {std::cout
 		<< "Substep: " << sub_dt << ", largest substep period: "
 		<< max_substep << std::endl;
@@ -1917,12 +1919,12 @@ template <
 			sub_dt, solver, grid, substep, adiabatic_index,
 			vacuum_permeability, Mas, Mom, Nrj, Vol_B,
 			Face_B, Face_dB, Bg_B, Mas_f, Mom_f, Nrj_f,
-			Mag_f, SInfo, Substep, Max_v
+			Mag_f, CType, Substep, Max_v
 		);
 
 		update_mhd_state(
 			grid.local_cells(), grid, substep,
-			Face_B, Face_dB, SInfo, Substep,
+			Face_B, Face_dB, CType, Substep,
 			Mas, Mom, Nrj, Vol_B,
 			Mas_f, Mom_f, Nrj_f, Mag_f
 		);
@@ -1931,12 +1933,14 @@ template <
 		update_B_consistency(
 			substep, grid.local_cells(), grid,
 			Mas, Mom, Nrj, Vol_B, Face_B,
-			SInfo, Substep,
+			CType, Substep,
 			adiabatic_index,
 			vacuum_permeability,
 			true
 		);
 	}
+
+	sync_magnetic_field(grid, Face_B, Vol_B, B_Error, CType);
 
 	return total_dt;
 

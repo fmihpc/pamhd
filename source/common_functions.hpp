@@ -178,6 +178,66 @@ auto neg(const auto& in) {
 	}
 }
 
+//! Makes sure all cells agree on common face Bs
+template <
+	class Grid,
+	class Face_Magnetic_Field_Getter,
+	class Volume_Magnetic_Field_Getter,
+	class Mag_Error_Getter,
+	class Cell_Type_Getter
+> void sync_magnetic_field(
+	Grid& grid,
+	const Face_Magnetic_Field_Getter& Face_B,
+	const Volume_Magnetic_Field_Getter& Vol_B,
+	const Mag_Error_Getter& B_Error,
+	const Cell_Type_Getter& CType
+) try {
+	using Cell = Grid::cell_data_type;
+
+	bool update_copies = false;
+	if (Face_B.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, Face_B.type());
+		Face_B.type().is_stale = false;
+	}
+	if (CType.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, CType.type());
+		CType.type().is_stale = false;
+	}
+	if (update_copies) {
+		grid.update_copies_of_remote_neighbors();
+	}
+	Cell::set_transfer_all(false, Face_B.type(), CType.type());
+
+	for (const auto& cell: grid.local_cells()) {
+		if (CType.data(*cell.data) < 0) continue;
+
+		for (const auto& neighbor: cell.neighbors_of) {
+			if (CType.data(*neighbor.data) < 0) continue;
+
+			const auto& fn = neighbor.face_neighbor;
+			if (fn == 0) continue;
+
+			const auto diff
+				= Face_B.data(*cell.data)(fn)
+				- Face_B.data(*neighbor.data)(-fn);
+			B_Error.data(*cell.data) += std::abs(diff);
+			Face_B.data(*cell.data)(fn) -= diff / 2;
+			Face_B.data(*neighbor.data)(-fn) += diff / 2;
+		}
+	}
+
+	Face_B.type().is_stale = true;
+	Vol_B.type().is_stale = true;
+
+} catch (const std::exception& e) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
+} catch (...) {
+	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + ")");
+}
+
+
 } // namespace
 
 #endif // ifndef PAMHD_COMMON_FUNCTIONS_HPP

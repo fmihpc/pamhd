@@ -102,6 +102,8 @@ bool pamhd::Face_Magnetic_Field::is_stale = true;
 
 const auto Face_dB = pamhd::Variable_Getter<pamhd::Face_dB>();
 
+const auto B_Error = pamhd::Variable_Getter<pamhd::Face_B_Error>();
+
 const auto Div_B = pamhd::Variable_Getter<pamhd::Magnetic_Field_Divergence>();
 
 /*! Solver info variable for boundary logic
@@ -317,7 +319,7 @@ int main(int argc, char* argv[]) {
 	/*
 	Initialize simulation grid
 	*/
-	const unsigned int neighborhood_size = 3;
+	const unsigned int neighborhood_size = 2;
 	const auto& number_of_cells = options_grid.get_number_of_cells();
 	const auto& periodic = options_grid.get_periodic();
 
@@ -374,6 +376,7 @@ int main(int argc, char* argv[]) {
 		(*cell.data)[pamhd::MPI_Rank()] = rank;
 		Substep.data(*cell.data) = 1;
 		Max_v.data(*cell.data) = {-1, -1, -1, -1, -1, -1};
+		B_Error.data(*cell.data) = 0;
 	}
 	Max_v.type().is_stale = true;
 	Substep.type().is_stale = true;
@@ -441,18 +444,32 @@ int main(int argc, char* argv[]) {
 		Face_B, CType, FInfo, Substep
 	);
 
+	// make sure everyone agrees on face Bs after init
+	sync_magnetic_field(grid, Face_B, Vol_B, B_Error, CType);
+
 	// final init with timestep of 0
+	if (rank == 0) {
+		cout << "Finalizing init: ";
+	}
 	pamhd::mhd::timestep(
 		mhd_solver, grid, options_sim, options_sim.time_start,
 		0, options_mhd.time_step_factor,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
-		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
-		Mas_f, Mom_f, Nrj_f, Mag_f, CType, Timestep,
+		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, B_Error,
+		Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f, CType, Timestep,
 		Substep, Substep_Min, Substep_Max, Max_v
 	);
 	if (rank == 0) {
 		cout << "Initialization done" << endl;
+	}
+
+	const auto avg_div0 = pamhd::math::get_divergence_face2volume(
+		grid.local_cells(), grid,
+		Face_B, Div_B, CType
+	);
+	if (rank == 0) {
+		cout << "Average divergence " << avg_div0 << endl;
 	}
 
 	size_t simulation_step = 0;
@@ -493,9 +510,10 @@ int main(int argc, char* argv[]) {
 				until_end, options_mhd.time_step_factor,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
-				Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
-				Mas_f, Mom_f, Nrj_f, Mag_f, CType, Timestep,
-				Substep, Substep_Min, Substep_Max, Max_v
+				Mas, Mom, Nrj, Vol_B, Face_B, Face_dB,
+				B_Error, Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f,
+				CType, Timestep, Substep, Substep_Min,
+				Substep_Max, Max_v
 			);
 		if (rank == 0) {
 			cout << "Solved MHD at time " << simulation_time
@@ -562,7 +580,8 @@ int main(int argc, char* argv[]) {
 					simulation_time,
 					options_sim.adiabatic_index,
 					options_sim.proton_mass,
-					options_sim.vacuum_permeability
+					options_sim.vacuum_permeability,
+					std::set<std::string>{"mhd"}
 				)
 			) {
 				cerr <<  __FILE__ << "(" << __LINE__ << "): "

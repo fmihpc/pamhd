@@ -222,6 +222,7 @@ using Cell = gensimcell::Cell<
 	pamhd::mhd::MHD_Flux,
 	pamhd::Face_Magnetic_Field,
 	pamhd::Face_dB,
+	pamhd::Face_B_Error,
 	pamhd::grid::Target_Refinement_Level_Max,
 	pamhd::grid::Target_Refinement_Level_Min,
 	pamhd::mhd::Face_Boundary_Type,

@@ -94,7 +94,7 @@ template <class Grid> bool save(
 		allowed_variables{
 			"mhd", "divfaceB", "bgB", "rank", "mhd info",
 			"timestep", "substep", "substmin", "substmax",
-			"ref lvls", "faceB", "fluxes"
+			"ref lvls", "faceB", "fluxes", "Berror"
 		};
 	if (given_variables.size() == 0) {
 		given_variables = allowed_variables;
@@ -333,6 +333,21 @@ template <class Grid> bool save(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
 		Cell::set_transfer_all(false, pamhd::Timestep());
+	}
+
+	if (variables.count("Berror") > 0) {
+		MPI_File_get_size(outfile, &outsize);
+		variable_offsets.push_back(outsize);
+		Cell::set_transfer_all(true, pamhd::Face_B_Error());
+		const string varname = "Berror  ";
+		get<0>(header) = (void*)varname.data();
+		ret_val = ret_val and grid.save_grid_data(
+			path_name_prefix + step_string.str() + ".dc",
+			outsize, header, cells, false, false, false);
+		Cell::set_transfer_all(false, pamhd::Face_B_Error());
+		for (const auto& cell: grid.local_cells()) {
+			(*cell.data)[pamhd::Face_B_Error()] = 0;
+		}
 	}
 
 	if (grid.get_rank() == 0) {

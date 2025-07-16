@@ -575,6 +575,8 @@ struct Face_dB {
 	using data_type = pamhd::Face_Type<double>;
 };
 
+struct Face_B_Error { using data_type = double; };
+
 //! Electric field along each cell edge
 struct Edge_Electric_Field {
 	using data_type = pamhd::Edge_Type<double>;

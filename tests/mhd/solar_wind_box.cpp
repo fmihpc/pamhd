@@ -102,6 +102,8 @@ bool pamhd::Face_Magnetic_Field::is_stale = true;
 
 const auto Face_dB = pamhd::Variable_Getter<pamhd::Face_dB>();
 
+const auto B_Error = pamhd::Variable_Getter<pamhd::Face_B_Error>();
+
 const auto Div_B = pamhd::Variable_Getter<pamhd::Magnetic_Field_Divergence>();
 
 /*! Solver info variable for boundary logic
@@ -288,7 +290,7 @@ int main(int argc, char* argv[]) {
 	/*
 	Initialize simulation grid
 	*/
-	const unsigned int neighborhood_size = 3;
+	const unsigned int neighborhood_size = 2;
 	const auto& number_of_cells = options_grid.get_number_of_cells();
 	const size_t min_cell0_count = 5 + 2*options_grid.get_max_ref_lvl();
 	for (auto dim: {0, 1, 2}) {
@@ -435,8 +437,8 @@ int main(int argc, char* argv[]) {
 		0, options_mhd.time_step_factor,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
-		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
-		Mas_f, Mom_f, Nrj_f, Mag_f, CType, Timestep,
+		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, B_Error,
+		Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f, CType, Timestep,
 		Substep, Substep_Min, Substep_Max, Max_v_wave
 	);
 	if (rank == 0) {
@@ -481,9 +483,10 @@ int main(int argc, char* argv[]) {
 				until_end, options_mhd.time_step_factor,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
-				Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
-				Mas_f, Mom_f, Nrj_f, Mag_f, CType, Timestep,
-				Substep, Substep_Min, Substep_Max, Max_v_wave
+				Mas, Mom, Nrj, Vol_B, Face_B, Face_dB,
+				B_Error, Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f,
+				CType, Timestep, Substep, Substep_Min,
+				Substep_Max, Max_v_wave
 			);
 		if (rank == 0) {
 			cout << "Solved MHD at time " << simulation_time
