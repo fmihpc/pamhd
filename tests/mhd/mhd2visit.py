@@ -314,7 +314,7 @@ parser.add_argument('files', metavar = 'F', nargs = '*', help = 'Names of input 
 parser.add_argument('--mesh', action = 'store_true', default = False, help = 'Plot mesh on top of variables (default: False)')
 parser.add_argument('--dimensions', type = str, default = 'x,y,z', help = 'comma separated list of dimensions to plot (default: x,y,z)')
 parser.add_argument('--variables', type = str, default = plot_vars_str, help = 'comma separated list of variables to plot (append _log for log plot, default: ' + plot_vars_str + ')')
-parser.add_argument('--limits', type = str, default = '', help = 'comma separated list of range limits for variables given as var1_min,var1_max,,var2_max,,,var4_min...; with empty automatic limit(s)')
+parser.add_argument('--limits', type = str, default = '', help = 'comma separated list of range limits for variables given as var1_min,var1_max,,var2_max,,,var4_min...; with empty automatic limit(s), use / to escape - if var1_min < 0')
 parser.add_argument('--verbose', action = 'store_true', default = False)
 args = parser.parse_args()
 
@@ -329,6 +329,7 @@ args.variables = [v for v in args.variables.split(',') if v.replace('_log','') i
 if args.verbose:
 	stdout.write('Plotting variables: ' + str(args.variables) + '\n')
 
+args.limits = args.limits.replace('/', '')
 args.limits = args.limits.split(',')
 while len(args.limits) < 2*len(args.variables):
 	args.limits.append('')
