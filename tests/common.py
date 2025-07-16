@@ -2,7 +2,7 @@
 '''
 Common functions for working with MHD output of PAMHD.
 
-Copyright 2024 Finnish Meteorological Institute
+Copyright 2024, 2025 Finnish Meteorological Institute
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -192,6 +192,9 @@ def get_cell_data(infile, metadata, range_, variables = None):
 			elif varname == 'nr ipart':
 				infile.seek(i*8, 1)
 				ret_val[-1][varname] = fromfile(infile, dtype = 'uint64', count = 1)[0]
+			elif varname == 'Berror  ':
+				infile.seek(i*8, 1)
+				ret_val[-1][varname] = fromfile(infile, dtype = 'double', count = 1)[0]
 	return ret_val
 
 

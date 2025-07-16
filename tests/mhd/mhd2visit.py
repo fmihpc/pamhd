@@ -294,15 +294,17 @@ def dc2vtk(outname, data):
 			for c in cells:
 				outfile.write(str(data[c]['mhd info']) + '\n')
 
+		if 'Berror  ' in data[cells[0]]:
+			outfile.write('SCALARS Berror double 1\nlookup_table default\n')
+			for c in cells:
+				outfile.write(str(data[c]['Berror  ']) + '\n')
+
 
 plot_vars = {
-	'mass_density', 'pressure',
-	'number_density', 'divB', 'rank',
-	'V', 'Vx', 'Vy', 'Vz',
-	'B', 'Bx', 'By', 'Bz',
-	'B0', 'B0x', 'B0y', 'B0z',
-	'B1', 'B1x', 'B1y', 'B1z',
-	'target_ref_lvl_min', 'target_ref_lvl_max',
+	'mass_density', 'pressure', 'number_density', 'divB',
+	'rank', 'V', 'Vx', 'Vy', 'Vz', 'B', 'Bx', 'By', 'Bz',
+	'B0', 'B0x', 'B0y', 'B0z', 'B1', 'B1x', 'B1y', 'B1z',
+	'target_ref_lvl_min', 'target_ref_lvl_max', 'Berror',
 	'substep_period', 'cell_dt', 'mhd_info'
 }
 plot_vars_str = ''

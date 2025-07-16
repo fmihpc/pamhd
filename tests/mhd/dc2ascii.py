@@ -124,6 +124,7 @@ def convert(inname, verbose):
 	if 'volE    ' in metadata['var_data_start']: outfile.write("# x, y and z components of volume electric field (V/m)\n")
 	if 'volJ    ' in metadata['var_data_start']: outfile.write("# x, y and z components of volume electric current density (A/m^2)\n")
 	if 'nr ipart' in metadata['var_data_start']: outfile.write("# number of particles (staying) in cell\n")
+	if 'Berror  ' in metadata['var_data_start']: outfile.write("# cumulative absolute difference in shared face magnetic fields since last save\n")
 
 	for i in range(len(metadata['cells'])):
 		cell_id = metadata['cells'][i]
@@ -189,6 +190,9 @@ def convert(inname, verbose):
 
 		if 'nr ipart' in sim_data[cell_id]:
 			outfile.write(str(sim_data[cell_id]['nr ipart']) + ' ')
+
+		if 'Berror  ' in sim_data[cell_id]:
+			outfile.write(str(sim_data[cell_id]['Berror  ']) + ' ')
 
 		outfile.write('\n')
 
