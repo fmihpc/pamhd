@@ -214,10 +214,12 @@ template <
 		if (CType.data(*cell.data) < 0) continue;
 
 		for (const auto& neighbor: cell.neighbors_of) {
-			if (CType.data(*neighbor.data) < 0) continue;
-
 			const auto& fn = neighbor.face_neighbor;
-			if (fn == 0) continue;
+			if (
+				fn == 0
+				or neighbor.relative_size != 0
+				or CType.data(*neighbor.data) < 0
+			) continue;
 
 			const auto diff
 				= Face_B.data(*cell.data)(fn)
