@@ -344,9 +344,12 @@ template <
 				vacuum_permeability
 			);
 
-			const auto [rx, ry, rz] = grid.geometry.get_center(new_cell_id);
-			const auto [sx, sy, sz] = grid.geometry.get_min(new_cell_id);
-			const auto [ex, ey, ez] = grid.geometry.get_max(new_cell_id);
+			const auto [
+				center, start, end
+			] = pamhd::grid::get_cell_geom_emulated(grid, new_cell_id);
+			const auto [rx, ry, rz] = center;
+			const auto [sx, sy, sz] = start;
+			const auto [ex, ey, ez] = end;
 			Bg_B.data(*cell_data)(0, -1) = bg_B.get_background_field(
 				{sx, ry, rz},
 				vacuum_permeability
@@ -476,7 +479,7 @@ template <
 				);
 			}
 
-			// all children included
+			// plasma, all children included
 			RLMin.data(*parent_data) = min(RLMin.data(*parent_data),
 				RLMin.data(*removed_cell_data));
 			RLMax.data(*parent_data) = max(RLMax.data(*parent_data),
@@ -502,11 +505,12 @@ template <
 				throw runtime_error(__FILE__ ":" + to_string(__LINE__));
 			}
 
+			// magnetic field, only children sharing
+			// face(s) with parent included
 			const auto
 				pindex = grid.mapping.get_indices(parent_id),
 				rindex = grid.mapping.get_indices(removed_cell_id);
 			for (auto dim: {0, 1, 2}) {
-				// only children sharing a face with parent included
 				const int side = [&](){
 					if (pindex[dim] == rindex[dim]) {
 						return -1;
@@ -517,9 +521,12 @@ template <
 				Face_B.data(*parent_data)(dim, side) += Face_B.data(*removed_cell_data)(dim, side) / 4;
 			}
 
-			const auto [rx, ry, rz] = grid.geometry.get_center(parent_id);
-			const auto [sx, sy, sz] = grid.geometry.get_min(parent_id);
-			const auto [ex, ey, ez] = grid.geometry.get_max(parent_id);
+			const auto [
+				center, start, end
+			] = pamhd::grid::get_cell_geom_emulated(grid, parent_id);
+			const auto [rx, ry, rz] = center;
+			const auto [sx, sy, sz] = start;
+			const auto [ex, ey, ez] = end;
 			Bg_B.data(*parent_data)(0, -1) = bg_B.get_background_field(
 				{sx, ry, rz},
 				vacuum_permeability
