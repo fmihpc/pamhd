@@ -90,7 +90,7 @@ template<
 
 	boundaries.classify(grid, geometries, SInfo);
 
-	for (const auto& cell: grid.cells) {
+	for (const auto& cell: grid.local_cells()) {
 		SInfo.data(*cell.data) = 1;
 	}
 
@@ -222,6 +222,18 @@ template<
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
 		SInfo.data(*cell_data) = -1;
+	}
+
+	// also don't solve cells too far away from local
+	for (const auto& cell: grid.remote_cells()) {
+		bool solve = false;
+		for (const auto& neighbor: cell.neighbors_to) {
+			if (neighbor.is_local) {
+				solve = true;
+				break;
+			}
+		}
+		if (not solve) SInfo.data(*cell.data) = -1;
 	}
 
 	grid.update_copies_of_remote_neighbors();
