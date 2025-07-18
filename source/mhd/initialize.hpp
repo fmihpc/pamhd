@@ -89,11 +89,16 @@ template <
 	const Momentum_Density_Flux_Getter& Mom_f,
 	const Total_Energy_Density_Flux_Getter& Nrj_f
 ) {
+	using std::asin;
+	using std::atan2;
+	using std::cerr;
+	using std::cout;
+	using std::endl;
 	using std::get;
 
 	if (verbose and grid.get_rank() == 0) {
-		std::cout << "Setting default MHD state... ";
-		std::cout.flush();
+		cout << "Setting default MHD state... ";
+		cout.flush();
 	}
 
 	// set default state
@@ -167,8 +172,8 @@ template <
 	}
 
 	if (verbose and grid.get_rank() == 0) {
-		std::cout << "done\nSetting non-default initial MHD state... ";
-		std::cout.flush();
+		cout << "done\nSetting non-default initial MHD state... ";
+		cout.flush();
 	}
 
 	// mass density
@@ -181,7 +186,8 @@ template <
 		const auto& geometry_id = init_cond.get_geometry_id();
 		const auto& cells = geometries.get_cells(geometry_id);
 		for (const auto& cell: cells) {
-			const auto [c, s, e] = pamhd::grid::get_cell_geom_emulated(grid, cell);
+			const auto [c, _, __] = pamhd::grid::
+				get_cell_geom_emulated(grid, cell);
 			const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
 			const auto
 				lat = asin(c[2] / r),
@@ -199,7 +205,7 @@ template <
 
 			auto* const cell_data = grid[cell];
 			if (cell_data == nullptr) {
-				std::cerr <<  __FILE__ << "(" << __LINE__ << std::endl;
+				cerr <<  __FILE__ "(" << __LINE__ << endl;
 				abort();
 			}
 
@@ -217,7 +223,8 @@ template <
 		const auto& geometry_id = init_cond.get_geometry_id();
 		const auto& cells = geometries.get_cells(geometry_id);
 		for (const auto& cell: cells) {
-			const auto [c, s, e] = pamhd::grid::get_cell_geom_emulated(grid, cell);
+			const auto [c, _, __] = pamhd::grid::
+				get_cell_geom_emulated(grid, cell);
 			const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
 			const auto
 				lat = asin(c[2] / r),
@@ -233,9 +240,8 @@ template <
 
 			auto* const cell_data = grid[cell];
 			if (cell_data == nullptr) {
-				std::cerr <<  __FILE__ << "(" << __LINE__
-					<< ") No data for cell: " << cell
-					<< std::endl;
+				cerr <<  __FILE__ "(" << __LINE__
+					<< ") No data for cell: " << cell << endl;
 				abort();
 			}
 
@@ -253,7 +259,8 @@ template <
 		const auto& geometry_id = init_cond.get_geometry_id();
 		const auto& cells = geometries.get_cells(geometry_id);
 		for (const auto& cell: cells) {
-			const auto [c, s, e] = pamhd::grid::get_cell_geom_emulated(grid, cell);
+			const auto [c, _, __] = pamhd::grid::
+				get_cell_geom_emulated(grid, cell);
 			const auto r = sqrt(c[0]*c[0] + c[1]*c[1] + c[2]*c[2]);
 			const auto
 				lat = asin(c[2] / r),
@@ -269,9 +276,8 @@ template <
 
 			auto* const cell_data = grid[cell];
 			if (cell_data == nullptr) {
-				std::cerr <<  __FILE__ << "(" << __LINE__
-					<< ") No data for cell: " << cell
-					<< std::endl;
+				cerr <<  __FILE__ << "(" << __LINE__
+					<< ") No data for cell: " << cell << endl;
 				abort();
 			}
 
@@ -295,7 +301,7 @@ template <
 	Nrj.type().is_stale = true;
 
 	if (verbose and grid.get_rank() == 0) {
-		std::cout << "done" << std::endl;
+		cout << "done" << endl;
 	}
 }
 
