@@ -2,7 +2,7 @@
 Handles options of MHD part of PAMHD.
 
 Copyright 2016, 2017 Ilja Honkonen
-Copyright 2024 Finnish Meteorological Institute
+Copyright 2024, 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -66,7 +66,6 @@ struct Options
 	std::string solver = "roe_athena";
 	double
 		save_n = -1,
-		min_pressure = 0,
 		time_step_factor = 0.5,
 		number_density_mrl_at = 9e99,
 		number_density_min_mrg = std::numeric_limits<double>::epsilon(),
@@ -116,21 +115,6 @@ struct Options
 				+ ", should be one of rusanov, hll-athena, hlld-athena, roe-athena, hybrid."
 			);
 		}
-
-		if (not object.HasMember("minimum-pressure")) {
-			throw std::invalid_argument(
-				std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
-				+ "JSON data doesn't have a minimum-pressure key."
-			);
-		}
-		const auto& min_pressure_json = object["minimum-pressure"];
-		if (not min_pressure_json.IsNumber()) {
-			throw std::invalid_argument(
-				std::string(__FILE__ "(") + std::to_string(__LINE__) + "): "
-				+ "JSON item minimum-pressure is not a number."
-			);
-		}
-		min_pressure = min_pressure_json.GetDouble();
 
 		if (not object.HasMember("mhd-time-step-factor")) {
 			throw std::invalid_argument(
