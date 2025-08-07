@@ -263,11 +263,8 @@ def set_cell_data(outfile, metadata, data):
 	return ret_val
 
 
-def get_cell_geom(metadata, cell_id):
-	orig_id = cell_id
+def get_cell_info(metadata, cell_id):
 	rl0c = metadata['ref_lvl_0_cells']
-	l0cl = metadata['lvl_0_cell_length']
-	gs = metadata['grid_start']
 	mrl = metadata['max_ref_lvl']
 
 	ref_lvl = 0
@@ -289,6 +286,33 @@ def get_cell_geom(metadata, cell_id):
 		cell_index[0] * 2**(mrl - ref_lvl),
 		cell_index[1] * 2**(mrl - ref_lvl),
 		cell_index[2] * 2**(mrl - ref_lvl))
+	return ref_lvl, cell_index
+
+
+def get_cell(metadata, ref_lvl, index):
+	rl0c = metadata['ref_lvl_0_cells']
+	mrl = metadata['max_ref_lvl']
+	cell = 1
+	for i in range(ref_lvl):
+		cell += rl0c[0]*rl0c[1]*rl0c[2] * 2**(i*3)
+	tli = (
+		index[0] // 2**(mrl - ref_lvl),
+		index[1] // 2**(mrl - ref_lvl),
+		index[2] // 2**(mrl - ref_lvl))
+	tll = (
+		rl0c[0] * 2**ref_lvl,
+		rl0c[1] * 2**ref_lvl)
+	cell += tli[0] + tli[1]*tll[0] + tli[2]*tll[0]*tll[1]
+	return cell
+
+
+def get_cell_geom(metadata, cell_id):
+	rl0c = metadata['ref_lvl_0_cells']
+	l0cl = metadata['lvl_0_cell_length']
+	gs = metadata['grid_start']
+	mrl = metadata['max_ref_lvl']
+
+	ref_lvl, cell_index = get_cell_info(metadata, cell_id)
 	cell_center = ( # python2 division requires float(s)
 		gs[0] + l0cl[0] * (cell_index[0] / 2.0**mrl + 1.0 / 2**(ref_lvl+1)),
 		gs[1] + l0cl[1] * (cell_index[1] / 2.0**mrl + 1.0 / 2**(ref_lvl+1)),
