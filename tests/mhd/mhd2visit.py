@@ -191,6 +191,10 @@ def dc2vtk(outname, data):
 			outfile.write('11\n')
 		outfile.write('CELL_DATA ' + str(len(cells)) + '\n')
 
+		outfile.write('SCALARS internal_cell_id int 1\nlookup_table default\n')
+		for c in cells:
+			outfile.write(str(c) + '\n')
+
 		if 'mhd     ' in data[cells[0]]:
 			outfile.write('SCALARS mass_density double 1\nlookup_table default\n')
 			for c in cells:
