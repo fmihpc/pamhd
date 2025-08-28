@@ -53,11 +53,29 @@ def transform_meta(args, data):
 	if args.rotate == None:
 		return data
 
+	if args.rotate == 'y':
+		# maybe scipy.ndimage.shift
+		temp = data['ref_lvl_0_cells'][2]
+		data['ref_lvl_0_cells'][2] = data['ref_lvl_0_cells'][1]
+		data['ref_lvl_0_cells'][1] = data['ref_lvl_0_cells'][0]
+		data['ref_lvl_0_cells'][0] = temp
+		temp = data['periodicity'][2]
+		data['periodicity'][2] = data['periodicity'][1]
+		data['periodicity'][1] = data['periodicity'][0]
+		data['periodicity'][0] = temp
+		temp = data['grid_start'][2]
+		data['grid_start'][2] = data['grid_start'][1]
+		data['grid_start'][1] = data['grid_start'][0]
+		data['grid_start'][0] = temp
+		temp = data['lvl_0_cell_length'][2]
+		data['lvl_0_cell_length'][2] = data['lvl_0_cell_length'][1]
+		data['lvl_0_cell_length'][1] = data['lvl_0_cell_length'][0]
+		data['lvl_0_cell_length'][0] = temp
+		return data
+
 	i1, i2 = -1, -1
 	if args.rotate == 'x':
 		i1, i2 = 1, 2
-	if args.rotate == 'y':
-		i1, i2 = 0, 2
 	if args.rotate == 'z':
 		i1, i2 = 0, 1
 
@@ -97,8 +115,8 @@ def transform_cells(args, old_meta, new_meta, cells):
 		elif args.rotate == 'y':
 			new_index = (
 				max_index[2] - old_index[2],
-				old_index[1],
-				old_index[0])
+				old_index[0],
+				old_index[1])
 		elif args.rotate == 'z':
 			new_index = (
 				max_index[1] - old_index[1],
@@ -137,7 +155,7 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 	denom = maximum(abs(sim_time1), abs(sim_time2))
 	diff_ = abs(sim_time1 - sim_time2) - args.time_min
 	if denom > 0 and args.time < diff_ / denom:
-		raise RuntimeError('Simulation time differs too much between ' + infile1_name + ' and ' + infile2_name + ': ' + str(sim_time1) + ' vs ' + str(sim_time2))
+		raise RuntimeError('Simulation time differs too much between ' + infile1_name + ' and ' + infile2_name + ': ' + str(abs(sim_time1 - sim_time2)) + ' (' + str(sim_time1) + ' vs ' + str(sim_time2) + ')')
 
 	if data1['adiabatic_index'] != data2['adiabatic_index']:
 		raise RuntimeError('Adiabatic index differs between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['adiabatic_index']) + ' != ' + str(data2['adiabatic_index']))
@@ -163,31 +181,34 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 		raise RuntimeError('Length of refinement level 0 cells differ between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['lvl_0_cell_length']) + ' != ' + str(data2['lvl_0_cell_length']))
 	if data1['total_cells'] != data2['total_cells']:
 		raise RuntimeError('Total number of cells differ between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['total_cells']) + ' != ' + str(data2['total_cells']))
-	data1['cells'] = common.get_cells(infile1, data1['total_cells'])
-	data2['cells'] = transform_cells(args, orig2, data2, common.get_cells(infile2, orig2['total_cells']))
-	ids1 = set([i for i in data1['cells']])
-	ids2 = set([i for i in data2['cells']])
+	cells1 = common.get_cells(infile1, data1['total_cells'])
+	orig_cells2 = common.get_cells(infile2, orig2['total_cells'])
+	cells2 = transform_cells(args, orig2, data2, orig_cells2)
+
+	ids1 = set([c for c in cells1])
+	ids2 = set([c for c in cells2])
 	if ids1 != ids2:
 		raise RuntimeError('Cells that exist differs between ' + infile1_name + ' and ' + infile2_name)
 
-	sim_data1_ = common.get_cell_data(infile1, data1, range(len(data1['cells'])))
+	sim_data1_ = common.get_cell_data(infile1, data1, range(len(cells1)))
 	sim_data1 = dict()
-	for i in range(len(data1['cells'])):
-		sim_data1[data1['cells'][i]] = sim_data1_[i]
+	for i in range(len(cells1)):
+		sim_data1[cells1[i]] = sim_data1_[i]
 
-	sim_data2_ = common.get_cell_data(infile2, data2, range(len(data2['cells'])))
+	sim_data2_ = common.get_cell_data(infile2, orig2, range(len(cells2)))
 	sim_data2 = dict()
-	for i in range(len(data2['cells'])):
-		sim_data2[data2['cells'][i]] = sim_data2_[i]
+	for i in range(len(cells2)):
+		sim_data2[cells2[i]] = sim_data2_[i]
 
-	for cell in data1['cells']:
-
+	for i in range(len(cells1)):
+		cell = cells1[i]
+		cell2 = orig_cells2[i]
 		rho1 = sim_data1[cell]['mhd     '][0]
 		rho2 = sim_data2[cell]['mhd     '][0]
 		denom = maximum(abs(rho1), abs(rho2))
 		diff_ = abs(rho1 - rho2) - args.mass_min
 		if denom != 0 and args.mass < diff_ / denom:
-			raise RuntimeError('Mass density differs too much in cells ' + str(cell) + ' and ' + str(cell) + ': ' + str(rho1) + ' vs ' + str(rho2))
+			raise RuntimeError('Mass density differs too much in cell ' + str(cell) + ' of file ' + infile1_name + ' and cell ' + str(cell2) + ' of file ' + infile2_name + ': ' + str(abs(rho1 - rho2)) + ' (' + str(rho1) + ' vs ' + str(rho2) + ')')
 
 		vel1 = array(sim_data1[cell]['mhd     '][1]) / rho1
 		vel1 = vel1.dot(vel1)**0.5
@@ -196,14 +217,14 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 		denom = maximum(vel1, vel2)
 		diff_ = abs(vel1 - vel2) - args.velocity_min
 		if denom != 0 and args.velocity < diff_ / denom:
-			raise RuntimeError('Velocity differs too much in cell ' + str(cell) + ': ' + str(vel1) + ' vs ' + str(vel2))
+			raise RuntimeError('Velocity differs too much in cell ' + str(cell) + ' of file ' + infile1_name + ' and cell ' + str(cell2) + ' of file ' + infile2_name + ': ' + str(abs(vel1 - vel2)) + ' (' + str(vel1) + ' vs ' + str(vel2) + ')')
 
 		nrj1 = sim_data1[cell]['mhd     '][2]
 		nrj2 = sim_data2[cell]['mhd     '][2]
 		denom = maximum(abs(nrj1), abs(nrj2))
 		diff_ = abs(nrj1 - nrj2) - args.energy_min
 		if denom != 0 and args.energy < diff_ / denom:
-			raise RuntimeError('Energy density differs too much in cells ' + str(cell) + ' and ' + str(cell) + ': ' + str(nrj1) + ' vs ' + str(nrj2))
+			raise RuntimeError('Energy density differs too much in cell ' + str(cell) + ' of file ' + infile1_name + ' and cell ' + str(cell2) + ' of file ' + infile2_name + ': ' + str(abs(nrj1 - nrj2)) + ' (' + str(nrj1) + ' vs ' + str(nrj2) + ')')
 
 		mag1 = array(sim_data1[cell]['mhd     '][3])
 		mag1 = mag1.dot(mag1)**0.5
@@ -212,7 +233,7 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 		denom = maximum(mag1, mag2)
 		diff_ = abs(mag1 - mag2) - args.magnetic_field_min
 		if denom != 0 and args.magnetic_field < diff_ / denom:
-			raise RuntimeError('Perturbed magnetic field differs too much in cell ' + str(cell) + ': ' + str(mag1) + ' vs ' + str(mag2))
+			raise RuntimeError('Perturbed magnetic field differs too much in cell ' + str(cell) + ' of file ' + infile1_name + ' and cell ' + str(cell2) + ' of file ' + infile2_name + ': ' + str(abs(mag1 - mag2)) + ' (' + str(mag1) + ' vs ' + str(mag2) + ')')
 
 
 if __name__ == '__main__':
@@ -233,7 +254,7 @@ if __name__ == '__main__':
 	parser.add_argument('--energy-min', type = float, default = 1e-15, help = 'Minimum value of difference in energy density')
 	parser.add_argument('--magnetic-field', type = float, default = 1e-15, help = 'Maximum allowed relative difference in perturbed magnetic field magnitude')
 	parser.add_argument('--magnetic-field-min', type = float, default = 1e-15, help = 'Minimum value of difference in magnetic field')
-	parser.add_argument('--rotate', metavar = 'A', type = str, default = None, help = 'File(s) *_in2 are rotated around axis A compared to *_in1')
+	parser.add_argument('--rotate', metavar = 'A', type = str, default = None, help = 'File(s) *_in2 are rotated around axis A before comparing to *_in1')
 	parser.add_argument('files', metavar = 'F', nargs = '*', help = 'Names of files to compare ([--files] diff1_in1 diff1_in2 diff2_in1 diff2_in2 ...)')
 	args = parser.parse_args()
 
@@ -260,6 +281,8 @@ if __name__ == '__main__':
 		exit('--magnetic-field cannot be < 0')
 	if args.magnetic_field_min < 0:
 		exit('--magnetic-field-min cannot be < 0')
+	if not args.rotate in {None, 'x', 'y', 'z'}:
+		exit('If given, --rotate must be x, y or z')
 
 	ok = True
 	for i in range(0, len(args.files), 2):
@@ -268,4 +291,9 @@ if __name__ == '__main__':
 				join(dirname(args.files[i]),
 				'diff_' + basename(args.files[i])))
 		except Exception as e:
+			ok = False
 			print(repr(e))
+	if ok:
+		exit()
+	else:
+		exit(1)
