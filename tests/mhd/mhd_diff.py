@@ -190,6 +190,10 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 	if ids1 != ids2:
 		raise RuntimeError('Cells that exist differs between ' + infile1_name + ' and ' + infile2_name)
 
+	cell2orig = dict()
+	for i in range(len(cells2)):
+		cell2orig[cells2[i]] = orig_cells2[i]
+
 	sim_data1_ = common.get_cell_data(infile1, data1, range(len(cells1)))
 	sim_data1 = dict()
 	for i in range(len(cells1)):
@@ -200,9 +204,8 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 	for i in range(len(cells2)):
 		sim_data2[cells2[i]] = sim_data2_[i]
 
-	for i in range(len(cells1)):
-		cell = cells1[i]
-		cell2 = orig_cells2[i]
+	for cell in cells1:
+		cell2 = cell2orig[cell]
 		rho1 = sim_data1[cell]['mhd     '][0]
 		rho2 = sim_data2[cell]['mhd     '][0]
 		denom = maximum(abs(rho1), abs(rho2))
