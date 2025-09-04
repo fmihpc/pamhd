@@ -2,7 +2,6 @@
 	"output-directory": "results/hydrodynamic/bow_shock/2d/z1/rusanov_staggered",
 	"time-start": 0,
 	"time-length": 10,
-	"minimum-pressure": 0,
 	"solver-mhd": "rusanov",
 	"load-balancer": "RANDOM",
 	"save-mhd-n": 1,

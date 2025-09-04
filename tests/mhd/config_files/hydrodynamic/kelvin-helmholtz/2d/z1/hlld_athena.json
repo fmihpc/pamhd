@@ -3,8 +3,6 @@
 	"output-directory": "results/hydrodynamic/kelvin-helmholtz/2d/z1/hlld_athena",
 	"time-start": 0,
 	"time-length": 12,
-	"minimum-pressure": 0,
-	"resistivity": "0",
 	"solver-mhd": "hlld-athena",
 	"load-balancer": "RANDOM",
 	"save-mhd-n": 1,

@@ -2,7 +2,6 @@
 	"output-directory": "tests/mhd/results/hydrodynamic/substep/100cells/z1",
 	"time-start": 0,
 	"time-length": 1,
-	"minimum-pressure": 0,
 	"solver-mhd": "rusanov",
 	"load-balancer": "RANDOM",
 	"save-mhd-n": 0,
@@ -10,7 +9,6 @@
 	"vacuum-permeability": 1,
 	"proton-mass": 1,
 	"mhd-time-step-factor": 0.5,
-	"time-step": 0.00125,
 	"substep-min" : "z < 0.5 ? 0 : 1",
 	"substep-max" : "z < 0.5 ? 0 : 1",
 	"grid-options": {

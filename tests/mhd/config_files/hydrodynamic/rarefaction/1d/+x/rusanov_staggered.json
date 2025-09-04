@@ -2,7 +2,6 @@
 	"output-directory": "results/hydrodynamic/rarefaction/1d/+x/rusanov_staggered",
 	"time-start": 0,
 	"time-length": 0.2,
-	"minimum-pressure": 0,
 	"solver-mhd": "rusanov",
 	"load-balancer": "RANDOM",
 	"save-mhd-n": 0.05,
