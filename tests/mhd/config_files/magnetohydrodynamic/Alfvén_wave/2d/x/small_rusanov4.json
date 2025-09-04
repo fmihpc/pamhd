@@ -3,7 +3,6 @@
 	"output-directory": "tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov4",
 	"time-start": 0,
 	"time-length": 1,
-	"minimum-pressure": 0,
 	"solver-mhd": "rusanov",
 	"load-balancer": "RANDOM",
 	"save-mhd-n": 0,
@@ -14,7 +13,7 @@
 	"grid-options": {
 		"periodic": "{true, true, true}",
 		"cells": "{1, 10, 10}",
-		"volume": "{1, 1.1547, 2}",
+		"volume": "{1, 2/sqrt(3), 2}",
 		"start": "{0, 0, 0}",
 		"max-ref-lvl": 2,
 		"amr-n": 0,
@@ -22,7 +21,7 @@
 		"ref-lvl-at-most": "(abs(y - 0.57) > 0.25) ? 0 : 2"
 	},
 	"number-density": {"default": 1},
-	"velocity": {"default": "{0.001*sin(pi*(1.73205*y+z)), -0.0005*cos(pi*(1.73205*y+z)), 0.00086603*cos(pi*(1.73205*y+z))}"},
+	"velocity": {"default": "{sin(pi*(sqrt(3)*y+z))/1000, -cos(pi*(sqrt(3)*y+z))/2000, sqrt(3)*cos(pi*(sqrt(3)*y+z))/2000}"},
 	"pressure": {"default": 0.1},
-	"magnetic-field": {"default": "{0.001*sin(pi*(1.73205*y+z)), 0.86603 + 0.0005*cos(pi*(1.73205*y+z)), 0.5 - 0.00086603*cos(pi*(1.73205*y+z))}"}
+	"magnetic-field": {"default": "{sin(pi*(sqrt(3)*y+z))/1000, sqrt(3)/2 + cos(pi*(sqrt(3)*y+z))/2000, 0.5 - sqrt(3)*cos(pi*(sqrt(3)*y+z))/2000}"}
 }
