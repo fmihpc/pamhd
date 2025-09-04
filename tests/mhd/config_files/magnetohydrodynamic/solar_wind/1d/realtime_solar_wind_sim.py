@@ -3,6 +3,7 @@
 Converts realtime ACE data from NOAA to format suitable for MHD test program of PAMHD.
 
 Copyright 2015, 2016, 2017 Ilja Honkonen
+Copyright 2025 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,6 +30,9 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Author(s): Ilja Honkonen
 '''
 
 from argparse import ArgumentParser
@@ -195,14 +199,10 @@ if __name__ == '__main__':
 		+ '"time-length": ' + str(args.duration)
 		+ ',\n"load-balancer": "RCB",\n'
 		+ '"save-mhd-n": 60,\n'
-		+ '"remove-div-B-n": -1,\n'
-		+ '"resistivity": "0",\n"minimum-pressure": 0,\n'
 		+ '"adiabatic-index": 1.6666666666666667,\n'
 		+ '"vacuum-permeability": 1.2566370614359173e-06,\n'
 		+ '"proton-mass": 1.6726217770000001e-27,\n'
 		+ '"time-step-factor": 0.5,\n'
-		+ '"poisson-norm-stop": 1e-10,\n'
-		+ '"poisson-norm-increase-max": 10,\n'
 		+ '"grid-options": {\n'
 		+ '\t"periodic": "{false, false, false}",\n'
 		+ '\t"cells": "{100 + 2, 1, 1}",\n'

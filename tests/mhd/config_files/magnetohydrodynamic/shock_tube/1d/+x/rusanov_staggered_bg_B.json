@@ -2,7 +2,6 @@
 	"output-directory": "results/magnetohydrodynamic/shock_tube/1d/+x/rusanov_staggered_bg_B",
 	"time-start": 0,
 	"time-length": 1,
-	"minimum-pressure": 0,
 	"solver-mhd": "rusanov",
 	"load-balancer": "RANDOM",
 	"save-mhd-n": 0.1,
