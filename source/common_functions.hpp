@@ -39,7 +39,10 @@ Author(s): Ilja Honkonen
 
 #include "cmath"
 #include "numeric"
+#include "optional"
 #include "stdexcept"
+
+#include "common_variables.hpp"
 
 
 namespace pamhd {
@@ -213,20 +216,46 @@ template <
 	for (const auto& cell: grid.local_cells()) {
 		if (CType.data(*cell.data) < 0) continue;
 
+		// track error between cell and smaller neighbors
+		pamhd::Face_Type<std::optional<double>> oldB;
+		// prepare face B on side(s) of smaller neighbors
+		for (const auto& neighbor: cell.neighbors_of) {
+			const auto& fn = neighbor.face_neighbor;
+			if (
+				fn != 0
+				and CType.data(*neighbor.data) >= 0
+				and neighbor.relative_size > 0
+			) {
+				if (oldB(fn)) continue;
+				oldB(fn) = Face_B.data(*cell.data)(fn);
+				Face_B.data(*cell.data)(fn) = 0;
+			}
+		}
+
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
 			if (
 				fn == 0
-				or neighbor.relative_size != 0
 				or CType.data(*neighbor.data) < 0
 			) continue;
 
-			const auto diff
-				= Face_B.data(*cell.data)(fn)
-				- Face_B.data(*neighbor.data)(-fn);
-			B_Error.data(*cell.data) += std::abs(diff);
-			Face_B.data(*cell.data)(fn) -= diff / 2;
-			Face_B.data(*neighbor.data)(-fn) += diff / 2;
+			if (neighbor.relative_size == 0) {
+				const auto diff
+					= Face_B.data(*cell.data)(fn)
+					- Face_B.data(*neighbor.data)(-fn);
+				B_Error.data(*cell.data) += std::abs(diff);
+				Face_B.data(*cell.data)(fn) -= diff / 2;
+				Face_B.data(*neighbor.data)(-fn) += diff / 2;
+			} else if (neighbor.relative_size > 0) {
+				// replace with average of smaller neighbors
+				Face_B.data(*cell.data)(fn) += Face_B.data(*neighbor.data)(-fn) / 4;
+			}
+		}
+
+		for (int dir: {-3,-2,-1,+1,+2,+3}) {
+			if (not oldB(dir)) continue;
+			oldB(dir).value() -= Face_B.data(*cell.data)(dir);
+			B_Error.data(*cell.data) += std::abs(oldB(dir).value());
 		}
 	}
 

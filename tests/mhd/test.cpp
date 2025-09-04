@@ -102,7 +102,7 @@ bool pamhd::Face_Magnetic_Field::is_stale = true;
 
 const auto Face_dB = pamhd::Variable_Getter<pamhd::Face_dB>();
 
-const auto B_Error = pamhd::Variable_Getter<pamhd::Face_B_Error>();
+const auto Berror = pamhd::Variable_Getter<pamhd::Face_B_Error>();
 
 const auto Div_B = pamhd::Variable_Getter<pamhd::Magnetic_Field_Divergence>();
 
@@ -319,7 +319,7 @@ int main(int argc, char* argv[]) {
 	/*
 	Initialize simulation grid
 	*/
-	const unsigned int neighborhood_size = 2;
+	const unsigned int neighborhood_size = 1;
 	const auto& number_of_cells = options_grid.get_number_of_cells();
 	const auto& periodic = options_grid.get_periodic();
 
@@ -376,7 +376,7 @@ int main(int argc, char* argv[]) {
 		(*cell.data)[pamhd::MPI_Rank()] = rank;
 		Substep.data(*cell.data) = 1;
 		Max_v.data(*cell.data) = {-1, -1, -1, -1, -1, -1};
-		B_Error.data(*cell.data) = 0;
+		Berror.data(*cell.data) = 0;
 	}
 	Max_v.type().is_stale = true;
 	Substep.type().is_stale = true;
@@ -406,16 +406,19 @@ int main(int argc, char* argv[]) {
 	if (rank == 0) {
 		cout << "Initializing... " << endl;
 	}
+	// classify cells & faces into normal, boundary and dont_solve
+	pamhd::mhd::set_solver_info(grid, boundaries_mhd, geometries, CType);
+	pamhd::mhd::classify_faces(grid, CType, FInfo);
+
 	pamhd::mhd::initialize_magnetic_field_staggered<pamhd::Magnetic_Field>(
 		geometries, initial_conditions_mhd, background_B,
 		grid, simulation_time, options_sim.vacuum_permeability,
 		Face_B, Mag_f, Bg_B
 	);
 
-	pamhd::mhd::update_B_consistency(
-		0, grid.local_cells(), grid,
-		Mas, Mom, Nrj, Vol_B, Face_B,
-		CType, Substep,
+	pamhd::mhd::update_vol_B(
+		0, grid.local_cells(), Mas, Mom,
+		Nrj, Vol_B, Face_B, CType, Substep,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		false // fluid not initialized yet
@@ -431,10 +434,6 @@ int main(int argc, char* argv[]) {
 		Mas_f, Mom_f, Nrj_f
 	);
 
-	// classify cells & faces into normal, boundary and dont_solve
-	pamhd::mhd::set_solver_info(grid, boundaries_mhd, geometries, CType);
-	pamhd::mhd::classify_faces(grid, CType, FInfo);
-
 	pamhd::mhd::apply_boundaries(
 		grid, geometries, boundaries_mhd,
 		simulation_time, options_sim.proton_mass,
@@ -445,7 +444,7 @@ int main(int argc, char* argv[]) {
 	);
 
 	// make sure everyone agrees on face Bs after init
-	sync_magnetic_field(grid, Face_B, Vol_B, B_Error, CType);
+	sync_magnetic_field(grid, Face_B, Vol_B, Berror, CType);
 
 	// final init with timestep of 0
 	if (rank == 0) {
@@ -456,7 +455,7 @@ int main(int argc, char* argv[]) {
 		0, options_mhd.time_step_factor,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
-		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, B_Error,
+		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Berror,
 		Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f, CType, Timestep,
 		Substep, Substep_Min, Substep_Max, Max_v
 	);
@@ -511,7 +510,7 @@ int main(int argc, char* argv[]) {
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
 				Mas, Mom, Nrj, Vol_B, Face_B, Face_dB,
-				B_Error, Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f,
+				Berror, Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f,
 				CType, Timestep, Substep, Substep_Min,
 				Substep_Max, Max_v
 			);
@@ -536,7 +535,7 @@ int main(int argc, char* argv[]) {
 				options_sim.vacuum_permeability,
 				Mas, Mom, Nrj, Vol_B, Face_B, Bg_B,
 				CType, FInfo, Ref_min, Ref_max,
-				Substep, Max_v
+				Substep, Max_v, Berror
 			);
 		}
 
@@ -548,6 +547,8 @@ int main(int argc, char* argv[]) {
 			Mas, Mom, Nrj, Vol_B,
 			Face_B, CType, FInfo, Substep
 		);
+
+		sync_magnetic_field(grid, Face_B, Vol_B, Berror, CType);
 
 		const auto avg_div = pamhd::math::get_divergence_face2volume(
 			grid.local_cells(), grid,

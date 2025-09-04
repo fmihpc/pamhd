@@ -251,40 +251,37 @@ template <
 	const pamhd::Magnetic_Field mag_int{};
 
 	for (const auto& cell: cells) {
-		if (cell.data == nullptr) continue;
-		if (SInfo.data(*cell.data) < 0) continue;
+		// no data for cells too far from this rank's cells
+		if (
+			cell.data == nullptr
+			or SInfo.data(*cell.data) < 0
+		) continue;
 
-		// skip if no local effect
-		if (not cell.is_local) {
-			bool skip = true;
-			for (const auto& neighbor: cell.neighbors_of) {
-				if (
-					neighbor.face_neighbor == 0
-					and neighbor.edge_neighbor[0] < 0
-				) continue;
-				if (neighbor.is_local) {
-					skip = false;
-					break;
-				}
-			}
-			if (skip) continue;
-		}
-
+		// minimum substeps among neighborhoods
 		const int csub = Substep.data(*cell.data);
-		int min_min_sub = csub;
-
-		const auto [cell_dx, cell_dy, cell_dz]
-			= grid.geometry.get_length(cell.id);
-
+		int
+			min_sub_face_neigh = csub,
+			min_sub_edge_neigh = csub;
+		// whether internal flux needed for smaller neighbor(s)
 		array<bool, 3> missing_flux{false, false, false};
 		for (const auto& neighbor: cell.neighbors_of) {
 			const auto& fn = neighbor.face_neighbor;
-			if (fn == 0) continue;
-			if (neighbor.data == nullptr) continue;
-			if (SInfo.data(*neighbor.data) < 0) continue;
+			const auto& en = neighbor.edge_neighbor;
+			if (
+				(fn == 0 and en[0] < 0)
+				or neighbor.data == nullptr
+				or SInfo.data(*neighbor.data) < 0
+			) continue;
 
 			const int nsub = Substep.data(*neighbor.data);
-			min_min_sub = min(nsub, min_min_sub);
+			if (en[0] >= 0) {
+				if (fn != 0) throw runtime_error(
+					__FILE__ "(" + to_string(__LINE__) + ")");
+				min_sub_edge_neigh = min(nsub, min_sub_edge_neigh);
+				continue;
+			}
+			min_sub_face_neigh = min(nsub, min_sub_face_neigh);
+
 			if (
 				current_substep % csub != 0
 				and current_substep % nsub != 0
@@ -297,9 +294,20 @@ template <
 				missing_flux[(dim + 1) % 3] = true;
 				missing_flux[(dim + 2) % 3] = true;
 			}
+		}
+		min_sub_edge_neigh = min(min_sub_face_neigh, min_sub_edge_neigh);
 
-			// solve flux only in +dir
-			if (fn < 0) continue;
+		const auto [cell_dx, cell_dy, cell_dz]
+			= grid.geometry.get_length(cell.id);
+
+		for (const auto& neighbor: cell.neighbors_of) {
+			const auto& fn = neighbor.face_neighbor;
+			if (
+				fn <= 0 // solve flux only in +dir
+				or neighbor.data == nullptr
+				or SInfo.data(*neighbor.data) < 0
+				or current_substep % min_sub_edge_neigh != 0
+			) continue;
 
 			const auto [max_vel, flux] = get_flux(
 				grid, cell, neighbor, fn, Mas, Mom, Nrj,
@@ -312,8 +320,7 @@ template <
 			}
 
 			// cell size and substep factors for fluxes
-			const auto min_sub = min(csub, nsub);
-			const auto min_dt = dt * min_sub;
+			const auto min_dt = dt * min_sub_edge_neigh;
 			double cfac = min_dt, nfac = min_dt;
 			// average smaller fluxes through large face
 			if (neighbor.relative_size > 0) {
@@ -524,7 +531,7 @@ template <
 
 			assign_missing_face_dBs_fx(
 				grid, cell, flux[mag_int], Face_dB,
-				cell_dy, cell_dz, dt*min_min_sub);
+				cell_dy, cell_dz, dt*min_sub_face_neigh);
 		}
 		if (missing_flux[1]) {
 			const auto [max_vel, flux] = get_flux(
@@ -534,7 +541,7 @@ template <
 
 			assign_missing_face_dBs_fy(
 				grid, cell, flux[mag_int], Face_dB,
-				cell_dx, cell_dz, dt*min_min_sub);
+				cell_dx, cell_dz, dt*min_sub_face_neigh);
 		}
 		if (missing_flux[2]) {
 			const auto [max_vel, flux] = get_flux(
@@ -544,10 +551,9 @@ template <
 
 			assign_missing_face_dBs_fz(
 				grid, cell, flux[mag_int], Face_dB,
-				cell_dx, cell_dy, dt*min_min_sub);
+				cell_dx, cell_dy, dt*min_sub_face_neigh);
 		}
 	}
-	Max_v.type().is_stale = true;
 
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
@@ -598,7 +604,6 @@ template <
 		// average E from 4 edge-touching faces
 		Ey = -flux_mag[2] * dt * dy / 4,
 		Ez = +flux_mag[1] * dt * dz / 4;
-
 	const auto
 		cleni = grid.mapping.get_cell_length_in_indices(cell.id),
 		flux_nleni = grid.mapping.get_cell_length_in_indices(flux_neigh.id);
@@ -660,8 +665,6 @@ template <
 	// assumes cells of same ref lvl are of same physical size
 	for (const auto& neighbor: cell.neighbors_of) {
 		if (neighbor.data == nullptr) continue;
-		//if (neighbor.id == flux_neigh.id) continue;
-
 		const auto& fn = neighbor.face_neighbor;
 		const auto& en = neighbor.edge_neighbor;
 		if (fn == 0 and en[0] < 0) continue;
@@ -813,10 +816,11 @@ template <
 	const Cell_Iter& cell,
 	const Flux_Vec& flux_mag,
 	const Face_dB_Getter& Face_dB,
-	double dy,
-	double dz,
+	const double& dy,
+	const double& dz,
 	const double& dt
 ) {
+	using std::abs;
 	using std::runtime_error;
 	using std::to_string;
 
@@ -908,13 +912,13 @@ template <
 	using std::runtime_error;
 	using std::to_string;
 
-	const double
-		Ex = +flux_mag[2] * dt * dx / 4,
-		Ez = -flux_mag[0] * dt * dz / 4;
-
 	if (flux_neigh.face_neighbor != +2) {
 		throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 	}
+
+	const double
+		Ex = +flux_mag[2] * dt * dx / 4,
+		Ez = -flux_mag[0] * dt * dz / 4;
 
 	const auto
 		cleni = grid.mapping.get_cell_length_in_indices(cell.id),
@@ -1205,13 +1209,13 @@ template <
 	using std::runtime_error;
 	using std::to_string;
 
-	const double
-		Ex = -flux_mag[1] * dt * dx / 4,
-		Ey = +flux_mag[0] * dt * dy / 4;
-
 	if (flux_neigh.face_neighbor != +3) {
 		throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 	}
+
+	const double
+		Ex = -flux_mag[1] * dt * dx / 4,
+		Ey = +flux_mag[0] * dt * dy / 4;
 
 	const auto
 		cleni = grid.mapping.get_cell_length_in_indices(cell.id),
@@ -1604,28 +1608,12 @@ template <
 
 
 /*!
-Makes B consistent in given cells.
-
-Face B can have two values at any location since
-cells store it at every face. FMagP is used by default
-so FMagN in neighbor on positive side should be equal.
-With adaptive mesh refinement, in inreasing order of
-importance:
-
-1) Vol_B = FMagN = FmagP if neighbors missing or type < 0
-2) Face B of smaller neighbors overrides any face B
-3) FMagN overrides FMagP of larger neighbor on negative side
-4) Vol_B = 0.5*(FmagN+FMagP)
-
-After above decisions remaining face B values which were
-overriden are copied/averaged from other cell(s).
 
 If constant_thermal_pressure == true total energy is
 adjusted after averaging volume B.
 */
 template <
 	class Cell_Iter,
-	class Grid,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
@@ -1633,10 +1621,9 @@ template <
 	class Face_Magnetic_Field_Getter,
 	class Solver_Info_Getter,
 	class Substepping_Period_Getter
-> void update_B_consistency(
+> void update_vol_B(
 	const int current_substep,
 	const Cell_Iter& cells,
-	Grid& grid,
 	const Mass_Density_Getter& Mas,
 	const Momentum_Density_Getter& Mom,
 	const Total_Energy_Density_Getter& Nrj,
@@ -1648,27 +1635,6 @@ template <
 	const double& vacuum_permeability,
 	const bool& constant_thermal_pressure
 ) try {
-	using std::runtime_error;
-	using std::to_string;
-
-	using Cell = Grid::cell_data_type;
-
-	bool update_copies = false;
-	if (Face_B.type().is_stale) {
-		update_copies = true;
-		Cell::set_transfer_all(true, Face_B.type());
-		Face_B.type().is_stale = false;
-	}
-	if (SInfo.type().is_stale) {
-		update_copies = true;
-		Cell::set_transfer_all(true, SInfo.type());
-		SInfo.type().is_stale = false;
-	}
-	if (update_copies) {
-		grid.update_copies_of_remote_neighbors();
-	}
-	Cell::set_transfer_all(false, Face_B.type(), SInfo.type());
-
 	for (const auto& cell: cells) {
 		if (SInfo.data(*cell.data) < 0) continue;
 		if (current_substep % Substep.data(*cell.data) != 0) continue;
@@ -1684,20 +1650,9 @@ template <
 			}
 		}();
 
-		const auto& c_face_b = Face_B.data(*cell.data);
-		for (const auto& neighbor: cell.neighbors_of) {
-			if (SInfo.data(*neighbor.data) < 0) continue;
-			const auto& fn = neighbor.face_neighbor;
-			if (fn <= 0) continue;
-
-			const auto dim = abs(fn) - 1;
-			const auto& n_face_b = Face_B.data(*neighbor.data);
-			if (c_face_b(dim, +1) != n_face_b(dim, -1)) {
-//FIXME				abort();
-			}
-		}
+		const auto& face_b = Face_B.data(*cell.data);
 		for (size_t dim: {0, 1, 2}) {
-			Vol_B.data(*cell.data)[dim] = 0.5 * (c_face_b(dim, -1) + c_face_b(dim, +1));
+			Vol_B.data(*cell.data)[dim] = 0.5 * (face_b(dim, -1) + face_b(dim, +1));
 		}
 		if (constant_thermal_pressure) {
 			const auto vel = pamhd::mul(
@@ -1789,10 +1744,21 @@ template <
 		Cell::set_transfer_all(true, Bg_B.type());
 		Bg_B.type().is_stale = false;
 	}
+	if (Max_v.type().is_stale) {
+		update_copies = true;
+		Cell::set_transfer_all(true, Max_v.type());
+		Max_v.type().is_stale = false;
+	}
+	if (solver == Solver::hybrid) {
+		if (Face_B.type().is_stale) {
+			update_copies = true;
+			Cell::set_transfer_all(true, Face_B.type());
+			Face_B.type().is_stale = false;
+		}
+	}
 	if (update_copies) {
 		grid.start_remote_neighbor_copy_updates();
 	}
-
 	pamhd::mhd::get_fluxes(
 		solver, grid.inner_cells(), grid, substep,
 		adiabatic_index, vacuum_permeability, sub_dt,
@@ -1818,7 +1784,7 @@ template <
 	}
 	Cell::set_transfer_all(false,
 		Mas.type(), Mom.type(), Nrj.type(), Vol_B.type(),
-		SInfo.type(), Substep.type(), Bg_B.type());
+		SInfo.type(), Substep.type(), Max_v.type(), Bg_B.type(), Face_B.type());
 
 	pamhd::mhd::get_fluxes(
 		solver, grid.remote_cells(), grid, substep,
@@ -1906,11 +1872,6 @@ template <
 	);
 
 	const int max_substep = update_substeps(grid, CType, Substep);
-	if (grid.get_rank() == 0) {std::cout
-		<< "Substep: " << sub_dt << ", largest substep period: "
-		<< max_substep << std::endl;
-	}
-
 	double total_dt = 0;
 	for (int substep = 1; substep <= max_substep; substep += 1) {
 		total_dt += sub_dt;
@@ -1930,17 +1891,19 @@ template <
 		);
 
 		// constant thermal pressure when updating vol B after solution
-		update_B_consistency(
-			substep, grid.local_cells(), grid,
-			Mas, Mom, Nrj, Vol_B, Face_B,
-			CType, Substep,
-			adiabatic_index,
-			vacuum_permeability,
-			true
+		update_vol_B(
+			substep, grid.local_cells(), Mas, Mom, Nrj,
+			Vol_B, Face_B, CType, Substep, adiabatic_index,
+			vacuum_permeability, true
 		);
 	}
 
 	sync_magnetic_field(grid, Face_B, Vol_B, B_Error, CType);
+
+	update_vol_B(
+		0, grid.local_cells(), Mas, Mom, Nrj, Vol_B, Face_B,
+		CType, Substep, adiabatic_index, vacuum_permeability, true
+	);
 
 	return total_dt;
 
@@ -1984,7 +1947,6 @@ template <
 		grid.update_copies_of_remote_neighbors();
 	}
 	Cell::set_transfer_all(false, Max_v.type(), SInfo.type());
-	Timestep.type().is_stale = true;
 
 	for (const auto& cell: grid.local_cells()) {
 		Timestep.data(*cell.data) = numeric_limits<double>::max();
@@ -2032,6 +1994,8 @@ template <
 			}
 		}
 	}
+
+	Timestep.type().is_stale = true;
 
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());

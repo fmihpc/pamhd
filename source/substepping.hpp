@@ -61,6 +61,8 @@ template <
 	const Solver_Info_Getter SInfo,
 	const Substepping_Period_Getter Substep
 ) try {
+	Substep.type().is_stale = true;
+
 	int max_local = -1;
 	for (const auto& cell: grid.local_cells()) {
 		if (SInfo.data(*cell.data) < 0) {
@@ -69,7 +71,6 @@ template <
 		Substep.data(*cell.data) = 1 << Substep.data(*cell.data);
 		max_local = std::max(Substep.data(*cell.data), max_local);
 	}
-	Substep.type().is_stale = true;
 
 	int max_global = -1;
 	auto comm = grid.get_communicator();

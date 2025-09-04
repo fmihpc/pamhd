@@ -224,7 +224,7 @@ template<
 		SInfo.data(*cell_data) = -1;
 	}
 
-	// also don't solve cells too far away from local
+	// also don't solve cells too far from local
 	for (const auto& cell: grid.remote_cells()) {
 		bool solve = false;
 		for (const auto& neighbor: cell.neighbors_to) {
@@ -1286,10 +1286,9 @@ template<
 		simulation_time, Face_B, FInfo
 	);
 
-	pamhd::mhd::update_B_consistency(
-		0, grid.local_cells(), grid, Mas, Mom, Nrj,
-		Mag, Face_B, SInfo, Substep, adiabatic_index,
-		vacuum_permeability, true
+	pamhd::mhd::update_vol_B(
+		0, grid.local_cells(), Mas, Mom, Nrj, Mag, Face_B,
+		SInfo, Substep, adiabatic_index, vacuum_permeability, true
 	);
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());

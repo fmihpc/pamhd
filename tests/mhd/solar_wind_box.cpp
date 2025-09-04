@@ -290,7 +290,7 @@ int main(int argc, char* argv[]) {
 	/*
 	Initialize simulation grid
 	*/
-	const unsigned int neighborhood_size = 2;
+	const unsigned int neighborhood_size = 1;
 	const auto& number_of_cells = options_grid.get_number_of_cells();
 	const size_t min_cell0_count = 5 + 2*options_grid.get_max_ref_lvl();
 	for (auto dim: {0, 1, 2}) {
@@ -413,13 +413,11 @@ int main(int argc, char* argv[]) {
 		options_sim.proton_mass
 	);
 
-	pamhd::mhd::update_B_consistency(
-		0, grid.local_cells(), grid,
-		Mas, Mom, Nrj, Vol_B, Face_B,
-		CType, Substep,
+	pamhd::mhd::update_vol_B(
+		0, grid.local_cells(), Mas, Mom,
+		Nrj, Vol_B, Face_B, CType, Substep,
 		options_sim.adiabatic_index,
-		options_sim.vacuum_permeability,
-		true
+		options_sim.vacuum_permeability, true
 	);
 
 	pamhd::mhd::apply_boundaries_sw_box(

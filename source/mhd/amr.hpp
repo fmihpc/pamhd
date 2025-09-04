@@ -235,7 +235,8 @@ template <
 	class Background_Magnetic_Field,
 	class Target_Refinement_Level_Min_Getter,
 	class Target_Refinement_Level_Max_Getter,
-	class Maximum_Signal_Velocity_Getter
+	class Maximum_Signal_Velocity_Getter,
+	class Face_B_Error_Getter
 > struct New_Cells_Handler {
 	const Mass_Density_Getter& Mas;
 	const Momentum_Density_Getter& Mom;
@@ -247,6 +248,7 @@ template <
 	const Target_Refinement_Level_Min_Getter& RLMin;
 	const Target_Refinement_Level_Max_Getter& RLMax;
 	const Maximum_Signal_Velocity_Getter& Max_v;
+	const Face_B_Error_Getter& Berror;
 	const double& adiabatic_index;
 	const double& vacuum_permeability;
 
@@ -261,13 +263,14 @@ template <
 		const Target_Refinement_Level_Min_Getter& RLMin_,
 		const Target_Refinement_Level_Max_Getter& RLMax_,
 		const Maximum_Signal_Velocity_Getter& Max_v_,
+		const Face_B_Error_Getter& Berror_,
 		const double& adiabatic_index_,
 		const double& vacuum_permeability_
 	) :
 		Mas(Mas_), Mom(Mom_), Nrj(Nrj_),
 		Face_B(Face_B_), Vol_B(Vol_B_), Bg_B(Bg_B_), bg_B(bg_B_),
 		RLMin(RLMin_), RLMax(RLMax_), Max_v(Max_v_),
-		adiabatic_index(adiabatic_index_),
+		Berror(Berror_), adiabatic_index(adiabatic_index_),
 		vacuum_permeability(vacuum_permeability_)
 	{};
 
@@ -298,6 +301,7 @@ template <
 			RLMin.data(*cell_data) = RLMin.data(*parent_data);
 			RLMax.data(*cell_data) = RLMax.data(*parent_data);
 			Max_v.data(*cell_data) = Max_v.data(*parent_data);
+			Berror.data(*cell_data) = Berror.data(*parent_data);
 
 			// inherit thermal pressure
 			const double parent_pressure = [&](){
@@ -592,7 +596,8 @@ template<
 	class Target_Refinement_Level_Min_Getter,
 	class Target_Refinement_Level_Max_Getter,
 	class Substepping_Period_Getter,
-	class Maximum_Signal_Speed_Getter
+	class Maximum_Signal_Speed_Getter,
+	class Face_B_Error_Getter
 > void adapt_grid(
 	Grid& grid,
 	pamhd::grid::Options& options_grid,
@@ -615,7 +620,8 @@ template<
 	const Target_Refinement_Level_Min_Getter& Ref_min,
 	const Target_Refinement_Level_Max_Getter& Ref_max,
 	const Substepping_Period_Getter& Substep,
-	const Maximum_Signal_Speed_Getter& Max_v
+	const Maximum_Signal_Speed_Getter& Max_v,
+	const Face_B_Error_Getter& Berror
 ) try {
 	using Cell = Grid::cell_data_type;
 
@@ -635,7 +641,7 @@ template<
 		grid, Ref_min, Ref_max,
 		pamhd::mhd::New_Cells_Handler(
 			Mas, Mom, Nrj, Face_B, Vol_B, Bg_B,
-			bg_B, Ref_min, Ref_max, Max_v,
+			bg_B, Ref_min, Ref_max, Max_v, Berror,
 			adiabatic_index, vacuum_permeability),
 		pamhd::mhd::Removed_Cells_Handler(
 			Mas, Mom, Nrj, Face_B, Vol_B, Bg_B,
@@ -673,16 +679,14 @@ template<
 			cell.id);
 	}
 
-	pamhd::mhd::set_solver_info( grid, boundaries, geometries, SInfo);
+	pamhd::mhd::set_solver_info(grid, boundaries, geometries, SInfo);
 	pamhd::mhd::classify_faces(grid, SInfo, FInfo);
 
-	pamhd::mhd::update_B_consistency(
-		0, grid.local_cells(), grid,
-		Mas, Mom, Nrj, Vol_B, Face_B,
-		SInfo, Substep,
-		adiabatic_index,
-		vacuum_permeability,
-		true
+	sync_magnetic_field(grid, Face_B, Vol_B, Berror, SInfo);
+
+	pamhd::mhd::update_vol_B(
+		0, grid.local_cells(), Mas, Mom, Nrj, Vol_B, Face_B,
+		SInfo, Substep, adiabatic_index, vacuum_permeability, true
 	);
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
