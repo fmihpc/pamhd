@@ -53,29 +53,11 @@ def transform_meta(args, data):
 	if args.rotate == None:
 		return data
 
-	if args.rotate == 'y':
-		# maybe scipy.ndimage.shift
-		temp = data['ref_lvl_0_cells'][2]
-		data['ref_lvl_0_cells'][2] = data['ref_lvl_0_cells'][1]
-		data['ref_lvl_0_cells'][1] = data['ref_lvl_0_cells'][0]
-		data['ref_lvl_0_cells'][0] = temp
-		temp = data['periodicity'][2]
-		data['periodicity'][2] = data['periodicity'][1]
-		data['periodicity'][1] = data['periodicity'][0]
-		data['periodicity'][0] = temp
-		temp = data['grid_start'][2]
-		data['grid_start'][2] = data['grid_start'][1]
-		data['grid_start'][1] = data['grid_start'][0]
-		data['grid_start'][0] = temp
-		temp = data['lvl_0_cell_length'][2]
-		data['lvl_0_cell_length'][2] = data['lvl_0_cell_length'][1]
-		data['lvl_0_cell_length'][1] = data['lvl_0_cell_length'][0]
-		data['lvl_0_cell_length'][0] = temp
-		return data
-
 	i1, i2 = -1, -1
 	if args.rotate == 'x':
 		i1, i2 = 1, 2
+	if args.rotate == 'y':
+		i1, i2 = 0, 2
 	if args.rotate == 'z':
 		i1, i2 = 0, 1
 
@@ -115,8 +97,8 @@ def transform_cells(args, old_meta, new_meta, cells):
 		elif args.rotate == 'y':
 			new_index = (
 				max_index[2] - old_index[2],
-				old_index[0],
-				old_index[1])
+				old_index[1],
+				old_index[0])
 		elif args.rotate == 'z':
 			new_index = (
 				max_index[1] - old_index[1],
