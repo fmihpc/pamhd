@@ -2,7 +2,6 @@
 	"output-directory": "results/magnetohydrodynamic/blast_wave/2d/z1/rusanov_amr2",
 	"time-start": 0,
 	"time-length": 0.2,
-	"minimum-pressure": 0,
 	"solver-mhd": "rusanov",
 	"load-balancer": "RANDOM",
 	"save-mhd-n": 0.05,
