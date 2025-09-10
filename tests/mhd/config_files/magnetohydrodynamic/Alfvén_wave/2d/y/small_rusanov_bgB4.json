@@ -12,7 +12,7 @@
 	"grid-options": {
 		"periodic": "{true, true, true}",
 		"cells": "{10, 1, 10}",
-		"volume": "{1.1547, 1, 2}",
+		"volume": "{2/sqrt(3), 1, 2}",
 		"start": "{0, 0, 0}",
 		"max-ref-lvl": 2,
 		"amr-n": 0,
@@ -20,8 +20,8 @@
 		"ref-lvl-at-most": "(abs(x - 0.57) > 0.25) ? 0 : 2"
 	},
 	"number-density": {"default": 1},
-	"velocity": {"default": "{-0.0005*cos(pi*(1.73205*x+z)), 0.001*sin(pi*(1.73205*x+z)), 0.00086603*cos(pi*(1.73205*x+z))}"},
+	"velocity": {"default": "{sqrt(3)/2 - cos(pi*(sqrt(3)*x+z))/2000, sin(pi*(sqrt(3)*x+z))/1000, 0.5 + sqrt(3)*cos(pi*(sqrt(3)*x+z))/2000}"},
 	"pressure": {"default": 0.1},
-	"magnetic-field": {"default": "{0.0005*cos(pi*(1.73205*x+z)), 0.001*sin(pi*(1.73205*x+z)), -0.00086603*cos(pi*(1.73205*x+z))}"},
+	"magnetic-field": {"default": "{cos(pi*(sqrt(3)*x+z))/2000, sin(pi*(sqrt(3)*x+z))/1000, -sqrt(3)*cos(pi*(sqrt(3)*x+z))/2000}"},
 	"background-magnetic-field": {"value": [0.86603, 0, 0.5]}
 }

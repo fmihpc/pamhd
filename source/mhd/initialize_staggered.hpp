@@ -44,6 +44,7 @@ Author(s): Ilja Honkonen
 #include "string"
 #include "tuple"
 
+#include "boost/math/quadrature/gauss.hpp"
 #include "dccrg.hpp"
 
 #include "grid/amr.hpp"
@@ -81,10 +82,162 @@ template <
 	const Magnetic_Field_Flux_Getters& Mag_f,
 	const Background_Magnetic_Field_Getter& Bg_B
 ) {
+	using std::abs;
 	using std::get;
 	using std::make_tuple;
 	using std::runtime_error;
 	using std::to_string;
+
+	const auto get_r_lat_lon = [&](
+		const double& x, const double& y, const double& z
+	) {
+		const auto
+			r = sqrt(x*x + y*y + z*z),
+			lat = [&](){
+				if (r == 0) return 0.0;
+				else return asin(z / r);
+			}(),
+			lon = atan2(y, x);
+		return make_tuple(r, lat, lon);
+	};
+
+	// no apparent improvement with > 7 points
+	constexpr unsigned int eval_points = 7;
+	// returns face integral of default B, bg B, etc
+	const auto integrate_face_B = [&](
+		const auto& func,
+		const size_t& component,
+		const int& dir,
+		const double& sx,
+		const double& ex,
+		const double& sy,
+		const double& ey,
+		const double& sz,
+		const double& ez
+	) {
+		const size_t dim = abs(dir) - 1;
+		if (dim == 2) {
+			const double& z = [&](){
+				if (dir < 0) return sz;
+				else return ez;
+			}();
+			// handle emulated 1d/2d simulation
+			const auto dx = ex - sx, dy = ey - sy;
+			if (dx == 0 and dy == 0) {
+				return func(component, sx, sy, z);
+			}
+			if (dx == 0) {
+				const double& x = sx;
+				const auto fy = [&](const double& y){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fy, sy, ey) / dy;
+			}
+			if (dy == 0) {
+				const double& y = sy;
+				const auto fx = [&](const double& x){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fx, sx, ex) / dx;
+			}
+			const auto fy = [&](const double& y){
+				const auto fx = [&](const double& x){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fx, sx, ex);
+			};
+			return boost::math::quadrature::gauss<
+				double, eval_points
+			>::integrate(fy, sy, ey) / dx / dy;
+
+		} else if (dim == 1) {
+			const double& y = [&](){
+				if (dir < 0) return sy;
+				else return ey;
+			}();
+			const auto dx = ex - sx, dz = ez - sz;
+			if (dx == 0 and dz == 0) {
+				return func(component, sx, y, sz);
+			}
+			if (dx == 0) {
+				const double& x = sx;
+				const auto fz = [&](const double& z){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fz, sz, ez) / dz;
+			}
+			if (dz == 0) {
+				const double& z = sz;
+				const auto fx = [&](const double& x){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fx, sx, ex) / dx;
+			}
+			const auto fz = [&](const double& z){
+				const auto fx = [&](const double& x){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fx, sx, ex);
+			};
+			return boost::math::quadrature::gauss<
+				double, eval_points
+			>::integrate(fz, sz, ez) / dx / dz;
+
+		} else if (dim == 0) {
+			const double& x = [&](){
+				if (dir < 0) return sx;
+				else return ex;
+			}();
+			const double dy = ey - sy, dz = ez - sz;
+			if (dy == 0 and dz == 0) {
+				return func(component, x, sy, sz);
+			}
+			if (dy == 0) {
+				const double& y = sy;
+				const auto fz = [&](const double& z){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fz, sz, ez) / dz;
+			}
+			if (dz == 0) {
+				const double& z = sz;
+				const auto fy = [&](const double& y){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fy, sy, ey) / dy;
+			}
+			const auto fz = [&](const double& z){
+				const auto fy = [&](const double& y){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fy, sy, ey);
+			};
+			return boost::math::quadrature::gauss<
+				double, eval_points
+			>::integrate(fz, sz, ez) / dy / dz;
+
+		} else {
+			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+		}
+	};
 
 	// set default magnetic field
 	for (const auto& cell: grid.local_cells()) {
@@ -96,78 +249,44 @@ template <
 		Mag_f(*cell.data, +3) = {0, 0, 0};
 
 		const auto [
-			center, start, end
+			_, start, end
 		] = pamhd::grid::get_cell_geom_emulated(grid, cell.id);
-		const auto& [rx, ry, rz] = center;
 		const auto& [sx, sy, sz] = start;
 		const auto& [ex, ey, ez] = end;
 
-		Bg_B.data(*cell.data)(-1) = bg_B.get_background_field(
-			{sx, ry, rz},
-			vacuum_permeability
-		);
-		Bg_B.data(*cell.data)(+1) = bg_B.get_background_field(
-			{ex, ry, rz},
-			vacuum_permeability
-		);
-		Bg_B.data(*cell.data)(-2) = bg_B.get_background_field(
-			{rx, sy, rz},
-			vacuum_permeability
-		);
-		Bg_B.data(*cell.data)(+2) = bg_B.get_background_field(
-			{rx, ey, rz},
-			vacuum_permeability
-		);
-		Bg_B.data(*cell.data)(-3) = bg_B.get_background_field(
-			{rx, ry, sz},
-			vacuum_permeability
-		);
-		Bg_B.data(*cell.data)(+3) = bg_B.get_background_field(
-			{rx, ry, ez},
-			vacuum_permeability
-		);
-
+		const auto& get_background_field = [&](
+			const size_t& c, const double& x,
+			const double& y, const double& z
+		) {
+			return bg_B.get_background_field(
+				{x, y, z},
+				vacuum_permeability
+			)[c];
+		};
 		for (const int dir: {-3,-2,-1,+1,+2,+3}) {
-			const auto [x, y, z] = [&](){
-				// center of face
-				switch (dir) {
-				case -1:
-					return make_tuple(sx, ry, rz);
-					break;
-				case +1:
-					return make_tuple(ex, ry, rz);
-					break;
-				case -2:
-					return make_tuple(rx, sy, rz);
-					break;
-				case +2:
-					return make_tuple(rx, ey, rz);
-					break;
-				case -3:
-					return make_tuple(rx, ry, sz);
-					break;
-				case +3:
-					return make_tuple(rx, ry, ez);
-					break;
-				default:
-					throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-				}
-			}();
-			const auto
-				r = sqrt(x*x + y*y + z*z),
-				lat = asin(z / r),
-				lon = atan2(y, x);
-
-			const auto magnetic_field
-				= initial_conditions.get_default_data(
-					Boundary_Magnetic_Field(),
-					time,
-					x, y, z,
-					r, lat, lon
+			for (const size_t c: {0,1,2}) {
+				Bg_B.data(*cell.data)(dir)[c] = integrate_face_B(
+					get_background_field, c, dir,
+					sx, ex, sy, ey, sz, ez
 				);
+			}
+		}
 
-			const size_t dim = std::abs(dir) - 1;
-			Face_B.data(*cell.data)(dir) = magnetic_field[dim];
+		const auto get_default_data = [&](
+			const size_t& c, const double& x,
+			const double& y, const double& z
+		) {
+			const auto [r, lat, lon] = get_r_lat_lon(x, y, z);
+			return initial_conditions.get_default_data(
+				Boundary_Magnetic_Field(),
+				time, x, y, z, r, lat, lon
+			)[c];
+		};
+		for (const int dir: {-3,-2,-1,+1,+2,+3}) {
+			Face_B.data(*cell.data)(dir) = integrate_face_B(
+				get_default_data, abs(dir) - 1, dir,
+				sx, ex, sy, ey, sz, ez
+			);
 		}
 	}
 	Bg_B.type().is_stale = true;
@@ -190,52 +309,26 @@ template <
 			}
 
 			const auto [
-				center, start, end
+				_, start, end
 			] = pamhd::grid::get_cell_geom_emulated(grid, cell_id);
-			const auto& [rx, ry, rz] = center;
 			const auto& [sx, sy, sz] = start;
 			const auto& [ex, ey, ez] = end;
+
+			const auto get_data = [&](
+				const size_t& c, const double& x,
+				const double& y, const double& z
+			) {
+				const auto [r, lat, lon] = get_r_lat_lon(x, y, z);
+				return initial_conditions.get_data(
+					Boundary_Magnetic_Field(),
+					i, time, x, y, z, r, lat, lon
+				)[c];
+			};
 			for (const int dir: {-3,-2,-1,+1,+2,+3}) {
-				// center of face
-				const auto [x, y, z] = [&](){
-					switch (dir) {
-					case -1:
-						return make_tuple(sx, ry, rz);
-						break;
-					case +1:
-						return make_tuple(ex, ry, rz);
-						break;
-					case -2:
-						return make_tuple(rx, sy, rz);
-						break;
-					case +2:
-						return make_tuple(rx, ey, rz);
-						break;
-					case -3:
-						return make_tuple(rx, ry, sz);
-						break;
-					case +3:
-						return make_tuple(rx, ry, ez);
-						break;
-					default:
-						throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
-					}
-				}();
-				const auto
-					r = sqrt(x*x + y*y + z*z),
-					lat = asin(z / r),
-					lon = atan2(y, x);
-
-				const auto magnetic_field
-					= initial_conditions.get_default_data(
-						Boundary_Magnetic_Field(),
-						time,
-						x, y, z,
-						r, lat, lon
-					);
-
-				const size_t dim = std::abs(dir) - 1;
-				Face_B.data(*cell_data)(dir) = magnetic_field[dim];
+				Face_B.data(*cell_data)(dir) = integrate_face_B(
+					get_data, abs(dir) - 1, dir,
+					sx, ex, sy, ey, sz, ez
+				);
 			}
 		}
 	}

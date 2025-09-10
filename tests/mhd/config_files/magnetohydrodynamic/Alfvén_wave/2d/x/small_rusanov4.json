@@ -21,7 +21,7 @@
 		"ref-lvl-at-most": "(abs(y - 0.57) > 0.25) ? 0 : 2"
 	},
 	"number-density": {"default": 1},
-	"velocity": {"default": "{sin(pi*(sqrt(3)*y+z))/1000, -cos(pi*(sqrt(3)*y+z))/2000, sqrt(3)*cos(pi*(sqrt(3)*y+z))/2000}"},
+	"velocity": {"default": "{sin(pi*(sqrt(3)*y+z))/1000, sqrt(3)/2 - cos(pi*(sqrt(3)*y+z))/2000, 0.5 + sqrt(3)*cos(pi*(sqrt(3)*y+z))/2000}"},
 	"pressure": {"default": 0.1},
 	"magnetic-field": {"default": "{sin(pi*(sqrt(3)*y+z))/1000, sqrt(3)/2 + cos(pi*(sqrt(3)*y+z))/2000, 0.5 - sqrt(3)*cos(pi*(sqrt(3)*y+z))/2000}"}
 }

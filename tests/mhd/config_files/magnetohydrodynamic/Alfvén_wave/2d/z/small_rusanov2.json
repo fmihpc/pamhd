@@ -13,11 +13,11 @@
 	"grid-options": {
 		"periodic": "{true, true, true}",
 		"cells": "{10, 10, 1}",
-		"volume": "{1.1547, 2, 1}",
+		"volume": "{2, 2/sqrt(3), 1}",
 		"start": "{0, 0, 0}"
 	},
 	"number-density": {"default": 1},
-	"velocity": {"default": "{0.86603 - 0.0005*cos(pi*(1.73205*x+y)), 0.5 + 0.00086603*cos(pi*(1.73205*x+y)), 0.001*sin(pi*(1.73205*x+y))}"},
+	"velocity": {"default": "{0.5 + sqrt(3)*cos(pi*(sqrt(3)*y+x))/2000, sqrt(3)/2 - cos(pi*(sqrt(3)*y+x))/2000, sin(pi*(sqrt(3)*y+x))/1000}"},
 	"pressure": {"default": 0.1},
-	"magnetic-field": {"default": "{0.86603 + 0.0005*cos(pi*(1.73205*x+y)), 0.5 - 0.00086603*cos(pi*(1.73205*x+y)), 0.001*sin(pi*(1.73205*x+y))}"}
+	"magnetic-field": {"default": "{0.5 - sqrt(3)*cos(pi*(sqrt(3)*y+x))/2000, sqrt(3)/2 + cos(pi*(sqrt(3)*y+x))/2000, sin(pi*(sqrt(3)*y+x))/1000}"}
 }
