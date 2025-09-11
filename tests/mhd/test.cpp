@@ -581,8 +581,7 @@ int main(int argc, char* argv[]) {
 					simulation_time,
 					options_sim.adiabatic_index,
 					options_sim.proton_mass,
-					options_sim.vacuum_permeability,
-					std::set<std::string>{"mhd"}
+					options_sim.vacuum_permeability
 				)
 			) {
 				cerr <<  __FILE__ << "(" << __LINE__ << "): "
