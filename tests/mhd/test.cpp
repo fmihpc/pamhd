@@ -316,6 +316,11 @@ int main(int argc, char* argv[]) {
 			}
 		}();
 
+	if (rank == 0) {
+		cout << "Starting simulation from "
+			<< options_sim.time_start << " s" << endl;
+	}
+
 	/*
 	Initialize simulation grid
 	*/
@@ -355,8 +360,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	if (rank == 0) {
-		cout << "Adapting and balancing grid at time "
-			<< options_sim.time_start << "...  " << flush;
+		cout << "Adapting and balancing grid... " << flush;
 	}
 	pamhd::grid::set_minmax_refinement_level(
 		grid.local_cells(), grid, options_grid,
@@ -402,13 +406,15 @@ int main(int argc, char* argv[]) {
 		next_mhd_save = options_mhd.save_n,
 		next_amr = options_grid.amr_n;
 
-	// initialize MHD
-	if (rank == 0) {
-		cout << "Initializing... " << endl;
+	if (grid.get_rank() == 0) {
+		cout << "Initializing solver information... " << flush;
 	}
 	// classify cells & faces into normal, boundary and dont_solve
 	pamhd::mhd::set_solver_info(grid, boundaries_mhd, geometries, CType);
 	pamhd::mhd::classify_faces(grid, CType, FInfo);
+	if (grid.get_rank() == 0) {
+		cout << "done" << endl;
+	}
 
 	pamhd::mhd::initialize_magnetic_field_staggered<pamhd::Magnetic_Field>(
 		geometries, initial_conditions_mhd, background_B,
@@ -448,7 +454,7 @@ int main(int argc, char* argv[]) {
 
 	// final init with timestep of 0
 	if (rank == 0) {
-		cout << "Finalizing init: ";
+		cout << "Finalizing init... " << flush;
 	}
 	pamhd::mhd::timestep(
 		mhd_solver, grid, options_sim, options_sim.time_start,
@@ -460,7 +466,7 @@ int main(int argc, char* argv[]) {
 		Substep, Substep_Min, Substep_Max, Max_v
 	);
 	if (rank == 0) {
-		cout << "Initialization done" << endl;
+		cout << "done" << endl;
 	}
 
 	const auto avg_div0 = pamhd::math::get_divergence_face2volume(
@@ -468,14 +474,14 @@ int main(int argc, char* argv[]) {
 		Face_B, Div_B, CType
 	);
 	if (rank == 0) {
-		cout << "Average divergence " << avg_div0 << endl;
+		cout << "Average divergence of initial magnetic field " << avg_div0 << endl;
 	}
 
 	size_t simulation_step = 0;
 	constexpr uint64_t file_version = 4;
 	if (options_mhd.save_n >= 0) {
 		if (rank == 0) {
-			cout << "Saving MHD at time " << simulation_time << endl;
+			cout << "Saving MHD... " << flush;
 		}
 		if (
 			not pamhd::mhd::save(
@@ -496,15 +502,22 @@ int main(int argc, char* argv[]) {
 				<< endl;
 			abort();
 		}
+		if (rank == 0) {
+			cout << "done" << endl;
+		}
 	}
 
+	size_t total_flux_calcs = 0;
 	while (simulation_time < time_end) {
 		simulation_step++;
+		if (rank == 0) {
+			cout << "Time " << simulation_time
+				<< " s, step " << simulation_step << flush;
+		}
 
-		const double
-			// don't step over the final simulation time
-			until_end = time_end - simulation_time,
-			dt = pamhd::mhd::timestep(
+		// don't step over the final simulation time
+		const double until_end = time_end - simulation_time;
+		const auto [dt, max_sub, flux_calcs] = pamhd::mhd::timestep(
 				mhd_solver, grid, options_sim, simulation_time,
 				until_end, options_mhd.time_step_factor,
 				options_sim.adiabatic_index,
@@ -515,10 +528,11 @@ int main(int argc, char* argv[]) {
 				Substep_Max, Max_v
 			);
 		if (rank == 0) {
-			cout << "Solved MHD at time " << simulation_time
-				<< " s with time step " << dt << " s" << flush;
+			cout << ", dt " << dt << " s, "
+				<< max_sub << " substep(s)" << flush;
 		}
 		simulation_time += dt;
+		total_flux_calcs += flux_calcs;
 
 		if (options_grid.amr_n > 0 and simulation_time >= next_amr) {
 			if (rank == 0) {
@@ -555,7 +569,7 @@ int main(int argc, char* argv[]) {
 			Face_B, Div_B, CType
 		);
 		if (rank == 0) {
-			cout << " average divergence " << avg_div << endl;
+			cout << ", avg div(B) " << avg_div << endl;
 		}
 
 		if (
@@ -593,7 +607,9 @@ int main(int argc, char* argv[]) {
 	}
 
 	if (rank == 0) {
-		cout << "Simulation finished at time " << simulation_time << endl;
+		cout << "Simulation finished at time " << simulation_time
+			<< " with " << total_flux_calcs
+			<< " total flux calculations" << endl;
 	}
 	MPI_Finalize();
 
