@@ -83,10 +83,16 @@ template <
 	const Background_Magnetic_Field_Getter& Bg_B
 ) {
 	using std::abs;
+	using std::cout;
+	using std::endl;
 	using std::get;
+	using std::flush;
 	using std::make_tuple;
 	using std::runtime_error;
 	using std::to_string;
+
+	Bg_B.type().is_stale = true;
+	Face_B.type().is_stale = true;
 
 	const auto get_r_lat_lon = [&](
 		const double& x, const double& y, const double& z
@@ -239,7 +245,9 @@ template <
 		}
 	};
 
-	// set default magnetic field
+	if (grid.get_rank() == 0) {
+		cout << "Setting default initial magnetic field... " << flush;
+	}
 	for (const auto& cell: grid.local_cells()) {
 		Mag_f(*cell.data, -1) =
 		Mag_f(*cell.data, +1) =
@@ -289,10 +297,10 @@ template <
 			);
 		}
 	}
-	Bg_B.type().is_stale = true;
-	Face_B.type().is_stale = true;
 
-	// set non-default magnetic field
+	if (grid.get_rank() == 0) {
+		cout << "done\nSetting non-default initial magnetic field... " << flush;
+	}
 	for (
 		size_t i = 0;
 		i < initial_conditions.get_number_of_regions(Boundary_Magnetic_Field());
@@ -331,6 +339,9 @@ template <
 				);
 			}
 		}
+	}
+	if (grid.get_rank() == 0) {
+		cout << "done" << endl;
 	}
 }
 

@@ -94,11 +94,11 @@ template <
 	using std::cerr;
 	using std::cout;
 	using std::endl;
+	using std::flush;
 	using std::get;
 
 	if (verbose and grid.get_rank() == 0) {
-		cout << "Setting default MHD state... ";
-		cout.flush();
+		cout << "Setting default initial fluid state... " << flush;
 	}
 
 	// set default state
@@ -172,8 +172,7 @@ template <
 	}
 
 	if (verbose and grid.get_rank() == 0) {
-		cout << "done\nSetting non-default initial MHD state... ";
-		cout.flush();
+		cout << "done\nSetting non-default initial fluid state... " << flush;
 	}
 
 	// mass density

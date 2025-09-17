@@ -214,7 +214,7 @@ template <
 	class Solver_Info_Getter,
 	class Substepping_Period_Getter,
 	class Max_Velocity_Getter
-> void get_fluxes(
+> size_t get_fluxes(
 	const Solver& solver,
 	const Cell_Iter& cells,
 	Grid& grid,
@@ -250,6 +250,7 @@ template <
 	const pamhd::mhd::Total_Energy_Density nrj_int{};
 	const pamhd::Magnetic_Field mag_int{};
 
+	size_t flux_calcs = 0;
 	for (const auto& cell: cells) {
 		// no data for cells too far from this rank's cells
 		if (
@@ -309,6 +310,7 @@ template <
 				or current_substep % min_sub_edge_neigh != 0
 			) continue;
 
+			flux_calcs++;
 			const auto [max_vel, flux] = get_flux(
 				grid, cell, neighbor, fn, Mas, Mom, Nrj,
 				Vol_B, Bg_B, SInfo, Substep, solver,
@@ -524,6 +526,7 @@ template <
 		}
 
 		if (missing_flux[0]) {
+			flux_calcs++;
 			const auto [max_vel, flux] = get_flux(
 				grid, cell, cell, +1, Mas, Mom, Nrj, Vol_B, Bg_B,
 				SInfo, Substep, solver, adiabatic_index,
@@ -534,6 +537,7 @@ template <
 				cell_dy, cell_dz, dt*min_sub_face_neigh);
 		}
 		if (missing_flux[1]) {
+			flux_calcs++;
 			const auto [max_vel, flux] = get_flux(
 				grid, cell, cell, +2, Mas, Mom, Nrj, Vol_B, Bg_B,
 				SInfo, Substep, solver, adiabatic_index,
@@ -544,6 +548,7 @@ template <
 				cell_dx, cell_dz, dt*min_sub_face_neigh);
 		}
 		if (missing_flux[2]) {
+			flux_calcs++;
 			const auto [max_vel, flux] = get_flux(
 				grid, cell, cell, +3, Mas, Mom, Nrj, Vol_B, Bg_B,
 				SInfo, Substep, solver, adiabatic_index,
@@ -554,6 +559,8 @@ template <
 				cell_dx, cell_dy, dt*min_sub_face_neigh);
 		}
 	}
+
+	return flux_calcs;
 
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
@@ -1692,7 +1699,7 @@ template <
 	class Solver_Info_Getter,
 	class Substepping_Period_Getter,
 	class Max_Velocity_Getter
-> void get_all_fluxes(
+> size_t get_all_fluxes(
 	const double& sub_dt,
 	const Solver& solver,
 	Grid& grid,
@@ -1759,7 +1766,7 @@ template <
 	if (update_copies) {
 		grid.start_remote_neighbor_copy_updates();
 	}
-	pamhd::mhd::get_fluxes(
+	auto flux_calcs = pamhd::mhd::get_fluxes(
 		solver, grid.inner_cells(), grid, substep,
 		adiabatic_index, vacuum_permeability, sub_dt,
 		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
@@ -1771,7 +1778,7 @@ template <
 		grid.wait_remote_neighbor_copy_update_receives();
 	}
 
-	pamhd::mhd::get_fluxes(
+	flux_calcs += pamhd::mhd::get_fluxes(
 		solver, grid.outer_cells(), grid, substep,
 		adiabatic_index, vacuum_permeability, sub_dt,
 		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
@@ -1786,7 +1793,7 @@ template <
 		Mas.type(), Mom.type(), Nrj.type(), Vol_B.type(),
 		SInfo.type(), Substep.type(), Max_v.type(), Bg_B.type(), Face_B.type());
 
-	pamhd::mhd::get_fluxes(
+	flux_calcs += pamhd::mhd::get_fluxes(
 		solver, grid.remote_cells(), grid, substep,
 		adiabatic_index, vacuum_permeability, sub_dt,
 		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
@@ -1794,6 +1801,8 @@ template <
 		SInfo, Substep, Max_v
 	);
 	Max_v.type().is_stale = true;
+
+	return flux_calcs;
 
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
@@ -1825,7 +1834,7 @@ template <
 	class Substep_Min_Getter,
 	class Substep_Max_Getter,
 	class Max_Velocity_Getter
-> double timestep(
+> std::tuple<double, int, size_t> timestep(
 	const Solver solver,
 	Grid& grid,
 	Sim_Options& options,
@@ -1873,10 +1882,11 @@ template <
 
 	const int max_substep = update_substeps(grid, CType, Substep);
 	double total_dt = 0;
+	size_t flux_calcs = 0;
 	for (int substep = 1; substep <= max_substep; substep += 1) {
 		total_dt += sub_dt;
 
-		get_all_fluxes(
+		flux_calcs += get_all_fluxes(
 			sub_dt, solver, grid, substep, adiabatic_index,
 			vacuum_permeability, Mas, Mom, Nrj, Vol_B,
 			Face_B, Face_dB, Bg_B, Mas_f, Mom_f, Nrj_f,
@@ -1905,7 +1915,7 @@ template <
 		CType, Substep, adiabatic_index, vacuum_permeability, true
 	);
 
-	return total_dt;
+	return std::make_tuple(total_dt, max_substep, flux_calcs);
 
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
