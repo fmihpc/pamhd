@@ -312,7 +312,7 @@ template <
 		largest_dt_local = max(Timestep.data(*cell.data), largest_dt_local);
 	}
 	auto comm = grid.get_communicator();
-	double smallest_dt_global = -1, largest_dt_global = -1;
+	double smallest_dt_global = -1;
 	if (
 		MPI_Allreduce(
 			&smallest_dt_local,
@@ -325,20 +325,6 @@ template <
 	) {
 		cerr << __FILE__ "(" << __LINE__
 			<< "): Couldn't reduce smallest_dt." << endl;
-		abort();
-	}
-	if (
-		MPI_Allreduce(
-			&largest_dt_local,
-			&largest_dt_global,
-			1,
-			MPI_DOUBLE,
-			MPI_MIN,
-			comm
-		) != MPI_SUCCESS
-	) {
-		cerr << __FILE__ "(" << __LINE__
-			<< "): Couldn't reduce largest_dt." << endl;
 		abort();
 	}
 
@@ -386,7 +372,7 @@ template <
 
 		const auto& dt = Timestep.data(*cell.data);
 		if (dt > 0) {
-			int step = max(0, (int)std::floor(std::log2(dt / ret_val_global)));
+			int step = max(0, (int)std::floor(std::log2(min(dt, max_dt) / ret_val_global)));
 			if (Substep_Max.data(*cell.data) > step) {
 				Substep_Max.data(*cell.data) = step;
 			}
