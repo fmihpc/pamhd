@@ -107,7 +107,8 @@ def convert(inname, verbose):
 		+ "\n# Simulation time: " + str(metadata['sim_time'])
 		+ "\n# Simulation step: " + str(metadata['sim_step']) + "\n"
 		+ "# Format of each line (lines are ordered randomly):\n"
-		+ "# x, y and z coordinates of cell's center (m)\n")
+		+ "# x, y and z coordinates of cell's center (m)\n"
+		+ "# cell length in x, y and z dimensions (m)\n")
 	if 'mhd     ' in metadata['var_data_start']: outfile.write(
 		"# number density (#/m^3)\n"
 		+ "# x, y and z components of velocity (m/s)\n"
@@ -133,7 +134,10 @@ def convert(inname, verbose):
 		outfile.write(
 			str(cell_center[0]) + ' '
 			+ str(cell_center[1]) + ' '
-			+ str(cell_center[2]) + ' ')
+			+ str(cell_center[2]) + ' '
+			+ str(cell_length[0]) + ' '
+			+ str(cell_length[1]) + ' '
+			+ str(cell_length[2]) + ' ')
 
 		if 'mhd     ' in sim_data[cell_id]:
 			mas = sim_data[cell_id]['mhd     '][0]
