@@ -158,20 +158,32 @@ template <class Grid> bool save(
 	// make sure data is written in same order to all files
 	vector<uint64_t> cells = grid.get_cells();
 
+	MPI_File outfile;
+	const auto filename = path_name_prefix + step_string.str() + ".dc";
+	// don't append to existing file
+	MPI_Comm comm = grid.get_communicator();
+	if (MPI_File_open(
+		comm, filename.data(),
+		MPI_MODE_CREATE | MPI_MODE_EXCL | MPI_MODE_RDWR,
+		MPI_INFO_NULL, &outfile
+	) != MPI_SUCCESS) {
+		std::cerr << __FILE__ << ":" << __LINE__
+			<< " Couldn't create " << filename
+			<< ", it already exists, etc" << std::endl;
+		abort();
+	}
 	// assume transfer of all variables has been switched off
 	bool ret_val = grid.save_grid_data(
-		path_name_prefix + step_string.str() + ".dc",
-		0, header, cells, true, true, false
+		filename, 0, header, cells, true, true, false
 	);
 	variable_offsets.resize(0);
 
 	// append variables to file one by one
-	MPI_File outfile;
 	MPI_File_open(
-		MPI_COMM_WORLD,
-		(path_name_prefix + step_string.str() + ".dc").data(),
-		MPI_MODE_RDWR, MPI_INFO_NULL, &outfile
+		comm, filename.data(), MPI_MODE_RDWR,
+		MPI_INFO_NULL, &outfile
 	);
+	MPI_Comm_free(&comm);
 
 	MPI_Offset outsize = 0;
 	get<1>(header) = 8;
@@ -189,8 +201,7 @@ template <class Grid> bool save(
 		const string varname = "mhd     ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
-			path_name_prefix + step_string.str() + ".dc",
-			outsize, header, cells, false, false, false);
+			filename, outsize, header, cells, false, false, false);
 		Cell::set_transfer_all(false,
 			pamhd::mhd::Mass_Density(),
 			pamhd::mhd::Momentum_Density(),
@@ -206,8 +217,7 @@ template <class Grid> bool save(
 		const string varname = "divfaceB";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
-			path_name_prefix + step_string.str() + ".dc",
-			outsize, header, cells, false, false, false);
+			filename, outsize, header, cells, false, false, false);
 		Cell::set_transfer_all(false, pamhd::Magnetic_Field_Divergence());
 	}
 
@@ -218,8 +228,7 @@ template <class Grid> bool save(
 		const string varname = "bgB     ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
-			path_name_prefix + step_string.str() + ".dc",
-			outsize, header, cells, false, false, false);
+			filename, outsize, header, cells, false, false, false);
 		Cell::set_transfer_all(false, pamhd::Bg_Magnetic_Field());
 	}
 
@@ -230,8 +239,7 @@ template <class Grid> bool save(
 		const string varname = "rank    ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
-			path_name_prefix + step_string.str() + ".dc",
-			outsize, header, cells, false, false, false);
+			filename, outsize, header, cells, false, false, false);
 		Cell::set_transfer_all(false, pamhd::MPI_Rank());
 	}
 
@@ -242,8 +250,7 @@ template <class Grid> bool save(
 		const string varname = "mhd info";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
-			path_name_prefix + step_string.str() + ".dc",
-			outsize, header, cells, false, false, false);
+			filename, outsize, header, cells, false, false, false);
 		Cell::set_transfer_all(false, pamhd::Cell_Type());
 	}
 
@@ -256,8 +263,7 @@ template <class Grid> bool save(
 		const string varname = "ref lvls";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
-			path_name_prefix + step_string.str() + ".dc",
-			outsize, header, cells, false, false, false);
+			filename, outsize, header, cells, false, false, false);
 		Cell::set_transfer_all(false,
 			pamhd::grid::Target_Refinement_Level_Min(),
 			pamhd::grid::Target_Refinement_Level_Max());
@@ -270,8 +276,7 @@ template <class Grid> bool save(
 		const string varname = "faceB   ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
-			path_name_prefix + step_string.str() + ".dc",
-			outsize, header, cells, false, false, false);
+			filename, outsize, header, cells, false, false, false);
 		Cell::set_transfer_all(false, pamhd::Face_Magnetic_Field());
 	}
 
@@ -282,8 +287,7 @@ template <class Grid> bool save(
 		const string varname = "fluxes  ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
-			path_name_prefix + step_string.str() + ".dc",
-			outsize, header, cells, false, false, false);
+			filename, outsize, header, cells, false, false, false);
 		Cell::set_transfer_all(false, pamhd::mhd::MHD_Flux());
 	}
 
@@ -294,8 +298,7 @@ template <class Grid> bool save(
 		const string varname = "substep ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
-			path_name_prefix + step_string.str() + ".dc",
-			outsize, header, cells, false, false, false);
+			filename, outsize, header, cells, false, false, false);
 		Cell::set_transfer_all(false, pamhd::Substepping_Period());
 	}
 
@@ -306,8 +309,7 @@ template <class Grid> bool save(
 		const string varname = "substmin";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
-			path_name_prefix + step_string.str() + ".dc",
-			outsize, header, cells, false, false, false);
+			filename, outsize, header, cells, false, false, false);
 		Cell::set_transfer_all(false, pamhd::Substep_Min());
 	}
 
@@ -318,8 +320,7 @@ template <class Grid> bool save(
 		const string varname = "substmax";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
-			path_name_prefix + step_string.str() + ".dc",
-			outsize, header, cells, false, false, false);
+			filename, outsize, header, cells, false, false, false);
 		Cell::set_transfer_all(false, pamhd::Substep_Max());
 	}
 
@@ -330,8 +331,7 @@ template <class Grid> bool save(
 		const string varname = "timestep";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
-			path_name_prefix + step_string.str() + ".dc",
-			outsize, header, cells, false, false, false);
+			filename, outsize, header, cells, false, false, false);
 		Cell::set_transfer_all(false, pamhd::Timestep());
 	}
 
@@ -342,8 +342,7 @@ template <class Grid> bool save(
 		const string varname = "Berror  ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
-			path_name_prefix + step_string.str() + ".dc",
-			outsize, header, cells, false, false, false);
+			filename, outsize, header, cells, false, false, false);
 		Cell::set_transfer_all(false, pamhd::Face_B_Error());
 		for (const auto& cell: grid.local_cells()) {
 			(*cell.data)[pamhd::Face_B_Error()] = 0;
