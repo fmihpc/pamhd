@@ -182,20 +182,20 @@ while len(args.limits) < 2*len(args.variables):
 for filename_ in args.files:
 	if filename_.endswith('.dc'):
 		with open(filename_, 'rb') as infile:
-			data = common.get_metadata(infile)
-			if data['file_version'] != 4:
-				print('Unsupported file version:', data['file_version'])
+			meta = common.get_metadata(infile)
+			if meta['file_version'] != 4:
+				print('Unsupported file version:', meta['file_version'])
 				continue
-			if data['geometry_id'] != 1:
-				print('Unsupported geometry:', data['geometry_id'])
+			if meta['geometry_id'] != 1:
+				print('Unsupported geometry:', meta['geometry_id'])
 				continue
-			data['cells'] = common.get_cells(infile, data['total_cells'])
-			sim_data_ = common.get_cell_data(infile, data, range(len(data['cells'])))
-			for i in range(len(data['cells'])):
-				data[data['cells'][i]] = sim_data_[i]
-		outname = filename_[:-2] + 'vtk'
-		dc2vtk(outname, data)
-		filename = outname
+			meta['cells'] = common.get_cells(infile, meta['total_cells'])
+
+			with open(filename_.replace('dc', 'vtk'), 'w') as outfile:
+				common.write_metadata_vtk(outfile, meta)
+				for variable in meta['var_data_start'].keys():
+					common.write_variable_vtk(infile, outfile, variable, meta)
+		filename = filename_[:-2] + 'vtk'
 	else:
 		filename = filename_
 	OpenDatabase(filename)
