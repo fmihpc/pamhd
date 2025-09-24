@@ -139,6 +139,7 @@ using Cell = gensimcell::Cell<
 	pamhd::Magnetic_Field_Divergence,
 	pamhd::Face_Magnetic_Field,
 	pamhd::Face_dB,
+	pamhd::Face_B_Error,
 	pamhd::grid::Target_Refinement_Level_Max,
 	pamhd::grid::Target_Refinement_Level_Min,
 	pamhd::Cell_Type,

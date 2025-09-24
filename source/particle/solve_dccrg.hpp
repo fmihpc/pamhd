@@ -398,11 +398,6 @@ template<
 		throw std::runtime_error("Only maximum refinement level 0 supported.");
 	}
 
-	bool update_copies = false;
-	if (update_copies) {
-		grid.update_copies_of_remote_neighbors();
-	}
-
 	std::pair<double, double> max_time_step{std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
 	const std::array<double, 3>
 		grid_start{grid.geometry.get_start()},
@@ -921,13 +916,10 @@ double timestep(
 			Mas_f, Mom_f, Nrj_f, Mag_f
 		);
 
-		pamhd::mhd::update_B_consistency(
-			substep, grid.local_cells(), grid,
-			Mas, Mom, Nrj, Vol_B, Face_B,
-			CType, Substep,
-			adiabatic_index,
-			vacuum_permeability,
-			true
+		pamhd::mhd::update_vol_B(
+			substep, grid.local_cells(), Mas, Mom,
+			Nrj, Vol_B, Face_B, CType, Substep,
+			adiabatic_index, vacuum_permeability, true
 		);
 
 		Cell::set_transfer_all(true, pamhd::particle::Particles_External());

@@ -337,13 +337,13 @@ template <class Grid> bool save_hyb(
 	if (variables.count("volJ") > 0) {
 		MPI_File_get_size(outfile, &outsize);
 		variable_offsets.push_back(outsize);
-		Cell::set_transfer_all(true, pamhd::Electric_Current_Density());
+		Cell::set_transfer_all(true, pamhd::particle::Volume_Electric_Current_Density());
 		const string varname = "volJ    ";
 		get<0>(header) = (void*)varname.data();
 		ret_val = ret_val and grid.save_grid_data(
 			path_name_prefix + step_string.str() + ".dc",
 			outsize, header, cells, false, false, false);
-		Cell::set_transfer_all(false, pamhd::Electric_Current_Density());
+		Cell::set_transfer_all(false, pamhd::particle::Volume_Electric_Current_Density());
 	}
 
 	if (variables.count("nr ipart") > 0) {

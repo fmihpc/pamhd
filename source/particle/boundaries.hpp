@@ -436,11 +436,17 @@ template<
 					abort();
 				}
 
-				Vol_B.data(*cell_data) = value_bdy.get_data(
+				const auto temp = value_bdy.get_data(
 					simulation_time,
 					c[0], c[1], c[2],
 					r, lat, lon
 				);
+				Vol_B.data(*cell_data)(-1) =
+				Vol_B.data(*cell_data)(+1) = temp[0];
+				Vol_B.data(*cell_data)(-2) =
+				Vol_B.data(*cell_data)(+2) = temp[1];
+				Vol_B.data(*cell_data)(-3) =
+				Vol_B.data(*cell_data)(+3) = temp[2];
 			}
 		}
 

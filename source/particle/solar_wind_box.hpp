@@ -86,8 +86,8 @@ template<
 		id_start = grid.get_rank(),
 		id_increase = grid.get_comm_size();
 	const auto temperature
-		= options_box.sw_pressure
-		/ options_box.sw_nr_density
+		= options_box.sw_pressure[0]
+		/ options_box.sw_nr_density[0]
 		/ options_sim.temp2nrj;
 	if (options_box.sw_dir != +1) {
 		throw std::runtime_error(__FILE__":"+std::to_string(__LINE__));
@@ -101,9 +101,9 @@ template<
 			cell_center = grid.geometry.get_center(cell.id);
 		const auto v_factor = std::max(0.0, cell_center[0]/grid_end[0]);
 		const array<double, 3> velocity{
-			v_factor * options_box.sw_velocity[0],
-			v_factor * options_box.sw_velocity[1],
-			v_factor * options_box.sw_velocity[2]};
+			v_factor * options_box.sw_velocity[0][0],
+			v_factor * options_box.sw_velocity[0][1],
+			v_factor * options_box.sw_velocity[0][2]};
 
 		random_source.seed(cell.id);
 		Part_Int(*cell.data) = create_particles<
@@ -121,7 +121,7 @@ template<
 			array<double, 3>{temperature, temperature, temperature},
 			options_part.particles_in_cell,
 			options_sim.charge2mass,
-			options_sim.proton_mass * options_box.sw_nr_density
+			options_sim.proton_mass * options_box.sw_nr_density[0]
 				* cell_length[0] * cell_length[1] * cell_length[2],
 			options_sim.proton_mass,
 			options_sim.temp2nrj,
@@ -194,8 +194,8 @@ template<
 
 	const uint64_t id_increase = grid.get_comm_size();
 	const auto temperature
-		= options_box.sw_pressure
-		/ options_box.sw_nr_density
+		= options_box.sw_pressure[0]
+		/ options_box.sw_nr_density[0]
 		/ options_sim.temp2nrj;
 	for (const auto& cell: solar_wind_cells) {
 		if (not cell.is_local) continue;
@@ -216,15 +216,15 @@ template<
 			pamhd::particle::Species_Mass
 		>(
 			array<double, 3>{
-				options_box.sw_velocity[0],
-				options_box.sw_velocity[1],
-				options_box.sw_velocity[2]},
+				options_box.sw_velocity[0][0],
+				options_box.sw_velocity[0][1],
+				options_box.sw_velocity[0][2]},
 			array<double, 3>{cell_start[0], cell_start[1], cell_start[2]},
 			array<double, 3>{cell_end[0], cell_end[1], cell_end[2]},
 			array<double, 3>{temperature, temperature, temperature},
 			options_part.particles_in_cell,
 			options_sim.charge2mass,
-			options_sim.proton_mass * options_box.sw_nr_density
+			options_sim.proton_mass * options_box.sw_nr_density[0]
 				* cell_length[0] * cell_length[1] * cell_length[2],
 			options_sim.proton_mass,
 			options_sim.temp2nrj,
@@ -359,8 +359,8 @@ template<
 
 	// planetary boundary cells
 	const auto temperature
-		= options_box.sw_pressure
-		/ options_box.sw_nr_density
+		= options_box.sw_pressure[0]
+		/ options_box.sw_nr_density[0]
 		/ options_sim.temp2nrj;
 	for (const auto& cell: planet_cells) {
 		random_source.seed(cell.id + simulation_step * 1'000'000);
@@ -383,7 +383,7 @@ template<
 			array<double, 3>{temperature, temperature, temperature},
 			options_part.particles_in_cell,
 			options_sim.charge2mass,
-			options_sim.proton_mass * options_box.sw_nr_density
+			options_sim.proton_mass * options_box.sw_nr_density[0]
 				* cell_length[0] * cell_length[1] * cell_length[2],
 			options_sim.proton_mass,
 			options_sim.temp2nrj,

@@ -640,13 +640,11 @@ int main(int argc, char* argv[]) {
 		options_particle, random_source, Part_Int
 	);
 
-	pamhd::mhd::update_B_consistency(
-		0, grid.local_cells(), grid,
-		Mas, Mom, Nrj, Vol_B, Face_B,
-		CType, Substep,
+	pamhd::mhd::update_vol_B(
+		0, grid.local_cells(), Mas, Mom,
+		Nrj, Vol_B, Face_B, CType, Substep,
 		options_sim.adiabatic_index,
-		options_sim.vacuum_permeability,
-		true
+		options_sim.vacuum_permeability, true
 	);
 
 	pamhd::mhd::apply_boundaries_sw_box(
@@ -698,7 +696,7 @@ int main(int argc, char* argv[]) {
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
 		options_sim.temp2nrj,
-		options_mhd.min_pressure, Mas, Mom, Nrj, Vol_B,
+		0, Mas, Mom, Nrj, Vol_B,
 		Vol_J, J_m_V, Vol_E, Nr_Ext, Max_v_part, Max_ω_part,
 		Part_Ext, Part_C2M, Part_Des, Face_dB, Bg_B,
 		Mas_f, Mom_f, Nrj_f, Mag_f, Substep, Substep_Min,
@@ -788,7 +786,7 @@ int main(int argc, char* argv[]) {
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
 				options_sim.temp2nrj,
-				options_mhd.min_pressure, Mas, Mom, Nrj, Vol_B,
+				0, Mas, Mom, Nrj, Vol_B,
 				Vol_J, J_m_V, Vol_E, Nr_Ext, Max_v_part, Max_ω_part,
 				Part_Ext, Part_C2M, Part_Des, Face_dB, Bg_B,
 				Mas_f, Mom_f, Nrj_f, Mag_f, Substep, Substep_Min,
