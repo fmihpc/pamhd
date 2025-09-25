@@ -157,15 +157,6 @@ tests/particle/pressure_accumulation.exe: \
   source/particle/accumulate.hpp
 	@printf "MPICXX $<\n" && $(MPICXX) -DDONT_USE_MPI $(TEST_PARTICLE_COMMON_COMPILE)
 
-tests/particle/reference.exe: \
-  tests/particle/reference.cpp \
-  $(TEST_PARTICLE_COMMON_DEPS) \
-  source/particle/solve.hpp
-	@printf "CXX $<\n" && $(CXX) \
-	  $(TEST_PARTICLE_COMMON_COMPILE) \
-	  $(BOOST_LDFLAGS) \
-	  $(BOOST_LIBS)
-
 tests/particle/solve_1d.exe: \
   tests/particle/solve_1d.cpp \
   $(TEST_PARTICLE_COMMON_DEPS) \
