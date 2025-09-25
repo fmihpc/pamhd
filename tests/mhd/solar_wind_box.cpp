@@ -102,7 +102,7 @@ bool pamhd::Face_Magnetic_Field::is_stale = true;
 
 const auto Face_dB = pamhd::Variable_Getter<pamhd::Face_dB>();
 
-const auto B_Error = pamhd::Variable_Getter<pamhd::Face_B_Error>();
+const auto Berror = pamhd::Variable_Getter<pamhd::Face_B_Error>();
 
 const auto Div_B = pamhd::Variable_Getter<pamhd::Magnetic_Field_Divergence>();
 
@@ -127,7 +127,7 @@ bool pamhd::Substep_Max::is_stale = true;
 const auto Timestep = pamhd::Variable_Getter<pamhd::Timestep>();
 bool pamhd::Timestep::is_stale = true;
 
-const auto Max_v_wave = pamhd::Variable_Getter<pamhd::mhd::Max_Velocity>();
+const auto Max_v = pamhd::Variable_Getter<pamhd::mhd::Max_Velocity>();
 bool pamhd::mhd::Max_Velocity::is_stale = true;
 
 const auto MHDF = pamhd::Variable_Getter<pamhd::mhd::MHD_Flux>();
@@ -287,6 +287,11 @@ int main(int argc, char* argv[]) {
 			}
 		}();
 
+	if (rank == 0) {
+		cout << "Starting simulation from "
+			<< options_sim.time_start << " s" << endl;
+	}
+
 	/*
 	Initialize simulation grid
 	*/
@@ -336,8 +341,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	if (rank == 0) {
-		cout << "Adapting and balancing grid at time "
-			<< options_sim.time_start << "...  " << flush;
+		cout << "Adapting and balancing grid... " << flush;
 	}
 
 	auto [
@@ -383,11 +387,12 @@ int main(int argc, char* argv[]) {
 		Substep.data(*cell.data)     =
 		Substep_Max.data(*cell.data) =
 		Substep_Min.data(*cell.data) = 1;
-		Max_v_wave.data(*cell.data) = {-1, -1, -1, -1, -1, -1};
+		Max_v.data(*cell.data) = {-1, -1, -1, -1, -1, -1};
+		Berror.data(*cell.data) = 0;
 	}
-	Max_v_wave.type().is_stale = true;
-	Substep.type().is_stale = true;
-	Substep_Max.type().is_stale = true;
+	Max_v.type().is_stale       =
+	Substep.type().is_stale     =
+	Substep_Max.type().is_stale =
 	Substep_Min.type().is_stale = true;
 
 	/*
@@ -429,25 +434,39 @@ int main(int argc, char* argv[]) {
 		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, CType
 	);
 
+	// make sure everyone agrees on face Bs after init
+	sync_magnetic_field(grid, Face_B, Vol_B, Berror, CType);
+
 	// final init with timestep of 0
+	if (rank == 0) {
+		cout << "Finalizing init... " << flush;
+	}
 	pamhd::mhd::timestep(
 		mhd_solver, grid, options_sim, options_sim.time_start,
 		0, options_mhd.time_step_factor,
 		options_sim.adiabatic_index,
 		options_sim.vacuum_permeability,
-		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, B_Error,
+		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Berror,
 		Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f, CType, Timestep,
-		Substep, Substep_Min, Substep_Max, Max_v_wave
+		Substep, Substep_Min, Substep_Max, Max_v
 	);
 	if (rank == 0) {
 		cout << "done" << endl;
+	}
+
+	const auto avg_div0 = pamhd::math::get_divergence_face2volume(
+		grid.local_cells(), grid,
+		Face_B, Div_B, CType
+	);
+	if (rank == 0) {
+		cout << "Average divergence of initial magnetic field " << avg_div0 << endl;
 	}
 
 	size_t simulation_step = 0;
 	constexpr uint64_t file_version = 4;
 	if (options_mhd.save_n >= 0) {
 		if (rank == 0) {
-			cout << "Saving MHD at time " << simulation_time << endl;
+			cout << "Saving MHD... " << flush;
 		}
 		if (
 			not pamhd::mhd::save(
@@ -468,29 +487,37 @@ int main(int argc, char* argv[]) {
 				<< endl;
 			abort();
 		}
+		if (rank == 0) {
+			cout << "done" << endl;
+		}
 	}
 
+	size_t total_flux_calcs = 0;
 	while (simulation_time < time_end) {
 		simulation_step++;
+		if (rank == 0) {
+			cout << "Time " << simulation_time
+				<< " s, step " << simulation_step << flush;
+		}
 
 		// don't step over the final simulation time
-		const double
-			until_end = time_end - simulation_time,
-			dt = pamhd::mhd::timestep(
+		const double until_end = time_end - simulation_time;
+		const auto [dt, max_sub, flux_calcs] = pamhd::mhd::timestep(
 				mhd_solver, grid, options_sim, simulation_time,
 				until_end, options_mhd.time_step_factor,
 				options_sim.adiabatic_index,
 				options_sim.vacuum_permeability,
 				Mas, Mom, Nrj, Vol_B, Face_B, Face_dB,
-				B_Error, Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f,
+				Berror, Bg_B, Mas_f, Mom_f, Nrj_f, Mag_f,
 				CType, Timestep, Substep, Substep_Min,
-				Substep_Max, Max_v_wave
+				Substep_Max, Max_v
 			);
 		if (rank == 0) {
-			cout << "Solved MHD at time " << simulation_time
-				<< " s with time step " << dt << " s" << flush;
+			cout << ", dt " << dt << " s, "
+				<< max_sub << " substep(s)" << flush;
 		}
 		simulation_time += dt;
+		total_flux_calcs += flux_calcs;
 
 		pamhd::mhd::apply_boundaries_sw_box(
 			grid, simulation_time, options_box, solar_wind_cells,
@@ -501,12 +528,14 @@ int main(int argc, char* argv[]) {
 			Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, CType
 		);
 
+		sync_magnetic_field(grid, Face_B, Vol_B, Berror, CType);
+
 		const auto avg_div = pamhd::math::get_divergence_face2volume(
 			grid.local_cells(), grid,
 			Face_B, Div_B, CType
 		);
 		if (rank == 0) {
-			cout << " average divergence " << avg_div << endl;
+			cout << ", avg div(B) " << avg_div << endl;
 		}
 
 		if (
@@ -544,7 +573,9 @@ int main(int argc, char* argv[]) {
 	}
 
 	if (rank == 0) {
-		cout << "Simulation finished at time " << simulation_time << endl;
+		cout << "Simulation finished at time " << simulation_time
+			<< " with " << total_flux_calcs
+			<< " total flux calculations" << endl;
 	}
 	MPI_Finalize();
 

@@ -378,12 +378,16 @@ int main(int argc, char* argv[]) {
 
 	for (const auto& cell: grid.local_cells()) {
 		(*cell.data)[pamhd::MPI_Rank()] = rank;
-		Substep.data(*cell.data) = 1;
+		Substep.data(*cell.data)     =
+		Substep_Max.data(*cell.data) =
+		Substep_Min.data(*cell.data) = 1;
 		Max_v.data(*cell.data) = {-1, -1, -1, -1, -1, -1};
 		Berror.data(*cell.data) = 0;
 	}
-	Max_v.type().is_stale = true;
-	Substep.type().is_stale = true;
+	Max_v.type().is_stale       =
+	Substep.type().is_stale     =
+	Substep_Max.type().is_stale =
+	Substep_Min.type().is_stale = true;
 
 	// assign cells into boundary geometries
 	for (const auto& gid: geometries.get_geometry_ids()) {
