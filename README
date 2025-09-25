@@ -1,17 +1,7 @@
-See http://ccmc.gsfc.nasa.gov/models/modelinfo.php?model=PAMHD
+Experimental program for modeling space plasma using
+magnetohydrodynamic, hybrid particle-in-cell and
+coupled approaches.
+
+See https://ccmc.gsfc.nasa.gov/ror/requests/LP/user_registration.php?model=PAMHD
 for running PAMHD simulations via the web and for
 visualizing the results.
-
-See https://github.com/nasailja/pamhd/wiki/Install
-for installation instructions. Certain versions
-of some prerequisites are known not to work,
-library/program versions known to work:
-
-boost: 1.55, 1.54 (patch maybe required)
-open-mpi: 1.8.1, 1.8, 1.6.5
-mpich: 3.1.2, 3.0.4, 2.1.5
-
-Versions known not to work:
-
-boost: <= 1.53 (no coroutine)
-open-mpi: 1.7.5
