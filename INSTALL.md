@@ -65,7 +65,7 @@ echo "using mpi : mpic++ : <define>B2MPIJUSTUSEMPI ;" >> user-config.jam
 Download PAMHD and it's submodules:
 ```bash
 cd $HOME
-git clone --recursive https://github.com/iljah/pamhd.git
+git clone --recursive https://github.com/fmihpc/pamhd.git
 ```
 
 and compile it running (GNU) make from the PAMHD root directory:
