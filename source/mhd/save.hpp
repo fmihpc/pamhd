@@ -167,9 +167,11 @@ template <class Grid> bool save(
 		MPI_MODE_CREATE | MPI_MODE_EXCL | MPI_MODE_RDWR,
 		MPI_INFO_NULL, &outfile
 	) != MPI_SUCCESS) {
-		std::cerr << __FILE__ << ":" << __LINE__
-			<< " Couldn't create " << filename
-			<< ", it already exists, etc" << std::endl;
+		if (grid.get_rank() == 0) {
+			std::cerr << __FILE__ << ":" << __LINE__
+				<< " Couldn't create " << filename
+				<< ", it already exists, etc" << std::endl;
+		}
 		abort();
 	}
 	// assume transfer of all variables has been switched off
