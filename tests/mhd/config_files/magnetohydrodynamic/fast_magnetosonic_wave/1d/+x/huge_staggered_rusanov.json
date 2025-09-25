@@ -2,7 +2,6 @@
 	"output-directory": "results/magnetohydrodynamic/fast_magnetosonic_wave/1d/+x/huge_staggered_rusanov",
 	"time-start": 0,
 	"time-length": 199.8,
-	"minimum-pressure": 0,
 	"solver-mhd": "rusanov",
 	"load-balancer": "RANDOM",
 	"save-mhd-n": 19.98,
