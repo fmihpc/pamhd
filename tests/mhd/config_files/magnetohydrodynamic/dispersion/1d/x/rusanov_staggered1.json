@@ -2,7 +2,6 @@
 	"output-directory": "tests/mhd/results/magnetohydrodynamic/dispersion/1d/x/rusanov_staggered1",
 	"time-start": 0,
 	"time-length": 1,
-	"minimum-pressure": 0,
 	"solver-mhd": "rusanov",
 	"load-balancer": "RANDOM",
 	"comment": "save as often as possible for 2d fft",
