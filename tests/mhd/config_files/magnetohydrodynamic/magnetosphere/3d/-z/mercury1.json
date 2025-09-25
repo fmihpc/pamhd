@@ -2,7 +2,6 @@
 	"output-directory": "results/magnetohydrodynamic/magnetosphere/3d/-z/mercury1/",
 	"time-start": 0,
 	"time-length": 3600,
-	"minimum-pressure": 0,
 	"solver-mhd": "rusanov",
 	"load-balancer": "RCB",
 	"save-mhd-n": 1200,
@@ -22,10 +21,10 @@
 	},
 	"solar-wind": {
 		"direction": "+x",
-		"number-density": 73e6,
-		"velocity": [-43e4, 0, 0],
-		"pressure": 17e-11,
-		"magnetic-field": [0, 0, 0]
+		"number-density": [73e6],
+		"velocity": [[-43e4, 0, 0]],
+		"pressure": [17e-11],
+		"magnetic-field": [[0, 0, 0]]
 	},
 	"inner-boundary": {
 		"radius": 244e4,
