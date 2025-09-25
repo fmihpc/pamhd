@@ -9,10 +9,7 @@
 	"adiabatic-index": 1.4,
 	"vacuum-permeability": 1,
 	"proton-mass": 1,
-	"remove-div-B-n": -1,
 	"mhd-time-step-factor": 0.5,
-	"poisson-norm-stop": 1e-10,
-	"poisson-norm-increase-max": 10,
 	"grid-options": {
 		"periodic": "{true, true, false}",
 		"cells": "{30, 30, 1}",
