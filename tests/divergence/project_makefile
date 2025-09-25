@@ -12,12 +12,7 @@ TESTS_DIVERGENCE_EXECUTABLES = \
   tests/divergence/get3d_curl.exe \
   tests/divergence/get3d_curl_curl.exe \
   tests/divergence/get3d_curl_curl2.exe \
-  tests/divergence/get1d_curl_periodic.exe \
-  tests/divergence/remove1d.exe \
-  tests/divergence/remove1d_amr.exe \
-  tests/divergence/remove2d.exe \
-  tests/divergence/remove3d.exe \
-  tests/divergence/remove3d_amr.exe
+  tests/divergence/get1d_curl_periodic.exe
 
 TESTS_DIVERGENCE_TESTS = \
   tests/divergence/get1d_div.tst \
@@ -31,11 +26,6 @@ TESTS_DIVERGENCE_TESTS = \
   tests/divergence/get3d_grad.tst \
   tests/divergence/get3d_grad_amr.tst \
   tests/divergence/get3d_curl.tst \
-  tests/divergence/remove1d.tst \
-  tests/divergence/remove1d_amr.tst \
-  tests/divergence/remove2d.tst \
-  tests/divergence/remove3d.tst \
-  tests/divergence/remove3d_amr.tst \
   tests/divergence/get1d_div.mtst \
   tests/divergence/get1d_div_amr.mtst \
   tests/divergence/get2d_div.mtst \
@@ -49,12 +39,7 @@ TESTS_DIVERGENCE_TESTS = \
   tests/divergence/get3d_curl.mtst \
   tests/divergence/get3d_curl_curl.mtst \
   tests/divergence/get3d_curl_curl2.mtst \
-  tests/divergence/get1d_curl_periodic.mtst \
-  tests/divergence/remove1d.mtst \
-  tests/divergence/remove1d_amr.mtst \
-  tests/divergence/remove2d.mtst \
-  tests/divergence/remove3d.mtst \
-  tests/divergence/remove3d_amr.mtst
+  tests/divergence/get1d_curl_periodic.mtst
 
 tests/divergence_executables: $(TESTS_DIVERGENCE_EXECUTABLES)
 
@@ -71,7 +56,6 @@ CLEAN += tests/divergence_clean
 
 
 TEST_DIVERGENCE_COMMON_DEPS = \
-  source/divergence/remove.hpp \
   tests/divergence/project_makefile \
   $(ENVIRONMENT_MAKEFILE) \
   Makefile
@@ -156,30 +140,5 @@ tests/divergence/get3d_curl_curl2.exe: \
 
 tests/divergence/get1d_curl_periodic.exe: \
   tests/divergence/get1d_curl_periodic.cpp \
-  $(TEST_DIVERGENCE_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX_TESTS_DIVERGENCE_MPICXX)
-
-tests/divergence/remove1d.exe: \
-  tests/divergence/remove1d.cpp \
-  $(TEST_DIVERGENCE_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX_TESTS_DIVERGENCE_MPICXX)
-
-tests/divergence/remove1d_amr.exe: \
-  tests/divergence/remove1d_amr.cpp \
-  $(TEST_DIVERGENCE_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX_TESTS_DIVERGENCE_MPICXX)
-
-tests/divergence/remove2d.exe: \
-  tests/divergence/remove2d.cpp \
-  $(TEST_DIVERGENCE_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX_TESTS_DIVERGENCE_MPICXX)
-
-tests/divergence/remove3d.exe: \
-  tests/divergence/remove3d.cpp \
-  $(TEST_DIVERGENCE_COMMON_DEPS)
-	@printf "MPICXX $<\n" && $(MPICXX_TESTS_DIVERGENCE_MPICXX)
-
-tests/divergence/remove3d_amr.exe: \
-  tests/divergence/remove3d_amr.cpp \
   $(TEST_DIVERGENCE_COMMON_DEPS)
 	@printf "MPICXX $<\n" && $(MPICXX_TESTS_DIVERGENCE_MPICXX)
