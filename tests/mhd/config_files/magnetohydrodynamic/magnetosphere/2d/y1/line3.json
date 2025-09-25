@@ -4,8 +4,6 @@
 	"output-directory": "results/magnetohydrodynamic/magnetosphere/2d/y1/line3",
 	"time-start": 0,
 	"time-length": 7200,
-	"minimum-pressure": 1e-15,
-	"resistivity": "0",
 	"solver-mhd": "rusanov",
 	"load-balancer": "RCB",
 	"save-mhd-n": 1200,
@@ -14,8 +12,6 @@
 	"proton-mass": 1.6726217770000001e-27,
 	"remove-div-B-n": 60,
 	"mhd-time-step-factor": 0.5,
-	"poisson-norm-stop": 1e-15,
-	"poisson-norm-increase-max": 10,
 	"grid-options": {
 		"periodic": "{false, false, false}",
 		"cells": "{37 + 2, 1, 63 + 2}",

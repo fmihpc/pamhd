@@ -3,7 +3,6 @@
 	"output-directory": "results/magnetohydrodynamic/magnetosphere/2d/z1/line1_staggered",
 	"time-start": 0,
 	"time-length": 9600,
-	"minimum-pressure": 0,
 	"solver-mhd": "rusanov",
 	"load-balancer": "RCB",
 	"save-mhd-n": 1200,
