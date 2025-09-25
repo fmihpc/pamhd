@@ -6,7 +6,7 @@
 	url = https://github.com/fmihpc/dccrg.git
 [submodule "submodules/gensimcell"]
 	path = submodules/gensimcell
-	url = https://github.com/iljah/gensimcell.git
+	url = https://github.com/fmihpc/gensimcell.git
 [submodule "submodules/rapidjson"]
 	path = submodules/rapidjson
 	url = https://github.com/Tencent/rapidjson.git
