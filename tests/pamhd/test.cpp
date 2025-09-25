@@ -50,7 +50,6 @@ particles represent one of the fluids.
 #include "boundaries/geometries.hpp"
 #include "boundaries/multivariable_boundaries.hpp"
 #include "boundaries/multivariable_initial_conditions.hpp"
-#include "divergence/options.hpp"
 #include "divergence/remove.hpp"
 #include "grid/options.hpp"
 #include "mhd/boundaries.hpp"
@@ -522,7 +521,6 @@ int main(int argc, char* argv[])
 
 	pamhd::Options options_sim{document};
 	pamhd::grid::Options options_grid{document};
-	pamhd::divergence::Options options_div_B{document};
 	pamhd::mhd::Options options_mhd{document};
 	pamhd::particle::Options options_particle{document};
 
@@ -773,8 +771,7 @@ int main(int argc, char* argv[])
 		max_dt_particle_flight = 0,
 		simulation_time = options_sim.time_start,
 		next_particle_save = options_particle.save_n,
-		next_mhd_save = options_mhd.save_n,
-		next_rem_div_B = options_div_B.remove_n;
+		next_mhd_save = options_mhd.save_n;
 
 	if (rank == 0) {
 		cout << "Initializing simulation... " << endl;
@@ -1452,97 +1449,6 @@ int main(int argc, char* argv[])
 
 		simulation_time += time_step;
 
-
-		/*
-		Remove divergence of magnetic field
-		*/
-
-		if (options_div_B.remove_n > 0 and simulation_time >= next_rem_div_B) {
-			next_rem_div_B += options_div_B.remove_n;
-
-			if (rank == 0) {
-				cout << "Removing divergence of B at time "
-					<< simulation_time << "...  ";
-				cout.flush();
-			}
-
-			// save old B in case div removal fails
-			for (const auto& cell: grid.local_cells()) {
-				Mag_tmp(*cell.data) = Mag(*cell.data);
-			}
-
-			Cell::set_transfer_all(
-				true,
-				pamhd::Magnetic_Field(),
-				pamhd::Magnetic_Field_Divergence()
-			);
-
-			const auto div_before
-				= pamhd::divergence::remove(
-					grid.local_cells(),
-					grid,
-					Mag,
-					Mag_div,
-					[](Cell& cell_data)
-						-> pamhd::Scalar_Potential_Gradient::data_type&
-					{
-						return cell_data[pamhd::Scalar_Potential_Gradient()];
-					},
-					Sol_Info,
-					options_div_B.poisson_iterations_max,
-					options_div_B.poisson_iterations_min,
-					options_div_B.poisson_norm_stop,
-					2,
-					options_div_B.poisson_norm_increase_max,
-					0,
-					false,
-					false
-				);
-			Cell::set_transfer_all(false, pamhd::Magnetic_Field_Divergence());
-
-			grid.update_copies_of_remote_neighbors();
-			Cell::set_transfer_all(false, pamhd::Magnetic_Field());
-			const double div_after
-				= pamhd::divergence::get_divergence(
-					grid.local_cells(),
-					grid,
-					Mag,
-					Mag_div,
-					Sol_Info
-				);
-
-			// restore old B
-			if (div_after > div_before) {
-				if (rank == 0) {
-					cout << "failed (" << div_after
-						<< "), restoring previous value (" << div_before << ")."
-						<< endl;
-				}
-				for (const auto& cell: grid.local_cells()) {
-					Mag(*cell.data) = Mag_tmp(*cell.data);
-				}
-
-			} else {
-
-				if (rank == 0) {
-					cout << div_before << " -> " << div_after << endl;
-				}
-
-				// keep pressure/temperature constant over div removal
-				for (const auto& cell: grid.local_cells()) {
-					const auto mag_nrj_diff
-						= (
-							Mag(*cell.data).squaredNorm()
-							- Mag_tmp(*cell.data).squaredNorm()
-						) / (2 * options_sim.vacuum_permeability),
-						total_mass = Mas1(*cell.data) + Mas2(*cell.data),
-						mass_frac1 = Mas1(*cell.data) / total_mass,
-						mass_frac2 = Mas2(*cell.data) / total_mass;
-					Nrj1(*cell.data) += mass_frac1 * mag_nrj_diff;
-					Nrj2(*cell.data) += mass_frac2 * mag_nrj_diff;
-				}
-			}
-		}
 
 		/*
 		Update internal particles for setting particle copy boundaries.
