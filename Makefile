@@ -18,17 +18,16 @@ CLEAN =
 default: all
 
 include \
-  tests/prettyprint/project_makefile \
-  tests/grid/project_makefile \
-  tests/muparserx/project_makefile \
-  tests/mhd/project_makefile \
   tests/boundaries/project_makefile \
   tests/divergence/project_makefile \
+  tests/grid/project_makefile \
+  tests/interpolate/project_makefile \
   tests/math/project_makefile \
-  tests/particle/project_makefile \
+  tests/mhd/project_makefile \
+  tests/muparserx/project_makefile \
   tests/pamhd/project_makefile \
-  tests/poisson/project_makefile \
-  tests/interpolate/project_makefile
+  tests/particle/project_makefile \
+  tests/prettyprint/project_makefile
 
 
 all: $(EXECUTABLES)
