@@ -80,12 +80,6 @@ namespace odeint = boost::numeric::odeint;
 // counter for assigning unique id to particles
 unsigned long long int next_particle_id;
 
-/*
-Controls transfer of variables in poisson solver
-which doesn't use generic cell
-*/
-int Poisson_Cell::transfer_switch = Poisson_Cell::INIT;
-
 
 // data stored in every cell of simulation grid
 using Cell = gensimcell::Cell<
