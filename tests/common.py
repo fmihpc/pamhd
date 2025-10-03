@@ -523,6 +523,14 @@ def write_variable_vtk(infile, outfile, variable, meta, nr_cells = -1):
 				outfile.write(str(d['nr ipart']) + '\n')
 			del data
 
+	if variable == 'Berror  ':
+		outfile.write('SCALARS magnetic_field_error double 1\nlookup_table default\n')
+		for chunk in chunks:
+			data = get_cell_data(infile, meta, chunk, [variable])
+			for d in data:
+				outfile.write(str(d['Berror  ']) + '\n')
+			del data
+
 
 if __name__ == '__main__':
 	import sys
