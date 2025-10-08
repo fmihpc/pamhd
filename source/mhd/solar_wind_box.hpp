@@ -409,7 +409,7 @@ template<
 
 				for (int dir2: {-3,-2,-1,+1,+2,+3}) {
 					if (dir2 == fn or dir2 == -fn) {
-						Face_B.data(*cell.data)(dir2) = Face_B.data(*neighbor.data)(-fn);
+						Face_B.data(*cell.data)(dir2) = Face_B.data(*neighbor.data)(-dir2);
 					} else {
 						Face_B.data(*cell.data)(dir2) = Face_B.data(*neighbor.data)(dir2);
 					}
@@ -457,58 +457,13 @@ template<
 				Mas.data(*cell.data) = Mas.data(*neighbor.data);
 				Mom.data(*cell.data) = Mom.data(*neighbor.data);
 
-				if (dim == 0) {
-					Face_B.data(*cell.data)(-1) = Face_B.data(*neighbor.data)(-1);
-					Face_B.data(*cell.data)(+1) = Face_B.data(*neighbor.data)(+1);
-					if (dir1 < 0) {
-						Face_B.data(*cell.data)(-2) =
-						Face_B.data(*cell.data)(+2) = Face_B.data(*neighbor.data)(-2);
+				for (int dir: {1, 2, 3}) {
+					if (dim == std::abs(dir) - 1) {
+						Face_B.data(*cell.data)(-dir) = Face_B.data(*neighbor.data)(-dir);
+						Face_B.data(*cell.data)(+dir) = Face_B.data(*neighbor.data)(+dir);
 					} else {
-						Face_B.data(*cell.data)(-2) =
-						Face_B.data(*cell.data)(+2) = Face_B.data(*neighbor.data)(+2);
-					}
-					if (dir2 < 0) {
-						Face_B.data(*cell.data)(-3) =
-						Face_B.data(*cell.data)(+3) = Face_B.data(*neighbor.data)(-3);
-					} else {
-						Face_B.data(*cell.data)(-3) =
-						Face_B.data(*cell.data)(+3) = Face_B.data(*neighbor.data)(+3);
-					}
-				}
-				if (dim == 1) {
-					Face_B.data(*cell.data)(-2) = Face_B.data(*neighbor.data)(-2);
-					Face_B.data(*cell.data)(+2) = Face_B.data(*neighbor.data)(+2);
-					if (dir1 < 0) {
-						Face_B.data(*cell.data)(-1) =
-						Face_B.data(*cell.data)(+1) = Face_B.data(*neighbor.data)(-1);
-					} else {
-						Face_B.data(*cell.data)(-1) =
-						Face_B.data(*cell.data)(+1) = Face_B.data(*neighbor.data)(+1);
-					}
-					if (dir2 < 0) {
-						Face_B.data(*cell.data)(-3) =
-						Face_B.data(*cell.data)(+3) = Face_B.data(*neighbor.data)(-3);
-					} else {
-						Face_B.data(*cell.data)(-3) =
-						Face_B.data(*cell.data)(+3) = Face_B.data(*neighbor.data)(+3);
-					}
-				}
-				if (dim == 2) {
-					Face_B.data(*cell.data)(-3) = Face_B.data(*neighbor.data)(-3);
-					Face_B.data(*cell.data)(+3) = Face_B.data(*neighbor.data)(+3);
-					if (dir1 < 0) {
-						Face_B.data(*cell.data)(-1) =
-						Face_B.data(*cell.data)(+1) = Face_B.data(*neighbor.data)(-1);
-					} else {
-						Face_B.data(*cell.data)(-1) =
-						Face_B.data(*cell.data)(+1) = Face_B.data(*neighbor.data)(+1);
-					}
-					if (dir2 < 0) {
-						Face_B.data(*cell.data)(-2) =
-						Face_B.data(*cell.data)(+2) = Face_B.data(*neighbor.data)(-2);
-					} else {
-						Face_B.data(*cell.data)(-2) =
-						Face_B.data(*cell.data)(+2) = Face_B.data(*neighbor.data)(+2);
+						Face_B.data(*cell.data)(-dir) = Face_B.data(*neighbor.data)(+dir);
+						Face_B.data(*cell.data)(+dir) = Face_B.data(*neighbor.data)(-dir);
 					}
 				}
 			}
@@ -563,26 +518,9 @@ template<
 			Mas.data(*cell.data) = Mas.data(*neighbor.data);
 			Mom.data(*cell.data) = Mom.data(*neighbor.data);
 
-			if (neighbor.x < 0) {
-				Face_B.data(*cell.data)(-1) =
-				Face_B.data(*cell.data)(+1) = Face_B.data(*neighbor.data)(+1);
-			} else {
-				Face_B.data(*cell.data)(-1) =
-				Face_B.data(*cell.data)(+1) = Face_B.data(*neighbor.data)(-1);
-			}
-			if (neighbor.y < 0) {
-				Face_B.data(*cell.data)(-2) =
-				Face_B.data(*cell.data)(+2) = Face_B.data(*neighbor.data)(+2);
-			} else {
-				Face_B.data(*cell.data)(-2) =
-				Face_B.data(*cell.data)(+2) = Face_B.data(*neighbor.data)(-2);
-			}
-			if (neighbor.z < 0) {
-				Face_B.data(*cell.data)(-3) =
-				Face_B.data(*cell.data)(+3) = Face_B.data(*neighbor.data)(+3);
-			} else {
-				Face_B.data(*cell.data)(-3) =
-				Face_B.data(*cell.data)(+3) = Face_B.data(*neighbor.data)(-3);
+			for (int dir: {1, 2, 3}) {
+				Face_B.data(*cell.data)(-dir) = Face_B.data(*neighbor.data)(+dir);
+				Face_B.data(*cell.data)(+dir) = Face_B.data(*neighbor.data)(-dir);
 			}
 		}
 		Vol_B.data(*cell.data) = {
