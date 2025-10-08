@@ -360,22 +360,45 @@ int main(int argc, char* argv[]) {
 		if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}
 	for (int dir: {-3,-2,-1,+1,+2,+3}) {
+		size_t nr_cells = 0;
 		for (const auto& cell: face_cells(dir)) {
+			nr_cells++;
 			if (CType.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		}
+		if (dir == options_box.sw_dir) continue;
+
+		const size_t
+			dim = std::abs(dir) - 1,
+			d2 = (dim + 1) % 3,
+			d3 = (dim + 2) % 3,
+			ref = (number_of_cells[d2] - 2)
+			    * (number_of_cells[d3] - 2);
+		if (nr_cells != ref) {
+			throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
 	}
 	for (int dim: {0, 1, 2})
 	for (int dir1: {-1, +1})
 	for (int dir2: {-1, +1}) {
+		size_t nr_cells = 0;
 		for (const auto& cell: edge_cells(dim, dir1, dir2)) {
+			nr_cells++;
 			if (CType.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		}
+		if (nr_cells != number_of_cells[dim] - 2) {
+			throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+		}
 	}
+	size_t nr_vert_cells = 0;
 	for (const auto& cell: vert_cells) {
+		nr_vert_cells++;
 		if (CType.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 		if (Ref_max.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
+	}
+	if (nr_vert_cells != 8) {
+		throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 	}
 	for (const auto& cell: planet_cells) {
 		if (CType.data(*cell.data) != 0) throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
