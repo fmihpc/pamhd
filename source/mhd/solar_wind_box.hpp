@@ -324,7 +324,7 @@ template<
 	class Volume_Magnetic_Field_Getter,
 	class Face_Magnetic_Field_Getter,
 	class Face_Magnetic_Field_Change_Getter,
-	class Solver_Info_Getter
+	class Cell_Type_Getter
 > void apply_boundaries_sw_box(
 	Grid& grid,
 	const double& sim_time,
@@ -343,7 +343,7 @@ template<
 	const Volume_Magnetic_Field_Getter& Vol_B,
 	const Face_Magnetic_Field_Getter& Face_B,
 	const Face_Magnetic_Field_Change_Getter& Face_dB,
-	const Solver_Info_Getter& SInfo
+	const Cell_Type_Getter& CType
 ) try {
 	using std::abs;
 	using std::runtime_error;
@@ -366,16 +366,16 @@ template<
 		update_copies = true;
 		Cell::set_transfer_all(true, Face_B.type());
 	}
-	if (SInfo.type().is_stale) {
+	if (CType.type().is_stale) {
 		update_copies = true;
-		Cell::set_transfer_all(true, SInfo.type());
+		Cell::set_transfer_all(true, CType.type());
 	}
 	if (update_copies) {
 		grid.update_copies_of_remote_neighbors();
 	}
 	Cell::set_transfer_all(false,
 		Mas.type(), Mom.type(), Nrj.type(),
-		Vol_B.type(), Face_B.type(), SInfo.type());
+		Vol_B.type(), Face_B.type(), CType.type());
 
 	Mas.type().is_stale = true;
 	Mom.type().is_stale = true;
@@ -391,7 +391,7 @@ template<
 			for (const auto& neighbor: cell.neighbors_of) {
 				const auto& fn = neighbor.face_neighbor;
 				if (fn != -dir) continue;
-				if (SInfo.data(*neighbor.data) != 1) {
+				if (CType.data(*neighbor.data) != 1) {
 					throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 				}
 				if (pressure > 0) {
@@ -441,7 +441,7 @@ template<
 			for (const auto& neighbor: cell.neighbors_of) {
 				const auto& en = neighbor.edge_neighbor;
 				if (en[0] != dim or en[1] != -dir1 or en[2] != -dir2) continue;
-				if (SInfo.data(*neighbor.data) != 1) {
+				if (CType.data(*neighbor.data) != 1) {
 					throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 				}
 				if (pressure > 0) {
@@ -501,7 +501,7 @@ template<
 			if (neighbor.relative_size != 0) {
 				throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			}
-			if (SInfo.data(*neighbor.data) != 1) {
+			if (CType.data(*neighbor.data) != 1) {
 				throw runtime_error(__FILE__"(" + to_string(__LINE__) + ")");
 			}
 

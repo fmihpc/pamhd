@@ -64,7 +64,7 @@ namespace mhd {
 Prepares boundary information needed for solver(s)
 about each simulation cell.
 
-MPI transfer of variable returned by SInfo must be
+MPI transfer of variable returned by CType must be
 switched on before calling this.
 
 1 means normal read-write cell
@@ -75,23 +75,23 @@ template<
 	class Grid,
 	class Boundaries,
 	class Boundary_Geometries,
-	class Solver_Info_Getter
+	class Cell_Type_Getter
 > void set_solver_info(
 	Grid& grid,
 	Boundaries& boundaries,
 	const Boundary_Geometries& geometries,
-	const Solver_Info_Getter& SInfo
+	const Cell_Type_Getter& CType
 ) try {
 	using std::runtime_error;
 	using std::to_string;
 
 	using Cell = Grid::cell_data_type;
-	Cell::set_transfer_all(true, SInfo.type());
+	Cell::set_transfer_all(true, CType.type());
 
-	boundaries.classify(grid, geometries, SInfo);
+	boundaries.classify(grid, geometries, CType);
 
 	for (const auto& cell: grid.local_cells()) {
-		SInfo.data(*cell.data) = 1;
+		CType.data(*cell.data) = 1;
 	}
 
 	// number density
@@ -101,14 +101,14 @@ template<
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo.data(*cell_data) = 0;
+		CType.data(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(N)) {
 		auto* const cell_data = grid[item[0]];
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo.data(*cell_data) = 0;
+		CType.data(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_mass(
 		boundaries.get_dont_solve_cells(N).cbegin(),
@@ -122,14 +122,14 @@ template<
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo.data(*cell_data) = 0;
+		CType.data(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(V)) {
 		auto* const cell_data = grid[item[0]];
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo.data(*cell_data) = 0;
+		CType.data(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_velocity(
 		boundaries.get_dont_solve_cells(V).cbegin(),
@@ -143,14 +143,14 @@ template<
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo.data(*cell_data) = 0;
+		CType.data(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(P)) {
 		auto* const cell_data = grid[item[0]];
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo.data(*cell_data) = 0;
+		CType.data(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_pressure(
 		boundaries.get_dont_solve_cells(P).cbegin(),
@@ -164,14 +164,14 @@ template<
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo.data(*cell_data) = 0;
+		CType.data(*cell_data) = 0;
 	}
 	for (const auto& item: boundaries.get_copy_boundary_cells(B)) {
 		auto* const cell_data = grid[item[0]];
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo.data(*cell_data) = 0;
+		CType.data(*cell_data) = 0;
 	}
 	const std::set<uint64_t> dont_solve_mag(
 		boundaries.get_dont_solve_cells(B).cbegin(),
@@ -221,7 +221,7 @@ template<
 		if (cell_data == nullptr) {
 			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
 		}
-		SInfo.data(*cell_data) = -1;
+		CType.data(*cell_data) = -1;
 	}
 
 	// also don't solve cells too far from local
@@ -233,11 +233,11 @@ template<
 				break;
 			}
 		}
-		if (not solve) SInfo.data(*cell.data) = -1;
+		if (not solve) CType.data(*cell.data) = -1;
 	}
 
 	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, SInfo.type());
+	Cell::set_transfer_all(false, CType.type());
 
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());
@@ -1255,7 +1255,7 @@ template<
 	class Total_Energy_Density_Getter,
 	class Magnetic_Field_Getter,
 	class Face_Magnetic_Field_Getter,
-	class Solver_Info_Getter,
+	class Cell_Type_Getter,
 	class Face_Info_Getter,
 	class Substepping_Period_Getter
 > void apply_boundaries(
@@ -1271,13 +1271,13 @@ template<
 	const Total_Energy_Density_Getter& Nrj,
 	const Magnetic_Field_Getter& Mag,
 	const Face_Magnetic_Field_Getter& Face_B,
-	const Solver_Info_Getter& SInfo,
+	const Cell_Type_Getter& CType,
 	const Face_Info_Getter& FInfo,
 	const Substepping_Period_Getter& Substep
 ) try {
 	pamhd::mhd::apply_fluid_boundaries(
 		grid, boundaries, geometries, simulation_time,
-		Mas, Mom, Nrj, Mag, SInfo, proton_mass,
+		Mas, Mom, Nrj, Mag, CType, proton_mass,
 		adiabatic_index, vacuum_permeability
 	);
 
@@ -1288,7 +1288,7 @@ template<
 
 	pamhd::mhd::update_vol_B(
 		0, grid.local_cells(), Mas, Mom, Nrj, Mag, Face_B,
-		SInfo, Substep, adiabatic_index, vacuum_permeability, true
+		CType, Substep, adiabatic_index, vacuum_permeability, true
 	);
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());

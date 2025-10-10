@@ -76,7 +76,7 @@ template <
 	class Momentum_Density_Getter,
 	class Total_Energy_Density_Getter,
 	class Volume_Magnetic_Field_Getter,
-	class Solver_Info_Getter,
+	class Cell_Type_Getter,
 	class Target_Refinement_Level_Min_Getter,
 	class Target_Refinement_Level_Max_Getter
 > void set_minmax_refinement_level(
@@ -87,7 +87,7 @@ template <
 	const Momentum_Density_Getter& Mom,
 	const Total_Energy_Density_Getter& Nrj,
 	const Volume_Magnetic_Field_Getter& Vol_B,
-	const Solver_Info_Getter& SInfo,
+	const Cell_Type_Getter& CType,
 	const Target_Refinement_Level_Min_Getter& RLMin,
 	const Target_Refinement_Level_Max_Getter& RLMax,
 	const double& adiabatic_index,
@@ -108,11 +108,11 @@ template <
 	for (const auto& cell: cells) {
 
 		bool skip = false;
-		if (SInfo.data(*cell.data) <= 0) {
+		if (CType.data(*cell.data) <= 0) {
 			skip = true;
 		} else {
 			for (const auto& neighbor: cell.neighbors_of) {
-				if (SInfo.data(*neighbor.data) <= 0) {
+				if (CType.data(*neighbor.data) <= 0) {
 					skip = true;
 					break;
 				}
@@ -152,7 +152,7 @@ template <
 			mrg_pre = 0,
 			mrg_mag = 0;
 		for (const auto& neighbor: cell.neighbors_of) {
-			if (SInfo.data(*neighbor.data) <= 0) {
+			if (CType.data(*neighbor.data) <= 0) {
 				continue;
 			}
 
@@ -591,7 +591,7 @@ template<
 	class Volume_Magnetic_Field_Getter,
 	class Face_Magnetic_Field_Getter,
 	class Background_Magnetic_Field_Getter,
-	class Solver_Info_Getter,
+	class Cell_Type_Getter,
 	class Face_Info_Getter,
 	class Target_Refinement_Level_Min_Getter,
 	class Target_Refinement_Level_Max_Getter,
@@ -615,7 +615,7 @@ template<
 	const Volume_Magnetic_Field_Getter& Vol_B,
 	const Face_Magnetic_Field_Getter& Face_B,
 	const Background_Magnetic_Field_Getter& Bg_B,
-	const Solver_Info_Getter& SInfo,
+	const Cell_Type_Getter& CType,
 	const Face_Info_Getter& FInfo,
 	const Target_Refinement_Level_Min_Getter& Ref_min,
 	const Target_Refinement_Level_Max_Getter& Ref_max,
@@ -631,7 +631,7 @@ template<
 
 	pamhd::mhd::set_minmax_refinement_level(
 		grid.local_cells(), grid, options_mhd,
-		Mas, Mom, Nrj, Vol_B, SInfo, Ref_min, Ref_max,
+		Mas, Mom, Nrj, Vol_B, CType, Ref_min, Ref_max,
 		adiabatic_index, vacuum_permeability, proton_mass);
 
 	Cell::set_transfer_all(true,
@@ -679,14 +679,14 @@ template<
 			cell.id);
 	}
 
-	pamhd::mhd::set_solver_info(grid, boundaries, geometries, SInfo);
-	pamhd::mhd::classify_faces(grid, SInfo, FInfo);
+	pamhd::mhd::set_solver_info(grid, boundaries, geometries, CType);
+	pamhd::mhd::classify_faces(grid, CType, FInfo);
 
-	sync_magnetic_field(grid, Face_B, Vol_B, Berror, SInfo);
+	sync_magnetic_field(grid, Face_B, Vol_B, Berror, CType);
 
 	pamhd::mhd::update_vol_B(
 		0, grid.local_cells(), Mas, Mom, Nrj, Vol_B, Face_B,
-		SInfo, Substep, adiabatic_index, vacuum_permeability, true
+		CType, Substep, adiabatic_index, vacuum_permeability, true
 	);
 } catch (const std::exception& e) {
 	throw std::runtime_error(__FILE__ "(" + std::to_string(__LINE__) + "): " + e.what());

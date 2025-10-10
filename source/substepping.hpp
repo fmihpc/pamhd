@@ -54,18 +54,18 @@ Returns new largest N.
 */
 template <
 	class Grid,
-	class Solver_Info_Getter,
+	class Cell_Type_Getter,
 	class Substepping_Period_Getter
 > int update_substeps(
 	Grid& grid,
-	const Solver_Info_Getter SInfo,
+	const Cell_Type_Getter CType,
 	const Substepping_Period_Getter Substep
 ) try {
 	Substep.type().is_stale = true;
 
 	int max_local = -1;
 	for (const auto& cell: grid.local_cells()) {
-		if (SInfo.data(*cell.data) < 0) {
+		if (CType.data(*cell.data) < 0) {
 			continue;
 		}
 		Substep.data(*cell.data) = 1 << Substep.data(*cell.data);
@@ -108,12 +108,12 @@ template <
 	class Grid,
 	class Substepping_Period_Getter,
 	class Substep_Max_Getter,
-	class Solver_Info_Getter
+	class Cell_Type_Getter
 > void restrict_substepping_period(
 	Grid& grid,
 	const Substepping_Period_Getter Substep,
 	const Substep_Max_Getter Substep_Max,
-	const Solver_Info_Getter SInfo
+	const Cell_Type_Getter CType
 ) try {
 	using std::max;
 	using std::min;
@@ -121,17 +121,17 @@ template <
 	using Cell = Grid::cell_data_type;
 
 	for (const auto& cell: grid.local_cells()) {
-		if (SInfo.data(*cell.data) < 0) {
+		if (CType.data(*cell.data) < 0) {
 			continue;
 		}
 		Substep.data(*cell.data) = Substep_Max.data(*cell.data);
 	}
 
-	if (SInfo.type().is_stale) {
-		Cell::set_transfer_all(true, SInfo.type());
+	if (CType.type().is_stale) {
+		Cell::set_transfer_all(true, CType.type());
 		grid.update_copies_of_remote_neighbors();
-		Cell::set_transfer_all(false, SInfo.type());
-		SInfo.type().is_stale = false;
+		Cell::set_transfer_all(false, CType.type());
+		CType.type().is_stale = false;
 	}
 
 	auto comm = grid.get_communicator();
@@ -141,11 +141,11 @@ template <
 		grid.update_copies_of_remote_neighbors();
 		uint64_t modified_cells_local = 0;
 		for (const auto& cell: grid.local_cells()) {
-			if (SInfo.data(*cell.data) < 0) {
+			if (CType.data(*cell.data) < 0) {
 				continue;
 			}
 			for (const auto& neighbor: cell.neighbors_of) {
-				if (SInfo.data(*neighbor.data) < 0) {
+				if (CType.data(*neighbor.data) < 0) {
 					continue;
 				}
 				if (neighbor.face_neighbor == 0 and neighbor.edge_neighbor[0] < 0) {
@@ -278,14 +278,14 @@ For example if one cell's timestep is dt and minimum substep is
 */
 template <
 	class Grid,
-	class Solver_Info_Getter,
+	class Cell_Type_Getter,
 	class Timestep_Getter,
 	class Substep_Min_Getter,
 	class Substep_Max_Getter
 > double set_minmax_substepping_period(
 	Grid& grid,
 	const double& max_dt,
-	const Solver_Info_Getter& SInfo,
+	const Cell_Type_Getter& CType,
 	const Timestep_Getter& Timestep,
 	const Substep_Min_Getter& Substep_Min,
 	const Substep_Max_Getter& Substep_Max
@@ -305,7 +305,7 @@ template <
 		largest_dt_local = 0;
 
 	for (const auto& cell: grid.local_cells()) {
-		if (SInfo.data(*cell.data) < 0) {
+		if (CType.data(*cell.data) < 0) {
 			continue;
 		}
 		smallest_dt_local = min(Timestep.data(*cell.data), smallest_dt_local);
@@ -340,7 +340,7 @@ template <
 	// minimum substep length
 	double ret_val_local = numeric_limits<double>::max();
 	for (const auto& cell: grid.local_cells()) {
-		if (SInfo.data(*cell.data) < 0) {
+		if (CType.data(*cell.data) < 0) {
 			continue;
 		}
 		ret_val_local = min(ret_val_local,
@@ -366,7 +366,7 @@ template <
 
 	// decrease too large max substep periods
 	for (const auto& cell: grid.local_cells()) {
-		if (SInfo.data(*cell.data) < 0) {
+		if (CType.data(*cell.data) < 0) {
 			continue;
 		}
 

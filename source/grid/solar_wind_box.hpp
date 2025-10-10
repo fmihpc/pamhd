@@ -187,7 +187,7 @@ solver info, ...
 */
 template<
 	class Grid,
-	class Solver_Info_Getter,
+	class Cell_Type_Getter,
 	class Targer_Maximum_Refinement_Level_Getter,
 	class Targer_Minimum_Refinement_Level_Getter
 > auto prepare_grid(
@@ -195,7 +195,7 @@ template<
 	pamhd::grid::Options& options_grid,
 	const pamhd::Solar_Wind_Box_Options& options_box,
 	Grid& grid,
-	const Solver_Info_Getter& SInfo,
+	const Cell_Type_Getter& CType,
 	const Targer_Maximum_Refinement_Level_Getter& Ref_max,
 	const Targer_Minimum_Refinement_Level_Getter& Ref_min
 ) try {
@@ -269,7 +269,7 @@ template<
 	*/
 
 	for (const auto& cell: grid.local_cells()) {
-		SInfo.data(*cell.data) = 1;
+		CType.data(*cell.data) = 1;
 	}
 
 	using cell_list_t = std::vector<
@@ -293,7 +293,7 @@ template<
 		}
 	}
 	for (const auto& cell: sw_cells) {
-		if (cell.is_local) SInfo.data(*cell.data) = 0;
+		if (cell.is_local) CType.data(*cell.data) = 0;
 	}
 
 	// outflow
@@ -360,18 +360,18 @@ template<
 		}
 	}
 	for (const auto& cell: vert_bdy) {
-		SInfo.data(*cell.data) = 0;
+		CType.data(*cell.data) = 0;
 	}
 	for (int dir: {-3,-2,-1,+1,+2,+3}) {
 		for (const auto& cell: face_bdy(dir)) {
-			SInfo.data(*cell.data) = 0;
+			CType.data(*cell.data) = 0;
 		}
 	}
 	for (size_t dim: {0, 1, 2})
 	for (int dir1: {-1,+1})
 	for (int dir2: {-1,+1}) {
 		for (const auto& cell: edge_bdy(dim, dir1, dir2)) {
-			SInfo.data(*cell.data) = 0;
+			CType.data(*cell.data) = 0;
 		}
 	}
 
@@ -384,7 +384,7 @@ template<
 			options_box.inner_radius, cell.id, grid
 		);
 		if (inside) {
-			SInfo.data(*cell.data) = 0;
+			CType.data(*cell.data) = 0;
 			_planet_cells.push_back(cell);
 			if (outside and grid.get_refinement_level(cell.id) < mrlvl) {
 				throw runtime_error(__FILE__"(" + to_string(__LINE__)
@@ -392,7 +392,7 @@ template<
 			}
 		}
 	}
-	Cell::set_transfer_all(true, SInfo.type());
+	Cell::set_transfer_all(true, CType.type());
 	grid.update_copies_of_remote_neighbors();
 	cell_list_t planet_cells;
 	for (const auto& cell: _planet_cells) {
@@ -404,20 +404,20 @@ template<
 			) {
 				continue;
 			}
-			if (SInfo.data(*neighbor.data) == 1) {
+			if (CType.data(*neighbor.data) == 1) {
 				have_normal = true;
 				break;
 			}
 		}
 		if (not have_normal) {
-			SInfo.data(*cell.data) = -1;
+			CType.data(*cell.data) = -1;
 		} else {
 			planet_cells.push_back(cell);
 		}
 	}
 	grid.update_copies_of_remote_neighbors();
-	Cell::set_transfer_all(false, SInfo.type());
-	SInfo.type().is_stale = false;
+	Cell::set_transfer_all(false, CType.type());
+	CType.type().is_stale = false;
 
 	return std::make_tuple(
 		sw_cells, face_bdy, edge_bdy, vert_bdy, planet_cells);

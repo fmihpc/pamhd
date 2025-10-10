@@ -74,7 +74,7 @@ template <
 	class Total_Energy_Density_Getter,
 	class Magnetic_Field_Getter,
 	class Background_Magnetic_Field_Getter,
-	class Solver_Info_Getter,
+	class Cell_Type_Getter,
 	class Substepping_Period_Getter,
 	class Solver
 > std::tuple<double, detail::MHD> get_flux(
@@ -87,7 +87,7 @@ template <
 	const Total_Energy_Density_Getter& Nrj,
 	const Magnetic_Field_Getter& Vol_B,
 	const Background_Magnetic_Field_Getter& Bg_B,
-	const Solver_Info_Getter& SInfo,
+	const Cell_Type_Getter& CType,
 	const Substepping_Period_Getter& Substep,
 	const Solver& solver,
 	const double& adiabatic_index,
@@ -159,8 +159,8 @@ template <
 			<< " solution failed with dt " << dt
 			<< " between cells " << cell.id
 			<< " and " << neighbor.id
-			<< " of cell type " << SInfo.data(*cell.data)
-			<< " and " << SInfo.data(*neighbor.data)
+			<< " of cell type " << CType.data(*cell.data)
+			<< " and " << CType.data(*neighbor.data)
 			<< " with substeps " << Substep.data(*cell.data)
 			<< " and " << Substep.data(*neighbor.data)
 			<< " at " << grid.geometry.get_center(cell.id)
@@ -194,8 +194,8 @@ Calculates MHD fluxes in/out of given cells.
 Flux getters with array indices [0..5] should return variables in this order:
 -x,+x,-y,+y,-z,+z.
 
-Saves fluxes of cells with SInfo.data(*cell_data) == 1,
-ignores cells with SInfo < 0.
+Saves fluxes of cells with CType.data(*cell_data) == 1,
+ignores cells with CType < 0.
 */
 template <
 	class Cell_Iter,
@@ -211,7 +211,7 @@ template <
 	class Momentum_Density_Flux_Getters,
 	class Total_Energy_Density_Flux_Getters,
 	class Magnetic_Field_Flux_Getters,
-	class Solver_Info_Getter,
+	class Cell_Type_Getter,
 	class Substepping_Period_Getter,
 	class Max_Velocity_Getter
 > size_t get_fluxes(
@@ -233,7 +233,7 @@ template <
 	const Momentum_Density_Flux_Getters& Mom_f,
 	const Total_Energy_Density_Flux_Getters& Nrj_f,
 	const Magnetic_Field_Flux_Getters& Mag_f,
-	const Solver_Info_Getter& SInfo,
+	const Cell_Type_Getter& CType,
 	const Substepping_Period_Getter& Substep,
 	const Max_Velocity_Getter& Max_v
 ) try {
@@ -255,7 +255,7 @@ template <
 		// no data for cells too far from this rank's cells
 		if (
 			cell.data == nullptr
-			or SInfo.data(*cell.data) < 0
+			or CType.data(*cell.data) < 0
 		) continue;
 
 		// minimum substeps among neighborhoods
@@ -271,7 +271,7 @@ template <
 			if (
 				(fn == 0 and en[0] < 0)
 				or neighbor.data == nullptr
-				or SInfo.data(*neighbor.data) < 0
+				or CType.data(*neighbor.data) < 0
 			) continue;
 
 			const int nsub = Substep.data(*neighbor.data);
@@ -306,14 +306,14 @@ template <
 			if (
 				fn <= 0 // solve flux only in +dir
 				or neighbor.data == nullptr
-				or SInfo.data(*neighbor.data) < 0
+				or CType.data(*neighbor.data) < 0
 				or current_substep % min_sub_edge_neigh != 0
 			) continue;
 
 			flux_calcs++;
 			const auto [max_vel, flux] = get_flux(
 				grid, cell, neighbor, fn, Mas, Mom, Nrj,
-				Vol_B, Bg_B, SInfo, Substep, solver,
+				Vol_B, Bg_B, CType, Substep, solver,
 				adiabatic_index, vacuum_permeability, dt);
 
 			if (solver != Solver::hybrid) {
@@ -529,7 +529,7 @@ template <
 			flux_calcs++;
 			const auto [max_vel, flux] = get_flux(
 				grid, cell, cell, +1, Mas, Mom, Nrj, Vol_B, Bg_B,
-				SInfo, Substep, solver, adiabatic_index,
+				CType, Substep, solver, adiabatic_index,
 				vacuum_permeability, dt);
 
 			assign_missing_face_dBs_fx(
@@ -540,7 +540,7 @@ template <
 			flux_calcs++;
 			const auto [max_vel, flux] = get_flux(
 				grid, cell, cell, +2, Mas, Mom, Nrj, Vol_B, Bg_B,
-				SInfo, Substep, solver, adiabatic_index,
+				CType, Substep, solver, adiabatic_index,
 				vacuum_permeability, dt);
 
 			assign_missing_face_dBs_fy(
@@ -551,7 +551,7 @@ template <
 			flux_calcs++;
 			const auto [max_vel, flux] = get_flux(
 				grid, cell, cell, +3, Mas, Mom, Nrj, Vol_B, Bg_B,
-				SInfo, Substep, solver, adiabatic_index,
+				CType, Substep, solver, adiabatic_index,
 				vacuum_permeability, dt);
 
 			assign_missing_face_dBs_fz(
@@ -1495,7 +1495,7 @@ template <
 
 
 /*!
-Set new MHD state in cells with SInfo.data(*cell.data) == 1.
+Set new MHD state in cells with CType.data(*cell.data) == 1.
 
 Sets new MHD state based on fluxes and face B changes.
 Zeroes fluxes and face B changes afterwards.
@@ -1505,7 +1505,7 @@ template <
 	class Grid,
 	class Face_Magnetic_Field_Getter,
 	class Face_dB_Getter,
-	class Solver_Info_Getter,
+	class Cell_Type_Getter,
 	class Substepping_Period_Getter,
 	class Mass_Density_Getter,
 	class Momentum_Density_Getter,
@@ -1521,7 +1521,7 @@ template <
 	const int& current_substep,
 	const Face_Magnetic_Field_Getter& Face_B,
 	const Face_dB_Getter& Face_dB,
-	const Solver_Info_Getter& SInfo,
+	const Cell_Type_Getter& CType,
 	const Substepping_Period_Getter& Substep,
 	const Mass_Density_Getter& Mas,
 	const Momentum_Density_Getter& Mom,
@@ -1541,7 +1541,7 @@ template <
 	using pamhd::neg;
 
 	for (const auto& cell: cells) {
-		if (SInfo.data(*cell.data) > 0) {
+		if (CType.data(*cell.data) > 0) {
 			if (current_substep % Substep.data(*cell.data) != 0) {
 				continue;
 			}
@@ -1626,7 +1626,7 @@ template <
 	class Total_Energy_Density_Getter,
 	class Volume_Magnetic_Field_Getter,
 	class Face_Magnetic_Field_Getter,
-	class Solver_Info_Getter,
+	class Cell_Type_Getter,
 	class Substepping_Period_Getter
 > void update_vol_B(
 	const int current_substep,
@@ -1636,14 +1636,14 @@ template <
 	const Total_Energy_Density_Getter& Nrj,
 	const Volume_Magnetic_Field_Getter& Vol_B,
 	const Face_Magnetic_Field_Getter& Face_B,
-	const Solver_Info_Getter& SInfo,
+	const Cell_Type_Getter& CType,
 	const Substepping_Period_Getter& Substep,
 	const double& adiabatic_index,
 	const double& vacuum_permeability,
 	const bool& constant_thermal_pressure
 ) try {
 	for (const auto& cell: cells) {
-		if (SInfo.data(*cell.data) < 0) continue;
+		if (CType.data(*cell.data) < 0) continue;
 		if (current_substep % Substep.data(*cell.data) != 0) continue;
 		if (constant_thermal_pressure and Mas.data(*cell.data) <= 0) continue;
 
@@ -1696,7 +1696,7 @@ template <
 	class Momentum_Density_Flux_Getters,
 	class Total_Energy_Density_Flux_Getters,
 	class Magnetic_Field_Flux_Getters,
-	class Solver_Info_Getter,
+	class Cell_Type_Getter,
 	class Substepping_Period_Getter,
 	class Max_Velocity_Getter
 > size_t get_all_fluxes(
@@ -1717,7 +1717,7 @@ template <
 	const Momentum_Density_Flux_Getters& Mom_f,
 	const Total_Energy_Density_Flux_Getters& Nrj_f,
 	const Magnetic_Field_Flux_Getters& Mag_f,
-	const Solver_Info_Getter& SInfo,
+	const Cell_Type_Getter& CType,
 	const Substepping_Period_Getter& Substep,
 	const Max_Velocity_Getter& Max_v
 ) try {
@@ -1736,10 +1736,10 @@ template <
 		Nrj.type().is_stale = false;
 		Vol_B.type().is_stale = false;
 	}
-	if (SInfo.type().is_stale) {
+	if (CType.type().is_stale) {
 		update_copies = true;
-		Cell::set_transfer_all(true, SInfo.type());
-		SInfo.type().is_stale = false;
+		Cell::set_transfer_all(true, CType.type());
+		CType.type().is_stale = false;
 	}
 	if (Substep.type().is_stale) {
 		update_copies = true;
@@ -1771,7 +1771,7 @@ template <
 		adiabatic_index, vacuum_permeability, sub_dt,
 		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 		Mas_f, Mom_f, Nrj_f, Mag_f,
-		SInfo, Substep, Max_v
+		CType, Substep, Max_v
 	);
 
 	if (update_copies) {
@@ -1783,7 +1783,7 @@ template <
 		adiabatic_index, vacuum_permeability, sub_dt,
 		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 		Mas_f, Mom_f, Nrj_f, Mag_f,
-		SInfo, Substep, Max_v
+		CType, Substep, Max_v
 	);
 
 	if (update_copies) {
@@ -1791,14 +1791,14 @@ template <
 	}
 	Cell::set_transfer_all(false,
 		Mas.type(), Mom.type(), Nrj.type(), Vol_B.type(),
-		SInfo.type(), Substep.type(), Max_v.type(), Bg_B.type(), Face_B.type());
+		CType.type(), Substep.type(), Max_v.type(), Bg_B.type(), Face_B.type());
 
 	flux_calcs += pamhd::mhd::get_fluxes(
 		solver, grid.remote_cells(), grid, substep,
 		adiabatic_index, vacuum_permeability, sub_dt,
 		Mas, Mom, Nrj, Vol_B, Face_B, Face_dB, Bg_B,
 		Mas_f, Mom_f, Nrj_f, Mag_f,
-		SInfo, Substep, Max_v
+		CType, Substep, Max_v
 	);
 	Max_v.type().is_stale = true;
 
@@ -1871,7 +1871,7 @@ template <
 		grid, time_step_factor, CType, Timestep, Max_v
 	);
 
-	const double sub_dt = pamhd::set_minmax_substepping_period(
+	const double sub_dt = set_minmax_substepping_period(
 		grid, max_time_step, CType,
 		Timestep, Substep_Min, Substep_Max
 	);
@@ -1927,13 +1927,13 @@ template <
 //! Restricts Timestep based on MHD physics
 template <
 	class Grid,
-	class Solver_Info_Getter,
+	class Cell_Type_Getter,
 	class Timestep_Getter,
 	class Max_Velocity_Getter
 > void minimize_timestep(
 	Grid& grid,
 	const double& dt_factor,
-	const Solver_Info_Getter& SInfo,
+	const Cell_Type_Getter& CType,
 	const Timestep_Getter& Timestep,
 	const Max_Velocity_Getter& Max_v
 ) try {
@@ -1948,22 +1948,22 @@ template <
 		Cell::set_transfer_all(true, Max_v.type());
 		Max_v.type().is_stale = false;
 	}
-	if (SInfo.type().is_stale) {
+	if (CType.type().is_stale) {
 		update_copies = true;
-		Cell::set_transfer_all(true, SInfo.type());
-		SInfo.type().is_stale = false;
+		Cell::set_transfer_all(true, CType.type());
+		CType.type().is_stale = false;
 	}
 	if (update_copies) {
 		grid.update_copies_of_remote_neighbors();
 	}
-	Cell::set_transfer_all(false, Max_v.type(), SInfo.type());
+	Cell::set_transfer_all(false, Max_v.type(), CType.type());
 
 	for (const auto& cell: grid.local_cells()) {
 		Timestep.data(*cell.data) = numeric_limits<double>::max();
 	}
 
 	for (const auto& cell: grid.all_cells()) {
-		if (SInfo.data(*cell.data) < 0) {
+		if (CType.data(*cell.data) < 0) {
 			continue;
 		}
 
@@ -1973,7 +1973,7 @@ template <
 			if (
 				fn <= 0
 				or neighbor.data == nullptr
-				or SInfo.data(*neighbor.data) < 0
+				or CType.data(*neighbor.data) < 0
 			) {
 				continue;
 			}
