@@ -250,7 +250,7 @@ template <
 	const pamhd::mhd::Total_Energy_Density nrj_int{};
 	const pamhd::Magnetic_Field mag_int{};
 
-	size_t flux_calcs = 0;
+	uint64_t flux_calcs = 0;
 	for (const auto& cell: cells) {
 		// no data for cells too far from this rank's cells
 		if (
@@ -1882,7 +1882,7 @@ template <
 
 	const int max_substep = update_substeps(grid, CType, Substep);
 	double total_dt = 0;
-	size_t flux_calcs = 0;
+	uint64_t flux_calcs = 0;
 	for (int substep = 1; substep <= max_substep; substep += 1) {
 		total_dt += sub_dt;
 

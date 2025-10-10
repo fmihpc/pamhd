@@ -515,7 +515,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-	size_t total_flux_calcs = 0;
+	uint64_t total_flux_calcs = 0;
 	while (simulation_time < time_end) {
 		simulation_step++;
 		if (rank == 0) {
@@ -595,10 +595,21 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
+	uint64_t flux_calcs_global = 0;
+	if (
+		MPI_Reduce(
+			&total_flux_calcs, &flux_calcs_global,
+			1, MPI_UINT64_T, MPI_SUM, 0, comm
+		) != MPI_SUCCESS
+	) {
+		cerr << __FILE__ "(" << __LINE__
+			<< "): Couldn't reduce total_flux_calcs." << endl;
+		abort();
+	}
 	if (rank == 0) {
 		cout << "Simulation finished at time " << simulation_time
-			<< " with " << total_flux_calcs
-			<< " total flux calculations" << endl;
+			<< " with " << uint64_t(double(flux_calcs_global)/comm_size)
+			<< " average flux calculations / process" << endl;
 	}
 	MPI_Finalize();
 
