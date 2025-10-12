@@ -253,7 +253,6 @@ tests/particle/test.exe: \
   source/math/nabla.hpp \
   source/mhd/boundaries.hpp \
   source/mhd/common.hpp \
-  source/mhd/initialize_staggered.hpp \
   source/mhd/hll_athena.hpp \
   source/mhd/hlld_athena.hpp \
   source/mhd/roe_athena.hpp \
@@ -313,7 +312,6 @@ tests/particle/solar_wind_box.exe: \
   source/math/nabla.hpp \
   source/mhd/boundaries.hpp \
   source/mhd/common.hpp \
-  source/mhd/initialize_staggered.hpp \
   source/mhd/hll_athena.hpp \
   source/mhd/hlld_athena.hpp \
   source/mhd/roe_athena.hpp \

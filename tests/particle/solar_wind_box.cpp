@@ -60,7 +60,6 @@ Author(s): Ilja Honkonen
 #include "mhd/hll_athena.hpp"
 #include "mhd/hlld_athena.hpp"
 #include "mhd/initialize.hpp"
-#include "mhd/initialize_staggered.hpp"
 #include "mhd/options.hpp"
 #include "mhd/roe_athena.hpp"
 #include "mhd/rusanov.hpp"

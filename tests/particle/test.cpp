@@ -56,7 +56,6 @@ Author(s): Ilja Honkonen
 #include "mhd/hll_athena.hpp"
 #include "mhd/hlld_athena.hpp"
 #include "mhd/initialize.hpp"
-#include "mhd/initialize_staggered.hpp"
 #include "mhd/options.hpp"
 #include "mhd/roe_athena.hpp"
 #include "mhd/rusanov.hpp"
@@ -657,7 +656,7 @@ int main(int argc, char* argv[]) {
 	if (rank == 0) {
 		cout << "Initializing... " << endl;
 	}
-	pamhd::mhd::initialize_magnetic_field_staggered<pamhd::Magnetic_Field>(
+	pamhd::mhd::initialize_magnetic_field<pamhd::Magnetic_Field>(
 		geometries, initial_conditions_mhd, background_B,
 		grid, simulation_time, options_sim.vacuum_permeability,
 		Face_B, Mag_f, Bg_B
@@ -671,7 +670,7 @@ int main(int argc, char* argv[]) {
 		false // fluid not initialized yet
 	);
 
-	pamhd::mhd::initialize_fluid_staggered(
+	pamhd::mhd::initialize_fluid(
 		geometries, initial_conditions_mhd,
 		grid, simulation_time,
 		options_sim.adiabatic_index,
@@ -806,7 +805,7 @@ int main(int argc, char* argv[]) {
 	pamhd::mhd::set_solver_info(grid, boundaries_mhd, geometries, CType);
 	pamhd::mhd::classify_faces(grid, CType, FInfo);
 
-	pamhd::mhd::apply_magnetic_field_boundaries_staggered(
+	pamhd::mhd::apply_magnetic_field_boundaries(
 		grid,
 		boundaries_mhd,
 		geometries,
@@ -993,7 +992,7 @@ int main(int argc, char* argv[]) {
 		grid.update_copies_of_remote_neighbors();
 		Cell::set_transfer_all(false, pamhd::particle::Particles_Internal());
 
-		pamhd::mhd::apply_magnetic_field_boundaries_staggered(
+		pamhd::mhd::apply_magnetic_field_boundaries(
 			grid,
 			boundaries_mhd,
 			geometries,
