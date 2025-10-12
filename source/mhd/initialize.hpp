@@ -41,8 +41,10 @@ Author(s): Ilja Honkonen
 #include "cmath"
 #include "iostream"
 #include "limits"
+#include "string"
 #include "tuple"
 
+#include "boost/math/quadrature/gauss.hpp"
 #include "dccrg.hpp"
 
 #include "grid/amr.hpp"
@@ -72,7 +74,7 @@ template <
 	class Mass_Density_Flux_Getter,
 	class Momentum_Density_Flux_Getter,
 	class Total_Energy_Density_Flux_Getter
-> void initialize_fluid_staggered(
+> void initialize_fluid(
 	const Geometries& geometries,
 	Init_Cond& initial_conditions,
 	Grid& grid,
@@ -300,6 +302,296 @@ template <
 	Nrj.type().is_stale = true;
 
 	if (verbose and grid.get_rank() == 0) {
+		cout << "done" << endl;
+	}
+}
+
+
+/*! Sets initial state of magnetic field and zeroes fluxes
+
+Emulates 1d/2d system if grid length is initially 1 cell
+in some dimension(s), even if it has been refined, in which
+case some cells will overlap in affected dimension(s).
+*/
+template <
+	class Boundary_Magnetic_Field,
+	class Geometries,
+	class Init_Cond,
+	class Background_Magnetic_Field,
+	class Grid,
+	class Face_Magnetic_Field_Getter,
+	class Magnetic_Field_Flux_Getters,
+	class Background_Magnetic_Field_Getter
+> void initialize_magnetic_field(
+	const Geometries& geometries,
+	Init_Cond& initial_conditions,
+	const Background_Magnetic_Field& bg_B,
+	Grid& grid,
+	const double& time,
+	const double& vacuum_permeability,
+	const Face_Magnetic_Field_Getter& Face_B,
+	const Magnetic_Field_Flux_Getters& Mag_f,
+	const Background_Magnetic_Field_Getter& Bg_B
+) {
+	using std::abs;
+	using std::cout;
+	using std::endl;
+	using std::get;
+	using std::flush;
+	using std::make_tuple;
+	using std::runtime_error;
+	using std::to_string;
+
+	Bg_B.type().is_stale = true;
+	Face_B.type().is_stale = true;
+
+	const auto get_r_lat_lon = [&](
+		const double& x, const double& y, const double& z
+	) {
+		const auto
+			r = sqrt(x*x + y*y + z*z),
+			lat = [&](){
+				if (r == 0) return 0.0;
+				else return asin(z / r);
+			}(),
+			lon = atan2(y, x);
+		return make_tuple(r, lat, lon);
+	};
+
+	// no apparent improvement with > 7 points
+	constexpr unsigned int eval_points = 7;
+	// returns face integral of default B, bg B, etc
+	const auto integrate_face_B = [&](
+		const auto& func,
+		const size_t& component,
+		const int& dir,
+		const double& sx,
+		const double& ex,
+		const double& sy,
+		const double& ey,
+		const double& sz,
+		const double& ez
+	) {
+		const size_t dim = abs(dir) - 1;
+		if (dim == 2) {
+			const double& z = [&](){
+				if (dir < 0) return sz;
+				else return ez;
+			}();
+			// handle emulated 1d/2d simulation
+			const auto dx = ex - sx, dy = ey - sy;
+			if (dx == 0 and dy == 0) {
+				return func(component, sx, sy, z);
+			}
+			if (dx == 0) {
+				const double& x = sx;
+				const auto fy = [&](const double& y){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fy, sy, ey) / dy;
+			}
+			if (dy == 0) {
+				const double& y = sy;
+				const auto fx = [&](const double& x){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fx, sx, ex) / dx;
+			}
+			const auto fy = [&](const double& y){
+				const auto fx = [&](const double& x){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fx, sx, ex);
+			};
+			return boost::math::quadrature::gauss<
+				double, eval_points
+			>::integrate(fy, sy, ey) / dx / dy;
+
+		} else if (dim == 1) {
+			const double& y = [&](){
+				if (dir < 0) return sy;
+				else return ey;
+			}();
+			const auto dx = ex - sx, dz = ez - sz;
+			if (dx == 0 and dz == 0) {
+				return func(component, sx, y, sz);
+			}
+			if (dx == 0) {
+				const double& x = sx;
+				const auto fz = [&](const double& z){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fz, sz, ez) / dz;
+			}
+			if (dz == 0) {
+				const double& z = sz;
+				const auto fx = [&](const double& x){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fx, sx, ex) / dx;
+			}
+			const auto fz = [&](const double& z){
+				const auto fx = [&](const double& x){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fx, sx, ex);
+			};
+			return boost::math::quadrature::gauss<
+				double, eval_points
+			>::integrate(fz, sz, ez) / dx / dz;
+
+		} else if (dim == 0) {
+			const double& x = [&](){
+				if (dir < 0) return sx;
+				else return ex;
+			}();
+			const double dy = ey - sy, dz = ez - sz;
+			if (dy == 0 and dz == 0) {
+				return func(component, x, sy, sz);
+			}
+			if (dy == 0) {
+				const double& y = sy;
+				const auto fz = [&](const double& z){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fz, sz, ez) / dz;
+			}
+			if (dz == 0) {
+				const double& z = sz;
+				const auto fy = [&](const double& y){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fy, sy, ey) / dy;
+			}
+			const auto fz = [&](const double& z){
+				const auto fy = [&](const double& y){
+					return func(component, x, y, z);
+				};
+				return boost::math::quadrature::gauss<
+					double, eval_points
+				>::integrate(fy, sy, ey);
+			};
+			return boost::math::quadrature::gauss<
+				double, eval_points
+			>::integrate(fz, sz, ez) / dy / dz;
+
+		} else {
+			throw runtime_error(__FILE__ "(" + to_string(__LINE__) + ")");
+		}
+	};
+
+	if (grid.get_rank() == 0) {
+		cout << "Setting default initial magnetic field... " << flush;
+	}
+	for (const auto& cell: grid.local_cells()) {
+		Mag_f(*cell.data, -1) =
+		Mag_f(*cell.data, +1) =
+		Mag_f(*cell.data, -2) =
+		Mag_f(*cell.data, +2) =
+		Mag_f(*cell.data, -3) =
+		Mag_f(*cell.data, +3) = {0, 0, 0};
+
+		const auto [
+			_, start, end
+		] = pamhd::grid::get_cell_geom_emulated(grid, cell.id);
+		const auto& [sx, sy, sz] = start;
+		const auto& [ex, ey, ez] = end;
+
+		const auto& get_background_field = [&](
+			const size_t& c, const double& x,
+			const double& y, const double& z
+		) {
+			return bg_B.get_background_field(
+				{x, y, z},
+				vacuum_permeability
+			)[c];
+		};
+		for (const int dir: {-3,-2,-1,+1,+2,+3}) {
+			for (const size_t c: {0,1,2}) {
+				Bg_B.data(*cell.data)(dir)[c] = integrate_face_B(
+					get_background_field, c, dir,
+					sx, ex, sy, ey, sz, ez
+				);
+			}
+		}
+
+		const auto get_default_data = [&](
+			const size_t& c, const double& x,
+			const double& y, const double& z
+		) {
+			const auto [r, lat, lon] = get_r_lat_lon(x, y, z);
+			return initial_conditions.get_default_data(
+				Boundary_Magnetic_Field(),
+				time, x, y, z, r, lat, lon
+			)[c];
+		};
+		for (const int dir: {-3,-2,-1,+1,+2,+3}) {
+			Face_B.data(*cell.data)(dir) = integrate_face_B(
+				get_default_data, abs(dir) - 1, dir,
+				sx, ex, sy, ey, sz, ez
+			);
+		}
+	}
+
+	if (grid.get_rank() == 0) {
+		cout << "done\nSetting non-default initial magnetic field... " << flush;
+	}
+	for (
+		size_t i = 0;
+		i < initial_conditions.get_number_of_regions(Boundary_Magnetic_Field());
+		i++
+	) {
+		const auto& init_cond = initial_conditions.get_initial_condition(Boundary_Magnetic_Field(), i);
+		const auto& geometry_id = init_cond.get_geometry_id();
+		const auto& cells = geometries.get_cells(geometry_id);
+		for (const auto& cell_id: cells) {
+			auto* const cell_data = grid[cell_id];
+			if (cell_data == nullptr) {
+				throw runtime_error(__FILE__ "(" + to_string(__LINE__)
+					+ ") No data for cell: " + to_string(cell_id));
+			}
+
+			const auto [
+				_, start, end
+			] = pamhd::grid::get_cell_geom_emulated(grid, cell_id);
+			const auto& [sx, sy, sz] = start;
+			const auto& [ex, ey, ez] = end;
+
+			const auto get_data = [&](
+				const size_t& c, const double& x,
+				const double& y, const double& z
+			) {
+				const auto [r, lat, lon] = get_r_lat_lon(x, y, z);
+				return initial_conditions.get_data(
+					Boundary_Magnetic_Field(),
+					i, time, x, y, z, r, lat, lon
+				)[c];
+			};
+			for (const int dir: {-3,-2,-1,+1,+2,+3}) {
+				Face_B.data(*cell_data)(dir) = integrate_face_B(
+					get_data, abs(dir) - 1, dir,
+					sx, ex, sy, ey, sz, ez
+				);
+			}
+		}
+	}
+	if (grid.get_rank() == 0) {
 		cout << "done" << endl;
 	}
 }

@@ -57,7 +57,6 @@ Author(s): Ilja Honkonen
 #include "mhd/hll_athena.hpp"
 #include "mhd/hlld_athena.hpp"
 #include "mhd/initialize.hpp"
-#include "mhd/initialize_staggered.hpp"
 #include "mhd/options.hpp"
 #include "mhd/roe_athena.hpp"
 #include "mhd/rusanov.hpp"
@@ -420,7 +419,7 @@ int main(int argc, char* argv[]) {
 		cout << "done" << endl;
 	}
 
-	pamhd::mhd::initialize_magnetic_field_staggered<pamhd::Magnetic_Field>(
+	pamhd::mhd::initialize_magnetic_field<pamhd::Magnetic_Field>(
 		geometries, initial_conditions_mhd, background_B,
 		grid, simulation_time, options_sim.vacuum_permeability,
 		Face_B, Mag_f, Bg_B
@@ -434,7 +433,7 @@ int main(int argc, char* argv[]) {
 		false // fluid not initialized yet
 	);
 
-	pamhd::mhd::initialize_fluid_staggered(
+	pamhd::mhd::initialize_fluid(
 		geometries, initial_conditions_mhd,
 		grid, simulation_time,
 		options_sim.adiabatic_index,
