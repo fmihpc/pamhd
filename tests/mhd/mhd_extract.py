@@ -3,7 +3,7 @@
 Extracts subvolumes of MHD output of PAMHD.
 
 Copyright 2016 Ilja Honkonen
-Copyright 2024 Finnish Meteorological Institute
+Copyright 2024, 2026 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -36,9 +36,17 @@ Author(s): Ilja Honkonen
 '''
 
 
-from imp import load_source
-from os.path import basename, dirname, join
-common = load_source('common', join(dirname(__file__), 'common.py'))
+from importlib.util import module_from_spec, spec_from_file_location
+from os.path import basename, dirname, join, realpath
+from pathlib import Path
+from sys import modules
+spec = spec_from_file_location(
+	'common',
+	join(Path(realpath(__file__)).parent.parent, 'common.py')
+)
+common = module_from_spec(spec)
+modules['common'] = common
+spec.loader.exec_module(common)
 
 '''
 Reads simulation data from infile_name and writes it into outfile_name while excluding cells whose center is outside of given volume

@@ -2,7 +2,7 @@
 '''
 Converts MHD output of PAMHD test program to ASCII VTK format.
 
-Copyright 2024, 2025 Finnish Meteorological Institute
+Copyright 2024, 2025, 2026 Finnish Meteorological Institute
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,13 +27,17 @@ Author(s): Ilja Honkonen
 '''
 
 from argparse import ArgumentParser
-from imp import load_source
+from importlib.util import module_from_spec, spec_from_file_location
 from os.path import join, realpath
 from pathlib import Path
-common = load_source(
+from sys import modules
+spec = spec_from_file_location(
 	'common',
 	join(Path(realpath(__file__)).parent.parent, 'common.py')
 )
+common = module_from_spec(spec)
+modules['common'] = common
+spec.loader.exec_module(common)
 
 
 parser = ArgumentParser()
