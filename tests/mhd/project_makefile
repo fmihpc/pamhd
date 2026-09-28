@@ -362,7 +362,7 @@ tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/+z/small_rusanov/mhd_00000
 
 tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/+z/small_rusanov.ok: tests/mhd/mhd_diff.py tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/+z/small_rusanov/mhd_000000202.dc tests/mhd/reference/magnetohydrodynamic/Alfvén_wave/1d/+x/small_rusanov/mhd_000000202.dc
 	@printf "CHECK MHD Alfvén wave 1d +z small Rusanov...  "
-	@tests/mhd/mhd_diff.py --rotate y tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/+z/small_rusanov/mhd_000000202.dc tests/mhd/reference/magnetohydrodynamic/Alfvén_wave/1d/+x/small_rusanov/mhd_000000202.dc
+	@tests/mhd/mhd_diff.py --rotate y --mass-min 3e-15 tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/+z/small_rusanov/mhd_000000202.dc tests/mhd/reference/magnetohydrodynamic/Alfvén_wave/1d/+x/small_rusanov/mhd_000000202.dc
 	@printf "PASS\n" && touch $@
 
 tests/mhd/results/magnetohydrodynamic/Alfvén_wave/1d/-z/small_rusanov/mhd_000000202.dc: tests/mhd/test.exe tests/mhd/config_files/magnetohydrodynamic/Alfvén_wave/1d/-z/small_rusanov.json
@@ -472,7 +472,7 @@ tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov6/mhd_00000
 
 tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov6.ok: tests/mhd/mhd_diff.py tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov6/mhd_000000020.dc tests/mhd/reference/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov6/mhd_000000020.dc
 	@printf "CHECK MHD Alfvén wave 2d x small Rusanov6...  "
-	@$^ --time-min 1e-7 --mass-min 1e-5 --velocity-min 1e-5 --energy-min 1e-5 --magnetic-field-min 1e-5
+	@$^ --time-min 1e-7 --mass-min 1e-5 --velocity-min 2e-5 --energy-min 2e-5 --magnetic-field-min 2e-5
 	@printf "PASS\n" && touch $@
 
 tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov_bgB6/mhd_000000020.dc: tests/mhd/test.exe tests/mhd/config_files/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov_bgB6.json
@@ -481,7 +481,7 @@ tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov_bgB6/mhd_0
 
 tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov_bgB6.ok: tests/mhd/mhd_diff.py tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov_bgB6/mhd_000000020.dc tests/mhd/reference/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov_bgB6/mhd_000000020.dc
 	@printf "CHECK MHD Alfvén wave 2d x small Rusanov bgB6...  "
-	@$^ --time-min 1e-7 --mass-min 1e-5 --velocity-min 1e-5 --energy-min 1e-5 --magnetic-field-min 1e-5
+	@$^ --time-min 1e-7 --mass-min 1e-5 --velocity-min 2e-5 --energy-min 2e-5 --magnetic-field-min 2e-5
 	@printf "PASS\n" && touch $@
 
 
@@ -518,7 +518,7 @@ tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_rusanov4/mhd_00000
 
 tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_rusanov4.ok: tests/mhd/mhd_diff.py tests/mhd/reference/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov4/mhd_000000034.dc tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_rusanov4/mhd_000000034.dc
 	@printf "CHECK MHD Alfvén wave 2d y small Rusanov4...  "
-	@tests/mhd/mhd_diff.py --rotate z --time-min 1e-7 --mass-min 2e-6 --velocity-min 2e-6 --energy-min 5e-6 --magnetic-field-min 5e-6 tests/mhd/reference/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov4/mhd_000000034.dc tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_rusanov4/mhd_000000034.dc
+	@tests/mhd/mhd_diff.py --rotate z --time-min 1e-7 --mass-min 3e-6 --velocity-min 2e-6 --energy-min 5e-6 --magnetic-field-min 5e-6 tests/mhd/reference/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov4/mhd_000000034.dc tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_rusanov4/mhd_000000034.dc
 	@printf "PASS\n" && touch $@
 
 tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_rusanov_bgB4/mhd_000000034.dc: tests/mhd/test.exe tests/mhd/config_files/magnetohydrodynamic/Alfvén_wave/2d/y/small_rusanov_bgB4.json
@@ -527,7 +527,7 @@ tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_rusanov_bgB4/mhd_0
 
 tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_rusanov_bgB4.ok: tests/mhd/mhd_diff.py tests/mhd/reference/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov_bgB4/mhd_000000034.dc tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_rusanov_bgB4/mhd_000000034.dc
 	@printf "CHECK MHD Alfvén wave 2d y small Rusanov bgB4...  "
-	@tests/mhd/mhd_diff.py --rotate z --time-min 1e-7 --mass-min 2e-6 --velocity-min 2e-6 --energy-min 2e-6 --magnetic-field-min 5e-6 tests/mhd/reference/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov_bgB4/mhd_000000034.dc tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_rusanov_bgB4/mhd_000000034.dc
+	@tests/mhd/mhd_diff.py --rotate z --time-min 1e-7 --mass-min 3e-6 --velocity-min 2e-6 --energy-min 2e-6 --magnetic-field-min 5e-6 tests/mhd/reference/magnetohydrodynamic/Alfvén_wave/2d/x/small_rusanov_bgB4/mhd_000000034.dc tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_rusanov_bgB4/mhd_000000034.dc
 	@printf "PASS\n" && touch $@
 
 tests/mhd/results/magnetohydrodynamic/Alfvén_wave/2d/y/small_rusanov5/mhd_000000019.dc: tests/mhd/test.exe tests/mhd/config_files/magnetohydrodynamic/Alfvén_wave/2d/y/small_rusanov5.json

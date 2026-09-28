@@ -3,7 +3,7 @@
 Checks differences between MHD outputs of PAMHD.
 
 Copyright 2016 Ilja Honkonen
-Copyright 2024, 2025 Finnish Meteorogical Institute
+Copyright 2024, 2025, 2026 Finnish Meteorogical Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -130,8 +130,14 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 
 	if data1['file_version'] != data2['file_version']:
 		raise RuntimeError('File version differs between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['file_version']) + ' != ' + str(data2['file_version']))
-	if data1['sim_step'] != data2['sim_step']:
-		raise RuntimeError('Simulation step differs between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['sim_step']) + ' != ' + str(data2['sim_step']))
+
+	sim_step1 = data1['sim_step']
+	sim_step2 = data2['sim_step']
+	denom = maximum(sim_step1, sim_step2)
+	diff_ = abs(sim_step1 - sim_step2) - args.step_min
+	if denom > 0 and args.step < diff_ / denom:
+		raise RuntimeError('Simulation step differs between ' + infile1_name + ' and ' + infile2_name + ': ' + str(sim_step1) + ' != ' + str(sim_step2))
+
 	sim_time1 = data1['sim_time']
 	sim_time2 = data2['sim_time']
 	denom = maximum(abs(sim_time1), abs(sim_time2))
@@ -147,9 +153,12 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 		raise RuntimeError('Vacuum permeability differs between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['vacuum_permeability']) + ' != ' + str(data2['vacuum_permeability']))
 	if data1['endianness'] != data2['endianness']:
 		raise RuntimeError('Endianness differs between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['endianness']) + ' != ' + str(data2['endianness']))
-	if data1['ref_lvl_0_cells'] != data2['ref_lvl_0_cells']:
-		raise RuntimeError('Refinement level 0 cells differ between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['ref_lvl_0_cells']) + ' != ' + str(data2['ref_lvl_0_cells']))
-	if data1['max_ref_lvl'] != data2['max_ref_lvl']:
+
+	rl0c1 = data1['ref_lvl_0_cells']
+	rl0c2 = data2['ref_lvl_0_cells']
+	if not args.cells and rl0c1 != rl0c2:
+		raise RuntimeError('Refinement level 0 cells differ between ' + infile1_name + ' and ' + infile2_name + ': ' + str(rl0c1) + ' != ' + str(rl0c2))
+	if not args.cells and data1['max_ref_lvl'] != data2['max_ref_lvl']:
 		raise RuntimeError('Maximum refinement level differs between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['max_ref_lvl']) + ' != ' + str(data2['max_ref_lvl']))
 	if data1['neighborhood_length'] != data2['neighborhood_length']:
 		raise RuntimeError('Neighborhood length differs between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['neighborhood_length']) + ' != ' + str(data2['neighborhood_length']))
@@ -159,9 +168,9 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 		raise RuntimeError('Geometry id differs between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['geometry_id']) + ' != ' + str(data2['geometry_id']))
 	if data1['grid_start'] != data2['grid_start']:
 		raise RuntimeError('Grid start coordinate differs between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['grid_start']) + ' != ' + str(data2['grid_start']))
-	if data1['lvl_0_cell_length'] != data2['lvl_0_cell_length']:
+	if not args.cells and data1['lvl_0_cell_length'] != data2['lvl_0_cell_length']:
 		raise RuntimeError('Length of refinement level 0 cells differ between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['lvl_0_cell_length']) + ' != ' + str(data2['lvl_0_cell_length']))
-	if data1['total_cells'] != data2['total_cells']:
+	if not args.cells and data1['total_cells'] != data2['total_cells']:
 		raise RuntimeError('Total number of cells differ between ' + infile1_name + ' and ' + infile2_name + ': ' + str(data1['total_cells']) + ' != ' + str(data2['total_cells']))
 	cells1 = common.get_cells(infile1, data1['total_cells'])
 	orig_cells2 = common.get_cells(infile2, orig2['total_cells'])
@@ -169,56 +178,96 @@ def diff(args, infile1_name, infile2_name, outfile_name):
 
 	ids1 = set([c for c in cells1])
 	ids2 = set([c for c in cells2])
-	if ids1 != ids2:
+	if not args.cells and ids1 != ids2:
 		raise RuntimeError('Cells that exist differs between ' + infile1_name + ' and ' + infile2_name)
 
 	cell2orig = dict()
 	for i in range(len(cells2)):
 		cell2orig[cells2[i]] = orig_cells2[i]
 
-	sim_data1_ = common.get_cell_data(infile1, data1, range(len(cells1)))
-	sim_data1 = dict()
-	for i in range(len(cells1)):
-		sim_data1[cells1[i]] = sim_data1_[i]
+	# assuming *_in1 files use better resolution, 1 index of *_in2 spans this many:
+	index_factor = [1, 1, 1]
+	if rl0c1 != rl0c2:
+		index_factor = (
+			rl0c1[0] // rl0c2[0],
+			rl0c1[1] // rl0c2[1],
+			rl0c1[2] // rl0c2[2])
+		if index_factor[0] <= 0 or index_factor[1] <= 0 or index_factor[2] <= 0:
+			print(index_factor[0], index_factor[1], index_factor[2])
+			raise RuntimeError('Invalid index scaling factor(s) between ' + infile1_name + ' and ' + infile2_name)
 
-	sim_data2_ = common.get_cell_data(infile2, orig2, range(len(cells2)))
-	sim_data2 = dict()
-	for i in range(len(cells2)):
-		sim_data2[cells2[i]] = sim_data2_[i]
+	max_rho, max_nrj, max_vel, max_mag = 0, 0, 0, 0
+	for cell1 in cells1:
+		if args.cells:
+			# corresponding larger cell
+			ref_lvl1, index1 = common.get_cell_info(data1, cell1)
+			index2 = (
+				index1[0] // index_factor[0],
+				index1[1] // index_factor[1],
+				index1[2] // index_factor[2])
+			for ref_lvl2 in range(data2['max_ref_lvl'] + 1):
+				cell2 = common.get_cell(data2, ref_lvl2, index2)
+				if cell2 in ids2:
+					break
+		else:
+			cell2 = cell2orig[cell1]
 
-	for cell in cells1:
-		cell2 = cell2orig[cell]
-		rho1 = sim_data1[cell]['mhd     '][0]
-		rho2 = sim_data2[cell]['mhd     '][0]
-		denom = maximum(abs(rho1), abs(rho2))
-		diff_ = abs(rho1 - rho2) - args.mass_min
-		if denom != 0 and args.mass < diff_ / denom:
-			raise RuntimeError('Mass density differs too much in cell ' + str(cell) + ' of file ' + infile1_name + ' and cell ' + str(cell2) + ' of file ' + infile2_name + ': ' + str(abs(rho1 - rho2)) + ' (' + str(rho1) + ' vs ' + str(rho2) + ')')
+		try:
+			cell1_pos = cells1.index(cell1)
+			cell2_pos = orig_cells2.index(cell2)
+		except Exception as e:
+			print("Couldn't locate cell(s) in cell list(s) of files", infile1_name, infile2_name)
+			raise RuntimeError('qwerty')
+		sim_data1 = common.get_cell_data(infile1, data1, range(cell1_pos, cell1_pos + 1), ['mhd     '])[0]['mhd     ']
+		sim_data2 = common.get_cell_data(infile2, orig2, range(cell2_pos, cell2_pos + 1), ['mhd     '])[0]['mhd     ']
 
-		vel1 = array(sim_data1[cell]['mhd     '][1]) / rho1
+		rho1 = sim_data1[0]
+		rho2 = sim_data2[0]
+		if args.norm:
+			max_rho = maximum(max_rho, abs(rho1 - rho2))
+		else:
+			denom = maximum(abs(rho1), abs(rho2))
+			diff_ = abs(rho1 - rho2) - args.mass_min
+			if denom != 0 and args.mass < diff_ / denom:
+				raise RuntimeError('Mass density differs too much in cell ' + str(cell1) + ' of file ' + infile1_name + ' and cell ' + str(cell2) + ' of file ' + infile2_name + ': ' + str(abs(rho1 - rho2)) + ' (' + str(rho1) + ' vs ' + str(rho2) + ')')
+
+		vel1 = array(sim_data1[1]) / rho1
 		vel1 = vel1.dot(vel1)**0.5
-		vel2 = array(sim_data2[cell]['mhd     '][1]) / rho2
+		vel2 = array(sim_data2[1]) / rho2
 		vel2 = vel2.dot(vel2)**0.5
-		denom = maximum(vel1, vel2)
-		diff_ = abs(vel1 - vel2) - args.velocity_min
-		if denom != 0 and args.velocity < diff_ / denom:
-			raise RuntimeError('Velocity differs too much in cell ' + str(cell) + ' of file ' + infile1_name + ' and cell ' + str(cell2) + ' of file ' + infile2_name + ': ' + str(abs(vel1 - vel2)) + ' (' + str(vel1) + ' vs ' + str(vel2) + ')')
+		if args.norm:
+			max_vel = maximum(max_vel, abs(vel1 - vel2))
+		else:
+			denom = maximum(vel1, vel2)
+			diff_ = abs(vel1 - vel2) - args.velocity_min
+			if denom != 0 and args.velocity < diff_ / denom:
+				raise RuntimeError('Velocity differs too much in cell ' + str(cell1) + ' of file ' + infile1_name + ' and cell ' + str(cell2) + ' of file ' + infile2_name + ': ' + str(abs(vel1 - vel2)) + ' (' + str(vel1) + ' vs ' + str(vel2) + ')')
 
-		nrj1 = sim_data1[cell]['mhd     '][2]
-		nrj2 = sim_data2[cell]['mhd     '][2]
-		denom = maximum(abs(nrj1), abs(nrj2))
-		diff_ = abs(nrj1 - nrj2) - args.energy_min
-		if denom != 0 and args.energy < diff_ / denom:
-			raise RuntimeError('Energy density differs too much in cell ' + str(cell) + ' of file ' + infile1_name + ' and cell ' + str(cell2) + ' of file ' + infile2_name + ': ' + str(abs(nrj1 - nrj2)) + ' (' + str(nrj1) + ' vs ' + str(nrj2) + ')')
+		nrj1 = sim_data1[2]
+		nrj2 = sim_data2[2]
+		if args.norm:
+			max_nrj = maximum(max_nrj, abs(nrj1 - nrj2))
+		else:
+			denom = maximum(abs(nrj1), abs(nrj2))
+			diff_ = abs(nrj1 - nrj2) - args.energy_min
+			if denom != 0 and args.energy < diff_ / denom:
+				raise RuntimeError('Energy density differs too much in cell ' + str(cell1) + ' of file ' + infile1_name + ' and cell ' + str(cell2) + ' of file ' + infile2_name + ': ' + str(abs(nrj1 - nrj2)) + ' (' + str(nrj1) + ' vs ' + str(nrj2) + ')')
 
-		mag1 = array(sim_data1[cell]['mhd     '][3])
+		mag1 = array(sim_data1[3])
 		mag1 = mag1.dot(mag1)**0.5
-		mag2 = array(sim_data2[cell]['mhd     '][3])
+		mag2 = array(sim_data2[3])
 		mag2 = mag2.dot(mag2)**0.5
-		denom = maximum(mag1, mag2)
-		diff_ = abs(mag1 - mag2) - args.magnetic_field_min
-		if denom != 0 and args.magnetic_field < diff_ / denom:
-			raise RuntimeError('Perturbed magnetic field differs too much in cell ' + str(cell) + ' of file ' + infile1_name + ' and cell ' + str(cell2) + ' of file ' + infile2_name + ': ' + str(abs(mag1 - mag2)) + ' (' + str(mag1) + ' vs ' + str(mag2) + ')')
+		if args.norm:
+			max_mag = maximum(max_mag, abs(mag1 - mag2))
+		else:
+			denom = maximum(mag1, mag2)
+			diff_ = abs(mag1 - mag2) - args.magnetic_field_min
+			if denom != 0 and args.magnetic_field < diff_ / denom:
+				raise RuntimeError('Perturbed magnetic field differs too much in cell ' + str(cell1) + ' of file ' + infile1_name + ' and cell ' + str(cell2) + ' of file ' + infile2_name + ': ' + str(abs(mag1 - mag2)) + ' (' + str(mag1) + ' vs ' + str(mag2) + ')')
+
+	if args.norm:
+		print('#', infile1_name, infile2_name)
+		print(max_rho, max_nrj, max_vel, max_mag, flush = True)
 
 
 if __name__ == '__main__':
@@ -229,18 +278,38 @@ if __name__ == '__main__':
 	parser = ArgumentParser(
 		formatter_class = ArgumentDefaultsHelpFormatter
 	)
-	parser.add_argument('--time', type = float, default = 1e-15, help = 'Maximum allowed relative difference in simulation time')
-	parser.add_argument('--time-min', type = float, default = 1e-15, help = 'Minimum value of difference in simulation time')
-	parser.add_argument('--mass', type = float, default = 1e-15, help = 'Maximum allowed relative difference in mass density')
-	parser.add_argument('--mass-min', type = float, default = 1e-15, help = 'Minimum value of difference in mass density')
-	parser.add_argument('--velocity', type = float, default = 1e-15, help = 'Maximum allowed relative difference in velocity magnitude')
-	parser.add_argument('--velocity-min', type = float, default = 1e-15, help = 'Value substracted from velocity difference')
-	parser.add_argument('--energy', type = float, default = 1e-15, help = 'Maximum allowed relative difference in energy density')
-	parser.add_argument('--energy-min', type = float, default = 1e-15, help = 'Minimum value of difference in energy density')
-	parser.add_argument('--magnetic-field', type = float, default = 1e-15, help = 'Maximum allowed relative difference in perturbed magnetic field magnitude')
-	parser.add_argument('--magnetic-field-min', type = float, default = 1e-15, help = 'Minimum value of difference in magnetic field')
-	parser.add_argument('--rotate', metavar = 'A', type = str, default = None, help = 'File(s) *_in2 are rotated around axis A before comparing to *_in1')
-	parser.add_argument('files', metavar = 'F', nargs = '*', help = 'Names of files to compare ([--files] diff1_in1 diff1_in2 diff2_in1 diff2_in2 ...)')
+	parser.add_argument('--cells', default = False, action = 'store_true',
+		help = 'Allow differences in number of cells and their logical sizes (use larger file(s) as *_in1)')
+	parser.add_argument('--norm', default = False, action = 'store_true',
+		help = 'Print maximum norm between MHD variables instead of checking for differences')
+	parser.add_argument('--time', type = float, default = 1e-15,
+		help = 'Maximum allowed relative difference in simulation time')
+	parser.add_argument('--time-min', type = float, default = 1e-15,
+		help = 'Minimum value of difference in simulation time')
+	parser.add_argument('--step', type = int, default = 0,
+		help = 'Maximum allowed relative difference in simulation step')
+	parser.add_argument('--step-min', type = int, default = 0,
+		help = 'Minimum value of difference in simulation step')
+	parser.add_argument('--mass', type = float, default = 1e-15,
+		help = 'Maximum allowed relative difference in mass density')
+	parser.add_argument('--mass-min', type = float, default = 1e-15,
+		help = 'Minimum value of difference in mass density')
+	parser.add_argument('--velocity', type = float, default = 1e-15,
+		help = 'Maximum allowed relative difference in velocity magnitude')
+	parser.add_argument('--velocity-min', type = float, default = 1e-15,
+		help = 'Value substracted from velocity difference')
+	parser.add_argument('--energy', type = float, default = 1e-15,
+		help = 'Maximum allowed relative difference in energy density')
+	parser.add_argument('--energy-min', type = float, default = 1e-15,
+		help = 'Minimum value of difference in energy density')
+	parser.add_argument('--magnetic-field', type = float, default = 1e-15,
+		help = 'Maximum allowed relative difference in perturbed magnetic field magnitude')
+	parser.add_argument('--magnetic-field-min', type = float, default = 1e-15,
+		help = 'Minimum value of difference in magnetic field')
+	parser.add_argument('--rotate', metavar = 'A', type = str, default = None,
+		help = 'File(s) *_in2 are rotated around axis A before comparing to *_in1')
+	parser.add_argument('files', metavar = 'F', nargs = '*',
+		help = 'Names of files to compare ([--files] diff1_in1 diff1_in2 diff2_in1 diff2_in2 ...)')
 	args = parser.parse_args()
 
 	if len(args.files) % 2 > 0:
@@ -250,6 +319,10 @@ if __name__ == '__main__':
 		exit('--time cannot be < 0')
 	if args.time_min < 0:
 		exit('--time-min cannot be < 0')
+	if args.step < 0:
+		exit('--step cannot be < 0')
+	if args.step_min < 0:
+		exit('--step-min cannot be < 0')
 	if args.mass < 0:
 		exit('--mass cannot be < 0')
 	if args.mass_min < 0:
@@ -268,6 +341,9 @@ if __name__ == '__main__':
 		exit('--magnetic-field-min cannot be < 0')
 	if not args.rotate in {None, 'x', 'y', 'z'}:
 		exit('If given, --rotate must be x, y or z')
+
+	if args.norm:
+		print('# Maximum norm in density, energy, velocity and magnetic field magnitude')
 
 	ok = True
 	for i in range(0, len(args.files), 2):

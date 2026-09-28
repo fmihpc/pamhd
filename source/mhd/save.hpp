@@ -2,7 +2,7 @@
 Saves the MHD solution of PAMHD.
 
 Copyright 2014, 2015, 2016, 2017 Ilja Honkonen
-Copyright 2022, 2024, 2025 Finnish Meteorological Institute
+Copyright 2022, 2024, 2025, 2026 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -168,9 +168,9 @@ template <class Grid> bool save(
 		MPI_INFO_NULL, &outfile
 	) != MPI_SUCCESS) {
 		if (grid.get_rank() == 0) {
-			std::cerr << __FILE__ << ":" << __LINE__
-				<< " Couldn't create " << filename
-				<< ", it already exists, etc" << std::endl;
+			std::cerr << __FILE__ << ":" << __LINE__ << " Couldn't create "
+				<< filename << ", it already exists or "
+				"its directory doesn't exist, etc" << std::endl;
 		}
 		abort();
 	}
