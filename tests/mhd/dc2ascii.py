@@ -3,14 +3,14 @@
 # requires-python = '>=3.8'
 # dependencies = ['numpy']
 # [tool.uv]
-# exclude-newer = '2025-01-01T00:00:00Z'
+# exclude-newer = '2026-01-01T00:00:00Z'
 # ///
 
 '''
 Converts output from MHD test program of PAMHD to ASCII format.
 
 Copyright 2015, 2016 Ilja Honkonen
-Copyright 2024, 2025 Finnish Meteorological Institute
+Copyright 2024, 2025, 2026 Finnish Meteorological Institute
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
