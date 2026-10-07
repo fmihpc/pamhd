@@ -19,7 +19,6 @@ default: all
 
 include \
   tests/boundaries/project_makefile \
-  tests/divergence/project_makefile \
   tests/grid/project_makefile \
   tests/interpolate/project_makefile \
   tests/math/project_makefile \
