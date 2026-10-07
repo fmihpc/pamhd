@@ -39,8 +39,6 @@ particles represent one of the fluids.
 #include "boost/numeric/odeint.hpp"
 #include "dccrg.hpp"
 #include "dccrg_cartesian_geometry.hpp"
-#include "Eigen/Core" // must be included before gensimcell.hpp
-#include "Eigen/Geometry"
 #include "mpi.h" // must be included before gensimcell.hpp
 #include "gensimcell.hpp"
 #include "rapidjson/document.h"
