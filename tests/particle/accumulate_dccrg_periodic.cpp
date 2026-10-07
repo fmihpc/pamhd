@@ -45,7 +45,6 @@ Author(s): Ilja Honkonen
 
 #include "dccrg.hpp"
 #include "dccrg_cartesian_geometry.hpp"
-#include "Eigen/Core" // must be included before gensimcell.hpp
 #include "mpi.h" // must be included before gensimcell.hpp
 #include "gensimcell.hpp"
 

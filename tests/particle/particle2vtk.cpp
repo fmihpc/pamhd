@@ -51,7 +51,6 @@ Author(s): Ilja Honkonen
 #include "dccrg_mapping.hpp"
 #include "dccrg_topology.hpp"
 #include "mpi.h" // must be included before gensimcell
-#include "Eigen/Core" // must be included before gensimcell
 #include "gensimcell.hpp"
 //#include "prettyprint.hpp"
 
