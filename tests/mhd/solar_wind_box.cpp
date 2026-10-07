@@ -37,7 +37,6 @@ Author(s): Ilja Honkonen
 #include "boost/filesystem.hpp"
 #include "dccrg.hpp"
 #include "dccrg_cartesian_geometry.hpp"
-#include "Eigen/Core" // must be included before gensimcell.hpp
 #include "mpi.h" // must be included before gensimcell.hpp
 #include "gensimcell.hpp"
 #include "rapidjson/document.h"
